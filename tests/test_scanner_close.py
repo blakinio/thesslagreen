@@ -223,8 +223,8 @@ def test_async_setup_closes_scanner():
         scanner.close = AsyncMock()
 
         with patch(
-            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner",
-            return_value=scanner,
+            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
+            AsyncMock(return_value=scanner),
         ), patch.object(coordinator, "_test_connection", AsyncMock()):
             result = await coordinator.async_setup()
 

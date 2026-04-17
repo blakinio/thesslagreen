@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ..const import HOLDING_BATCH_BOUNDARIES, KNOWN_MISSING_REGISTERS
 from ..scanner_helpers import UART_OPTIONAL_REGS
@@ -301,9 +301,84 @@ def collect_missing_registers(
     return missing_registers
 
 
+async def load_registers(
+    scanner: ThesslaGreenDeviceScanner,
+    async_get_all_registers_cb: Callable[[Any | None], Awaitable[list[Any]]],
+) -> tuple[
+    dict[int, dict[int, str]],
+    dict[str, tuple[float | None, float | None]],
+]:
+    """Load Modbus register definitions and value ranges."""
+    register_map: dict[int, dict[int, str]] = {3: {}, 4: {}, 1: {}, 2: {}}
+    register_ranges: dict[str, tuple[float | None, float | None]] = {}
+    for reg in await async_get_all_registers_cb(scanner._hass):
+        if not reg.name:
+            continue
+        register_map[reg.function][reg.address] = reg.name
+        if reg.min is not None or reg.max is not None:
+            register_ranges[reg.name] = (reg.min, reg.max)
+    return register_map, register_ranges
+
+
+def log_skipped_ranges(scanner: ThesslaGreenDeviceScanner) -> None:
+    """Log summary of ranges skipped due to Modbus exceptions."""
+    if scanner._unsupported_input_ranges:
+        ranges = ", ".join(
+            f"{start}-{end} (exception code {code})"
+            for (start, end), code in sorted(scanner._unsupported_input_ranges.items())
+        )
+        _LOGGER.warning("Skipping unsupported input registers %s", ranges)
+    if scanner._unsupported_holding_ranges:
+        ranges = ", ".join(
+            f"{start}-{end} (exception code {code})"
+            for (start, end), code in sorted(scanner._unsupported_holding_ranges.items())
+        )
+        _LOGGER.warning("Skipping unsupported holding registers %s", ranges)
+
+    addr_to_name: dict[str, dict[int, str]] = {
+        "input_registers": {
+            addr: name for addr, name in scanner._registers.get(4, {}).items() if isinstance(name, str)
+        },
+        "holding_registers": {
+            addr: name for addr, name in scanner._registers.get(3, {}).items() if isinstance(name, str)
+        },
+        "coil_registers": {
+            addr: name for addr, name in scanner._registers.get(1, {}).items() if isinstance(name, str)
+        },
+        "discrete_inputs": {
+            addr: name for addr, name in scanner._registers.get(2, {}).items() if isinstance(name, str)
+        },
+    }
+
+    for reg_type, addrs in scanner.failed_addresses["modbus_exceptions"].items():
+        filtered = scanner._filter_unsupported_addresses(reg_type, addrs)
+        if not filtered:
+            continue
+        reverse_map = addr_to_name.get(reg_type, {})
+        available = scanner.available_registers.get(reg_type, set())
+        truly_failed = {addr for addr in filtered if reverse_map.get(addr) not in available}
+        if truly_failed:
+            decimals = ", ".join(str(addr) for addr in sorted(truly_failed))
+            _LOGGER.warning("Failed to read %s at %s", reg_type, decimals)
+        elif filtered:
+            decimals = ", ".join(str(addr) for addr in sorted(filtered))
+            _LOGGER.debug(
+                "Batch read failed for %s at %s but individual probes succeeded",
+                reg_type,
+                decimals,
+            )
+
+    for reg_type, addrs in scanner.failed_addresses["invalid_values"].items():
+        if addrs:
+            decimals = ", ".join(str(addr) for addr in sorted(addrs))
+            _LOGGER.debug("Invalid values for %s at %s", reg_type, decimals)
+
+
 __all__ = [
     "collect_missing_registers",
     "compute_scan_blocks",
+    "load_registers",
+    "log_skipped_ranges",
     "run_named_scan",
     "scan_named_coil",
     "scan_named_discrete",

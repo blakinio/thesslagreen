@@ -31,6 +31,7 @@ class TestThesslaGreenIntegration:
         """Create a mock Home Assistant instance."""
         hass = MagicMock(spec=HomeAssistant)
         hass.data = {}
+        hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *a: func(*a))
         hass.config_entries = MagicMock()
         hass.config_entries.async_forward_entry_setups = AsyncMock()
         hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)

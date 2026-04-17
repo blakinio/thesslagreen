@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from importlib import import_module
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -16,6 +17,14 @@ async def test_platform_setup_cancellation(caplog):
     """Cancellation during platform setup is logged without errors."""
     hass = MagicMock()
     hass.data = {}
+    def _executor(func, *args):
+        if func is import_module and args[:1] == (".coordinator",):
+            return func(*args)
+        if func is import_module:
+            return MagicMock()
+        return func(*args)
+
+    hass.async_add_executor_job = AsyncMock(side_effect=_executor)
     hass.config_entries.async_forward_entry_setups = AsyncMock(side_effect=asyncio.CancelledError)
 
     entry = MagicMock(spec=ConfigEntry)

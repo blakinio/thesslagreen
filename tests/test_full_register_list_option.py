@@ -53,12 +53,23 @@ class FakeCoordinator:
         scan_interval,
         timeout,
         retry,
+        *,
         force_full_register_list=False,
+        connection_type=None,
+        connection_mode=None,
+        serial_port=None,
+        baud_rate=None,
+        parity=None,
+        stop_bits=None,
+        backoff=0.0,
+        backoff_jitter=0.0,
+        safe_scan=False,
         scan_uart_settings=False,
         deep_scan=False,
         max_registers_per_request=0,
         entry=None,
         skip_missing_registers=False,
+        **_kwargs,
     ) -> None:
         class _Capabilities:
             def __getattr__(self, _name: str) -> bool:
@@ -71,6 +82,19 @@ class FakeCoordinator:
         self.device_name = name
         self.entry = entry
         self.force_full_register_list = force_full_register_list
+        self.connection_type = connection_type
+        self.connection_mode = connection_mode
+        self.serial_port = serial_port
+        self.baud_rate = baud_rate
+        self.parity = parity
+        self.stop_bits = stop_bits
+        self.backoff = backoff
+        self.backoff_jitter = backoff_jitter
+        self.safe_scan = safe_scan
+        self.scan_uart_settings = scan_uart_settings
+        self.deep_scan = deep_scan
+        self.max_registers_per_request = max_registers_per_request
+        self.skip_missing_registers = skip_missing_registers
         source = FULL_REGISTERS if force_full_register_list else PARTIAL_REGISTERS
         self.available_registers = {k: set(v) for k, v in source.items()}
         self.data: dict[str, int] = {}

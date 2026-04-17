@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 import logging
 from typing import Any
 
@@ -107,21 +106,12 @@ class ThesslaGreenEntity(CoordinatorEntity):
         refresh: bool = True,
         include_offset: bool = False,
     ) -> None:
-        """Write a register via coordinator with broad compatibility."""
-        write_cb = self.coordinator.async_write_register
+        """Write a register via the coordinator."""
         kwargs: dict[str, Any] = {"refresh": False}
-        try:
-            signature = inspect.signature(write_cb)
-        except (TypeError, ValueError):
-            signature = None
-        if (include_offset or offset != 0) and (
-            signature is None
-            or "offset" in signature.parameters
-            or any(p.kind is inspect.Parameter.VAR_KEYWORD for p in signature.parameters.values())
-        ):
+        if include_offset or offset != 0:
             kwargs["offset"] = offset
 
-        success = await write_cb(register_name, value, **kwargs)
+        success = await self.coordinator.async_write_register(register_name, value, **kwargs)
         if not success:
             raise RuntimeError(f"Failed to write register {register_name}")
         if refresh:

@@ -1,6 +1,4 @@
 import logging
-import sys
-import types
 from dataclasses import dataclass, field
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -73,7 +71,6 @@ async def test_legacy_fan_entity_migrated(hass, caplog):
     hass.services.async_register = MagicMock()
     hass.data = {DOMAIN: {"existing": object()}}
 
-    dummy_module = types.ModuleType("coordinator")
     coordinator = MagicMock()
     coordinator.async_config_entry_first_refresh = AsyncMock()
     coordinator.async_setup = AsyncMock(return_value=True)
@@ -81,7 +78,6 @@ async def test_legacy_fan_entity_migrated(hass, caplog):
     coordinator.port = port
     coordinator.slave_id = slave_id
     coordinator.device_info = {"serial_number": "ABC123"}
-    dummy_module.ThesslaGreenModbusCoordinator = MagicMock(return_value=coordinator)
 
     with (
         patch(
@@ -92,9 +88,13 @@ async def test_legacy_fan_entity_migrated(hass, caplog):
             return_value=list(registry.entities.values()),
             create=True,
         ),
-        patch.dict(
-            sys.modules,
-            {"custom_components.thessla_green_modbus.coordinator": dummy_module},
+        patch(
+            "custom_components.thessla_green_modbus._async_create_coordinator",
+            AsyncMock(return_value=coordinator),
+        ),
+        patch(
+            "custom_components.thessla_green_modbus._async_start_coordinator",
+            AsyncMock(return_value=True),
         ),
         caplog.at_level(logging.WARNING),
     ):

@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import logging
 import re
-import sys
 from datetime import timedelta
-from importlib import import_module
+from functools import partial
 from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
@@ -19,59 +17,49 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
     from .coordinator import ThesslaGreenModbusCoordinator
 
+from ._setup import (
+    _apply_log_level as _setup_apply_log_level,
+)
+from ._setup import (
+    _get_platforms as _setup_get_platforms,
+)
+from ._setup import (
+    async_create_coordinator as _async_create_coordinator,
+)
+from ._setup import (
+    async_setup_mappings as _async_setup_mappings,
+)
+from ._setup import (
+    async_setup_platforms as _async_setup_platforms,
+)
+from ._setup import (
+    async_start_coordinator as _async_start_coordinator,
+)
 from .const import (
-    CONF_BACKOFF,
-    CONF_BACKOFF_JITTER,
-    CONF_BAUD_RATE,
     CONF_CONNECTION_MODE,
     CONF_CONNECTION_TYPE,
-    CONF_DEEP_SCAN,
     CONF_FORCE_FULL_REGISTER_LIST,
     CONF_LOG_LEVEL,
-    CONF_MAX_REGISTERS_PER_REQUEST,
-    CONF_PARITY,
     CONF_RETRY,
     CONF_SAFE_SCAN,
     CONF_SCAN_INTERVAL,
-    CONF_SCAN_UART_SETTINGS,
-    CONF_SERIAL_PORT,
-    CONF_SKIP_MISSING_REGISTERS,
     CONF_SLAVE_ID,
-    CONF_STOP_BITS,
     CONF_TIMEOUT,
-    CONNECTION_MODE_AUTO,
-    CONNECTION_MODE_TCP_RTU,
-    CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
-    CONNECTION_TYPE_TCP_RTU,
-    DEFAULT_BACKOFF,
-    DEFAULT_BACKOFF_JITTER,
-    DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
-    DEFAULT_DEEP_SCAN,
     DEFAULT_LOG_LEVEL,
-    DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
-    DEFAULT_PARITY,
     DEFAULT_PORT,
     DEFAULT_RETRY,
     DEFAULT_SAFE_SCAN,
     DEFAULT_SCAN_INTERVAL,
-    DEFAULT_SCAN_UART_SETTINGS,
-    DEFAULT_SERIAL_PORT,
-    DEFAULT_SKIP_MISSING_REGISTERS,
     DEFAULT_SLAVE_ID,
-    DEFAULT_STOP_BITS,
     DEFAULT_TIMEOUT,
     DOMAIN,
-    async_setup_options,
     device_unique_id_prefix,
     migrate_unique_id,
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
-from .errors import is_invalid_auth_error
-from .mappings import async_setup_entity_mappings
-from .modbus_exceptions import ConnectionException, ModbusException
 from .utils import resolve_connection_settings
 
 try:  # pragma: no cover - optional in tests
@@ -95,308 +83,8 @@ LEGACY_FAN_ENTITY_IDS = [
 ]
 
 
-_platform_cache: list[object] | None = None
-
-
-def _get_platforms() -> list[object]:
-    """Return supported platform enums or plain strings.
-
-    Importing Home Assistant is deferred so external tools can use this module
-    without the `homeassistant` package installed. If the import fails, simple
-    domain strings are returned instead of `Platform` enums.
-    """
-
-    global _platform_cache
-    if _platform_cache is not None:
-        return _platform_cache
-
-    try:  # Import only when running inside Home Assistant
-        from homeassistant.const import Platform
-    except (
-        ImportError,
-        ModuleNotFoundError,
-        AttributeError,
-    ):  # pragma: no cover - Home Assistant missing
-        _platform_cache = list(PLATFORM_DOMAINS)
-        return _platform_cache
-
-    platforms: list[Platform] = []
-    for domain in PLATFORM_DOMAINS:
-        if hasattr(Platform, domain.upper()):
-            platforms.append(getattr(Platform, domain.upper()))
-        else:  # pragma: no cover
-            try:
-                platforms.append(Platform(domain))
-            except (ValueError, TypeError):  # pragma: no cover - unsupported domain
-                _LOGGER.warning("Skipping unsupported platform: %s", domain)
-    _platform_cache = platforms
-    return platforms
-
-
-def _apply_log_level(log_level: str) -> None:
-    """Adjust the integration logger level dynamically."""
-
-    level = getattr(logging, log_level.upper(), logging.INFO)
-    base_logger = logging.getLogger(__package__ or DOMAIN)
-    base_logger.setLevel(level)
-    _LOGGER.debug("Log level set to %s", log_level)
-
-
-async def _async_create_coordinator(
-    hass: HomeAssistant, entry: ConfigEntry
-) -> Any:  # pragma: no cover
-    """Read config entry options and instantiate the coordinator."""
-    if hasattr(hass, "async_add_executor_job"):
-        import_result = hass.async_add_executor_job(import_module, ".config_flow", __name__)
-        if inspect.isawaitable(import_result):
-            await import_result
-    else:
-        import_module(".config_flow", __name__)
-
-    # Get configuration - support both new and legacy keys
-    connection_type = entry.data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-    if connection_type not in (
-        CONNECTION_TYPE_TCP,
-        CONNECTION_TYPE_RTU,
-        CONNECTION_TYPE_TCP_RTU,
-    ):
-        connection_type = DEFAULT_CONNECTION_TYPE
-    connection_mode = entry.options.get(CONF_CONNECTION_MODE, entry.data.get(CONF_CONNECTION_MODE))
-    connection_type, connection_mode = resolve_connection_settings(
-        connection_type, connection_mode, entry.data.get(CONF_PORT, DEFAULT_PORT)
-    )
-
-    host = entry.data.get(CONF_HOST, "")
-    port = entry.data.get(CONF_PORT, DEFAULT_PORT)
-    serial_port = entry.data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT)
-    baud_rate = entry.data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE)
-    parity = entry.data.get(CONF_PARITY, DEFAULT_PARITY)
-    stop_bits = entry.data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS)
-
-    try:
-        baud_rate = int(baud_rate)
-    except (TypeError, ValueError):
-        baud_rate = DEFAULT_BAUD_RATE
-    parity = str(parity or DEFAULT_PARITY)
-    try:
-        stop_bits = int(stop_bits)
-    except (TypeError, ValueError):
-        stop_bits = DEFAULT_STOP_BITS
-
-    # Try to get slave_id from multiple possible keys for compatibility
-    slave_id = None
-    if CONF_SLAVE_ID in entry.data:
-        slave_id = entry.data[CONF_SLAVE_ID]
-    elif "slave_id" in entry.data:
-        slave_id = entry.data["slave_id"]
-    elif "unit" in entry.data:
-        slave_id = entry.data["unit"]  # Legacy support
-    else:
-        slave_id = DEFAULT_SLAVE_ID
-
-    name = entry.data.get(CONF_NAME, DEFAULT_NAME)
-
-    scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-    timeout = entry.options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
-    retry = entry.options.get(CONF_RETRY, DEFAULT_RETRY)
-    backoff = entry.options.get(CONF_BACKOFF, DEFAULT_BACKOFF)
-    backoff_jitter = entry.options.get(CONF_BACKOFF_JITTER, DEFAULT_BACKOFF_JITTER)
-    force_full_register_list = entry.options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
-    scan_uart_settings = entry.options.get(CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS)
-    skip_missing_registers = entry.options.get(
-        CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
-    )
-    deep_scan = entry.options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
-    safe_scan = entry.options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN)
-    max_registers_per_request = entry.options.get(
-        CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
-    )
-    log_level = entry.options.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL)
-    _apply_log_level(str(log_level))
-
-    if connection_type == CONNECTION_TYPE_RTU:
-        endpoint = serial_port or "serial"
-        transport_label = "Modbus RTU"
-    elif connection_mode == CONNECTION_MODE_TCP_RTU:
-        endpoint = f"{host}:{port}"
-        transport_label = "Modbus TCP RTU"
-    else:
-        endpoint = f"{host}:{port}"
-        transport_label = "Modbus TCP"
-        if connection_mode == CONNECTION_MODE_AUTO:
-            transport_label = "Modbus TCP (Auto)"
-
-    _LOGGER.info(
-        "Initializing ThesslaGreen device: %s via %s (%s) (slave_id=%s, scan_interval=%ds)",
-        name,
-        transport_label,
-        endpoint,
-        slave_id,
-        scan_interval,
-    )
-
-    _coordinator_key = f"{__name__}.coordinator"
-    coordinator_mod = sys.modules.get(_coordinator_key)
-    if coordinator_mod is None:
-        if hasattr(hass, "async_add_executor_job"):
-            coordinator_mod = await hass.async_add_executor_job(
-                import_module, ".coordinator", __name__
-            )
-        else:
-            coordinator_mod = import_module(".coordinator", __name__)
-    ThesslaGreenModbusCoordinator = coordinator_mod.ThesslaGreenModbusCoordinator
-
-    coordinator_kwargs = {
-        "hass": hass,
-        "host": host,
-        "port": port,
-        "slave_id": slave_id,
-        "name": name,
-        "connection_type": connection_type,
-        "connection_mode": connection_mode,
-        "serial_port": serial_port,
-        "baud_rate": baud_rate,
-        "parity": parity,
-        "stop_bits": stop_bits,
-        "scan_interval": timedelta(seconds=scan_interval),
-        "timeout": timeout,
-        "retry": retry,
-        "backoff": backoff,
-        "backoff_jitter": backoff_jitter,
-        "force_full_register_list": force_full_register_list,
-        "scan_uart_settings": scan_uart_settings,
-        "deep_scan": deep_scan,
-        "safe_scan": safe_scan,
-        "skip_missing_registers": skip_missing_registers,
-        "max_registers_per_request": max_registers_per_request,
-        "entry": entry,
-    }
-    try:
-        signature = inspect.signature(ThesslaGreenModbusCoordinator)
-    except (TypeError, ValueError):
-        signature = None
-    if signature is not None and not any(
-        param.kind is inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()
-    ):
-        coordinator_kwargs = {
-            key: value for key, value in coordinator_kwargs.items() if key in signature.parameters
-        }
-
-    return ThesslaGreenModbusCoordinator(**coordinator_kwargs)
-
-
-async def _async_start_coordinator(
-    hass: HomeAssistant, entry: ConfigEntry, coordinator: Any
-) -> bool:  # pragma: no cover
-    """Run coordinator async_setup and first refresh.
-
-    Returns False if a reauth flow was triggered (caller should return False).
-    Raises ConfigEntryNotReady on other connection failures.
-    """
-    from homeassistant.exceptions import ConfigEntryNotReady
-    from homeassistant.helpers.update_coordinator import UpdateFailed
-
-    try:
-        setup_cb = getattr(coordinator, "async_setup", None)
-        if callable(setup_cb):
-            setup_result = setup_cb()
-            if inspect.isawaitable(setup_result):
-                await setup_result
-    except asyncio.CancelledError:
-        raise
-    except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
-        if is_invalid_auth_error(exc):
-            _LOGGER.error("Authentication failed during setup: %s", exc)
-            await entry.async_start_reauth(hass)
-            return False
-        if isinstance(exc, ConfigEntryNotReady):
-            raise
-        _LOGGER.error("Failed to setup coordinator: %s", exc)
-        raise ConfigEntryNotReady(f"Unable to connect to device: {exc}") from exc
-    except Exception as exc:
-        if is_invalid_auth_error(exc):
-            _LOGGER.error("Authentication failed during setup: %s", exc)
-            await entry.async_start_reauth(hass)
-            return False
-        _LOGGER.error("Failed to setup coordinator: %s", exc)
-        raise ConfigEntryNotReady(f"Unable to connect to device: {exc}") from exc
-
-    try:
-        refresh_cb = getattr(coordinator, "async_config_entry_first_refresh", None)
-        if callable(refresh_cb):
-            refresh_result = refresh_cb()
-            if inspect.isawaitable(refresh_result):
-                await refresh_result
-        else:
-            refresh_fallback = getattr(coordinator, "async_refresh", None)
-            if callable(refresh_fallback):
-                refresh_result = refresh_fallback()
-                if inspect.isawaitable(refresh_result):
-                    await refresh_result
-    except asyncio.CancelledError:
-        raise
-    except (TimeoutError, ConnectionException, ModbusException, UpdateFailed, OSError) as exc:
-        if is_invalid_auth_error(exc):
-            _LOGGER.error("Authentication failed during initial refresh: %s", exc)
-            await entry.async_start_reauth(hass)
-            return False
-        if isinstance(exc, ConfigEntryNotReady):
-            raise
-        _LOGGER.error("Failed to perform initial data refresh: %s", exc)
-        raise ConfigEntryNotReady(f"Unable to fetch initial data: {exc}") from exc
-    except Exception as exc:
-        if is_invalid_auth_error(exc):
-            _LOGGER.error("Authentication failed during initial refresh: %s", exc)
-            await entry.async_start_reauth(hass)
-            return False
-        _LOGGER.error("Failed to perform initial data refresh: %s", exc)
-        raise ConfigEntryNotReady(f"Unable to fetch initial data: {exc}") from exc
-
-    return True
-
-
-
-async def _async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover
-    """Load option lists and entity mappings."""
-    try:
-        await async_setup_options(hass)
-    except (TypeError, AttributeError):
-        _LOGGER.debug("Skipping async_setup_options in mock context")
-    try:
-        await async_setup_entity_mappings(hass)
-    except (TypeError, AttributeError):
-        _LOGGER.debug("Skipping async_setup_entity_mappings in mock context")
-
-
-async def _async_setup_platforms(
-    hass: HomeAssistant, entry: ConfigEntry
-) -> None:  # pragma: no cover
-    """Preload platform modules and forward config entry setup."""
-    for platform in PLATFORM_DOMAINS:
-        try:
-            import_task = hass.async_add_executor_job(import_module, f".{platform}", __name__)
-            if inspect.isawaitable(import_task):
-                await import_task
-        except (ImportError, ModuleNotFoundError) as err:
-            _LOGGER.debug("Could not preload platform %s: %s", platform, err)
-        except (
-            TypeError,
-            ValueError,
-            RuntimeError,
-            AttributeError,
-            OSError,
-        ) as err:  # pragma: no cover - unexpected
-            _LOGGER.exception("Unexpected error preloading platform %s: %s", platform, err)
-
-    platforms = _get_platforms()
-    _LOGGER.debug("Setting up platforms: %s", platforms)
-    try:
-        forward_result = hass.config_entries.async_forward_entry_setups(entry, platforms)
-        if asyncio.iscoroutine(forward_result):
-            await forward_result
-    except asyncio.CancelledError:
-        _LOGGER.info("Platform setup cancelled for %s", platforms)
-        raise
+_get_platforms = partial(_setup_get_platforms, PLATFORM_DOMAINS)
+_apply_log_level = _setup_apply_log_level
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  # pragma: no cover
@@ -419,7 +107,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     await _async_migrate_unique_ids(hass, entry)
     await _async_migrate_entity_ids(hass, entry)
     await _async_setup_mappings(hass)
-    await _async_setup_platforms(hass, entry)
+    await _async_setup_platforms(hass, entry, PLATFORM_DOMAINS)
 
     if len(hass.config_entries.async_entries(DOMAIN)) == 1:
         from .services import async_setup_services

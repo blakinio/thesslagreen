@@ -15,6 +15,7 @@ async def test_no_blocking_import_log(caplog: pytest.LogCaptureFixture) -> None:
     """Ensure setup does not log blocking import warnings."""
     hass = MagicMock()
     hass.data = {}
+    hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *a: func(*a))
     hass.config_entries.async_forward_entry_setups = AsyncMock()
 
     entry = MagicMock()
