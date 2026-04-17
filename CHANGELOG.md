@@ -5,6 +5,60 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.3.9
+
+### Changed
+- Continued Fix #6 by extracting additional scan-orchestration helpers into `scanner/registers.py`: named-scan runner, scan-block computation, and missing-register collection.
+- `scanner/core.py` now delegates `_run_named_scan`, `_compute_scan_blocks`, and `_collect_missing_registers` to the register module, further reducing scanner core complexity.
+
+## 2.3.8
+
+### Changed
+- Continued Fix #6 by extracting scanner I/O logic into `scanner/io.py` (input/holding/coil/discrete reads, retry/backoff wrappers, chunked block reads, and failure tracking helpers).
+- `scanner/core.py` now delegates read-path methods (`_read_input`, `_read_holding`, `_read_bit_registers`, `_read_coil`, `_read_discrete`, `_read_register_block`) to the dedicated I/O module.
+
+## 2.3.7
+
+### Changed
+- Continued Fix #6 with real method extraction from `scanner/core.py` into dedicated modules: `scanner/capabilities.py`, `scanner/firmware.py`, and `scanner/registers.py`.
+- `ThesslaGreenDeviceScanner` now delegates capability analysis, firmware parsing, and named-register scan routines to those modules, reducing core-class responsibility while keeping behavior unchanged.
+
+## 2.3.6
+
+### Changed
+- Completed the scanner refactor by moving the scanner runtime implementation from `scanner_core.py` into `scanner/core.py` and keeping `scanner_core.py` as a backwards-compatible shim alias.
+- Updated integration imports to use the new scanner package (`from .scanner import ...`) in coordinator and services modules.
+- Kept grouped scanner modules (`firmware.py`, `registers.py`, `io.py`, `capabilities.py`) aligned with the new package structure while preserving runtime behavior and test compatibility.
+
+## 2.3.5
+
+### Changed
+- Fully consolidated service entity/coordinator resolution in `services.py` by routing all handlers through `_iter_target_coordinators(...)`, removing repeated `_extract_legacy_entity_ids(...)` / `_get_coordinator_from_entity_id(...)` boilerplate across mode, schedule, parameter, maintenance, and data service groups.
+
+## 2.3.4
+
+### Changed
+- Added a new `scanner/` package structure (`core.py`, `firmware.py`, `registers.py`, `io.py`, `capabilities.py`) as compatibility facades to prepare the large scanner refactor while preserving existing `scanner_core` behavior.
+- Added `_iter_target_coordinators(...)` helper in `services.py` and used it in data service handlers to reduce repeated entity/coordinator resolution boilerplate.
+
+### Notes
+- `scanner_core.py` remains the runtime implementation in this release for backward compatibility and stable test behavior; new package modules expose grouped scanner concerns for incremental migration.
+
+## 2.3.3
+
+### Changed
+- Removed dead `StrEnum` Python<3.11 compatibility fallback in `registers/schema.py`. Manifest and `pyproject.toml` both require Python >=3.13, so the fallback was unreachable.
+- Extracted `_handle_update_error` helper in coordinator to consolidate duplicated error handling across three `except` branches in `_async_update_data`.
+- Extracted `_parse_backoff_jitter` as a `@staticmethod` in coordinator, making jitter parsing directly unit-testable without constructing a full coordinator.
+- Removed redundant property indirection on `coordinator.client`; direct attribute access now provides equivalent behavior.
+
+### Fixed
+- `_async_update_data` now explicitly handles `asyncio.CancelledError` by closing the transport before re-raising, preventing inconsistent mid-read transport state on integration unload.
+
+### Added
+- Direct unit tests for `_parse_backoff_jitter` covering numeric, string, sequence, and fallback inputs.
+- Regression test ensuring cancellation handling in `_async_update_data` does not increment failed read counters and still disconnects cleanly.
+
 ## 2.3.2
 
 ### Changed

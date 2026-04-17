@@ -31,7 +31,7 @@ from .const import (
 )
 from .entity_mappings import map_legacy_entity_id
 from .modbus_exceptions import ConnectionException, ModbusException
-from .scanner_core import ThesslaGreenDeviceScanner
+from .scanner import ThesslaGreenDeviceScanner
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
@@ -122,6 +122,20 @@ def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[st
     )
     return cast(set[str], async_extract_entity_ids(hass, mapped_call))
 
+
+def _iter_target_coordinators(
+    hass: HomeAssistant,
+    call: ServiceCall,
+) -> list[tuple[str, ThesslaGreenModbusCoordinator]]:
+    """Resolve entity IDs to coordinator instances, skipping missing ones."""
+
+    targets: list[tuple[str, ThesslaGreenModbusCoordinator]] = []
+    for entity_id in _extract_legacy_entity_ids(hass, call):
+        coordinator = _get_coordinator_from_entity_id(hass, entity_id)
+        if coordinator is None:
+            continue
+        targets.append((entity_id, coordinator))
+    return targets
 
 def _validate_bypass_temperature_range(data: dict[str, Any]) -> dict[str, Any]:
     """Validate bypass temperature range independently from voluptuous internals."""
@@ -347,53 +361,50 @@ def _register_mode_services(hass: HomeAssistant) -> None:
 
     async def set_special_mode(call: ServiceCall) -> None:
         """Service to set special mode."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
         mode = _normalize_option(call.data["mode"])
         duration = call.data.get("duration", 0)
 
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if coordinator:
-                # Set special mode using the special_mode register
-                special_mode_value = SPECIAL_FUNCTION_MAP.get(mode, 0)
-                if not await _write_register(
-                    coordinator,
-                    "special_mode",
-                    special_mode_value,
-                    entity_id,
-                    "set special mode",
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
+            # Set special mode using the special_mode register
+            special_mode_value = SPECIAL_FUNCTION_MAP.get(mode, 0)
+            if not await _write_register(
+                coordinator,
+                "special_mode",
+                special_mode_value,
+                entity_id,
+                "set special mode",
+            ):
+                _LOGGER.error("Failed to set special mode %s for %s", mode, entity_id)
+                continue
+
+            # Set duration if specified and supported
+            if duration > 0 and mode in [
+                "boost",
+                "fireplace",
+                "hood",
+                "party",
+                "bathroom",
+            ]:
+                duration_register = f"{mode}_duration"
+                if duration_register in coordinator.available_registers.get(
+                    "holding_registers", set()
                 ):
-                    _LOGGER.error("Failed to set special mode %s for %s", mode, entity_id)
-                    continue
-
-                # Set duration if specified and supported
-                if duration > 0 and mode in [
-                    "boost",
-                    "fireplace",
-                    "hood",
-                    "party",
-                    "bathroom",
-                ]:
-                    duration_register = f"{mode}_duration"
-                    if duration_register in coordinator.available_registers.get(
-                        "holding_registers", set()
+                    if not await _write_register(
+                        coordinator,
+                        duration_register,
+                        duration,
+                        entity_id,
+                        "set special mode",
                     ):
-                        if not await _write_register(
-                            coordinator,
-                            duration_register,
-                            duration,
+                        _LOGGER.error(
+                            "Failed to set duration for %s on %s",
+                            mode,
                             entity_id,
-                            "set special mode",
-                        ):
-                            _LOGGER.error(
-                                "Failed to set duration for %s on %s",
-                                mode,
-                                entity_id,
-                            )
-                            continue
+                        )
+                        continue
 
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Set special mode %s for %s", mode, entity_id)
+            await coordinator.async_request_refresh()
+            _LOGGER.info("Set special mode %s for %s", mode, entity_id)
 
     hass.services.async_register(
         DOMAIN, "set_special_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA
@@ -409,7 +420,6 @@ def _register_schedule_services(hass: HomeAssistant) -> None:
 
     async def set_airflow_schedule(call: ServiceCall) -> None:
         """Service to set airflow schedule for a single slot."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
         day = _normalize_option(call.data["day"])
         period = int(_normalize_option(str(call.data["period"])))
         season = _normalize_option(call.data.get("season", "summer"))
@@ -429,11 +439,7 @@ def _register_schedule_services(hass: HomeAssistant) -> None:
                 end_time,
             )
 
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if not coordinator:
-                continue
-
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
             holding = coordinator.available_registers.get("holding_registers", set())
             if schedule_register not in holding or setting_register not in holding:
                 _LOGGER.error(
@@ -496,43 +502,39 @@ def _register_parameter_services(hass: HomeAssistant) -> None:
 
     async def set_bypass_parameters(call: ServiceCall) -> None:
         """Service to set bypass parameters."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
         mode = _normalize_option(call.data["mode"])
         min_temperature = call.data.get("min_outdoor_temperature")
 
         mode_map = {"auto": 0, "open": 1, "closed": 2}
         mode_value = mode_map[mode]
 
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if coordinator:
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
+            if not await _write_register(
+                coordinator,
+                "bypass_mode",
+                mode_value,
+                entity_id,
+                "set bypass parameters",
+            ):
+                _LOGGER.error("Failed to set bypass mode for %s", entity_id)
+                continue
+
+            if min_temperature is not None:
                 if not await _write_register(
                     coordinator,
-                    "bypass_mode",
-                    mode_value,
+                    "min_bypass_temperature",
+                    min_temperature,
                     entity_id,
                     "set bypass parameters",
                 ):
-                    _LOGGER.error("Failed to set bypass mode for %s", entity_id)
+                    _LOGGER.error("Failed to set bypass min temperature for %s", entity_id)
                     continue
 
-                if min_temperature is not None:
-                    if not await _write_register(
-                        coordinator,
-                        "min_bypass_temperature",
-                        min_temperature,
-                        entity_id,
-                        "set bypass parameters",
-                    ):
-                        _LOGGER.error("Failed to set bypass min temperature for %s", entity_id)
-                        continue
-
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Set bypass parameters for %s", entity_id)
+            await coordinator.async_request_refresh()
+            _LOGGER.info("Set bypass parameters for %s", entity_id)
 
     async def set_gwc_parameters(call: ServiceCall) -> None:
         """Service to set GWC parameters."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
         mode = _normalize_option(call.data["mode"])
         min_air_temperature = call.data.get("min_air_temperature")
         max_air_temperature = call.data.get("max_air_temperature")
@@ -540,132 +542,123 @@ def _register_parameter_services(hass: HomeAssistant) -> None:
         mode_map = {"off": 0, "auto": 1, "forced": 2}
         mode_value = mode_map[mode]
 
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if coordinator:
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
+            if not await _write_register(
+                coordinator,
+                "gwc_mode",
+                mode_value,
+                entity_id,
+                "set GWC parameters",
+            ):
+                _LOGGER.error("Failed to set GWC mode for %s", entity_id)
+                continue
+
+            if min_air_temperature is not None:
                 if not await _write_register(
                     coordinator,
-                    "gwc_mode",
-                    mode_value,
+                    "min_gwc_air_temperature",
+                    min_air_temperature,
                     entity_id,
                     "set GWC parameters",
                 ):
-                    _LOGGER.error("Failed to set GWC mode for %s", entity_id)
+                    _LOGGER.error("Failed to set GWC min air temperature for %s", entity_id)
                     continue
 
-                if min_air_temperature is not None:
-                    if not await _write_register(
-                        coordinator,
-                        "min_gwc_air_temperature",
-                        min_air_temperature,
-                        entity_id,
-                        "set GWC parameters",
-                    ):
-                        _LOGGER.error("Failed to set GWC min air temperature for %s", entity_id)
-                        continue
+            if max_air_temperature is not None:
+                if not await _write_register(
+                    coordinator,
+                    "max_gwc_air_temperature",
+                    max_air_temperature,
+                    entity_id,
+                    "set GWC parameters",
+                ):
+                    _LOGGER.error("Failed to set GWC max air temperature for %s", entity_id)
+                    continue
 
-                if max_air_temperature is not None:
-                    if not await _write_register(
-                        coordinator,
-                        "max_gwc_air_temperature",
-                        max_air_temperature,
-                        entity_id,
-                        "set GWC parameters",
-                    ):
-                        _LOGGER.error("Failed to set GWC max air temperature for %s", entity_id)
-                        continue
-
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Set GWC parameters for %s", entity_id)
+            await coordinator.async_request_refresh()
+            _LOGGER.info("Set GWC parameters for %s", entity_id)
 
     async def set_air_quality_thresholds(call: ServiceCall) -> None:
         """Service to set air quality thresholds."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
+            success = True
+            for param in [
+                "co2_low",
+                "co2_medium",
+                "co2_high",
+                "humidity_target",
+            ]:
+                value = call.data.get(param)
+                if value is not None:
+                    register_name = AIR_QUALITY_REGISTER_MAP[param]
+                    if not await _write_register(
+                        coordinator,
+                        register_name,
+                        value,
+                        entity_id,
+                        "set air quality thresholds",
+                    ):
+                        _LOGGER.error("Failed to set %s for %s", param, entity_id)
+                        success = False
+                        break
 
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if coordinator:
-                success = True
-                for param in [
-                    "co2_low",
-                    "co2_medium",
-                    "co2_high",
-                    "humidity_target",
-                ]:
-                    value = call.data.get(param)
-                    if value is not None:
-                        register_name = AIR_QUALITY_REGISTER_MAP[param]
-                        if not await _write_register(
-                            coordinator,
-                            register_name,
-                            value,
-                            entity_id,
-                            "set air quality thresholds",
-                        ):
-                            _LOGGER.error("Failed to set %s for %s", param, entity_id)
-                            success = False
-                            break
+            if not success:
+                continue
 
-                if not success:
-                    continue
-
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Set air quality thresholds for %s", entity_id)
+            await coordinator.async_request_refresh()
+            _LOGGER.info("Set air quality thresholds for %s", entity_id)
 
     async def set_temperature_curve(call: ServiceCall) -> None:
         """Service to set temperature curve."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
         slope = call.data["slope"]
         offset = call.data["offset"]
         max_supply_temp = call.data.get("max_supply_temp")
         min_supply_temp = call.data.get("min_supply_temp")
 
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if coordinator:
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
+            if not await _write_register(
+                coordinator,
+                "heating_curve_slope",
+                slope,
+                entity_id,
+                "set temperature curve",
+            ):
+                _LOGGER.error("Failed to set heating curve slope for %s", entity_id)
+                continue
+            if not await _write_register(
+                coordinator,
+                "heating_curve_offset",
+                offset,
+                entity_id,
+                "set temperature curve",
+            ):
+                _LOGGER.error("Failed to set heating curve offset for %s", entity_id)
+                continue
+
+            if max_supply_temp is not None:
                 if not await _write_register(
                     coordinator,
-                    "heating_curve_slope",
-                    slope,
+                    "max_supply_temperature",
+                    max_supply_temp,
                     entity_id,
                     "set temperature curve",
                 ):
-                    _LOGGER.error("Failed to set heating curve slope for %s", entity_id)
+                    _LOGGER.error("Failed to set max supply temperature for %s", entity_id)
                     continue
+
+            if min_supply_temp is not None:
                 if not await _write_register(
                     coordinator,
-                    "heating_curve_offset",
-                    offset,
+                    "min_supply_temperature",
+                    min_supply_temp,
                     entity_id,
                     "set temperature curve",
                 ):
-                    _LOGGER.error("Failed to set heating curve offset for %s", entity_id)
+                    _LOGGER.error("Failed to set min supply temperature for %s", entity_id)
                     continue
 
-                if max_supply_temp is not None:
-                    if not await _write_register(
-                        coordinator,
-                        "max_supply_temperature",
-                        max_supply_temp,
-                        entity_id,
-                        "set temperature curve",
-                    ):
-                        _LOGGER.error("Failed to set max supply temperature for %s", entity_id)
-                        continue
-
-                if min_supply_temp is not None:
-                    if not await _write_register(
-                        coordinator,
-                        "min_supply_temperature",
-                        min_supply_temp,
-                        entity_id,
-                        "set temperature curve",
-                    ):
-                        _LOGGER.error("Failed to set min supply temperature for %s", entity_id)
-                        continue
-
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Set temperature curve for %s", entity_id)
+            await coordinator.async_request_refresh()
+            _LOGGER.info("Set temperature curve for %s", entity_id)
 
     hass.services.async_register(
         DOMAIN, "set_bypass_parameters", set_bypass_parameters, SET_BYPASS_PARAMETERS_SCHEMA
@@ -689,96 +682,85 @@ def _register_maintenance_services(hass: HomeAssistant) -> None:
 
     async def reset_filters(call: ServiceCall) -> None:
         """Service to reset filter counter."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
         filter_type = _normalize_option(call.data["filter_type"])
 
         filter_type_map = {"presostat": 1, "flat_filters": 2, "cleanpad": 3, "cleanpad_pure": 4}
         filter_value = filter_type_map[filter_type]
 
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if coordinator:
-                if not await _write_register(
-                    coordinator,
-                    "filter_change",
-                    filter_value,
-                    entity_id,
-                    "reset filters",
-                ):
-                    _LOGGER.error("Failed to reset filters for %s", entity_id)
-                    continue
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Reset filters for %s", entity_id)
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
+            if not await _write_register(
+                coordinator,
+                "filter_change",
+                filter_value,
+                entity_id,
+                "reset filters",
+            ):
+                _LOGGER.error("Failed to reset filters for %s", entity_id)
+                continue
+            await coordinator.async_request_refresh()
+            _LOGGER.info("Reset filters for %s", entity_id)
 
     async def reset_settings(call: ServiceCall) -> None:
         """Service to reset settings."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
         reset_type = _normalize_option(call.data["reset_type"])
 
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if coordinator:
-                if reset_type in ["user_settings", "all_settings"]:
-                    if not await _write_register(
-                        coordinator,
-                        "hard_reset_settings",
-                        1,
-                        entity_id,
-                        "reset settings",
-                    ):
-                        _LOGGER.error("Failed to reset user settings for %s", entity_id)
-                        continue
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
+            if reset_type in ["user_settings", "all_settings"]:
+                if not await _write_register(
+                    coordinator,
+                    "hard_reset_settings",
+                    1,
+                    entity_id,
+                    "reset settings",
+                ):
+                    _LOGGER.error("Failed to reset user settings for %s", entity_id)
+                    continue
 
-                if reset_type in ["schedule_settings", "all_settings"]:
-                    if not await _write_register(
-                        coordinator,
-                        "hard_reset_schedule",
-                        1,
-                        entity_id,
-                        "reset settings",
-                    ):
-                        _LOGGER.error("Failed to reset schedule settings for %s", entity_id)
-                        continue
+            if reset_type in ["schedule_settings", "all_settings"]:
+                if not await _write_register(
+                    coordinator,
+                    "hard_reset_schedule",
+                    1,
+                    entity_id,
+                    "reset settings",
+                ):
+                    _LOGGER.error("Failed to reset schedule settings for %s", entity_id)
+                    continue
 
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Reset settings (%s) for %s", reset_type, entity_id)
+            await coordinator.async_request_refresh()
+            _LOGGER.info("Reset settings (%s) for %s", reset_type, entity_id)
 
     async def start_pressure_test(call: ServiceCall) -> None:
         """Service to start pressure test."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
+            # Trigger pressure test by setting current day and time
+            now = dt_util.now()
+            day_of_week = now.weekday()  # 0 = Monday
+            time_hhmm = now.hour * 100 + now.minute
 
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if coordinator:
-                # Trigger pressure test by setting current day and time
-                now = dt_util.now()
-                day_of_week = now.weekday()  # 0 = Monday
-                time_hhmm = now.hour * 100 + now.minute
-
-                if not await _write_register(
-                    coordinator,
-                    "pres_check_day_2",
-                    day_of_week,
-                    entity_id,
-                    "start pressure test",
-                ):
-                    _LOGGER.error("Failed to start pressure test for %s", entity_id)
-                    continue
-                if not await _write_register(
-                    coordinator,
-                    "pres_check_time_2",
-                    time_hhmm,
-                    entity_id,
-                    "start pressure test",
-                ):
-                    _LOGGER.error("Failed to start pressure test for %s", entity_id)
-                    continue
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Started pressure test for %s", entity_id)
+            if not await _write_register(
+                coordinator,
+                "pres_check_day_2",
+                day_of_week,
+                entity_id,
+                "start pressure test",
+            ):
+                _LOGGER.error("Failed to start pressure test for %s", entity_id)
+                continue
+            if not await _write_register(
+                coordinator,
+                "pres_check_time_2",
+                time_hhmm,
+                entity_id,
+                "start pressure test",
+            ):
+                _LOGGER.error("Failed to start pressure test for %s", entity_id)
+                continue
+            await coordinator.async_request_refresh()
+            _LOGGER.info("Started pressure test for %s", entity_id)
 
     async def set_modbus_parameters(call: ServiceCall) -> None:
         """Service to set Modbus parameters."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
         port = _normalize_option(call.data["port"])
         baud_rate = call.data.get("baud_rate")
         parity = call.data.get("parity")
@@ -804,101 +786,91 @@ def _register_maintenance_services(hass: HomeAssistant) -> None:
         parity_map = {"none": 0, "even": 1, "odd": 2}
         stop_map = {"1": 0, "2": 1}
 
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if coordinator:
-                port_prefix = "uart_0" if port == "air_b" else "uart_1"
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
+            port_prefix = "uart_0" if port == "air_b" else "uart_1"
 
-                if baud_rate:
-                    if not await _write_register(
-                        coordinator,
-                        f"{port_prefix}_baud",
-                        baud_map[baud_rate],
-                        entity_id,
-                        "set Modbus parameters",
-                    ):
-                        _LOGGER.error("Failed to set baud rate for %s", entity_id)
-                        continue
+            if baud_rate:
+                if not await _write_register(
+                    coordinator,
+                    f"{port_prefix}_baud",
+                    baud_map[baud_rate],
+                    entity_id,
+                    "set Modbus parameters",
+                ):
+                    _LOGGER.error("Failed to set baud rate for %s", entity_id)
+                    continue
 
-                if parity:
-                    if not await _write_register(
-                        coordinator,
-                        f"{port_prefix}_parity",
-                        parity_map[parity],
-                        entity_id,
-                        "set Modbus parameters",
-                    ):
-                        _LOGGER.error("Failed to set parity for %s", entity_id)
-                        continue
+            if parity:
+                if not await _write_register(
+                    coordinator,
+                    f"{port_prefix}_parity",
+                    parity_map[parity],
+                    entity_id,
+                    "set Modbus parameters",
+                ):
+                    _LOGGER.error("Failed to set parity for %s", entity_id)
+                    continue
 
-                if stop_bits:
-                    if not await _write_register(
-                        coordinator,
-                        f"{port_prefix}_stop",
-                        stop_map[stop_bits],
-                        entity_id,
-                        "set Modbus parameters",
-                    ):
-                        _LOGGER.error("Failed to set stop bits for %s", entity_id)
-                        continue
+            if stop_bits:
+                if not await _write_register(
+                    coordinator,
+                    f"{port_prefix}_stop",
+                    stop_map[stop_bits],
+                    entity_id,
+                    "set Modbus parameters",
+                ):
+                    _LOGGER.error("Failed to set stop bits for %s", entity_id)
+                    continue
 
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Set Modbus parameters for %s", entity_id)
+            await coordinator.async_request_refresh()
+            _LOGGER.info("Set Modbus parameters for %s", entity_id)
 
     async def set_device_name(call: ServiceCall) -> None:
         """Service to set device name."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
         device_name = call.data["device_name"]
 
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if coordinator:
-                # Device name register stores up to 8 words (16 chars). For full-length
-                # payloads delegate encoding/chunking to coordinator in a single call.
-                if len(device_name) >= 16:
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
+            # Device name register stores up to 8 words (16 chars). For full-length
+            # payloads delegate encoding/chunking to coordinator in a single call.
+            if len(device_name) >= 16:
+                try:
+                    if not await coordinator.async_write_register(
+                        "device_name", device_name, refresh=False
+                    ):
+                        _LOGGER.error("Failed to set device name for %s", entity_id)
+                        continue
+                except (ModbusException, ConnectionException) as err:
+                    _LOGGER.error("Failed to set device name for %s: %s", entity_id, err)
+                    continue
+            else:
+                batch = getattr(coordinator, "effective_batch", 2)
+                chars_per_batch = batch * 2
+                failed = False
+                for i in range(0, len(device_name), chars_per_batch):
+                    chunk = device_name[i : i + chars_per_batch]
+                    reg_offset = i // 2
                     try:
                         if not await coordinator.async_write_register(
-                            "device_name", device_name, refresh=False
+                            "device_name", chunk, refresh=False, offset=reg_offset
                         ):
                             _LOGGER.error("Failed to set device name for %s", entity_id)
-                            continue
-                    except (ModbusException, ConnectionException) as err:
-                        _LOGGER.error("Failed to set device name for %s: %s", entity_id, err)
-                        continue
-                else:
-                    batch = getattr(coordinator, "effective_batch", 2)
-                    chars_per_batch = batch * 2
-                    failed = False
-                    for i in range(0, len(device_name), chars_per_batch):
-                        chunk = device_name[i : i + chars_per_batch]
-                        reg_offset = i // 2
-                        try:
-                            if not await coordinator.async_write_register(
-                                "device_name", chunk, refresh=False, offset=reg_offset
-                            ):
-                                _LOGGER.error("Failed to set device name for %s", entity_id)
-                                failed = True
-                                break
-                        except (ModbusException, ConnectionException) as err:
-                            _LOGGER.error("Failed to set device name for %s: %s", entity_id, err)
                             failed = True
                             break
-                    if failed:
-                        continue
+                    except (ModbusException, ConnectionException) as err:
+                        _LOGGER.error("Failed to set device name for %s: %s", entity_id, err)
+                        failed = True
+                        break
+                if failed:
+                    continue
 
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Set device name to '%s' for %s", device_name, entity_id)
+            await coordinator.async_request_refresh()
+            _LOGGER.info("Set device name to '%s' for %s", device_name, entity_id)
 
     async def sync_time(call: ServiceCall) -> None:
         """Synchronise the device real-time clock to the current HA time."""
         from datetime import datetime as _dt
 
-        entity_ids = _extract_legacy_entity_ids(hass, call)
-
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if not coordinator:
-                continue
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
 
             now = _dt.now()
 
@@ -948,38 +920,27 @@ def _register_data_services(hass: HomeAssistant) -> None:
 
     async def refresh_device_data(call: ServiceCall) -> None:
         """Service to refresh device data."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
-
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if coordinator:
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Refreshed device data for %s", entity_id)
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
+            await coordinator.async_request_refresh()
+            _LOGGER.info("Refreshed device data for %s", entity_id)
 
     async def get_unknown_registers(call: ServiceCall) -> None:
         """Service to emit unknown registers via an event."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if coordinator:
-                hass.bus.async_fire(
-                    f"{DOMAIN}_unknown_registers",
-                    {
-                        "entity_id": entity_id,
-                        "unknown_registers": coordinator.unknown_registers,
-                        "scanned_registers": coordinator.scanned_registers,
-                    },
-                )
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
+            hass.bus.async_fire(
+                f"{DOMAIN}_unknown_registers",
+                {
+                    "entity_id": entity_id,
+                    "unknown_registers": coordinator.unknown_registers,
+                    "scanned_registers": coordinator.scanned_registers,
+                },
+            )
 
     async def scan_all_registers(call: ServiceCall) -> dict[str, Any] | None:
         """Service to perform a full register scan."""
-        entity_ids = _extract_legacy_entity_ids(hass, call)
         results: dict[str, Any] = {}
 
-        for entity_id in entity_ids:
-            coordinator = _get_coordinator_from_entity_id(hass, entity_id)
-            if not coordinator:
-                continue
+        for entity_id, coordinator in _iter_target_coordinators(hass, call):
 
             scanner: ThesslaGreenDeviceScanner | None = None
             try:

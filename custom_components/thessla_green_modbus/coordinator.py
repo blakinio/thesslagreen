@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import inspect
 import logging
 import re
@@ -70,7 +71,7 @@ from .modbus_transport import (
 )
 from .register_map import REGISTER_MAP_VERSION
 from .registers.loader import RegisterDef, get_all_registers
-from .scanner_core import (
+from .scanner import (
     DeviceCapabilities,
     ThesslaGreenDeviceScanner,
     is_request_cancelled_error,
@@ -224,25 +225,7 @@ class ThesslaGreenModbusCoordinator(
         except (TypeError, ValueError):
             self.backoff = DEFAULT_BACKOFF
 
-        jitter_value: float | tuple[float, float] | None
-        if isinstance(backoff_jitter, int | float):
-            jitter_value = float(backoff_jitter)
-        elif isinstance(backoff_jitter, str):
-            try:
-                jitter_value = float(backoff_jitter)
-            except ValueError:
-                jitter_value = None
-        elif isinstance(backoff_jitter, list | tuple) and len(backoff_jitter) >= 2:
-            try:
-                jitter_value = (float(backoff_jitter[0]), float(backoff_jitter[1]))
-            except (TypeError, ValueError):
-                jitter_value = None
-        else:
-            jitter_value = None if backoff_jitter in (None, "") else DEFAULT_BACKOFF_JITTER
-
-        if jitter_value in (0, 0.0):
-            jitter_value = 0.0
-        self.backoff_jitter = jitter_value
+        self.backoff_jitter = self._parse_backoff_jitter(backoff_jitter)
         self.force_full_register_list = force_full_register_list
         self.scan_uart_settings = scan_uart_settings
         self.deep_scan = deep_scan
@@ -295,7 +278,7 @@ class ThesslaGreenModbusCoordinator(
         self.offline_state = False
 
         # Connection management
-        self._client: Any | None = None
+        self.client: Any | None = None
         self._transport: BaseModbusTransport | None = None
         self._client_lock = asyncio.Lock()
         self._write_lock = asyncio.Lock()
@@ -362,17 +345,64 @@ class ThesslaGreenModbusCoordinator(
         self._last_power_timestamp = _utcnow()
         self._total_energy = 0.0
 
-    @property
-    def client(self) -> Any | None:
-        """Return the shared Modbus client."""
+    @staticmethod
+    def _parse_backoff_jitter(
+        value: float | int | str | tuple[float, float] | list[float] | None,
+    ) -> float | tuple[float, float] | None:
+        """Normalize backoff_jitter input to None, float, or (float, float)."""
+        result: float | tuple[float, float] | None
+        if isinstance(value, int | float):
+            result = float(value)
+        elif isinstance(value, str):
+            try:
+                result = float(value)
+            except ValueError:
+                result = None
+        elif isinstance(value, list | tuple) and len(value) >= 2:
+            try:
+                result = (float(value[0]), float(value[1]))
+            except (TypeError, ValueError):
+                result = None
+        else:
+            result = None if value in (None, "") else DEFAULT_BACKOFF_JITTER
 
-        return self._client
+        if result in (0, 0.0):
+            result = 0.0
+        return result
 
-    @client.setter
-    def client(self, value: Any | None) -> None:
-        """Set the shared Modbus client."""
+    async def _handle_update_error(
+        self,
+        exc: Exception,
+        *,
+        reauth_reason: str,
+        message: str,
+        log_level: int = logging.ERROR,
+        timeout_error: bool = False,
+        check_auth: bool = False,
+        use_helper: bool = True,
+    ) -> UpdateFailed:
+        """Common error-handling path for _async_update_data."""
+        self.statistics["failed_reads"] += 1
+        if timeout_error:
+            self.statistics["timeout_errors"] += 1
+        self.statistics["last_error"] = str(exc)
+        self._consecutive_failures += 1
+        self.offline_state = True
+        await self._disconnect()
 
-        self._client = value
+        if self._consecutive_failures >= self._max_failures:
+            _LOGGER.error("Too many consecutive failures, disconnecting")
+            self._trigger_reauth(reauth_reason)
+
+        if check_auth and is_invalid_auth_error(exc):
+            self._trigger_reauth("invalid_auth")
+
+        _LOGGER.log(log_level, "%s: %s", message, exc)
+        full_message = f"{message}: {exc}"
+        if use_helper:
+            return cast(UpdateFailed, _update_failed_exception(full_message))
+        return UpdateFailed(full_message)
+
 
     def _trigger_reauth(self, reason: str) -> None:  # pragma: no cover
         """Schedule a reauthentication flow if not already triggered."""
@@ -1196,49 +1226,34 @@ class ThesslaGreenModbusCoordinator(
                 )
                 return data
 
+            except asyncio.CancelledError:
+                # Don't count cancellation as a failure, but close the transport
+                # to avoid leaving it in an inconsistent state mid-read.
+                with contextlib.suppress(Exception):
+                    await self._disconnect()
+                raise
             except (ModbusException, ConnectionException) as exc:
-                self.statistics["failed_reads"] += 1
-                self.statistics["last_error"] = str(exc)
-                self._consecutive_failures += 1
-                self.offline_state = True
-                await self._disconnect()
-
-                if self._consecutive_failures >= self._max_failures:
-                    _LOGGER.error("Too many consecutive failures, disconnecting")
-                    self._trigger_reauth("connection_failure")
-
-                if is_invalid_auth_error(exc):
-                    self._trigger_reauth("invalid_auth")
-
-                _LOGGER.error("Failed to update data: %s", exc)
-                raise _update_failed_exception(f"Error communicating with device: {exc}") from exc
+                raise await self._handle_update_error(
+                    exc,
+                    reauth_reason="connection_failure",
+                    message="Error communicating with device",
+                    check_auth=True,
+                ) from exc
             except TimeoutError as exc:
-                self.statistics["failed_reads"] += 1
-                self.statistics["timeout_errors"] += 1
-                self.statistics["last_error"] = str(exc)
-                self._consecutive_failures += 1
-                self.offline_state = True
-                await self._disconnect()
-
-                if self._consecutive_failures >= self._max_failures:
-                    _LOGGER.error("Too many consecutive failures, disconnecting")
-                    self._trigger_reauth("timeout")
-
-                _LOGGER.warning("Data update timed out: %s", exc)
-                raise _update_failed_exception(f"Timeout during data update: {exc}") from exc
+                raise await self._handle_update_error(
+                    exc,
+                    reauth_reason="timeout",
+                    message="Timeout during data update",
+                    log_level=logging.WARNING,
+                    timeout_error=True,
+                ) from exc
             except (OSError, ValueError) as exc:
-                self.statistics["failed_reads"] += 1
-                self.statistics["last_error"] = str(exc)
-                self._consecutive_failures += 1
-                self.offline_state = True
-                await self._disconnect()
-
-                if self._consecutive_failures >= self._max_failures:
-                    _LOGGER.error("Too many consecutive failures, disconnecting")
-                    self._trigger_reauth("connection_failure")
-
-                _LOGGER.error("Unexpected error during data update: %s", exc)
-                raise UpdateFailed(f"Unexpected error: {exc}") from exc
+                raise await self._handle_update_error(
+                    exc,
+                    reauth_reason="connection_failure",
+                    message="Unexpected error",
+                    use_helper=False,
+                ) from exc
             finally:
                 self._update_in_progress = False
 
