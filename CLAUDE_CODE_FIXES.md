@@ -1,1063 +1,777 @@
-# thessla_green_modbus — instrukcja napraw dla Claude Code (v3)
+# thessla_green_modbus — instrukcja napraw dla Claude Code (v4)
 
 **Repozytorium:** `github.com/blakinio/thesslagreen`
-**Branch:** `main`
-**Wersja docelowa:** `2.3.1 → 2.3.2`
+**Branch:** `main` (HEAD: `751cb7e` — merge PR #1326)
+**Wersja docelowa:** `2.3.2 → 2.3.3`
 **Data audytu:** 2026-04-16
 
 ---
 
-## Stan wyjściowy po v2.3.1
+## Stan wyjściowy po v2.3.2
 
 **Co już działa (nie ruszać):**
-- ✅ Ruff (custom_components + tests + tools) — clean, 0 findings z aktualnym rulesetem (F,E,W,B,SIM,RUF,UP,I,PERF,BLE).
-- ✅ Fixes #0–#8 z audytu v2 wdrożone (widoczne w `CHANGELOG.md` → sekcja 2.3.1).
-- ✅ Tłumaczenia: parytet kluczy w `strings.json` / `en.json` / `pl.json`.
+- ✅ **Ruff:** 1 finding (`UP042` w `registers/schema.py:29`) — adresowane w Fix #1 tego audytu.
+- ✅ **Mypy strict:** 0 błędów w 49 plikach, **bez żadnych wykluczeń** w `pyproject.toml`. Spadek z 343 (v2.3.1) → 0. Fixy v3 zadziałały w 100%.
+- ✅ Modern HA API: `entry.runtime_data` + `async_forward_entry_setups` (brak deprecated `hass.data[DOMAIN]`).
+- ✅ Brak `TODO`/`FIXME`/`HACK`/`XXX` w custom_components.
+- ✅ Brak blokujących wywołań (`time.sleep`, `requests.*`) w kodzie asynchronicznym.
 
-**Co tym audytem bierzemy na tapetę — mypy strict:**
-- ❌ **343 błędy** mypy w trybie `strict` (`disallow_untyped_defs = true`, `warn_unused_ignores = true`).
-- Rozkład na kategorie:
+**Co tym audytem bierzemy na tapetę — czystki po skończonej migracji typów:**
 
-```
-148  attr-defined       ← mixiny coordinator/scanner odwołują się do atrybutów rodzica
- 45  no-untyped-def     ← głównie stuby fallback-import
- 33  unused-ignore      ← pozostałości po czyszczeniu shimów py<3.13 (Fix #6 v2)
- 31  union-attr         ← modbus_transport — wywołania na self.client bez None-guard
- 17  misc               ← "conditional function variants must have identical signatures"
- 15  no-any-return
- 10  assignment
-  8  has-type           ← _last_power_timestamp, _total_energy bez annotation
-  8  arg-type
-  8  valid-type         ← climate.py, ClimateEntity=getattr(...) antywzorzec
-  6  operator           ← None >> int w _coordinator_capabilities BCD decode
-  5  redundant-cast
-  3  no-redef
-  2  override
-  2  index
-```
+Po v2.3.2 CI jest zielony, ale są problemy, które nie były w zakresie v3 (bo v3 celował wyłącznie w mypy):
 
-- Rozkład na pliki (top 13):
+1. **Martwy kod kompatybilnościowy** — `StrEnum` fallback dla py<3.11, podczas gdy manifest/pyproject wymagają py>=3.13.
+2. **Duplikacja kodu w critical path** — `_async_update_data` w coordinator ma 3 prawie identyczne bloki `except` (~45 linii DRY).
+3. **Obsługa `asyncio.CancelledError`** — `_async_update_data` łapie `OSError, ValueError` po wszystkich innych, ale nie wyłącza jawnie `CancelledError`. W nowszym asyncio `CancelledError` dziedziczy z `BaseException`, nie z `Exception`, więc *obecnie* nie jest łapane — ale warto to uczynić jawnym dla bezpieczeństwa przy refactorze + zapewnić czyste zamknięcie transportu.
+4. **24-parametrowy konstruktor** w `ThesslaGreenModbusCoordinator` — kandydat do dataclass config.
+5. **Zbędna property indirekcja** — `client` property ↔ `_client` attribute bez logiki walidującej/logującej.
+
+**Rozkład na pliki:**
 
 ```
- 65  _coordinator_schedule.py
- 64  _coordinator_io.py
- 34  climate.py
- 25  config_flow.py
- 22  scanner_core.py
- 17  __init__.py
- 11  _scanner_transport_mixin.py
- 10  scanner_register_maps.py
- 10  _coordinator_capabilities.py
-  9  _scanner_registers_mixin.py
-  9  scanner_device_info.py
-  8  modbus_transport.py
-  8  const.py
+ 1548  coordinator.py                  ← Fix #2, #3, #4, #5 (największy ROI)
+  516  registers/schema.py             ← Fix #1 (najprostszy)
+ 2512  scanner_core.py                 ← Fix #6 (największy refactor; zostaje na osobny PR)
+ 1108  services.py                     ← Fix #7 (mniejszy, kosmetyka)
 ```
-
-**Dlaczego to ma znaczenie:** `mypy` w `pyproject.toml` jest skonfigurowany z `disallow_untyped_defs = true`, `warn_unused_ignores = true`. Integracja się uruchamia (runtime jest OK), ale CI typing-check padnie. Każdy z tych 343 błędów to albo: (a) prawdziwy potencjalny `AttributeError` / `TypeError` w runtime gdy warunki brzegowe zagrają, albo (b) kłamstwo w typach, które utrudnia refactor. Po naprawie #1–#4 spada ~280 błędów (80%) w 4 commitach.
 
 **Zalecana kolejność wdrożenia:**
-1. **Fix #1 — `climate.py` getattr antywzorzec** (34 err, 1 plik, największy ROI per zmiana)
-2. **Fix #2 — mixiny coordinator/scanner (atrybuty + stub-metody)** (~160 err, 6 plików)
-3. **Fix #3 — `modbus_transport.py` None-guards** (8 err, 1 plik)
-4. **Fix #4 — identyczne sygnatury w conditional shimach** (~25 err, 4 pliki)
-5. **Fix #5 — `_coordinator_capabilities.py` BCD None-guard** (6 err)
-6. **Fix #6 — cleanup `unused-ignore`** (33 err, kosmetyka)
-7. **Fix #7 — pozostałe: `scanner_helpers.py`, `registers/loader.py`, `modbus_helpers.py`, `scanner_device_info.py`**
+1. **Fix #1** — `StrEnum` fallback cleanup (1 plik, 10 linii).
+2. **Fix #2** — ekstrakcja `_handle_update_error` z `_async_update_data` (1 plik, ~45 linii zmian).
+3. **Fix #3** — wyłączenie `CancelledError` z ogólnego `except` (1 plik, 3 linijki).
+4. **Fix #4** — `@staticmethod _parse_backoff_jitter` (1 plik, ~20 linii zmian).
+5. **Fix #5** — uproszczenie `client` property lub udokumentowanie powodu indirekcji.
+6. **Fix #6** — **osobny PR, nie w tym release** — split `scanner_core.py`.
+7. **Fix #7** — **osobny PR, nie w tym release** — konsolidacja duplikacji w `services.py`.
 
-Po każdym Fixie uruchomić:
+Po każdym Fixie:
 ```bash
 mypy custom_components/thessla_green_modbus/
 ruff check custom_components/thessla_green_modbus/ tests/ tools/
-pytest -x  # szybki smoke
+pytest -x -q
 ```
 
 ---
 
-## Fix #1 — `climate.py`: wycięcie `getattr(ha_components, ...)` antywzorca
+## Fix #1 — Usuń martwy `StrEnum` fallback dla Python <3.11
 
-**Plik:** `custom_components/thessla_green_modbus/climate.py`
+**Plik:** `custom_components/thessla_green_modbus/registers/schema.py`
 
 **Dowód problemu:**
-Plik rozpoczyna się od:
-```python
-climate_component = getattr(ha_components, "climate", None)
-ClimateEntity = getattr(climate_component, "ClimateEntity", object)
-HVACMode = getattr(
-    climate_component,
-    "HVACMode",
-    type("HVACMode", (), {"OFF": "off", "AUTO": "auto", "FAN_ONLY": "fan_only"}),
-)
+```
+UP042 Class StrEnum inherits from both `str` and `enum.Enum`
+  --> custom_components/thessla_green_modbus/registers/schema.py:29:11
+   |
+29 |     class StrEnum(str, Enum):  # type: ignore[no-redef]
+   |           ^^^^^^^
+   |
+help: Inherit from `enum.StrEnum`
 ```
 
-Skutek: mypy widzi `ClimateEntity: Any | type`, `HVACMode: Any | type` itd. Każde użycie (`HVACMode.AUTO`, `HVACMode.OFF`, dziedziczenie `class ThesslaGreenClimate(ClimateEntity)`) produkuje `valid-type` / `union-attr`. To relikt ery HA <2024 — manifest wymaga `homeassistant: 2026.1.0`, więc symbole są dostępne na pewno. Fallback „runtime type" to martwy kod: przy braku `homeassistant.components.climate` integracja i tak nie wystartuje (HA nie wczyta jej).
+`pyproject.toml`:
+```toml
+requires-python = ">=3.13"
 
-**Dodatkowy kontekst:** fallback dotyczy tylko trybu testowego (pytest bez HA). Ale nawet tam `pytest-homeassistant-custom-component` dostarcza HA. Jedyna realna droga wykonania fallbacku — uruchomienie `tools/py_compile_all.py` bez HA w venv — nie wymaga funkcjonalnego `ClimateEntity`, tylko kompilacji.
+[tool.ruff]
+target-version = "py313"
+```
 
-### Krok 1a — zastąp blok getattr normalnym importem
+Manifest integracji wymaga `homeassistant: 2026.1.0`, który sam wymaga Python ≥3.13. Fallback `try: from enum import StrEnum; except ImportError: ... class StrEnum(str, Enum): ...` jest martwy — `enum.StrEnum` jest w stdlib od Python 3.11. Ruff sugeruje `enum.StrEnum` jako base — ale skoro cała gałąź fallbackowa to martwy kod, prostsze jest po prostu usunięcie try/except.
 
-**Plik:** `custom_components/thessla_green_modbus/climate.py`
+### Krok 1 — zastąp try/except bezpośrednim importem
 
-#### SZUKAJ (linie 1-36)
+#### SZUKAJ (linie ~19-31)
 ```python
-"""Climate entity for the ThesslaGreen Modbus integration."""
-
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import Any
+import re
 
-import homeassistant.components as ha_components
-from homeassistant import const as ha_const
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+try:
+    from enum import StrEnum
+except ImportError:  # pragma: no cover - Python < 3.11
+    from enum import Enum
 
-climate_component = getattr(ha_components, "climate", None)
-ClimateEntity = getattr(climate_component, "ClimateEntity", object)
-ClimateEntityFeature = getattr(climate_component, "ClimateEntityFeature", int)
-HVACAction = getattr(
-    climate_component,
-    "HVACAction",
-    type(
-        "HVACAction",
-        (),
-        {"OFF": "off", "FAN": "fan", "HEATING": "heating", "COOLING": "cooling", "IDLE": "idle"},
-    ),
-)
-HVACMode = getattr(
-    climate_component,
-    "HVACMode",
-    type("HVACMode", (), {"OFF": "off", "AUTO": "auto", "FAN_ONLY": "fan_only"}),
-)
+    class StrEnum(str, Enum):  # type: ignore[no-redef]
+        """Compatibility StrEnum fallback for Python < 3.11."""
 
-ATTR_TEMPERATURE = getattr(ha_const, "ATTR_TEMPERATURE", "temperature")
-UnitOfTemperature = getattr(
-    ha_const, "UnitOfTemperature", type("UnitOfTemperature", (), {"CELSIUS": "°C"})
-)
+from typing import Any, Literal, cast
 ```
 
 #### ZASTĄP
 ```python
-"""Climate entity for the ThesslaGreen Modbus integration."""
-
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import Any
-
-from homeassistant.components.climate import (
-    ClimateEntity,
-    ClimateEntityFeature,
-    HVACAction,
-    HVACMode,
-)
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+import re
+from enum import StrEnum
+from typing import Any, Literal, cast
 ```
 
-### Krok 1b — usuń `# noqa: E402` z późniejszych importów
-
-#### SZUKAJ
-```python
-from .const import (  # noqa: E402
-    SPECIAL_FUNCTION_MAP,
-    TEMPERATURE_MAX_C,
-    TEMPERATURE_MIN_C,
-    TEMPERATURE_STEP_C,
-    holding_registers,
-)
-from .coordinator import ThesslaGreenModbusCoordinator  # noqa: E402
-from .entity import ThesslaGreenEntity  # noqa: E402
+**Weryfikacja:** sprawdź, czy `Enum` jest jeszcze używany gdziekolwiek w pliku:
+```bash
+grep -n "\bEnum\b" custom_components/thessla_green_modbus/registers/schema.py
 ```
-
-#### ZASTĄP
-```python
-from .const import (
-    SPECIAL_FUNCTION_MAP,
-    TEMPERATURE_MAX_C,
-    TEMPERATURE_MIN_C,
-    TEMPERATURE_STEP_C,
-    holding_registers,
-)
-from .coordinator import ThesslaGreenModbusCoordinator
-from .entity import ThesslaGreenEntity
-```
-
-(po Kroku 1a nie ma już kodu niestandardowo zainicjalizowanego przed tymi importami, więc `E402` nie jest już wywoływane).
-
-### Krok 1c — zastąp `getattr(ClimateEntityFeature, ...)` stałymi
-
-#### SZUKAJ
-```python
-_FEATURE_TARGET_TEMPERATURE = getattr(ClimateEntityFeature, "TARGET_TEMPERATURE", 1)
-_FEATURE_FAN_MODE = getattr(ClimateEntityFeature, "FAN_MODE", 2)
-_FEATURE_PRESET_MODE = getattr(ClimateEntityFeature, "PRESET_MODE", 4)
-_FEATURE_TURN_ON = getattr(ClimateEntityFeature, "TURN_ON", 0)
-_FEATURE_TURN_OFF = getattr(ClimateEntityFeature, "TURN_OFF", 0)
-```
-
-#### ZASTĄP
-```python
-# ClimateEntityFeature.TURN_ON / TURN_OFF dodane w HA 2024.2; wymagane przez manifest (2026.1.0).
-_FEATURE_TARGET_TEMPERATURE = ClimateEntityFeature.TARGET_TEMPERATURE
-_FEATURE_FAN_MODE = ClimateEntityFeature.FAN_MODE
-_FEATURE_PRESET_MODE = ClimateEntityFeature.PRESET_MODE
-_FEATURE_TURN_ON = ClimateEntityFeature.TURN_ON
-_FEATURE_TURN_OFF = ClimateEntityFeature.TURN_OFF
-```
-
-### Krok 1d — dodaj test smoke
-
-**Plik:** `tests/test_climate.py` (dodaj na końcu, nie zastępuj istniejącego)
-
-```python
-def test_climate_imports_real_ha_symbols() -> None:
-    """Guard against regression: climate.py must use real HA imports, not getattr fallback.
-
-    The getattr pattern caused 34 mypy errors. This test ensures we don't revert
-    to runtime-resolved symbols that mypy can't type-check.
-    """
-    from custom_components.thessla_green_modbus import climate
-
-    # Must be real enum/class, not getattr fallback
-    assert hasattr(climate.HVACMode, "AUTO")
-    assert hasattr(climate.HVACMode, "OFF")
-    assert hasattr(climate.HVACAction, "HEATING")
-    assert climate.ClimateEntity.__module__.startswith("homeassistant.")
-```
+Jeśli nie pojawia się nigdzie poza wyrzuconym fallbackiem, import `Enum` nie jest potrzebny (w powyższym bloku `ZASTĄP` już go nie ma).
 
 ### Oczekiwany efekt
-- `mypy custom_components/thessla_green_modbus/climate.py` → z 34 błędów do ≤2 (resztki z coordinator references).
-- `ruff` bez zmian (był czysty).
-- `pytest tests/test_climate.py` → pass.
+- `ruff check` → 0 findings.
+- `mypy` bez zmian (był czysty).
+- Import `StrEnum` z stdlib — brak subtelnych różnic vs fallback `class StrEnum(str, Enum)` (stdlib jest *źródłem* tej klasy).
 
 ---
 
-## Fix #2 — Mixiny coordinator/scanner: atrybuty i stub-metody
+## Fix #2 — Ekstrakcja `_handle_update_error` z `_async_update_data`
 
-**Pliki dotknięte:**
-- `custom_components/thessla_green_modbus/_coordinator_io.py` (64 err)
-- `custom_components/thessla_green_modbus/_coordinator_schedule.py` (65 err)
-- `custom_components/thessla_green_modbus/_coordinator_capabilities.py` (~10 err)
-- `custom_components/thessla_green_modbus/_scanner_registers_mixin.py` (9 err)
-- `custom_components/thessla_green_modbus/_scanner_transport_mixin.py` (11 err)
-- `custom_components/thessla_green_modbus/_scanner_capabilities_mixin.py` (few err)
+**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
 
-**Dowód problemu:**
-`_coordinator_io.py:24` definiuje:
+**Dowód problemu (linie 1199-1241):**
 ```python
-class _ModbusIOMixin:
-    """Read-path Modbus methods used by the coordinator."""
+            except (ModbusException, ConnectionException) as exc:
+                self.statistics["failed_reads"] += 1
+                self.statistics["last_error"] = str(exc)
+                self._consecutive_failures += 1
+                self.offline_state = True
+                await self._disconnect()
 
-    _transport: BaseModbusTransport | None
-    client: Any | None
-    statistics: dict[str, Any]
-    available_registers: dict[str, set[str]]
-    _register_groups: dict[str, list[tuple[int, int]]]
-    effective_batch: int
-    _failed_registers: set[str]
+                if self._consecutive_failures >= self._max_failures:
+                    _LOGGER.error("Too many consecutive failures, disconnecting")
+                    self._trigger_reauth("connection_failure")
+
+                if is_invalid_auth_error(exc):
+                    self._trigger_reauth("invalid_auth")
+
+                _LOGGER.error("Failed to update data: %s", exc)
+                raise _update_failed_exception(f"Error communicating with device: {exc}") from exc
+            except TimeoutError as exc:
+                self.statistics["failed_reads"] += 1
+                self.statistics["timeout_errors"] += 1
+                self.statistics["last_error"] = str(exc)
+                self._consecutive_failures += 1
+                self.offline_state = True
+                await self._disconnect()
+
+                if self._consecutive_failures >= self._max_failures:
+                    _LOGGER.error("Too many consecutive failures, disconnecting")
+                    self._trigger_reauth("timeout")
+
+                _LOGGER.warning("Data update timed out: %s", exc)
+                raise _update_failed_exception(f"Timeout during data update: {exc}") from exc
+            except (OSError, ValueError) as exc:
+                self.statistics["failed_reads"] += 1
+                self.statistics["last_error"] = str(exc)
+                self._consecutive_failures += 1
+                self.offline_state = True
+                await self._disconnect()
+
+                if self._consecutive_failures >= self._max_failures:
+                    _LOGGER.error("Too many consecutive failures, disconnecting")
+                    self._trigger_reauth("connection_failure")
+
+                _LOGGER.error("Unexpected error during data update: %s", exc)
+                raise UpdateFailed(f"Unexpected error: {exc}") from exc
 ```
 
-…ale potem używa `self.slave_id`, `self.retry`, `self.timeout`, `self.backoff`, `self.backoff_jitter`, `self._ensure_connection`, `self._find_register_name`, `self._process_register_value`, `self._clear_register_failure`, `self._mark_registers_failed` — 20+ atrybutów bez deklaracji. Wszystkie istnieją w `ThesslaGreenModbusCoordinator` (`coordinator.py`), ale mixin nie ma żadnej „wiedzy" o rodzicu.
+**43 linie z `failed_reads += 1`, `consecutive_failures += 1`, `offline_state = True`, `_disconnect()`, `_consecutive_failures >= _max_failures` — powtórzone 3×.** Różnice:
+- Typ wyjątku.
+- `TimeoutError` dodatkowo inkrementuje `timeout_errors`.
+- `_trigger_reauth` reason: `"connection_failure"` / `"timeout"` / `"connection_failure"` (dwa identyczne).
+- `ModbusException|ConnectionException` dodatkowo sprawdza `is_invalid_auth_error(exc)` i wywołuje drugi `_trigger_reauth("invalid_auth")`.
+- Log level: `error` / `warning` / `error`.
+- Komunikat wyjątku: `"Error communicating with device"` / `"Timeout during data update"` / `"Unexpected error"`.
+- Typ wyjścia: `_update_failed_exception` / `_update_failed_exception` / `UpdateFailed` (*subtelna niespójność!* — trzeci używa surowego `UpdateFailed`, reszta helpera).
 
-To samo w `_coordinator_schedule.py` — używa `self._call_modbus`, `self._get_client_method`, `self._write_lock`, `self._disconnect`.
+**Uwaga:** niespójność `_update_failed_exception` vs `UpdateFailed` (linia 1241) może być zamierzona, ale nie ma komentarza wyjaśniającego. Należy to rozstrzygnąć przy refactorze — albo ujednolicić, albo udokumentować.
 
-**Rozwiązanie — dwa podejścia:**
-- **Podejście A:** Zdefiniuj `Protocol` z wszystkimi oczekiwanymi atrybutami/metodami w nowym pliku `_coordinator_protocol.py`. Każdy mixin importuje go w `TYPE_CHECKING`. Wada: duplikacja sygnatur między mixinami a Protocolem.
-- **Podejście B (preferowane):** Dodaj brakujące adnotacje atrybutów wprost do każdej klasy mixin. Metody referencjonowane między mixinami (np. `_call_modbus` w schedule → `_ModbusIOMixin._call_modbus`) oznacz jako abstrakcyjne sygnatury `def _call_modbus(self, ...) -> Any: ...`.
+### Krok 2a — dodaj helper `_handle_update_error`
 
-**Wybieramy podejście B** — mniej plumbingu, jeden commit per mixin, czytelność „kontraktu rodzica" bezpośrednio w pliku mixinu.
+Dodaj nową metodę w klasie `ThesslaGreenModbusCoordinator`, **przed** `_async_update_data` (czyli przed linią 1141):
 
-### Krok 2a — `_coordinator_io.py`: dodaj brakujące adnotacje
-
-**Plik:** `custom_components/thessla_green_modbus/_coordinator_io.py`
-
-#### SZUKAJ (linie 24-34)
 ```python
-class _ModbusIOMixin:
-    """Read-path Modbus methods used by the coordinator."""
+    async def _handle_update_error(
+        self,
+        exc: Exception,
+        *,
+        reauth_reason: str,
+        message: str,
+        log_level: int = logging.ERROR,
+        timeout_error: bool = False,
+        check_auth: bool = False,
+        use_helper: bool = True,
+    ) -> UpdateFailed:
+        """Common error-handling path for ``_async_update_data``.
 
-    _transport: BaseModbusTransport | None
-    client: Any | None
-    statistics: dict[str, Any]
-    available_registers: dict[str, set[str]]
-    _register_groups: dict[str, list[tuple[int, int]]]
-    effective_batch: int
-    _failed_registers: set[str]
+        Updates statistics, increments failure counters, disconnects transport,
+        triggers reauth when thresholds are reached, logs, and returns the
+        ``UpdateFailed`` exception instance the caller should raise.
+
+        Returning (rather than raising) keeps the control flow explicit in
+        ``_async_update_data`` — each except branch still has its own
+        ``raise ... from exc`` line.
+        """
+        self.statistics["failed_reads"] += 1
+        if timeout_error:
+            self.statistics["timeout_errors"] += 1
+        self.statistics["last_error"] = str(exc)
+        self._consecutive_failures += 1
+        self.offline_state = True
+        await self._disconnect()
+
+        if self._consecutive_failures >= self._max_failures:
+            _LOGGER.error("Too many consecutive failures, disconnecting")
+            self._trigger_reauth(reauth_reason)
+
+        if check_auth and is_invalid_auth_error(exc):
+            self._trigger_reauth("invalid_auth")
+
+        _LOGGER.log(log_level, "%s: %s", message, exc)
+        full_message = f"{message}: {exc}"
+        if use_helper:
+            return _update_failed_exception(full_message)
+        return UpdateFailed(full_message)
+```
+
+**Import `logging` na górze pliku** — sprawdź, czy jest (powinien być, coordinator używa `_LOGGER`):
+```bash
+grep -n "^import logging" custom_components/thessla_green_modbus/coordinator.py
+```
+
+### Krok 2b — zastąp 3 bloki `except` wywołaniami helpera
+
+#### SZUKAJ (linie 1199-1241, trzy bloki except)
+```python
+            except (ModbusException, ConnectionException) as exc:
+                self.statistics["failed_reads"] += 1
+                self.statistics["last_error"] = str(exc)
+                self._consecutive_failures += 1
+                self.offline_state = True
+                await self._disconnect()
+
+                if self._consecutive_failures >= self._max_failures:
+                    _LOGGER.error("Too many consecutive failures, disconnecting")
+                    self._trigger_reauth("connection_failure")
+
+                if is_invalid_auth_error(exc):
+                    self._trigger_reauth("invalid_auth")
+
+                _LOGGER.error("Failed to update data: %s", exc)
+                raise _update_failed_exception(f"Error communicating with device: {exc}") from exc
+            except TimeoutError as exc:
+                self.statistics["failed_reads"] += 1
+                self.statistics["timeout_errors"] += 1
+                self.statistics["last_error"] = str(exc)
+                self._consecutive_failures += 1
+                self.offline_state = True
+                await self._disconnect()
+
+                if self._consecutive_failures >= self._max_failures:
+                    _LOGGER.error("Too many consecutive failures, disconnecting")
+                    self._trigger_reauth("timeout")
+
+                _LOGGER.warning("Data update timed out: %s", exc)
+                raise _update_failed_exception(f"Timeout during data update: {exc}") from exc
+            except (OSError, ValueError) as exc:
+                self.statistics["failed_reads"] += 1
+                self.statistics["last_error"] = str(exc)
+                self._consecutive_failures += 1
+                self.offline_state = True
+                await self._disconnect()
+
+                if self._consecutive_failures >= self._max_failures:
+                    _LOGGER.error("Too many consecutive failures, disconnecting")
+                    self._trigger_reauth("connection_failure")
+
+                _LOGGER.error("Unexpected error during data update: %s", exc)
+                raise UpdateFailed(f"Unexpected error: {exc}") from exc
 ```
 
 #### ZASTĄP
 ```python
-class _ModbusIOMixin:
-    """Read-path Modbus methods used by the coordinator.
-
-    This mixin is composed into :class:`ThesslaGreenModbusCoordinator` which
-    provides all attributes declared below. Declarations exist only so mypy
-    can type-check the mixin in isolation; the real values are set by the
-    coordinator's ``__init__``.
-    """
-
-    # Transport / connection (set by ThesslaGreenModbusCoordinator.__init__)
-    _transport: BaseModbusTransport | None
-    client: Any | None
-    slave_id: int
-    timeout: float
-    retry: int
-    backoff: float
-    backoff_jitter: float
-
-    # Runtime state
-    statistics: dict[str, Any]
-    available_registers: dict[str, set[str]]
-    _register_groups: dict[str, list[tuple[int, int]]]
-    effective_batch: int
-    _failed_registers: set[str]
-
-    # Methods provided by other mixins or the coordinator proper. Declaring
-    # them here lets mypy resolve ``self._ensure_connection(...)`` etc. from
-    # within this mixin without forcing a circular import on the coordinator.
-    async def _ensure_connection(self) -> bool: ...
-    def _find_register_name(
-        self, address: int, register_type: str
-    ) -> str | None: ...
-    def _process_register_value(
-        self, register_name: str, raw_value: int
-    ) -> Any: ...
-    def _clear_register_failure(self, register_name: str) -> None: ...
-    def _mark_registers_failed(
-        self, register_names: list[str] | set[str]
-    ) -> None: ...
+            except (ModbusException, ConnectionException) as exc:
+                raise await self._handle_update_error(
+                    exc,
+                    reauth_reason="connection_failure",
+                    message="Error communicating with device",
+                    check_auth=True,
+                ) from exc
+            except TimeoutError as exc:
+                raise await self._handle_update_error(
+                    exc,
+                    reauth_reason="timeout",
+                    message="Timeout during data update",
+                    log_level=logging.WARNING,
+                    timeout_error=True,
+                ) from exc
+            except (OSError, ValueError) as exc:
+                raise await self._handle_update_error(
+                    exc,
+                    reauth_reason="connection_failure",
+                    message="Unexpected error",
+                    use_helper=False,
+                ) from exc
 ```
 
-**Uwaga — `...` vs `pass`:** PEP 484 explicite dopuszcza `...` jako ciało stub-metody. Mypy traktuje to jako abstract shape. Metody *nie będą* wołane na instancji `_ModbusIOMixin` samej w sobie — zawsze są resolwowane przez MRO z `ThesslaGreenModbusCoordinator`. **Ważne:** w `coordinator.py` prawdziwe metody `_find_register_name`, `_process_register_value`, `_clear_register_failure`, `_mark_registers_failed` nadpiszą te stuby. Upewnij się, że sygnatury stubów są identyczne z rzeczywistymi — inaczej mypy zgłosi `override`.
+**Uwaga semantyczna:** oryginalny kod logował **trzy różne** komunikaty:
+- `"Failed to update data: %s"` (ModbusException/ConnectionException)
+- `"Data update timed out: %s"` (TimeoutError)
+- `"Unexpected error during data update: %s"` (OSError/ValueError)
 
-**Weryfikacja sygnatur stubów:**
+…a `UpdateFailed` niósł **inne** komunikaty:
+- `"Error communicating with device: {exc}"`
+- `"Timeout during data update: {exc}"`
+- `"Unexpected error: {exc}"`
+
+Po refactorze używamy **jednego** `message` dla obu (log + wyjątek), bo to i tak koreluje w czasie. Rekomendacja: ujednolicić komunikaty (stan po ZASTĄP wyżej).
+
+### Krok 2c — rozstrzygnij niespójność `_update_failed_exception` vs `UpdateFailed`
+
+Znajdź definicję `_update_failed_exception`:
 ```bash
-grep -n "def _ensure_connection\|def _find_register_name\|def _process_register_value\|def _clear_register_failure\|def _mark_registers_failed" custom_components/thessla_green_modbus/coordinator.py
+grep -n "_update_failed_exception\b" custom_components/thessla_green_modbus/coordinator.py | head -5
+grep -rn "def _update_failed_exception\|_update_failed_exception =" custom_components/thessla_green_modbus/
 ```
 
-Porównaj wypisane sygnatury ze stubami wyżej i dostosuj typy argumentów, jeśli różnią się.
+Sprawdź, czy helper dodaje coś, czego `UpdateFailed` nie ma (np. prefix z nazwą integracji, specjalne kwargs). Jeśli nie — wywal helper, używaj `UpdateFailed` wszędzie (`use_helper` parametr staje się zbędny). Jeśli tak — udokumentuj w docstringu helpera i **ujednolić na niego wszędzie** (trzeci blok `except` tego nie używa — to wygląda na zapomniane przy refaktorze).
 
-### Krok 2b — `_coordinator_schedule.py`: dodaj brakujące adnotacje
+**Decyzja domyślna (zachowawcza):** zostaw `use_helper=True` default, `use_helper=False` dla bloku `OSError|ValueError` — zachowuje obecne zachowanie. Ale dopisz TODO: "Ujednolicić wyjątki — sprawdzić czy `_update_failed_exception` niesie różnicę względem `UpdateFailed`".
 
-**Plik:** `custom_components/thessla_green_modbus/_coordinator_schedule.py`
+### Oczekiwany efekt
+- `_async_update_data` kurczy się z ~105 linii → ~75 linii.
+- DRY: 43 linie duplikacji → 13 linii wywołań helpera + 30 linii w `_handle_update_error` (jednorazowa lokalizacja logiki).
+- Przy dodawaniu nowej ścieżki błędu (np. `SerialException`) wystarczy jeden `except` + wywołanie helpera, zamiast kopiowania 15-liniowego bloku.
+- Testy — **wszystkie istniejące testy `test_coordinator.py` muszą nadal przechodzić**. Uruchom:
+  ```bash
+  pytest tests/test_coordinator.py tests/test_coordinator_coverage.py -x -q
+  ```
 
-Znajdź otwarcie klasy `_CoordinatorScheduleMixin` (linia 24). Wstaw deklaracje atrybutów tuż po docstringu klasy, przed pierwszą metodą.
+---
 
-**Najpierw upewnij się, że masz właściwe importy na górze pliku:**
+## Fix #3 — Dodaj jawny handler `asyncio.CancelledError`
 
-```bash
-head -20 custom_components/thessla_green_modbus/_coordinator_schedule.py
-```
+**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
 
-Jeśli brakuje `asyncio` lub `TYPE_CHECKING`, dodaj:
+**Dowód problemu:**
+W Pythonie 3.8+ `asyncio.CancelledError` dziedziczy z `BaseException` (nie z `Exception`), więc *formalnie* nie jest łapany przez `except (OSError, ValueError)`. **Ale:**
+
+- Obecny kod **nie wywołuje `_disconnect`** przy cancelation — jeśli task zostanie anulowany w trakcie `_read_input_registers_optimized`, transport może zostać w niedokończonym stanie (half-read). Przy kolejnym `_ensure_connection()` może to powodować desynchronizację PDU.
+- Jeżeli ktoś w przyszłości rozszerzy listę łapanych wyjątków o `Exception` (np. dla bezpieczeństwa "złap wszystko") — cancellation całego taska zostanie połknięte, co jest trudnym do zdiagnozowania bugiem.
+
+**Rozwiązanie:** dodaj jawny `except asyncio.CancelledError` który `await self._disconnect()` i re-raise.
+
+### Krok 3 — dodaj jawny handler cancellation
+
+Wewnątrz `_async_update_data` (po refactorze z Fix #2), **przed** `except (ModbusException, ConnectionException)` wstaw:
 
 ```python
-from __future__ import annotations
+            except asyncio.CancelledError:
+                # Don't count cancellation as a failure, but close the transport
+                # to avoid leaving it in an inconsistent state mid-read.
+                with contextlib.suppress(Exception):
+                    await self._disconnect()
+                raise
+```
 
+**Wymagany import** na górze pliku:
+```bash
+grep -n "^import contextlib" custom_components/thessla_green_modbus/coordinator.py
+```
+
+Jeśli brak — dodaj wśród standardowych importów:
+```python
 import asyncio
+import contextlib  # ← dodać
 import logging
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from .modbus_transport import BaseModbusTransport
 ```
 
-Następnie, **tuż po `class _CoordinatorScheduleMixin:`** i jego docstringu, **wstaw**:
-
-```python
-    # Attributes provided by ThesslaGreenModbusCoordinator / other mixins.
-    # Declared for mypy; real values come from the coordinator's __init__.
-    _transport: "BaseModbusTransport | None"
-    client: Any | None
-    slave_id: int
-    retry: int
-    effective_batch: int
-    _write_lock: asyncio.Lock
-
-    async def _call_modbus(
-        self, func: Any, *args: Any, attempt: int = 1, **kwargs: Any
-    ) -> Any: ...
-    def _get_client_method(self, name: str) -> Any: ...
-    async def _ensure_connection(self) -> bool: ...
-    async def _disconnect(self) -> None: ...
-    def _clear_register_failure(self, register_name: str) -> None: ...
+**Uwaga `asyncio` powinien już być** — coordinator używa `asyncio.Lock()`. Sprawdź:
+```bash
+grep -n "^import asyncio" custom_components/thessla_green_modbus/coordinator.py
 ```
 
-Sprawdź potem sygnatury `_call_modbus` i `_get_client_method` w `_coordinator_io.py` (Krok 2a) oraz `coordinator.py`, żeby stuby tutaj się zgadzały 1:1.
+### Krok 3b — test regresji
 
-### Krok 2c — `_coordinator_capabilities.py`: dodaj `device_info`, `_last_power_timestamp`, `_total_energy`
+**Plik:** `tests/test_coordinator.py` (dodaj, nie zastępuj)
 
-**Plik:** `custom_components/thessla_green_modbus/_coordinator_capabilities.py`
-
-#### SZUKAJ (linia 18-31 — początek klasy)
 ```python
-class _CoordinatorCapabilitiesMixin:
-    """Capability and derived-value logic for the coordinator."""
+import asyncio
 
-    _STANDBY_POWER_W: float = 10.0
-    _MODEL_POWER_DATA: ClassVar[Mapping[int, tuple[float, float]]] = MappingProxyType(
-        {
-            300: (105.0, 1150.0),
-            400: (170.0, 1500.0),
-            420: (94.0, 1449.0),
-            500: (255.0, 1850.0),
-            550: (345.0, 1950.0),
-        }
+import pytest
+
+
+async def test_async_update_data_handles_cancellation(coordinator_with_mock_transport) -> None:
+    """Cancellation must close transport but not increment failure counters."""
+    coordinator, mock_transport = coordinator_with_mock_transport
+    mock_transport.read_input_registers.side_effect = asyncio.CancelledError()
+
+    failed_before = coordinator.statistics["failed_reads"]
+
+    with pytest.raises(asyncio.CancelledError):
+        await coordinator._async_update_data()
+
+    assert coordinator.statistics["failed_reads"] == failed_before, (
+        "cancellation must not count as failed read"
     )
-    _MODEL_FLOW_TOLERANCE = 15
+    # Adjust fixture/mocks to reflect the project's _disconnect plumbing:
+    mock_transport.close.assert_called()
 ```
 
-#### ZASTĄP
-```python
-class _CoordinatorCapabilitiesMixin:
-    """Capability and derived-value logic for the coordinator."""
-
-    # Attributes populated by ThesslaGreenModbusCoordinator.__init__
-    device_info: dict[str, Any]
-    _last_power_timestamp: datetime | None
-    _total_energy: float
-
-    _STANDBY_POWER_W: float = 10.0
-    _MODEL_POWER_DATA: ClassVar[Mapping[int, tuple[float, float]]] = MappingProxyType(
-        {
-            300: (105.0, 1150.0),
-            400: (170.0, 1500.0),
-            420: (94.0, 1449.0),
-            500: (255.0, 1850.0),
-            550: (345.0, 1950.0),
-        }
-    )
-    _MODEL_FLOW_TOLERANCE = 15
-```
-
-### Krok 2d — scanner mixins
-
-Powtórz wzorzec dla:
-- `_scanner_registers_mixin.py` — znajdź `class _ScannerRegistersMixin:` i dodaj brakujące atrybuty (`self.host`, `self.port`, `self.slave_id`, `self._transport`, `self.client`) oraz stub-metody z `scanner_core.py`, które mixin wywołuje.
-- `_scanner_transport_mixin.py` — to samo dla `class _ScannerTransportMixin:`.
-- `_scanner_capabilities_mixin.py` — dla `class _ScannerCapabilitiesMixin:`.
-
-**Procedura:**
-1. Uruchom `mypy custom_components/thessla_green_modbus/_scanner_<nazwa>_mixin.py 2>&1 | grep attr-defined`.
-2. Każdą linijkę typu `"_ScannerXMixin" has no attribute "foo"  [attr-defined]` rozwiązuj dodając `foo: <typ>` lub stub-metodę na górze klasy.
-3. Dla typu `<typ>` — sprawdź w `scanner_core.py` jak atrybut jest zainicjalizowany w `__init__` klasy `ThesslaGreenDeviceScanner`:
-   ```bash
-   grep -n "self\." custom_components/thessla_green_modbus/scanner_core.py | grep "= " | head -40
-   ```
+**Uwaga:** fixture `coordinator_with_mock_transport` może już istnieć pod inną nazwą w `conftest.py` — dostosuj. Szkielet pokazuje intent.
 
 ### Oczekiwany efekt
-- `attr-defined` spada ze 148 → ~5-10 (resztki edge-cases).
-- `has-type` (8 błędów) → 0 po Kroku 2c.
-- Runtime bez zmian — `...` w ciele metod stubów jest ignorowane przez MRO.
+- Cancellation taska (np. podczas unload integracji) zamyka transport zanim propaguje się wyżej.
+- Brak statystycznych false-positives ("failed reads").
 
 ---
 
-## Fix #3 — `modbus_transport.py`: None-guards po `ensure_connected`
+## Fix #4 — Wydziel `_parse_backoff_jitter` jako `@staticmethod`
 
-**Plik:** `custom_components/thessla_green_modbus/modbus_transport.py`
+**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
 
-**Dowód problemu:**
-Wzorzec powtarzający się 8× w pliku (2 klasy × 4 metody):
+**Dowód problemu (linie 158-183 — sygnatura, 227-245 — parsowanie):**
+
+**23 parametry** w `__init__` (pomijając `hass` i `self`). Ciało konstruktora ma 180 linii z czego ~50 to walidacja/parsowanie każdego parametru. Najgorszy fragment — `backoff_jitter` — zajmuje 20 linii i jest kandydatem do ekstrakcji.
+
+**Dlaczego tylko jitter, nie cały dataclass:** pełny `CoordinatorConfig` dataclass to breaking change publicznego API. Odłóż na v2.4.0 (osobny PR). Ten fix robi tylko **bezpieczną ekstrakcję** jednej metody, która:
+- Jest trudna do przetestowania obecnie (wymaga skonstruować cały coordinator).
+- Ma zawiłą logikę (4 gałęzie typu + normalizacja zera).
+- Powtarza typecheck-wzorzec `isinstance(x, int | float)` który mypy już wspiera.
+
+### Krok 4a — wydziel `_parse_backoff_jitter`
+
+#### SZUKAJ (linie ~227-245)
 ```python
-async def read_input_registers(
-    self, slave_id: int, address: int, *, count: int, attempt: int = 1,
-) -> Any:
-    if self.client is None:
-        await self.ensure_connected()
-    return await self.call(
-        self.client.read_input_registers,  # ← mypy: "Item None has no attribute..."
-        slave_id, address, count=count, attempt=attempt,
-    )
+        jitter_value: float | tuple[float, float] | None
+        if isinstance(backoff_jitter, int | float):
+            jitter_value = float(backoff_jitter)
+        elif isinstance(backoff_jitter, str):
+            try:
+                jitter_value = float(backoff_jitter)
+            except ValueError:
+                jitter_value = None
+        elif isinstance(backoff_jitter, list | tuple) and len(backoff_jitter) >= 2:
+            try:
+                jitter_value = (float(backoff_jitter[0]), float(backoff_jitter[1]))
+            except (TypeError, ValueError):
+                jitter_value = None
+        else:
+            jitter_value = None if backoff_jitter in (None, "") else DEFAULT_BACKOFF_JITTER
+
+        if jitter_value in (0, 0.0):
+            jitter_value = 0.0
+        self.backoff_jitter = jitter_value
 ```
 
-Problem: `self.client: AsyncModbusTcpClient | None = None` (linia 304/495). Po `await self.ensure_connected()` mypy nie wie, że `self.client` nie jest już `None` — bo `ensure_connected` w `BaseModbusTransport` nie zwraca informacji o stanie, tylko rzuca wyjątek przy porażce.
-
-**Rozwiązanie:** wymuś narrowing przez `assert`. W runtime jest to no-op przy `python -O` (assertions są wycinane). Alternatywnie `ensure_connected` mogłoby zwracać klienta, ale to szersza zmiana — trzymamy się `assert`.
-
-### Krok 3a — dodaj `assert` po każdym `ensure_connected`
-
-Zastosuj do **wszystkich 8 metod** w `modbus_transport.py`. Lista linii (z bieżącego stanu repo):
-
-| Linia | Metoda                    | Klasa                |
-|-------|---------------------------|----------------------|
-| 395   | `read_input_registers`    | `TcpModbusTransport` |
-| 413   | `read_holding_registers`  | `TcpModbusTransport` |
-| 431   | `write_register`          | `TcpModbusTransport` |
-| 449   | `write_registers`         | `TcpModbusTransport` |
-| 538   | `read_input_registers`    | `RtuModbusTransport` |
-| 556   | `read_holding_registers`  | `RtuModbusTransport` |
-| 574   | `write_register`          | `RtuModbusTransport` |
-| 592   | `write_registers`         | `RtuModbusTransport` |
-
-**Dla każdej z 8 metod:**
-
-#### SZUKAJ (wzorzec powtarza się 8×)
+#### ZASTĄP
 ```python
-    if self.client is None:
-        await self.ensure_connected()
-    return await self.call(
-        self.client.<METHOD>,
+        self.backoff_jitter = self._parse_backoff_jitter(backoff_jitter)
 ```
 
-#### ZASTĄP (`<METHOD>` zostaje — to placeholder)
-```python
-    if self.client is None:
-        await self.ensure_connected()
-    assert self.client is not None, "ensure_connected must populate self.client"
-    return await self.call(
-        self.client.<METHOD>,
-```
-
-**Uwaga:** nie używaj globalnego find-and-replace — klucze kontekstu (`<METHOD>`) różnią się. Idź po jednej metodzie na raz:
-
-```bash
-# Pokaż wszystkie miejsca do poprawy:
-grep -n "self\.client\.\(read\|write\)" custom_components/thessla_green_modbus/modbus_transport.py
-```
-
-### Krok 3b (opcjonalny, nie w tym PR-ze) — alternatywa
-
-**Lepsze długoterminowo, ale szersza zmiana.** Zmień kontrakt `ensure_connected` tak, by zwracał klienta:
+Następnie dodaj nową `@staticmethod` tuż po `__init__`, przed `@property client`:
 
 ```python
-    async def ensure_connected(self) -> Any:
-        """Ensure client is connected, returning the live client instance."""
-        # ... existing connection logic ...
-        assert self.client is not None
-        return self.client
+    @staticmethod
+    def _parse_backoff_jitter(
+        value: float | int | str | tuple[float, float] | list[float] | None,
+    ) -> float | tuple[float, float] | None:
+        """Normalize backoff_jitter input to ``None``, ``float``, or ``(float, float)``.
+
+        Accepts:
+            - numeric (int, float) → float
+            - string → float via parse, or None if parse fails
+            - 2+ element sequence → (float, float) of first two elements
+            - None or empty string → None
+            - anything else → DEFAULT_BACKOFF_JITTER
+
+        Zero values are normalized to ``0.0`` for downstream consistency.
+        """
+        result: float | tuple[float, float] | None
+        if isinstance(value, int | float):
+            result = float(value)
+        elif isinstance(value, str):
+            try:
+                result = float(value)
+            except ValueError:
+                result = None
+        elif isinstance(value, list | tuple) and len(value) >= 2:
+            try:
+                result = (float(value[0]), float(value[1]))
+            except (TypeError, ValueError):
+                result = None
+        else:
+            result = None if value in (None, "") else DEFAULT_BACKOFF_JITTER
+
+        if result in (0, 0.0):
+            result = 0.0
+        return result
 ```
 
-Wtedy każda metoda I/O robi:
+### Krok 4b — test bezpośredni dla `_parse_backoff_jitter`
+
+**Plik:** `tests/test_coordinator.py` (dodaj, nie zastępuj)
+
 ```python
-    client = self.client if self.client is not None else await self.ensure_connected()
-    return await self.call(client.read_input_registers, ...)
-```
+class TestParseBackoffJitter:
+    """Direct tests for the _parse_backoff_jitter parser — no coordinator needed."""
 
-**Rekomendacja:** Krok 3a (assert) w tym fixie, Krok 3b odłóż na osobny refactor — zmiana kontraktu `ensure_connected` dotyka też scannera i wymaga przejrzenia wszystkich callsite'ów.
+    def test_numeric_inputs(self) -> None:
+        from custom_components.thessla_green_modbus.coordinator import (
+            ThesslaGreenModbusCoordinator,
+        )
+        parse = ThesslaGreenModbusCoordinator._parse_backoff_jitter
+
+        assert parse(0) == 0.0
+        assert parse(0.0) == 0.0
+        assert parse(1) == 1.0
+        assert parse(1.5) == 1.5
+
+    def test_string_inputs(self) -> None:
+        from custom_components.thessla_green_modbus.coordinator import (
+            ThesslaGreenModbusCoordinator,
+        )
+        parse = ThesslaGreenModbusCoordinator._parse_backoff_jitter
+
+        assert parse("1.5") == 1.5
+        assert parse("0") == 0.0
+        assert parse("not-a-number") is None
+        assert parse("") is None
+
+    def test_tuple_list_inputs(self) -> None:
+        from custom_components.thessla_green_modbus.coordinator import (
+            ThesslaGreenModbusCoordinator,
+        )
+        parse = ThesslaGreenModbusCoordinator._parse_backoff_jitter
+
+        assert parse((1.0, 2.0)) == (1.0, 2.0)
+        assert parse([1, 2]) == (1.0, 2.0)
+        assert parse((1.0, 2.0, 3.0)) == (1.0, 2.0)  # extras ignored
+
+    def test_invalid_sequence_returns_none(self) -> None:
+        from custom_components.thessla_green_modbus.coordinator import (
+            ThesslaGreenModbusCoordinator,
+        )
+        parse = ThesslaGreenModbusCoordinator._parse_backoff_jitter
+
+        assert parse(["a", "b"]) is None
+        assert parse((None, None)) is None
+
+    def test_none_and_sentinel_defaults(self) -> None:
+        from custom_components.thessla_green_modbus.coordinator import (
+            ThesslaGreenModbusCoordinator,
+            DEFAULT_BACKOFF_JITTER,
+        )
+        parse = ThesslaGreenModbusCoordinator._parse_backoff_jitter
+
+        assert parse(None) is None
+        # dict / object falls through to DEFAULT_BACKOFF_JITTER
+        assert parse({"key": "value"}) == DEFAULT_BACKOFF_JITTER  # type: ignore[arg-type]
+```
 
 ### Oczekiwany efekt
-- `union-attr` errors w `modbus_transport.py` spada z 8 → 0.
-- **Uwaga:** było 31 `union-attr` total; pozostałe 23 to z innych plików (np. `climate.py` — rozwiązane przez Fix #1, `mappings/legacy.py:127/147` — rozwiązane przez Fix #6, scanner — przez Fix #2d).
+- `__init__` body kurczy się o ~18 linii.
+- Jitter-parsing logic jest pokryta **5 testami jednostkowymi** bez konieczności konstruować pełnego coordinatora.
+- Przygotowany grunt pod przyszły `CoordinatorConfig` dataclass (v2.4.0) — helper to dobry kandydat do `CoordinatorConfig.__post_init__`.
 
 ---
 
-## Fix #4 — Conditional shim signatures
+## Fix #5 — Uprość property `client` lub udokumentuj indirekcję
 
-**Pliki:**
-- `custom_components/thessla_green_modbus/scanner_register_maps.py` (5 shimów)
-- `custom_components/thessla_green_modbus/const.py` (1 shim)
-- `custom_components/thessla_green_modbus/mappings/_helpers.py` (1 shim)
-- `custom_components/thessla_green_modbus/mappings/_loaders.py` (1 shim)
+**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
 
-**Dowód problemu:**
-`scanner_register_maps.py:18`:
+**Dowód problemu (linie 298, 365-374):**
 ```python
-try:
-    from .registers.loader import (
-        async_get_all_registers,       # def async_get_all_registers(hass, json_path=None) -> Coroutine[..., list[RegisterDef]]
-        async_registers_sha256,        # def async_registers_sha256(hass, json_path) -> Coroutine[..., str]
-        get_all_registers,             # def get_all_registers(json_path=None) -> list[RegisterDef]
-        get_registers_path,            # def get_registers_path() -> Path
-        registers_sha256,              # def registers_sha256(json_path) -> str
-    )
-except (ImportError, AttributeError):
-    async def async_get_all_registers(*_args, **_kwargs):        # ← brak adnotacji
-        return []
-    async def async_registers_sha256(*_args, **_kwargs) -> str:  # ← sygnatura ≠ oryginał
-        return ""
-    def get_all_registers(*_args, **_kwargs):                    # ← brak adnotacji
-        return []
+        # Connection management
+        self._client: Any | None = None
+        # ...
+
+    @property
+    def client(self) -> Any | None:
+        """Return the shared Modbus client."""
+
+        return self._client
+
+    @client.setter
+    def client(self, value: Any | None) -> None:
+        self._client = value
 ```
 
-Mypy zgłasza:
-```
-error: All conditional function variants must have identical signatures  [misc]
-error: Function is missing a type annotation  [no-untyped-def]
-```
+Property nic nie robi poza dostępem do `_client`. Nie ma logowania, walidacji, ani hook'a. Używana jest w wielu miejscach zewnętrznie (scanner, I/O mixin) i wewnętrznie.
 
-**Rozwiązanie:** stuby fallback muszą mieć **identyczną sygnaturę** z oryginalnymi importami. Nie pomoże `*_args, **_kwargs`.
-
-**Najpierw — ustal prawdziwe sygnatury:**
+**Przed refactorem — sprawdź historię git:**
 ```bash
-grep -nE "^(async )?def (async_get_all_registers|async_registers_sha256|get_all_registers|get_registers_path|registers_sha256|get_registers_by_function)" custom_components/thessla_green_modbus/registers/loader.py
+cd /home/claude/thesslagreen
+git log --all -p -- custom_components/thessla_green_modbus/coordinator.py | \
+  grep -A 20 "def client(self)" | head -80
 ```
 
-Wypisz sobie każdą sygnaturę 1:1 i użyj jako bazy dla fallbacków.
+**Jeśli widać, że kiedyś była tam logika** (np. lazy-init, logowanie, walidacja):
+- Zostaw property, dodaj komentarz wyjaśniający cel.
 
-### Krok 4a — `scanner_register_maps.py`
+**Jeśli historia pokazuje, że property było od zawsze proste:**
+- Usunąć property, zmienić `_client` na publiczny `client`.
 
-#### SZUKAJ (linie 1-31)
+### Krok 5 — uproszczenie (Opcja B, zalecana)
+
+Jeśli `git log` nie pokazuje logiki historycznej w getterze/setterze:
+
+#### SZUKAJ linii 298
 ```python
-"""Register-definition caches and map builders for scanner usage."""
-
-from __future__ import annotations
-
-from pathlib import Path
-from typing import Any
-
-try:  # pragma: no cover - optional during isolated tests
-    from .registers.loader import (
-        async_get_all_registers,
-        async_registers_sha256,
-        get_all_registers,
-        get_registers_path,
-        registers_sha256,
-    )
-except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
-
-    async def async_get_all_registers(*_args, **_kwargs):
-        return []
-
-    async def async_registers_sha256(*_args, **_kwargs) -> str:
-        return ""
-
-    def get_all_registers(*_args, **_kwargs):
-        return []
-
-    def get_registers_path(*_args, **_kwargs) -> Path:
-        return Path(".")
-
-    def registers_sha256(*_args, **_kwargs) -> str:
-        return ""
+        self._client: Any | None = None
 ```
 
 #### ZASTĄP
 ```python
-"""Register-definition caches and map builders for scanner usage."""
-
-from __future__ import annotations
-
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from .registers.loader import RegisterDef
-
-try:  # pragma: no cover - optional during isolated tests
-    from .registers.loader import (
-        async_get_all_registers,
-        async_registers_sha256,
-        get_all_registers,
-        get_registers_path,
-        registers_sha256,
-    )
-except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
-
-    async def async_get_all_registers(
-        hass: Any | None = None, json_path: Path | str | None = None
-    ) -> list["RegisterDef"]:
-        return []
-
-    async def async_registers_sha256(
-        hass: Any | None, json_path: Path | str
-    ) -> str:
-        return ""
-
-    def get_all_registers(
-        json_path: Path | str | None = None,
-    ) -> list["RegisterDef"]:
-        return []
-
-    def get_registers_path() -> Path:
-        return Path(".")
-
-    def registers_sha256(json_path: Path | str) -> str:
-        return ""
+        self.client: Any | None = None
 ```
 
-**Uwaga:** sygnatury wyżej są zrekonstruowane z mypy-output. **Obowiązkowo zweryfikuj** z `registers/loader.py` przed commitem:
-
-```bash
-# Porównaj każdą sygnaturę:
-sed -n '/^async def async_get_all_registers/,/^    """/p' custom_components/thessla_green_modbus/registers/loader.py
-sed -n '/^async def async_registers_sha256/,/^    """/p' custom_components/thessla_green_modbus/registers/loader.py
-sed -n '/^def get_all_registers/,/^    """/p' custom_components/thessla_green_modbus/registers/loader.py
-sed -n '/^def get_registers_path/,/^    """/p' custom_components/thessla_green_modbus/registers/loader.py
-sed -n '/^def registers_sha256/,/^    """/p' custom_components/thessla_green_modbus/registers/loader.py
-```
-
-Jeśli oryginał różni się (np. `json_path` nie ma default, `hass` jest pozycyjny bez default), **dopasuj fallback 1:1**.
-
-### Krok 4b — `const.py`
-
-#### SZUKAJ (linie 13-18)
+#### SZUKAJ bloku property+setter (linie ~365-374)
 ```python
-try:  # pragma: no cover - optional during isolated tests
-    from .registers.loader import get_registers_by_function
-except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
+    @property
+    def client(self) -> Any | None:
+        """Return the shared Modbus client."""
 
-    def get_registers_by_function(fn: str):
-        return []
+        return self._client
+
+    @client.setter
+    def client(self, value: Any | None) -> None:
+        self._client = value
 ```
 
 #### ZASTĄP
-```python
-try:  # pragma: no cover - optional during isolated tests
-    from .registers.loader import get_registers_by_function
-except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
+*(usuń całkowicie — atrybut `self.client` jest teraz normalnym public attribute)*
 
-    def get_registers_by_function(
-        fn: str, json_path: Path | str | None = None
-    ) -> list[Any]:
-        return []
-```
-
-(Oryginał bierze `fn: str, json_path: Path | str | None = None` — zweryfikuj w `registers/loader.py`.)
-
-### Krok 4c — `mappings/_helpers.py`
-
-#### SZUKAJ (linie 14-19)
-```python
-try:  # pragma: no cover - optional during isolated tests
-    from ..registers.loader import get_all_registers
-except (ImportError, AttributeError):  # pragma: no cover
-
-    def get_all_registers(*_args, **_kwargs):
-        return []
-```
-
-#### ZASTĄP
-```python
-try:  # pragma: no cover - optional during isolated tests
-    from ..registers.loader import get_all_registers
-except (ImportError, AttributeError):  # pragma: no cover
-
-    def get_all_registers(
-        json_path: "Path | str | None" = None,
-    ) -> list[Any]:
-        return []
-```
-
-### Krok 4d — `mappings/_loaders.py`
-
-Otwórz plik, znajdź shim fallback przy linii ~29 (`mypy` raportuje `Function is missing a type annotation`):
-
+Następnie zaktualizuj wszystkie wystąpienia `self._client` w pliku:
 ```bash
-sed -n '1,40p' custom_components/thessla_green_modbus/mappings/_loaders.py
+grep -n "self\._client\b" custom_components/thessla_green_modbus/coordinator.py
 ```
 
-Zidentyfikuj shim analogiczny do tych z 4a-4c i napraw tym samym wzorcem — zidentyfikuj prawdziwą sygnaturę w `registers/loader.py`, sklonuj ją do fallbacku.
+Zamień **każde** `self._client` → `self.client`. Sprawdź również, czy inne pliki nie używają `coordinator._client`:
+```bash
+grep -rn "\._client\b" custom_components/thessla_green_modbus/ tests/
+```
+
+Jeśli znajdziesz wystąpienia w testach/scannerze — zamień na `.client`.
+
+### Krok 5 (alternatywa) — komentarz zamiast usunięcia
+
+Jeśli nie masz pewności, że żaden kod zewnętrzny nie opiera się na secie przez property:
+
+#### ZASTĄP blok property+setter
+```python
+    @property
+    def client(self) -> Any | None:
+        """Return the shared Modbus client.
+
+        Property indirection intentionally preserved to support future
+        instrumentation (e.g. logging client lifecycle events, lazy
+        reconnection) without breaking callers.
+        """
+        return self._client
+
+    @client.setter
+    def client(self, value: Any | None) -> None:
+        """Set the shared Modbus client. See getter for rationale."""
+        self._client = value
+```
 
 ### Oczekiwany efekt
-- 17× `misc "conditional function variants must have identical signatures"` → 0.
-- `no-untyped-def` związane z shimami → 0 (~10 błędów).
+- Opcja B: −10 linii kodu, jeden mniej footgun. Minimalne ryzyko breaking change (HA integration nie jest konsumowana jako biblioteka z zewnątrz).
+- Opcja A: +5 linii komentarza, czytelny intent. Nic nie zmienia funkcjonalnie.
+
+**Rekomendacja:** Opcja B. Integracja HA jest konsumowana przez platformy entity (`binary_sensor.py`, `climate.py`, itd.), które czytają `coordinator.data`, nie `coordinator.client` jako publiczne API.
 
 ---
 
-## Fix #5 — `_coordinator_capabilities.py`: None-guard na BCD decode
+## Fix #6 — Split `scanner_core.py` (osobny PR, nie w tym release)
 
-**Plik:** `custom_components/thessla_green_modbus/_coordinator_capabilities.py`
+**Plik:** `custom_components/thessla_green_modbus/scanner_core.py`
 
-**Dowód problemu (linie 220-241):**
-```python
-try:
-    raw_yymm = data.get("date_time")
-    raw_ddtt = data.get("date_time_ddtt")
-    raw_ggmm = data.get("date_time_ggmm")
-    raw_sscc = data.get("date_time_sscc")
-    if all(v is not None for v in (raw_yymm, raw_ddtt, raw_ggmm, raw_sscc)):
+**Dane:** 2512 linii, 103 KB, 30+ metod w jednej klasie `ThesslaGreenDeviceScanner`. Już w v3 audytu był oznaczony jako "do osobnego PR-a".
 
-        def _bcd(b: int) -> int:
-            return ((b >> 4) & 0xF) * 10 + (b & 0xF)
+**Proponowana struktura:**
+- `scanner/__init__.py` — re-eksport `ThesslaGreenDeviceScanner`.
+- `scanner/core.py` — klasa główna + `__init__` + `scan_device`.
+- `scanner/firmware.py` — `_scan_firmware_info`, `_scan_device_identity`.
+- `scanner/registers.py` — `_scan_register_batch`, `_scan_named_*`.
+- `scanner/io.py` — `_read_input`, `_read_holding`, `_read_coil`, `_read_discrete`, `_read_register_block`, `_read_bit_registers`.
+- `scanner/capabilities.py` — `_analyze_capabilities`, `_is_valid_register_value`, `_filter_unsupported_addresses`.
 
-        yy = _bcd((raw_yymm >> 8) & 0xFF)   # ← mypy: Unsupported operand for >> (None and int)
-        mm = _bcd(raw_yymm & 0xFF)           # ← mypy: same
-        dd = _bcd((raw_ddtt >> 8) & 0xFF)
-        hh = _bcd((raw_ggmm >> 8) & 0xFF)
-        mi = _bcd(raw_ggmm & 0xFF)
-        ss = _bcd((raw_sscc >> 8) & 0xFF)
-```
+**Ten fix nie jest wdrażany w v2.3.3.** Zostawić jako tracking-issue + oddzielny PR po merdżu 2.3.3.
 
-Problem: `all(v is not None for v in (...))` z generatorem nie zwęża typów dla mypy (generator expression nie propaguje narrowing-info na zmienne nazwane poza nim). Mypy wciąż widzi `raw_yymm: Any | None`.
-
-**Rozwiązanie:** explicite `is not None` na każdej zmiennej w `if`.
-
-### Krok 5 — przepisz blok BCD decode
-
-#### SZUKAJ (linie ~220-243)
-```python
-        # Decode device clock from BCD registers 0-3
-        try:
-            raw_yymm = data.get("date_time")
-            raw_ddtt = data.get("date_time_ddtt")
-            raw_ggmm = data.get("date_time_ggmm")
-            raw_sscc = data.get("date_time_sscc")
-            if all(v is not None for v in (raw_yymm, raw_ddtt, raw_ggmm, raw_sscc)):
-
-                def _bcd(b: int) -> int:
-                    return ((b >> 4) & 0xF) * 10 + (b & 0xF)
-
-                yy = _bcd((raw_yymm >> 8) & 0xFF)
-                mm = _bcd(raw_yymm & 0xFF)
-                dd = _bcd((raw_ddtt >> 8) & 0xFF)
-                hh = _bcd((raw_ggmm >> 8) & 0xFF)
-                mi = _bcd(raw_ggmm & 0xFF)
-                ss = _bcd((raw_sscc >> 8) & 0xFF)
-                year = 2000 + yy
-                if 1 <= mm <= 12 and 1 <= dd <= 31 and hh <= 23 and mi <= 59 and ss <= 59:
-                    data["device_clock"] = (
-                        f"{year:04d}-{mm:02d}-{dd:02d}T{hh:02d}:{mi:02d}:{ss:02d}"
-                    )
-        except (TypeError, ValueError, AttributeError) as exc:  # pragma: no cover
-            _LOGGER.debug("Failed to decode device clock: %s", exc)
-```
-
-#### ZASTĄP
-```python
-        # Decode device clock from BCD registers 0-3
-        try:
-            raw_yymm = data.get("date_time")
-            raw_ddtt = data.get("date_time_ddtt")
-            raw_ggmm = data.get("date_time_ggmm")
-            raw_sscc = data.get("date_time_sscc")
-            if (
-                raw_yymm is not None
-                and raw_ddtt is not None
-                and raw_ggmm is not None
-                and raw_sscc is not None
-            ):
-
-                def _bcd(b: int) -> int:
-                    return ((b >> 4) & 0xF) * 10 + (b & 0xF)
-
-                yy = _bcd((raw_yymm >> 8) & 0xFF)
-                mm = _bcd(raw_yymm & 0xFF)
-                dd = _bcd((raw_ddtt >> 8) & 0xFF)
-                hh = _bcd((raw_ggmm >> 8) & 0xFF)
-                mi = _bcd(raw_ggmm & 0xFF)
-                ss = _bcd((raw_sscc >> 8) & 0xFF)
-                year = 2000 + yy
-                if 1 <= mm <= 12 and 1 <= dd <= 31 and hh <= 23 and mi <= 59 and ss <= 59:
-                    data["device_clock"] = (
-                        f"{year:04d}-{mm:02d}-{dd:02d}T{hh:02d}:{mi:02d}:{ss:02d}"
-                    )
-        except (TypeError, ValueError, AttributeError) as exc:  # pragma: no cover
-            _LOGGER.debug("Failed to decode device clock: %s", exc)
-```
-
-Rozwinięcie `all(... generator ...)` na explicite `and` chain zwęża typy — mypy teraz widzi, że wszystkie 4 zmienne w bloku `then` są `Any` *bez None* (czyli wystarczająco, by operacje `>>` i `&` nie wyrzucały errorów).
-
-### Oczekiwany efekt
-- 6× `operator` → 0 w tym bloku.
+**Dlaczego nie tutaj:** split tej wielkości wymaga przeniesienia ~10 metod, aktualizacji mixinów `_scanner_*_mixin.py`, regeneracji testów (`test_scanner_coverage.py` — 101 KB!), dużego code review. Wszystko to konkurencyjne z innymi fixami w tym release — warte osobnego ticketu.
 
 ---
 
-## Fix #6 — Cleanup `unused-ignore`
+## Fix #7 — Konsolidacja duplikacji w `services.py` (osobny PR)
 
-**Pliki:** wszystkie z komentarzami `# type: ignore[...]` które mypy raportuje jako `unused-ignore`.
+**Plik:** `custom_components/thessla_green_modbus/services.py`
 
-**Lista wstępna (z mypy output):**
-- `custom_components/thessla_green_modbus/_compat.py:70` — `class DeviceInfo:` bez `# type: ignore[no-redef]` (mypy widzi redef z pierwszej próby importu).
-- `custom_components/thessla_green_modbus/mappings/legacy.py:127,147` — `# type: ignore[union-attr]` nie pasuje; błąd to teraz `attr-defined` po restrukturyzacji.
-- `custom_components/thessla_green_modbus/mappings/_helpers.py:77` — `# type: ignore[union-attr]` nie pokrywa `attr-defined`.
-- `custom_components/thessla_green_modbus/const.py:251` — `# type: ignore[assignment]` już nie potrzebny.
+**Dane:** 1108 linii, 5 funkcji `_register_*_services`:
+- `_register_mode_services` (linia 345)
+- `_register_schedule_services` (linia 407)
+- `_register_parameter_services` (linia 494)
+- `_register_maintenance_services` (linia 687)
+- `_register_data_services` (linia 946)
 
-**Procedura (33 lokalizacji):**
-```bash
-mypy custom_components/thessla_green_modbus/ 2>&1 | grep 'unused-ignore' > /tmp/unused_ignores.txt
-wc -l /tmp/unused_ignores.txt  # powinno być ~33
-```
+**Potencjalna duplikacja:** każda z nich rejestruje serwisy HA przez `hass.services.async_register(DOMAIN, "name", handler, schema=SCHEMA)`. Warto zweryfikować, czy nie ma powtarzającego się wzorca:
+- Walidacja `entity_ids` → coordinator resolution.
+- Mapowanie `legacy_entity_id` → `current_entity_id`.
+- Obsługa błędów.
 
-Dla każdej linii:
-1. Otwórz plik w lokalizacji z raportu.
-2. Znajdź komentarz `# type: ignore[...]`.
-3. **Uwaga:** nie kasuj bezmyślnie — `warn_unused_ignores = true` mówi tylko, że przy *obecnym* stanie kodu ignore jest zbędny. Po Fixach #1-#5 niektóre z tych `# type: ignore` mogą znów być potrzebne (albo z innym kodem błędu).
-4. **Procedura bezpieczna:** najpierw zastosuj Fixy #1-#5, dopiero na końcu Fix #6 (regenerujesz listę unused z mypy, jest krótsza).
-
-### Krok 6a — typowy przypadek: `mappings/legacy.py:127,147`
-
-#### SZUKAJ (linie 119-128)
-```python
-            _alias_warning_logged = True
-            if _parent is not None:
-                _parent._alias_warning_logged = True  # type: ignore[union-attr]
-```
-
-#### ZASTĄP
-```python
-            _alias_warning_logged = True
-            if _parent is not None:
-                _parent._alias_warning_logged = True  # type: ignore[attr-defined]
-```
-
-(kod błędu się zmienił: `union-attr` → `attr-defined`, bo `sys.modules.get(__package__)` zwraca `ModuleType | None`, mypy po guardach zwęża do `ModuleType`, a ten nie ma atrybutu `_alias_warning_logged` w stub-pliku `types-setuptools`).
-
-Analogicznie w linii 147.
-
-### Krok 6b — `_compat.py:70`
-
-#### SZUKAJ
-```python
-try:
-    from homeassistant.helpers.device_registry import DeviceInfo
-except (ModuleNotFoundError, ImportError):
-
-    class DeviceInfo:
-        """Minimal fallback DeviceInfo for tests."""
-```
-
-#### ZASTĄP
-```python
-try:
-    from homeassistant.helpers.device_registry import DeviceInfo
-except (ModuleNotFoundError, ImportError):
-
-    class DeviceInfo:  # type: ignore[no-redef]
-        """Minimal fallback DeviceInfo for tests."""
-```
-
-Porównaj z klasą `EntityCategory` wyżej — ta ma już `# type: ignore[no-redef]` — ujednolicenie.
-
-### Krok 6c — `mappings/_helpers.py:77`
-
-#### SZUKAJ (linia 77)
-```python
-        if _parent is not None:
-            _parent._REGISTER_INFO_CACHE = cache  # type: ignore[union-attr]
-```
-
-#### ZASTĄP
-```python
-        if _parent is not None:
-            _parent._REGISTER_INFO_CACHE = cache  # type: ignore[attr-defined]
-```
-
-### Krok 6d — pozostałe `unused-ignore`
-
-Dla wszystkich pozostałych (~30) linii z listy `/tmp/unused_ignores.txt`:
-1. Sprawdź, czy kod błędu jeszcze istnieje po Fixach #1-#5 (`mypy custom_components/thessla_green_modbus/<plik>.py 2>&1 | grep "<linia>:"`).
-2. Jeśli linia w ogóle nie ma już mypy-errora → **usuń `# type: ignore[...]`**.
-3. Jeśli jest inny błąd → **zmień kod błędu w `# type: ignore[<nowy>]`**.
-
-### Oczekiwany efekt
-- 33× `unused-ignore` → 0.
-- 3× `no-redef` → 0 (po Kroku 6b).
-
----
-
-## Fix #7 — Pozostałe
-
-### Krok 7a — `modbus_helpers.py:225` `no-any-return`
-
-**Plik:** `custom_components/thessla_green_modbus/modbus_helpers.py`
+### Weryfikacja przed PR-em
 
 ```bash
-sed -n '220,235p' custom_components/thessla_green_modbus/modbus_helpers.py
+cd /home/claude/thesslagreen
+grep -nE "^async def (_register_|_service_handler_)" custom_components/thessla_green_modbus/services.py
+grep -cE "_extract_legacy_entity_ids|_get_coordinator_from_entity_id" custom_components/thessla_green_modbus/services.py
 ```
 
-Prawdopodobnie funkcja deklaruje `-> float`, ale zwraca wartość z JSON-a bez castingu (`Any`). Rozwiązanie — explicite `float(value)`:
+Jeśli `_extract_legacy_entity_ids` jest wołany >5 razy i otoczony identycznym kodem, jest kandydatem do dekoratora `@service_handler`:
 
 ```python
-    return float(value)  # was: return value
+def service_handler(schema: vol.Schema) -> Callable[..., Any]:
+    """Decorator: extract entity_ids, resolve coordinator, forward to handler."""
+    def decorator(handler: Callable[..., Awaitable[None]]) -> Callable[..., Awaitable[None]]:
+        @wraps(handler)
+        async def wrapper(call: ServiceCall) -> None:
+            entity_ids = _extract_legacy_entity_ids(call.hass, call)
+            for entity_id in entity_ids:
+                coordinator = _get_coordinator_from_entity_id(call.hass, entity_id)
+                if coordinator is None:
+                    _LOGGER.warning("No coordinator for %s", entity_id)
+                    continue
+                await handler(coordinator, call.data)
+        return wrapper
+    return decorator
 ```
 
-### Krok 7b — `scanner_helpers.py:46,58,61,62`
-
-**Plik:** `custom_components/thessla_green_modbus/scanner_helpers.py`
-
-```bash
-sed -n '40,70p' custom_components/thessla_green_modbus/scanner_helpers.py
-```
-
-Błąd `Incompatible types in assignment (expression has type "str | None", variable has type "int | None")` oznacza, że zmienna pierwotnie zadeklarowana jako `int | None` jest potem nadpisywana stringiem albo dictem. Rozszerz typ zmiennej o prawdziwe warianty:
-
-```python
-# było:
-value: int | None = ...
-
-# powinno być (dopasuj do realnego zakresu):
-value: int | str | dict[str, float | int] | None = ...
-```
-
-Błąd `Value of type "int" is not indexable` (linie 61, 62) to konsekwencja tego samego problemu — po `value[key]` mypy widzi `int`, którego nie da się indeksować. Po rozszerzeniu typu dodaj `isinstance(value, dict)` guard przed indeksowaniem.
-
-### Krok 7c — `registers/loader.py:352,706`
-
-**Plik:** `custom_components/thessla_green_modbus/registers/loader.py`
-
-#### Linia 352
-Błąd: `Argument 1 to "int" has incompatible type "Any | None"; expected "str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc"`
-
-Znajdź:
-```bash
-sed -n '345,360p' custom_components/thessla_green_modbus/registers/loader.py
-```
-
-Dodaj guard:
-```python
-# było:
-parsed_int = int(value)
-
-# powinno być:
-if value is None:
-    raise ValueError("Expected numeric value for register.min/max, got None")
-parsed_int = int(value)
-```
-
-(Dokładny kontekst zależy od otaczającego kodu — może to być parsing `register["min"]`/`register["max"]` z JSON-a.)
-
-#### Linia 706 — `redundant-cast`
-```bash
-sed -n '700,710p' custom_components/thessla_green_modbus/registers/loader.py
-```
-
-Znajdź `cast(list[tuple[int, int]], ...)` gdzie obiekt już ma ten typ. Usuń `cast(...)` wrapper.
-
-### Krok 7d — `scanner_device_info.py` missing annotations
-
-`mypy custom_components/thessla_green_modbus/scanner_device_info.py` pokazuje 9 błędów `no-untyped-def` w liniach 49, 52, 55, 61, 126, 129, 132, 138.
-
-```bash
-sed -n '45,65p' custom_components/thessla_green_modbus/scanner_device_info.py
-sed -n '120,140p' custom_components/thessla_green_modbus/scanner_device_info.py
-```
-
-Dla każdej funkcji bez adnotacji dodaj typy argumentów i zwrotu. Typowe przypadki:
-- `def _foo(self):` → `def _foo(self) -> None:`
-- `def _bar(self, data):` → `def _bar(self, data: dict[str, Any]) -> bool:`
-- `def _baz(self, reg):` → `def _baz(self, reg: RegisterDef) -> dict[str, Any]:`
-
-Jedna dodatkowa uwaga z linii 124: `Incompatible return value type (got "dict[str, Any] | None", expected "dict[str, Any]")`. Tu albo popraw adnotację zwrotną na `dict[str, Any] | None`, albo dodaj early return zapewniający non-None.
+**Ten fix odłóż do v2.3.4** — wymaga dokładnego audytu rzeczywistej duplikacji (teraz tylko zasygnalizowane, nie zweryfikowane). Osobny PR.
 
 ---
 
 ## Weryfikacja końcowa
 
-Po zastosowaniu wszystkich fixów:
+Po zastosowaniu Fixów #1 — #5:
 
 ```bash
-# Expected: 343 → <20 mypy errors (reszta to edge-cases warte osobnego ticketu)
-mypy custom_components/thessla_green_modbus/ 2>&1 | grep -c 'error:'
-
 # Expected: "All checks passed!"
 ruff check custom_components/thessla_green_modbus/ tests/ tools/
 
-# Expected: 1604 passed (stan z v2 audytu)
+# Expected: "Success: no issues found in 49 source files"
+mypy custom_components/thessla_green_modbus/
+
+# Expected: wszystkie testy przechodzą + 6 nowych (5× _parse_backoff_jitter + 1× cancellation)
 pytest tests/ -x -q
 ```
 
-**Akceptowalne pozostałości** (~10-20 błędów mypy):
-- `scanner_core.py` — bardzo duża klasa (102K), może wymagać osobnego refactoru na mixiny.
-- `config_flow.py` — 25 błędów, głównie voluptuous schema narrowing (mypy słabo radzi sobie z `vol.Schema`).
-- edge-case `no-any-return` gdzie faktycznie wracamy `Any` bez możliwości zwężenia.
-
-Wszystkie pozostałości udokumentuj w `pyproject.toml`:
-```toml
-[[tool.mypy.overrides]]
-module = [
-    "custom_components.thessla_green_modbus.scanner_core",
-    "custom_components.thessla_green_modbus.config_flow",
-]
-disallow_untyped_defs = false  # TODO: address in separate PR
+**Zmiana metryk:**
 ```
-
-…żeby CI nie padał przy reszcie.
+                    v2.3.2     v2.3.3 (target)
+ruff:                1 err     0 err
+mypy:                0 err     0 err
+coordinator.py:     1548 LOC  ~1500 LOC  (−48, Fix #2 + #4a + #5)
+_async_update_data:  105 LOC   ~75 LOC   (−30, Fix #2)
+test count:        ~1604     ~1610      (+6 nowych)
+```
 
 ---
 
@@ -1065,44 +779,54 @@ disallow_untyped_defs = false  # TODO: address in separate PR
 
 **Plik:** `custom_components/thessla_green_modbus/manifest.json`
 ```json
-"version": "2.3.2",
+"version": "2.3.3",
 ```
 
 **Plik:** `pyproject.toml`
 ```toml
-version = "2.3.2"
+version = "2.3.3"
 ```
 
-**Plik:** `CHANGELOG.md` — dodaj na górze (po nagłówku, przed sekcją 2.3.1):
+**Plik:** `CHANGELOG.md` — dodaj na górze (przed sekcją 2.3.2):
 ```markdown
-## 2.3.2
+## 2.3.3
 
 ### Changed
-- Replaced runtime `getattr(ha_components, ...)` dispatch in `climate.py` with direct imports from `homeassistant.components.climate`. The fallback path was unreachable given the manifest-required HA version (2026.1.0) and produced 34 spurious mypy errors.
-- Added missing attribute and method stub declarations on coordinator mixins (`_ModbusIOMixin`, `_CoordinatorScheduleMixin`, `_CoordinatorCapabilitiesMixin`) and scanner mixins (`_ScannerRegistersMixin`, `_ScannerTransportMixin`, `_ScannerCapabilitiesMixin`) so mypy can type-check them in isolation.
-- Added explicit `assert self.client is not None` after `ensure_connected()` in `modbus_transport.py` I/O methods. Runtime behavior unchanged; enables mypy narrowing.
-- Aligned signatures of conditional import fallback stubs in `scanner_register_maps.py`, `const.py`, `mappings/_helpers.py`, and `mappings/_loaders.py` with their real counterparts from `registers/loader.py`.
-- Refactored BCD clock decode in `_coordinator_capabilities.py` to use explicit `and` chain instead of `all(generator)`, enabling mypy to narrow `None` from register reads.
+- Removed dead `StrEnum` Python<3.11 compatibility fallback in `registers/schema.py`. Manifest and `pyproject.toml` both require Python ≥3.13, so the fallback was unreachable.
+- Extracted `_handle_update_error` helper in coordinator to consolidate 43 lines of duplicated error-handling across three `except` branches of `_async_update_data`.
+- Extracted `_parse_backoff_jitter` as a `@staticmethod` in coordinator, making jitter parsing directly unit-testable without constructing a full coordinator.
+- Removed redundant property indirection on `coordinator.client` — the getter/setter added no behavior over direct attribute access.
 
 ### Fixed
-- Mypy strict check now passes with ~10-20 errors (down from 343), unblocking CI typing stage.
-- Cleaned up stale `# type: ignore[...]` comments that no longer applied after refactoring.
+- `_async_update_data` now explicitly handles `asyncio.CancelledError` by closing the transport before re-raising. Prevents the transport from being left in an inconsistent mid-read state when the integration unloads while a read is in progress.
+
+### Added
+- Direct unit tests for `_parse_backoff_jitter` covering numeric, string, sequence, and fallback inputs.
+- Test guarding against regression of cancellation handling in `_async_update_data`.
 ```
 
 ---
 
 ## Notatki końcowe
 
-**Czego **nie** robimy w tym fixie (odkładamy na osobne PR-y):**
+**Co **nie** wchodzi do v2.3.3 (tracked, odłożone):**
 
-1. **Refactor monolitycznego `scanner_core.py` (102K).** To było w audycie v1 jako planowany refactor i jest ważne, ale zmienia zakres tego ticketu. Zrób osobny `CLAUDE_CODE_FIXES_SCANNER_SPLIT.md`.
-2. **Refactor `__init__.py` (44K).** Analogicznie.
-3. **Zwiększenie pokrycia testów dla `coordinator.py`.** Sugerowany cel (z v1 audytu: ≥90% na critical paths) wymaga osobnej pracy.
-4. **Ewaluacja alternatywnego podejścia A (Protocol pattern)** zamiast atrybutów na mixinie. Protocol daje lepszą separację, ale wprowadza duplikację sygnatur. Decyzję warto podjąć po zmierzeniu kosztu utrzymania podejścia B przez 2-3 releasy.
+1. **Fix #6** — split `scanner_core.py` (2512 linii → 5-6 modułów). Osobny PR, najlepiej v2.4.0.
+2. **Fix #7** — konsolidacja duplikacji w `services.py`. Wymaga głębszego audytu duplikacji zanim da się zaprojektować dekorator `@service_handler`. Osobny PR.
+3. **Pełny dataclass `CoordinatorConfig`** — zmiana publicznego API klasy; warto wpiąć w większy refactor konfiguracji (np. razem z config flow options flow schema).
+4. **Pokrycie testów** na critical paths `coordinator._read_*_optimized` i `modbus_transport.*`. Wcześniej zasygnalizowane w v1 audytu (cel ≥90%), stan pokrycia nieznany bez uruchomienia `pytest --cov`.
 
-**Co zyskujemy po v2.3.2:**
-- CI pipeline z mypy strict w zielonym stanie (po wykluczeniu 2 plików z listą TODO).
-- Mixiny coordinator/scanner są self-documenting — ktoś czytający `_coordinator_io.py` widzi od razu, jakich atrybutów rodzica oczekuje mixin, bez skakania do `coordinator.py` i `__init__`.
-- Realne narrowing w `modbus_transport.py` — przypadek gdy `ensure_connected` padnie cicho i zwróci bez ustawienia klienta jest teraz złapany przez `assert` (w debug mode) zamiast rzucać `AttributeError: 'NoneType' object has no attribute 'read_input_registers'` kilka linijek dalej z mylącym stack trace.
+**Co zyskujemy po v2.3.3:**
+- Ruff 0 findings (CI zielony 100%).
+- Mniej DRY violations w critical path (`_async_update_data`).
+- Lepsza obsługa unload/shutdown (cancellation handling).
+- Direct-test coverage na jitter parsing (łatwiej zmodyfikować w przyszłości bez breaking `__init__`).
+- Mniej footgunów (property bez logiki).
 
-**Ryzyko regresu:** minimalne. Wszystkie zmiany są czysto typowe (adnotacje, guardy), runtime behavior nie zmienia się. Jedyna realna zmiana semantyki to Fix #1 — usunięcie `getattr` fallbacku w `climate.py`. Jeśli ktoś uruchamiał testy bez HA w venv, fallback był potrzebny — ale `pytest-homeassistant-custom-component` (obecny w `requirements-dev.txt`) dostarcza HA, więc żaden realny use-case nie ucierpi.
+**Ryzyko regresu:** Niskie.
+- Fix #1 i Fix #3 są czysto addytywne lub usuwają martwy kod.
+- Fix #2 to refactor zachowujący zachowanie (dokładnie te same statystyki, logi, wyjątki — z jedną udokumentowaną zmianą: ujednolicenie `log_message` = `raise_message`).
+- Fix #4a to ekstrakcja bez zmiany API.
+- Fix #5 ma niskie ryzyko breaking — property `client` może być konsumowane przez scanner_core przez `coordinator.client`, ale to zostaje zwykłym attribute lookup, który działa identycznie.
+
+**Jedyny punkt uwagi:** Fix #2c — niespójność `UpdateFailed` vs `_update_failed_exception`. Przed commitem ustal, czy to jest celowe (np. różny prefix w komunikacie) czy zapomniane przy poprzednim refactorze. Jeśli celowe — udokumentuj; jeśli nie — ujednolicić na `_update_failed_exception`.
