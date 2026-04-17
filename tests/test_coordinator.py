@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from custom_components.thessla_green_modbus.const import (
     CONF_MAX_REGISTERS_PER_REQUEST,
+    DEFAULT_BACKOFF_JITTER,
     MAX_BATCH_REGISTERS,
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
@@ -1222,3 +1223,59 @@ def cleanup_modules():
 import atexit
 
 atexit.register(cleanup_modules)
+
+
+class TestParseBackoffJitter:
+    """Direct tests for the _parse_backoff_jitter parser."""
+
+    def test_numeric_inputs(self) -> None:
+        parse = ThesslaGreenModbusCoordinator._parse_backoff_jitter
+
+        assert parse(0) == 0.0
+        assert parse(0.0) == 0.0
+        assert parse(1) == 1.0
+        assert parse(1.5) == 1.5
+
+    def test_string_inputs(self) -> None:
+        parse = ThesslaGreenModbusCoordinator._parse_backoff_jitter
+
+        assert parse("1.5") == 1.5
+        assert parse("0") == 0.0
+        assert parse("not-a-number") is None
+        assert parse("") is None
+
+    def test_tuple_list_inputs(self) -> None:
+        parse = ThesslaGreenModbusCoordinator._parse_backoff_jitter
+
+        assert parse((1.0, 2.0)) == (1.0, 2.0)
+        assert parse([1, 2]) == (1.0, 2.0)
+        assert parse((1.0, 2.0, 3.0)) == (1.0, 2.0)
+
+    def test_invalid_sequence_returns_none(self) -> None:
+        parse = ThesslaGreenModbusCoordinator._parse_backoff_jitter
+
+        assert parse(["a", "b"]) is None
+        assert parse((None, None)) is None
+
+    def test_none_and_sentinel_defaults(self) -> None:
+        parse = ThesslaGreenModbusCoordinator._parse_backoff_jitter
+
+        assert parse(None) is None
+        assert parse({"key": "value"}) == DEFAULT_BACKOFF_JITTER  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_async_update_data_handles_cancellation(coordinator) -> None:
+    """Cancellation must close transport but not increment failure counters."""
+    coordinator._ensure_connection = AsyncMock()
+    coordinator._disconnect = AsyncMock()
+    coordinator.client = MagicMock(connected=True)
+    coordinator._read_input_registers_optimized = AsyncMock(side_effect=asyncio.CancelledError())
+
+    failed_before = coordinator.statistics["failed_reads"]
+
+    with pytest.raises(asyncio.CancelledError):
+        await coordinator._async_update_data()
+
+    assert coordinator.statistics["failed_reads"] == failed_before
+    coordinator._disconnect.assert_awaited_once()

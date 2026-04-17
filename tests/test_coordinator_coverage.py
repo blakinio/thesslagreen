@@ -146,7 +146,7 @@ def test_coordinator_init_jitter_zero():
 async def test_get_client_method_fallback_noop():
     """_get_client_method returns callable no-op when method not found (lines 523-527)."""
     coord = _make_coordinator()
-    coord._client = None
+    coord.client = None
     coord._transport = None
     method = coord._get_client_method("nonexistent_method_xyz")
     assert callable(method)
@@ -162,7 +162,7 @@ async def test_get_client_method_from_client():
     client = MagicMock()
     expected = AsyncMock(return_value="ok")
     client.read_holding_registers = expected
-    coord._client = client
+    coord.client = client
     method = coord._get_client_method("read_holding_registers")
     assert method is expected
 
@@ -509,7 +509,7 @@ async def test_disconnect_locked_with_transport_oserror():
 
     # Should not raise
     await coord._disconnect_locked()
-    assert coord._client is None
+    assert coord.client is None
 
 
 @pytest.mark.asyncio
@@ -519,10 +519,10 @@ async def test_disconnect_locked_with_client_oserror():
     coord._transport = None
     client = MagicMock()
     client.close = AsyncMock(side_effect=OSError("io error"))
-    coord._client = client
+    coord.client = client
 
     await coord._disconnect_locked()
-    assert coord._client is None
+    assert coord.client is None
 
 
 @pytest.mark.asyncio
@@ -537,10 +537,10 @@ async def test_disconnect_locked_with_client_sync_close_awaitable():
 
     # close is not a coroutinefunction itself, but returns an awaitable
     client.close = MagicMock(return_value=_close_coro())
-    coord._client = client
+    coord.client = client
 
     await coord._disconnect_locked()
-    assert coord._client is None
+    assert coord.client is None
 
 
 @pytest.mark.asyncio
@@ -737,7 +737,7 @@ def test_coordinator_init_entry_bad_capabilities():
 async def test_read_coils_transport_raises_when_no_client():
     """_read_coils_transport raises ConnectionException when client=None (lines 680-681)."""
     coord = _make_coordinator()
-    coord._client = None
+    coord.client = None
     coord._transport = None
 
     with pytest.raises(ConnectionException):
@@ -748,7 +748,7 @@ async def test_read_coils_transport_raises_when_no_client():
 async def test_read_discrete_inputs_transport_raises_when_no_client():
     """_read_discrete_inputs_transport raises ConnectionException when client=None (lines 697-698)."""
     coord = _make_coordinator()
-    coord._client = None
+    coord.client = None
     coord._transport = None
 
     with pytest.raises(ConnectionException):
@@ -1319,7 +1319,7 @@ async def test_call_modbus_no_client_raises():
     """_call_modbus with no transport and no client raises ConnectionException (line 486)."""
     coord = _make_coordinator()
     coord._transport = None
-    coord._client = None
+    coord.client = None
 
     async def dummy(*args, **kwargs):
         return None
@@ -1349,7 +1349,7 @@ async def test_disconnect_locked_client_connection_exception():
     coord._transport = None
     client = MagicMock()
     client.close = MagicMock(side_effect=ConnectionException("close error"))
-    coord._client = client
+    coord.client = client
     await coord._disconnect_locked()
     assert coord.client is None
 
@@ -1403,7 +1403,7 @@ async def test_read_coils_transport_returns_result():
     """_read_coils_transport calls _call_modbus (line 682)."""
     coord = _make_coordinator()
     ok_resp = MagicMock()
-    coord._client = MagicMock()
+    coord.client = MagicMock()
     coord._call_modbus = AsyncMock(return_value=ok_resp)
     result = await coord._read_coils_transport(1, 100, count=1)
     assert result == ok_resp
@@ -1414,7 +1414,7 @@ async def test_read_discrete_inputs_transport_returns_result():
     """_read_discrete_inputs_transport calls _call_modbus (line 699)."""
     coord = _make_coordinator()
     ok_resp = MagicMock()
-    coord._client = MagicMock()
+    coord.client = MagicMock()
     coord._call_modbus = AsyncMock(return_value=ok_resp)
     result = await coord._read_discrete_inputs_transport(1, 100, count=1)
     assert result == ok_resp
@@ -1707,7 +1707,7 @@ async def test_async_write_registers_no_transport_no_client():
     coord = _make_coordinator()
     coord._ensure_connection = AsyncMock()
     coord._transport = None
-    coord._client = None
+    coord.client = None
     result = await coord.async_write_registers(100, [1, 2])
     assert result is False
 
@@ -1771,7 +1771,7 @@ async def test_async_write_registers_batch_via_client():
     ok_resp = MagicMock()
     ok_resp.isError.return_value = False
     client.write_registers = AsyncMock(return_value=ok_resp)
-    coord._client = client
+    coord.client = client
     coord.async_request_refresh = AsyncMock()
     result = await coord.async_write_registers(100, [1, 2])
     assert result is True
@@ -1787,7 +1787,7 @@ async def test_async_write_registers_batch_error_last_attempt():
     err_resp = MagicMock()
     err_resp.isError.return_value = True
     client.write_registers = AsyncMock(return_value=err_resp)
-    coord._client = client
+    coord.client = client
     coord._disconnect = AsyncMock()
     coord.retry = 1
     result = await coord.async_write_registers(100, [1, 2])
@@ -1802,7 +1802,7 @@ async def test_async_write_registers_modbus_exception():
     coord._transport = None
     client = MagicMock()
     client.write_registers = AsyncMock(side_effect=ModbusException("write error"))
-    coord._client = client
+    coord.client = client
     coord._disconnect = AsyncMock()
     coord.retry = 1
     result = await coord.async_write_registers(100, [1, 2])
@@ -1817,7 +1817,7 @@ async def test_async_write_registers_timeout_error():
     coord._transport = None
     client = MagicMock()
     client.write_registers = AsyncMock(side_effect=TimeoutError("timeout"))
-    coord._client = client
+    coord.client = client
     coord._disconnect = AsyncMock()
     coord.retry = 1
     result = await coord.async_write_registers(100, [1, 2])
@@ -1832,7 +1832,7 @@ async def test_async_write_registers_oserror():
     coord._transport = None
     client = MagicMock()
     client.write_registers = AsyncMock(side_effect=OSError("io error"))
-    coord._client = client
+    coord.client = client
     coord._disconnect = AsyncMock()
     result = await coord.async_write_registers(100, [1, 2])
     assert result is False
@@ -1848,7 +1848,7 @@ async def test_async_write_registers_refresh_type_error():
     ok_resp = MagicMock()
     ok_resp.isError.return_value = False
     client.write_registers = AsyncMock(return_value=ok_resp)
-    coord._client = client
+    coord.client = client
     coord.async_request_refresh = AsyncMock(side_effect=TypeError("mock ctx"))
     result = await coord.async_write_registers(100, [1, 2], refresh=True)
     assert result is True
@@ -1923,7 +1923,7 @@ async def test_async_write_registers_modbus_exception_retry():
     client.write_registers = AsyncMock(
         side_effect=[ModbusException("write error"), ok_resp]
     )
-    coord._client = client
+    coord.client = client
     coord._disconnect = AsyncMock()
     coord.retry = 2
     coord.async_request_refresh = AsyncMock()
@@ -1963,7 +1963,7 @@ async def test_async_write_registers_timeout_continue():
     client.write_registers = AsyncMock(
         side_effect=[TimeoutError("timeout"), ok_resp]
     )
-    coord._client = client
+    coord.client = client
     coord._disconnect = AsyncMock()
     coord.retry = 2
     coord.async_request_refresh = AsyncMock()
