@@ -5,16 +5,56 @@ from __future__ import annotations
 import inspect
 import logging
 from collections.abc import Callable, Iterable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
+from ._compat import UpdateFailed
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from .modbus_helpers import _call_modbus, chunk_register_range
 
 if TYPE_CHECKING:
     from .modbus_transport import BaseModbusTransport
 
+    class _PostProcessProtocol:
+        def _post_process_data(self, data: dict[str, Any]) -> dict[str, Any]: ...
+
 _LOGGER = logging.getLogger(__name__)
 ILLEGAL_DATA_ADDRESS = 2
+
+
+async def handle_update_error(
+    coordinator: Any,
+    exc: Exception,
+    *,
+    reauth_reason: str,
+    message: str,
+    log_level: int = logging.ERROR,
+    timeout_error: bool = False,
+    check_auth: bool = False,
+    use_helper: bool = True,
+) -> UpdateFailed:
+    """Shared error-handling path for coordinator update failures."""
+    from .errors import is_invalid_auth_error
+
+    coordinator.statistics["failed_reads"] += 1
+    if timeout_error:
+        coordinator.statistics["timeout_errors"] += 1
+    coordinator.statistics["last_error"] = str(exc)
+    coordinator._consecutive_failures += 1
+    coordinator.offline_state = True
+    await coordinator._disconnect()
+
+    if coordinator._consecutive_failures >= coordinator._max_failures:
+        _LOGGER.error("Too many consecutive failures, disconnecting")
+        coordinator._trigger_reauth(reauth_reason)
+
+    if check_auth and is_invalid_auth_error(exc):
+        coordinator._trigger_reauth("invalid_auth")
+
+    _LOGGER.log(log_level, "%s: %s", message, exc)
+    full_message = f"{message}: {exc}"
+    if use_helper and callable(getattr(coordinator, "_resolve_update_failure", None)):
+        return coordinator._resolve_update_failure(exc, default_message=full_message)
+    return UpdateFailed(full_message)
 
 
 class _PermanentModbusError(ModbusException):
@@ -86,6 +126,15 @@ class _ModbusIOMixin:
             **kwargs,
         )
 
+    async def _read_all_register_data(self) -> dict[str, Any]:
+        """Read all mapped register groups and run post-processing."""
+        data: dict[str, Any] = {}
+        data.update(await self._read_input_registers_optimized())
+        data.update(await self._read_holding_registers_optimized())
+        data.update(await self._read_coil_registers_optimized())
+        data.update(await self._read_discrete_inputs_optimized())
+        return cast("_PostProcessProtocol", self)._post_process_data(data)
+
     async def _read_with_retry(
         self,
         read_method: Callable[..., Any],
@@ -145,13 +194,13 @@ class _ModbusIOMixin:
                 last_error = exc
                 disconnect_cb = getattr(self, "_disconnect", None)
                 if self._transport is not None and callable(disconnect_cb):
-                    await disconnect_cb()  # pragma: no cover
+                    await disconnect_cb()  # pragma: no cover - defensive
                 elif isinstance(exc, ConnectionException) and callable(
                     disconnect_cb
-                ):  # pragma: no cover
+                ):  # pragma: no cover - defensive
                     await disconnect_cb()
                 if attempt >= self.retry:
-                    raise  # pragma: no cover
+                    raise  # pragma: no cover - defensive
                 _LOGGER.warning(
                     "Timeout reading %s registers at %s (attempt %s/%s)",
                     register_type,
@@ -159,7 +208,7 @@ class _ModbusIOMixin:
                     attempt,
                     self.retry,
                 )
-                if self._transport is not None:  # pragma: no cover
+                if self._transport is not None:  # pragma: no cover - defensive
                     try:
                         await self._ensure_connection()
                     except (
@@ -190,14 +239,14 @@ class _ModbusIOMixin:
                 last_error = exc
                 disconnect_cb = getattr(self, "_disconnect", None)
                 if self._transport is not None and callable(disconnect_cb):
-                    await disconnect_cb()  # pragma: no cover
+                    await disconnect_cb()  # pragma: no cover - defensive
                 elif isinstance(exc, ConnectionException) and callable(
                     disconnect_cb
-                ):  # pragma: no cover
+                ):  # pragma: no cover - defensive
                     await disconnect_cb()
                 if attempt >= self.retry:
                     raise
-                if self._transport is not None:  # pragma: no cover
+                if self._transport is not None:  # pragma: no cover - defensive
                     try:
                         await self._ensure_connection()
                     except (
@@ -237,11 +286,11 @@ class _ModbusIOMixin:
                     exc,
                 )
                 continue
-        if last_error is not None:  # pragma: no cover
-            raise last_error  # pragma: no cover
+        if last_error is not None:  # pragma: no cover - defensive
+            raise last_error  # pragma: no cover - defensive
         raise ModbusException(
             f"Failed to read {register_type} registers at {start_address}"
-        )  # pragma: no cover
+        )  # pragma: no cover - defensive
 
     async def _read_input_registers_optimized(self) -> dict[str, Any]:
         """Read input registers using optimized batch reading."""
@@ -558,7 +607,7 @@ class _ModbusIOMixin:
 
         return data
 
-    async def _read_discrete_inputs_optimized(self) -> dict[str, Any]:  # pragma: no cover
+    async def _read_discrete_inputs_optimized(self) -> dict[str, Any]:  # pragma: no cover - defensive
         """Read discrete input registers using optimized batch reading."""
         data: dict[str, Any] = {}
 

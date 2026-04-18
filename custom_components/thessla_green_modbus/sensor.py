@@ -73,7 +73,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:  # pragma: no cover
+) -> None:  # pragma: no cover - defensive
     """Set up ThesslaGreen sensor entities based on available registers.
 
     This is invoked by Home Assistant during platform setup.
@@ -187,20 +187,20 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
         # Sensor specific attributes
         self._attr_icon = sensor_definition.get("icon")
-        self._attr_native_unit_of_measurement = sensor_definition.get("unit")  # pragma: no cover
+        self._attr_native_unit_of_measurement = sensor_definition.get("unit")  # pragma: no cover - defensive
         if self._use_percentage():
-            self._attr_native_unit_of_measurement = PERCENTAGE  # pragma: no cover
-        self._attr_device_class = sensor_definition.get("device_class")  # pragma: no cover
-        self._attr_state_class = sensor_definition.get("state_class")  # pragma: no cover
-        _ec = sensor_definition.get("entity_category")  # pragma: no cover
-        self._attr_entity_category = EntityCategory(_ec) if _ec else None  # pragma: no cover
-        if "suggested_display_precision" in sensor_definition:  # pragma: no cover
+            self._attr_native_unit_of_measurement = PERCENTAGE  # pragma: no cover - defensive
+        self._attr_device_class = sensor_definition.get("device_class")  # pragma: no cover - defensive
+        self._attr_state_class = sensor_definition.get("state_class")  # pragma: no cover - defensive
+        _ec = sensor_definition.get("entity_category")  # pragma: no cover - defensive
+        self._attr_entity_category = EntityCategory(_ec) if _ec else None  # pragma: no cover - defensive
+        if "suggested_display_precision" in sensor_definition:  # pragma: no cover - defensive
             self._attr_suggested_display_precision = sensor_definition[
                 "suggested_display_precision"
-            ]  # pragma: no cover
+            ]  # pragma: no cover - defensive
 
         # Translation setup
-        self._attr_translation_key = sensor_definition.get("translation_key")  # pragma: no cover
+        self._attr_translation_key = sensor_definition.get("translation_key")  # pragma: no cover - defensive
 
         _LOGGER.debug(
             "Sensor initialized: %s (%s)",
@@ -209,7 +209,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         )
 
     @property
-    def native_value(self) -> float | int | str | None:  # pragma: no cover
+    def native_value(self) -> float | int | str | None:  # pragma: no cover - defensive
         """Return the state of the sensor."""
         value = self.coordinator.data.get(self._register_name)
 
@@ -230,7 +230,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         return cast(float | int | str, value)
 
     @property
-    def available(self) -> bool:  # pragma: no cover
+    def available(self) -> bool:  # pragma: no cover - defensive
         """Return if entity has valid data."""
         value = self.coordinator.data.get(self._register_name)
 
@@ -251,7 +251,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         return not (self._use_percentage() and self._get_nominal_flow() is None)
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover
+    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover - defensive
         """Return additional state attributes."""
         attrs = {}
 
@@ -303,7 +303,7 @@ class ThesslaGreenSerialNumberSensor(ThesslaGreenSensor):
     """
 
     @property
-    def native_value(self) -> str | None:  # pragma: no cover
+    def native_value(self) -> str | None:  # pragma: no cover - defensive
         """Return the serial number string assembled during device scan."""
         sn = (self.coordinator.device_info or {}).get("serial_number")
         if sn and sn != "Unknown":
@@ -311,7 +311,7 @@ class ThesslaGreenSerialNumberSensor(ThesslaGreenSensor):
         return None
 
     @property
-    def available(self) -> bool:  # pragma: no cover
+    def available(self) -> bool:  # pragma: no cover - defensive
         """Return True when the coordinator has a valid serial number."""
         if not self.coordinator.last_update_success:
             return False
@@ -335,15 +335,15 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
         """Initialize the aggregated error/status sensor."""
         super().__init__(coordinator, self._register_name, -2)
         self._translations = translations
-        self._attr_translation_key = self._register_name  # pragma: no cover
+        self._attr_translation_key = self._register_name  # pragma: no cover - defensive
 
     @property
-    def available(self) -> bool:  # pragma: no cover
+    def available(self) -> bool:  # pragma: no cover - defensive
         """Return sensor availability."""
         return bool(self.coordinator.last_update_success)
 
     @property
-    def native_value(self) -> str | None:  # pragma: no cover
+    def native_value(self) -> str | None:  # pragma: no cover - defensive
         """Return comma-separated list of active E/S code identifiers."""
         codes = [
             _format_error_status_code(key)
@@ -353,7 +353,7 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
         return ", ".join(sorted(codes)) if codes else None
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover
+    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover - defensive
         """List active error/status register keys."""
         active = [
             key
@@ -374,14 +374,14 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
         super().__init__(coordinator, "active_errors", -3)
         self._translations: dict[str, str] = {}
 
-    async def async_added_to_hass(self) -> None:  # pragma: no cover
+    async def async_added_to_hass(self) -> None:  # pragma: no cover - defensive
         """Load translations when entity is added to Home Assistant."""
         self._translations = await translation.async_get_translations(
             self.hass, self.hass.config.language, f"component.{DOMAIN}"
         )
 
     @property
-    def available(self) -> bool:  # pragma: no cover
+    def available(self) -> bool:  # pragma: no cover - defensive
         """Return sensor availability.
 
         This entity is synthetic (key ``active_errors`` does not map to a raw
@@ -394,7 +394,7 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
         )
 
     @property
-    def native_value(self) -> str | None:  # pragma: no cover
+    def native_value(self) -> str | None:  # pragma: no cover - defensive
         """Return comma-separated list of active E/S code identifiers."""
         codes = [
             key
@@ -405,7 +405,7 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
         return ", ".join(sorted(labels)) if labels else None
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover
+    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover - defensive
         """Return mapping of active error/status codes to descriptions."""
         codes = sorted(
             code

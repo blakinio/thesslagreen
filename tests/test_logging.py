@@ -96,7 +96,7 @@ async def test_read_retries_logged(monkeypatch, caplog):
                 )()
 
         hass = core.HomeAssistant()
-        coord = ThesslaGreenModbusCoordinator(hass, "host", 1, 1, "name", scan_interval=1)
+        coord = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 1, 1, "name", scan_interval=1)
         coord.client = DummyClient()
         coord.retry = 2
         coord.available_registers["input_registers"] = {"reg0", "reg1"}
@@ -207,7 +207,7 @@ async def test_write_retries_logged(monkeypatch, caplog):
         )
 
         hass = core.HomeAssistant()
-        coord = ThesslaGreenModbusCoordinator(hass, "host", 1, 1, "name", scan_interval=1)
+        coord = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 1, 1, "name", scan_interval=1)
         coord.client = DummyClient()
         coord.retry = 2
         monkeypatch.setattr(coord, "_ensure_connection", lambda: asyncio.sleep(0))

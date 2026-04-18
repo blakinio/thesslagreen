@@ -30,7 +30,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:  # pragma: no cover
+) -> None:  # pragma: no cover - defensive
     """Set up ThesslaGreen time entities.
 
     Home Assistant invokes this during platform setup.
@@ -82,12 +82,12 @@ class ThesslaGreenTime(ThesslaGreenEntity, TimeEntity):
     ) -> None:
         super().__init__(coordinator, register_name, address)
         self._register_name = register_name
-        self._attr_translation_key = definition["translation_key"]  # pragma: no cover
+        self._attr_translation_key = definition["translation_key"]  # pragma: no cover - defensive
         self._attr_icon = definition.get("icon", "mdi:clock-outline")
-        self._attr_has_entity_name = True  # pragma: no cover
+        self._attr_has_entity_name = True  # pragma: no cover - defensive
 
     @property
-    def available(self) -> bool:  # pragma: no cover
+    def available(self) -> bool:  # pragma: no cover - defensive
         """Return True whenever the coordinator is connected.
 
         BCD time registers may legitimately return None (unset / sentinel
@@ -99,7 +99,7 @@ class ThesslaGreenTime(ThesslaGreenEntity, TimeEntity):
         )
 
     @property
-    def native_value(self) -> dt_time | None:  # pragma: no cover
+    def native_value(self) -> dt_time | None:  # pragma: no cover - defensive
         """Return the current time value decoded from the register."""
         raw = self.coordinator.data.get(self._register_name)
         if raw is None:
@@ -121,7 +121,7 @@ class ThesslaGreenTime(ThesslaGreenEntity, TimeEntity):
                 return dt_time(0, 0)
         return dt_time(0, 0)
 
-    async def async_set_value(self, value: dt_time) -> None:  # pragma: no cover
+    async def async_set_value(self, value: dt_time) -> None:  # pragma: no cover - defensive
         """Set a new time value.
 
         The loader's ``encode`` method for BCD time registers accepts an

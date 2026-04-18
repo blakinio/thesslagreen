@@ -47,7 +47,7 @@ async def _setup_coordinator():
         ),
         patch.object(ThesslaGreenModbusCoordinator, "_test_connection", AsyncMock()),
     ):
-        coordinator = ThesslaGreenModbusCoordinator(
+        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
             hass,
             host="host",
             port=502,

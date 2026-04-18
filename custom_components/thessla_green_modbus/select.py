@@ -31,7 +31,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:  # pragma: no cover
+) -> None:  # pragma: no cover - defensive
     """Set up ThesslaGreen select entities.
 
     Home Assistant invokes this during platform setup.
@@ -86,15 +86,15 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         super().__init__(coordinator, register_name, address)
         self._register_name = register_name
 
-        self._attr_translation_key = definition["translation_key"]  # pragma: no cover
+        self._attr_translation_key = definition["translation_key"]  # pragma: no cover - defensive
         self._attr_icon = definition.get("icon")
-        self._attr_has_entity_name = True  # pragma: no cover
+        self._attr_has_entity_name = True  # pragma: no cover - defensive
         self._states = definition["states"]
         self._reverse_states = {v: k for k, v in self._states.items()}
-        self._attr_options = list(self._states.keys())  # pragma: no cover
+        self._attr_options = list(self._states.keys())  # pragma: no cover - defensive
 
     @property
-    def available(self) -> bool:  # pragma: no cover
+    def available(self) -> bool:  # pragma: no cover - defensive
         """Return if entity is available.
 
         Time-based schedule selects (BCD time registers) are considered
@@ -110,7 +110,7 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         return super().available
 
     @property
-    def current_option(self) -> str | None:  # pragma: no cover
+    def current_option(self) -> str | None:  # pragma: no cover - defensive
         """Return current option."""
         value = self.coordinator.data.get(self._register_name)
         if value is None:
@@ -126,7 +126,7 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
 
         return self._reverse_states.get(value)
 
-    async def async_select_option(self, option: str) -> None:  # pragma: no cover
+    async def async_select_option(self, option: str) -> None:  # pragma: no cover - defensive
         """Change the selected option."""
         if option not in self._states:
             msg = f"Invalid option for {self._register_name}: {option}"

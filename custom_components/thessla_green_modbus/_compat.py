@@ -1,56 +1,30 @@
-"""Compatibility re-exports for Home Assistant symbols used across the integration."""
+"""Compatibility re-exports for Home Assistant symbols used across the integration.
+
+Manifest requires homeassistant>=2026.1.0 and python>=3.13, so all fallbacks
+for running without Home Assistant have been removed. This module is now a
+single import point for HA symbols used across the integration.
+"""
 
 from __future__ import annotations
 
-import datetime as dt
+from datetime import UTC
 from typing import Any
 
-UTC = dt.timezone.utc  # noqa: UP017
-
-try:
-    from homeassistant.components.binary_sensor import BinarySensorDeviceClass
-    from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-    from homeassistant.const import (
-        EVENT_HOMEASSISTANT_STOP,
-        PERCENTAGE,
-        UnitOfElectricPotential,
-        UnitOfPower,
-        UnitOfTemperature,
-        UnitOfTime,
-        UnitOfVolumeFlowRate,
-    )
-    from homeassistant.helpers.device_registry import DeviceInfo
-    from homeassistant.helpers.entity import EntityCategory
-    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-    from homeassistant.util import dt as dt_util
-except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover - test stubs
-    from homeassistant.components.binary_sensor import BinarySensorDeviceClass
-    from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-    from homeassistant.helpers.device_registry import DeviceInfo
-    from homeassistant.helpers.entity import EntityCategory
-    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-    from homeassistant.util import dt as dt_util
-
-    EVENT_HOMEASSISTANT_STOP = "homeassistant_stop"
-    PERCENTAGE = "%"
-
-    class UnitOfElectricPotential:  # type: ignore[no-redef]
-        VOLT = "V"
-
-    class UnitOfPower:  # type: ignore[no-redef]
-        WATT = "W"
-
-    class UnitOfTemperature:  # type: ignore[no-redef]
-        CELSIUS = "°C"
-
-    class UnitOfTime:  # type: ignore[no-redef]
-        HOURS = "h"
-        MINUTES = "min"
-        DAYS = "d"
-        SECONDS = "s"
-
-    class UnitOfVolumeFlowRate:  # type: ignore[no-redef]
-        CUBIC_METERS_PER_HOUR = "m³/h"
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.const import (
+    EVENT_HOMEASSISTANT_STOP,
+    PERCENTAGE,
+    UnitOfElectricPotential,
+    UnitOfPower,
+    UnitOfTemperature,
+    UnitOfTime,
+    UnitOfVolumeFlowRate,
+)
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 COORDINATOR_BASE = DataUpdateCoordinator[dict[str, Any]]
 

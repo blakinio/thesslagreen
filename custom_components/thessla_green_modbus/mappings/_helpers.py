@@ -16,7 +16,7 @@ from ..utils import _to_snake_case
 
 try:  # pragma: no cover - optional during isolated tests
     from ..registers.loader import get_all_registers
-except (ImportError, AttributeError):  # pragma: no cover
+except (ImportError, AttributeError):  # pragma: no cover - defensive
 
     def get_all_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
         return []

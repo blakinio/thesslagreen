@@ -221,7 +221,9 @@ async def test_async_setup_entry_custom_port():
         result = await async_setup_entry(hass, entry)
 
         assert result is True
-        assert mock_coordinator_class.call_args.kwargs["port"] == 8899
+        mock_coordinator_class.assert_called_once()
+        _, config = mock_coordinator_class.call_args.args
+        assert config.port == 8899
 
 
 async def test_async_unload_entry_success():
@@ -355,7 +357,6 @@ async def test_unload_and_reload_entry():
         ),
         patch(
             "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
-            side_effect=[coordinator1, coordinator2],
         ) as mock_coordinator_class,
         patch(
             "custom_components.thessla_green_modbus.services.async_setup_services",
@@ -366,6 +367,7 @@ async def test_unload_and_reload_entry():
             AsyncMock(),
         ) as mock_unload_services,
     ):
+        mock_coordinator_class.side_effect = [coordinator1, coordinator2]
         # Initial setup
         assert await async_setup_entry(hass, entry)
         assert entry.runtime_data is coordinator1
@@ -389,8 +391,8 @@ async def test_unload_and_reload_entry():
         assert mock_coordinator_class.call_count == 2
 
 
-def test_coordinator_from_config() -> None:
-    """Coordinator factory should build object from CoordinatorConfig payload."""
+def test_coordinator_ctor_from_config() -> None:
+    """Coordinator constructor should build object from CoordinatorConfig payload."""
     from custom_components.thessla_green_modbus.coordinator import (
         CoordinatorConfig,
         ThesslaGreenModbusCoordinator,
@@ -398,7 +400,7 @@ def test_coordinator_from_config() -> None:
 
     hass = MagicMock()
     config = CoordinatorConfig(host="192.168.1.10", port=502, slave_id=10)
-    coordinator = ThesslaGreenModbusCoordinator.from_config(hass, config)
+    coordinator = ThesslaGreenModbusCoordinator(hass, config)
     assert coordinator.host == "192.168.1.10"
     assert coordinator.port == 502
     assert coordinator.slave_id == 10

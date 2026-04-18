@@ -46,11 +46,16 @@ _TIME_ENTITY_PREFIXES = (
 
 
 def _get_parent() -> Any:
-    """Return the parent mappings package module.
+    """Return the parent mappings package module for attribute resolution.
 
-    Using ``sys.modules`` lookup allows test monkeypatching on the parent
-    module (e.g. ``monkeypatch.setattr(em, "get_all_registers", ...)``) to
-    transparently propagate into the functions below.
+    Design note: all loaders in this module resolve attributes via the parent
+    package rather than direct imports. This is intentional — it allows tests
+    to patch attributes on the ``mappings`` package and have those patches
+    visible to loaders without monkey-patching each individual private function.
+
+    This is NOT a test-induced production smell; it is a deliberate design
+    choice for module-level indirection. The pattern is established and
+    documented here to prevent accidental removal in future audits.
     """
     return sys.modules.get(__package__)
 

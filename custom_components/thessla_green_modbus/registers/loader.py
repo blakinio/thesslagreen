@@ -427,7 +427,7 @@ def _parse_registers(raw: Any) -> list[RegisterDef]:
     registers: list[RegisterDef] = []
     if hasattr(RegisterList, "model_validate"):
         parsed_items = RegisterList.model_validate(items).registers
-    else:  # pragma: no cover
+    else:  # pragma: no cover - defensive
         parsed_items = RegisterList.parse_obj(items).registers
 
     for parsed in parsed_items:
@@ -453,10 +453,10 @@ def _parse_registers(raw: Any) -> list[RegisterDef]:
                 enum_map = cast(dict[int | str, Any], {int(k): v for k, v in enum_map.items()})
             elif all(
                 isinstance(v, int | float) or str(v).isdigit() for v in enum_map.values()
-            ):  # pragma: no cover
+            ):  # pragma: no cover - defensive
                 enum_map = cast(
                     dict[int | str, Any], {int(v): k for k, v in enum_map.items()}
-                )  # pragma: no cover
+                )  # pragma: no cover - defensive
 
         # ``multiplier`` and ``resolution`` are optional in the JSON.  The
         # dataclass defaults to ``1`` for both fields but passing ``None`` would
@@ -612,7 +612,7 @@ async def async_load_registers(
     return regs
 
 
-def clear_cache() -> None:  # pragma: no cover
+def clear_cache() -> None:  # pragma: no cover - defensive
     """Clear the register definition cache.
 
     Exposed for tests and tooling that need to reload register

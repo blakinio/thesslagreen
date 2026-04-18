@@ -5,6 +5,30 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.4.2 — Detox regression fixes
+
+Fixes several test-compat fallbacks that had crept back into production code
+after the 2.4.1 detox, and completes the `CoordinatorConfig` refactor started
+in 2.4.1.
+
+### Removed
+- `_supports_typed_factory` function and dual-path coordinator construction in `_setup.async_create_coordinator`. Production code no longer imports `unittest.mock.Mock` at runtime; `from_config` is the single code path.
+- `try/except ImportError` fallbacks in `_compat.py`. `_compat.py` is now a pure re-export module as intended after v2.4.0.
+- `DhcpServiceInfo` / `ZeroconfServiceInfo` / `ConfigFlowResult` fallback imports in `config_flow.py`. These HA symbols are stable; direct imports are used.
+- `PLATFORMS` string-list fallback in `const.py`. Direct `Platform` enum is used.
+- `get_all_registers()` fallback in `register_map.py`. Register loader failure now raises import errors explicitly instead of returning an empty register list.
+
+### Changed
+- Comment in `modbus_helpers._call_modbus` updated to describe production behavior (pymodbus signature-introspection fallback) instead of referring to test `Mock` handling.
+- Added a design-note docstring on `mappings/_loaders._get_parent` explaining that the `sys.modules`-based attribute resolution pattern is intentional and should not be removed in future audits.
+
+### Added
+- `ThesslaGreenModbusCoordinator.config` attribute — a `CoordinatorConfig` dataclass snapshot of initialization parameters. This is a non-breaking addition; existing `coordinator.host`, `coordinator.port`, etc. attributes continue to work.
+
+### Migration notes
+- Tests that replaced `ThesslaGreenModbusCoordinator` with a plain `Mock()` for `async_create_coordinator` will fail because `from_config` is now called unconditionally. Use `MagicMock(spec=ThesslaGreenModbusCoordinator)` or patch `from_config` explicitly.
+- Tests that depended on import-time `get_all_registers` fallbacks should monkey-patch loader functions in test setup instead.
+
 ## 2.4.1 — Detox completion
 
 Completes the test-compat cleanup started in 2.4.0. Eight remaining spots where

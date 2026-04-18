@@ -215,7 +215,7 @@ def coordinator():
         "coil_registers": {"system_on_off"},
         "discrete_inputs": set(),
     }
-    coordinator = ThesslaGreenModbusCoordinator(
+    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
         hass=hass,
         host="localhost",
         port=502,
@@ -236,7 +236,7 @@ def test_coordinator_clamps_effective_batch():
         data={},
         options={CONF_MAX_REGISTERS_PER_REQUEST: MAX_BATCH_REGISTERS + 8},
     )
-    coord = ThesslaGreenModbusCoordinator(
+    coord = ThesslaGreenModbusCoordinator.from_legacy(
         hass=hass,
         host="localhost",
         port=502,
@@ -597,7 +597,7 @@ def test_device_info_dict_fallback(monkeypatch):
         "custom_components.thessla_green_modbus.coordinator"
     )
     hass = MagicMock()
-    coord = coordinator_module.ThesslaGreenModbusCoordinator(
+    coord = coordinator_module.ThesslaGreenModbusCoordinator.from_legacy(
         hass=hass,
         host="localhost",
         port=502,
@@ -656,7 +656,7 @@ def test_coordinator_initialization():
     hass = MagicMock()
     available_registers = {"holding_registers": set(), "input_registers": set()}
 
-    coordinator = ThesslaGreenModbusCoordinator(
+    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
         hass=hass,
         host="192.168.1.100",
         port=502,
@@ -1015,7 +1015,7 @@ async def test_capabilities_loaded_from_config_entry():
         }
     )
 
-    coordinator = ThesslaGreenModbusCoordinator(
+    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
         hass=MagicMock(),
         host="localhost",
         port=502,
@@ -1087,7 +1087,7 @@ async def test_async_setup_invalid_capabilities(coordinator):
 async def test_coordinator_tracks_offline_and_recovers(monkeypatch) -> None:
     """Transient failures increment counters and successful reads reset them."""
 
-    coordinator = ThesslaGreenModbusCoordinator(
+    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
         MagicMock(),
         "host",
         502,
@@ -1125,7 +1125,7 @@ async def test_coordinator_tracks_offline_and_recovers(monkeypatch) -> None:
 async def test_coordinator_disconnects_after_retries(monkeypatch) -> None:
     """Persistent failures force a disconnect and surface an error."""
 
-    coordinator = ThesslaGreenModbusCoordinator(
+    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
         MagicMock(),
         "host",
         502,
@@ -1154,7 +1154,7 @@ async def test_coordinator_disconnects_after_retries(monkeypatch) -> None:
 async def test_read_with_retry_retries_transient_errors():
     """Coordinator retries transient read errors before succeeding."""
 
-    coordinator = ThesslaGreenModbusCoordinator(
+    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
         MagicMock(),
         "host",
         502,
@@ -1183,7 +1183,7 @@ async def test_read_with_retry_retries_transient_errors():
 async def test_read_with_retry_skips_illegal_data_address():
     """Illegal data address errors should not be retried."""
 
-    coordinator = ThesslaGreenModbusCoordinator(
+    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
         MagicMock(),
         "host",
         502,

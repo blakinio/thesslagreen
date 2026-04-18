@@ -6,6 +6,7 @@ import importlib
 import os
 import sys
 import types
+from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -113,12 +114,14 @@ else:  # pragma: no cover - simplify test environment
     entity_platform.AddEntitiesCallback = AddEntitiesCallback
 
     const.PERCENTAGE = "%"
+    const.EVENT_HOMEASSISTANT_STOP = "homeassistant_stop"
 
     class UnitOfTemperature:  # pragma: no cover - enum stub
         CELSIUS = "°C"
 
     class UnitOfTime:  # pragma: no cover - enum stub
         HOURS = "h"
+        MINUTES = "min"
         DAYS = "d"
         SECONDS = "s"
 
@@ -128,10 +131,14 @@ else:  # pragma: no cover - simplify test environment
     class UnitOfElectricPotential:  # pragma: no cover - enum stub
         VOLT = "V"
 
+    class UnitOfPower:  # pragma: no cover - enum stub
+        WATT = "W"
+
     const.UnitOfTemperature = UnitOfTemperature
     const.UnitOfTime = UnitOfTime
     const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
     const.UnitOfElectricPotential = UnitOfElectricPotential
+    const.UnitOfPower = UnitOfPower
 
     async def async_get_translations(*args, **kwargs):  # pragma: no cover - stub
         return {}
@@ -146,9 +153,12 @@ else:  # pragma: no cover - simplify test environment
     hacc_common = types.ModuleType("pytest_homeassistant_custom_component.common")
 
     components_pkg = types.ModuleType("homeassistant.components")
+    components_pkg.__path__ = []  # type: ignore[attr-defined]
     sensor_comp = types.ModuleType("homeassistant.components.sensor")
     binary_sensor_comp = types.ModuleType("homeassistant.components.binary_sensor")
     climate_comp = types.ModuleType("homeassistant.components.climate")
+    dhcp_comp = types.ModuleType("homeassistant.components.dhcp")
+    zeroconf_comp = types.ModuleType("homeassistant.components.zeroconf")
 
     class SensorDeviceClass:  # pragma: no cover - enum stub
         TEMPERATURE = "temperature"
@@ -210,13 +220,30 @@ else:  # pragma: no cover - simplify test environment
     climate_comp.HVACMode = HVACMode
     climate_comp.HVACAction = HVACAction
     climate_comp.PRESET_ECO = "eco"
+
+    @dataclass
+    class DhcpServiceInfo:  # pragma: no cover - simple stub
+        macaddress: str | None = None
+        ip: str | None = None
+
+    @dataclass
+    class ZeroconfServiceInfo:  # pragma: no cover - simple stub
+        host: str | None = None
+
+    dhcp_comp.DhcpServiceInfo = DhcpServiceInfo
+    zeroconf_comp.ZeroconfServiceInfo = ZeroconfServiceInfo
+
     components_pkg.sensor = sensor_comp
     components_pkg.binary_sensor = binary_sensor_comp
     components_pkg.climate = climate_comp
+    components_pkg.dhcp = dhcp_comp
+    components_pkg.zeroconf = zeroconf_comp
     sys.modules["homeassistant.components"] = components_pkg
     sys.modules["homeassistant.components.sensor"] = sensor_comp
     sys.modules["homeassistant.components.binary_sensor"] = binary_sensor_comp
     sys.modules["homeassistant.components.climate"] = climate_comp
+    sys.modules["homeassistant.components.dhcp"] = dhcp_comp
+    sys.modules["homeassistant.components.zeroconf"] = zeroconf_comp
     ha.const = const
 
     class MockConfigEntry:  # pragma: no cover - simplified stub
@@ -302,6 +329,7 @@ else:  # pragma: no cover - simplify test environment
     core.callback = callback
     config_entries.ConfigEntry = ConfigEntry
     config_entries.ConfigFlow = ConfigFlow
+    config_entries.ConfigFlowResult = dict
     config_entries.CONN_CLASS_LOCAL_POLL = "local_poll"
 
     class OptionsFlow:  # type: ignore[override]
@@ -451,6 +479,8 @@ else:  # pragma: no cover - simplify test environment
         SWITCH = "switch"
         CLIMATE = "climate"
         FAN = "fan"
+        TEXT = "text"
+        TIME = "time"
 
     const.Platform = Platform
 

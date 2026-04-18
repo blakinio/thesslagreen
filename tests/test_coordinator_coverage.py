@@ -24,7 +24,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
 def _make_coordinator(**kwargs) -> ThesslaGreenModbusCoordinator:
     hass = MagicMock()
     hass.async_add_executor_job = None
-    return ThesslaGreenModbusCoordinator(
+    return ThesslaGreenModbusCoordinator.from_legacy(
         hass=hass,
         host="192.168.1.1",
         port=502,
@@ -625,7 +625,7 @@ def test_coordinator_init_super_type_error_fallback():
 
     with patch.object(ThesslaGreenModbusCoordinator.__bases__[0], "__init__", patched_init):
         with pytest.raises(TypeError, match="unexpected keyword argument"):
-            ThesslaGreenModbusCoordinator(hass=MagicMock(), host="localhost", port=502, slave_id=1)
+            ThesslaGreenModbusCoordinator.from_legacy(hass=MagicMock(), host="localhost", port=502, slave_id=1)
 
 
 def test_coordinator_init_entry_bad_max_registers_per_request():
@@ -636,7 +636,7 @@ def test_coordinator_init_entry_bad_max_registers_per_request():
     entry.data = {}
     entry.options = {CONF_MAX_REGISTERS_PER_REQUEST: "not_a_number"}
     hass = MagicMock()
-    coord = ThesslaGreenModbusCoordinator(
+    coord = ThesslaGreenModbusCoordinator.from_legacy(
         hass=hass, host="localhost", port=502, slave_id=1, entry=entry
     )
     from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
@@ -668,7 +668,7 @@ def test_coordinator_init_entry_bad_capabilities():
         original_init(self)
 
     with patch.object(DeviceCapabilities, "__init__", patched_init):
-        coord = ThesslaGreenModbusCoordinator(
+        coord = ThesslaGreenModbusCoordinator.from_legacy(
             hass=hass, host="localhost", port=502, slave_id=1, entry=entry
         )
     # Should not raise; capabilities remains default
