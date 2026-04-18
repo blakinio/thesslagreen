@@ -12,7 +12,7 @@ from pymodbus.client import AsyncModbusTcpClient
 
 try:  # pragma: no cover - serial extras optional at runtime
     from pymodbus.client import AsyncModbusSerialClient as _AsyncModbusSerialClient
-except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover
+except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover - defensive
     _AsyncModbusSerialClient = None
     SERIAL_IMPORT_ERROR: Exception | None = serial_import_err
 else:  # pragma: no cover - executed when serial client available

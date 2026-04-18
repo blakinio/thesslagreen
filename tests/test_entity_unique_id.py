@@ -189,6 +189,7 @@ async def test_migrate_entity_unique_ids(hass):
         coordinator.device_info = {"serial_number": "ABC123"}
         coordinator.get_device_info.return_value = coordinator.device_info
         mock_coordinator_class.return_value = coordinator
+        mock_coordinator_class.from_config.return_value = coordinator
 
         assert await async_setup_entry(hass, entry)  # nosec
 

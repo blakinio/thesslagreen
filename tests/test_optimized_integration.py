@@ -148,8 +148,8 @@ class TestThesslaGreenIntegration:
 
         with patch(
             "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
-            return_value=mock_coordinator,
-        ):
+        ) as mock_coordinator_class:
+            mock_coordinator_class.return_value = mock_coordinator
             result = await async_setup_entry(mock_hass, mock_config_entry)
 
             assert result is True
@@ -169,8 +169,8 @@ class TestThesslaGreenIntegration:
 
         with patch(
             "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
-            return_value=mock_coordinator,
-        ):
+        ) as mock_coordinator_class:
+            mock_coordinator_class.return_value = mock_coordinator
             import homeassistant.exceptions as _ha_exc
 
             _ConfigEntryNotReady = _ha_exc.ConfigEntryNotReady
@@ -198,8 +198,8 @@ class TestThesslaGreenIntegration:
 
         with patch(
             "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
-            return_value=mock_coordinator,
-        ):
+        ) as mock_coordinator_class:
+            mock_coordinator_class.return_value = mock_coordinator
             await async_setup_entry(mock_hass, mock_config_entry)
 
             # Check that services were registered
@@ -220,7 +220,7 @@ class TestThesslaGreenModbusCoordinator:
         from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 
         hass = MagicMock()
-        coordinator = ThesslaGreenModbusCoordinator(
+        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
             hass=hass,
             host="192.168.1.100",
             port=502,
@@ -742,7 +742,7 @@ class TestPerformanceOptimizations:
 
         # Create coordinator with many registers
         hass = MagicMock()
-        coordinator = ThesslaGreenModbusCoordinator(
+        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
             hass=hass,
             host="192.168.1.100",
             port=502,

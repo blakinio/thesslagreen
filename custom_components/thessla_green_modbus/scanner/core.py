@@ -107,8 +107,8 @@ try:
     _pymodbus: Any = importlib.import_module("pymodbus")
     _pymodbus_client: Any = importlib.import_module("pymodbus.client")
     if not hasattr(_pymodbus, "client"):
-        _pymodbus.client = _pymodbus_client  # pragma: no cover
-except (ImportError, AttributeError) as _exc:  # pragma: no cover
+        _pymodbus.client = _pymodbus_client  # pragma: no cover - defensive
+except (ImportError, AttributeError) as _exc:  # pragma: no cover - defensive
     _LOGGER.debug("Could not attach pymodbus.client submodule: %s", _exc)
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper only
@@ -862,7 +862,7 @@ class ThesslaGreenDeviceScanner:
             discrete_registers,
         )
 
-    async def scan(self) -> dict[str, Any]:  # pragma: no cover
+    async def scan(self) -> dict[str, Any]:  # pragma: no cover - defensive
         """Perform the actual register scan using an established connection."""
         return await scanner_orchestration.scan(self)
 

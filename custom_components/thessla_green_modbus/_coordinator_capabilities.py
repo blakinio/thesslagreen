@@ -248,7 +248,7 @@ class _CoordinatorCapabilitiesMixin:
                     data["device_clock"] = (
                         f"{year:04d}-{mm:02d}-{dd:02d}T{hh:02d}:{mi:02d}:{ss:02d}"
                     )
-        except (TypeError, ValueError, AttributeError) as exc:  # pragma: no cover
+        except (TypeError, ValueError, AttributeError) as exc:  # pragma: no cover - defensive
             _LOGGER.debug("Failed to decode device clock: %s", exc)
 
         return data

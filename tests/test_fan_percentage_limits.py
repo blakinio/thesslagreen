@@ -29,7 +29,7 @@ from custom_components.thessla_green_modbus.fan import ThesslaGreenFan
 
 def test_fan_percentage_clamps_to_max():
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev")
+    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev")
     coordinator.data = {"min_percentage": 10, "max_percentage": 150, "air_flow_rate_manual": 160}
 
     fan = ThesslaGreenFan(coordinator)
@@ -40,7 +40,7 @@ def test_fan_percentage_clamps_to_max():
 @pytest.mark.asyncio
 async def test_fan_set_percentage_clamps_to_limits():
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator(hass, "host", 502, 1, "dev")
+    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev")
     coordinator.available_registers["holding_registers"] = {"mode", "air_flow_rate_manual"}
     coordinator.data = {"min_percentage": 30, "max_percentage": 120, "mode": 1}
     coordinator.async_write_register = AsyncMock(return_value=True)

@@ -28,24 +28,13 @@ from .mappings import async_setup_entity_mappings
 from .modbus_exceptions import ConnectionException, ModbusException
 from .utils import resolve_connection_settings
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:  # pragma: no cover - defensive
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__.rsplit(".", maxsplit=1)[0])
 
 _platform_cache: list[object] | None = None
-
-
-def _supports_typed_factory(coordinator_cls: Any) -> bool:
-    """Return True when class can safely use from_config in runtime."""
-    if not hasattr(coordinator_cls, "from_config"):
-        return False
-    try:
-        from unittest.mock import Mock
-    except ImportError:  # pragma: no cover
-        return True
-    return not isinstance(coordinator_cls, Mock)
 
 
 def _scan_interval_seconds(scan_interval: timedelta | int) -> int:
@@ -63,7 +52,7 @@ def _get_platforms(platform_domains: list[str]) -> list[object]:
 
     try:  # Import only when running inside Home Assistant
         from homeassistant.const import Platform
-    except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover
+    except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover - defensive
         _platform_cache = list(platform_domains)
         return _platform_cache
 
@@ -71,10 +60,10 @@ def _get_platforms(platform_domains: list[str]) -> list[object]:
     for domain in platform_domains:
         if hasattr(Platform, domain.upper()):
             platforms.append(getattr(Platform, domain.upper()))
-        else:  # pragma: no cover
+        else:  # pragma: no cover - defensive
             try:
                 platforms.append(Platform(domain))
-            except (ValueError, TypeError):  # pragma: no cover
+            except (ValueError, TypeError):  # pragma: no cover - defensive
                 _LOGGER.warning("Skipping unsupported platform: %s", domain)
     _platform_cache = platforms
     return platforms
@@ -88,7 +77,7 @@ def _apply_log_level(log_level: str) -> None:
     _LOGGER.debug("Log level set to %s", log_level)
 
 
-async def async_create_coordinator(hass: HomeAssistant, entry: ConfigEntry) -> Any:  # pragma: no cover
+async def async_create_coordinator(hass: HomeAssistant, entry: ConfigEntry) -> Any:  # pragma: no cover - defensive
     """Read config entry options and instantiate the coordinator."""
     from .coordinator import CoordinatorConfig, ThesslaGreenModbusCoordinator
 
@@ -127,41 +116,12 @@ async def async_create_coordinator(hass: HomeAssistant, entry: ConfigEntry) -> A
         config.slave_id,
         _scan_interval_seconds(config.scan_interval),
     )
-    scan_interval_seconds = _scan_interval_seconds(config.scan_interval)
-
-    if _supports_typed_factory(ThesslaGreenModbusCoordinator):
-        return ThesslaGreenModbusCoordinator.from_config(hass, config, entry=entry)
-
-    return ThesslaGreenModbusCoordinator(
-        hass=hass,
-        host=config.host,
-        port=config.port,
-        slave_id=config.slave_id,
-        name=config.name,
-        connection_type=config.connection_type,
-        connection_mode=config.connection_mode,
-        serial_port=config.serial_port,
-        baud_rate=config.baud_rate,
-        parity=config.parity,
-        stop_bits=config.stop_bits,
-        timeout=config.timeout,
-        retry=config.retry,
-        backoff=config.backoff,
-        backoff_jitter=config.backoff_jitter,
-        force_full_register_list=config.force_full_register_list,
-        scan_uart_settings=config.scan_uart_settings,
-        deep_scan=config.deep_scan,
-        safe_scan=config.safe_scan,
-        skip_missing_registers=config.skip_missing_registers,
-        max_registers_per_request=config.max_registers_per_request,
-        scan_interval=timedelta(seconds=scan_interval_seconds),
-        entry=entry,
-    )
+    return ThesslaGreenModbusCoordinator(hass, config, entry=entry)
 
 
 async def async_start_coordinator(
     hass: HomeAssistant, entry: ConfigEntry, coordinator: Any
-) -> bool:  # pragma: no cover
+) -> bool:  # pragma: no cover - defensive
     """Run coordinator async_setup and first refresh."""
     from homeassistant.exceptions import ConfigEntryNotReady
     from homeassistant.helpers.update_coordinator import UpdateFailed
@@ -217,7 +177,7 @@ async def async_start_coordinator(
     return True
 
 
-async def async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover
+async def async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover - defensive
     """Load option lists and entity mappings."""
     await async_setup_options(hass)
     await async_setup_entity_mappings(hass)
@@ -225,7 +185,7 @@ async def async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover
 
 async def async_setup_platforms(
     hass: HomeAssistant, entry: ConfigEntry, platform_domains: list[str]
-) -> None:  # pragma: no cover
+) -> None:  # pragma: no cover - defensive
     """Preload platform modules and forward config entry setup."""
     for platform in platform_domains:
         try:

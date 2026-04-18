@@ -13,7 +13,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOExc
 
 @pytest.fixture
 def coordinator() -> ThesslaGreenModbusCoordinator:
-    coord = ThesslaGreenModbusCoordinator(
+    coord = ThesslaGreenModbusCoordinator.from_legacy(
         hass=MagicMock(),
         host="localhost",
         port=502,

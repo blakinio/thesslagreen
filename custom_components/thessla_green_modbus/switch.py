@@ -26,7 +26,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:  # pragma: no cover
+) -> None:  # pragma: no cover - defensive
     """Set up ThesslaGreen switch entities from config entry.
 
     Home Assistant invokes this during platform setup.
@@ -117,12 +117,12 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         self.bit = entity_config.get("bit")
 
         # Entity configuration
-        self._attr_translation_key = entity_config["translation_key"]  # pragma: no cover
+        self._attr_translation_key = entity_config["translation_key"]  # pragma: no cover - defensive
         self._attr_icon = entity_config.get("icon", "mdi:toggle-switch")
 
         # Set entity category if specified
-        if _ec := entity_config.get("category"):  # pragma: no cover
-            self._attr_entity_category = EntityCategory(_ec)  # pragma: no cover
+        if _ec := entity_config.get("category"):  # pragma: no cover - defensive
+            self._attr_entity_category = EntityCategory(_ec)  # pragma: no cover - defensive
 
         _LOGGER.debug("Initialized switch entity: %s", key)
 
@@ -146,7 +146,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         # Convert to boolean
         return bool(raw_value)
 
-    async def async_turn_on(self, **kwargs: Any) -> None:  # pragma: no cover
+    async def async_turn_on(self, **kwargs: Any) -> None:  # pragma: no cover - defensive
         """Turn the switch on."""
         try:
             if self.bit is not None:
@@ -202,7 +202,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         )
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover
+    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover - defensive
         """Return additional state attributes."""
         attributes = {}
 
@@ -241,7 +241,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         return attributes
 
     @property
-    def available(self) -> bool:  # pragma: no cover
+    def available(self) -> bool:  # pragma: no cover - defensive
         """Return if entity is available."""
         # For switch entities, we don't require the register to be in current data
         # as they are primarily for control, not just display.

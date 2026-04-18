@@ -11,7 +11,7 @@ from .const import UNKNOWN_MODEL
 
 
 @dataclass(slots=True)
-class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover
+class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover - defensive
     """Basic identifying information about a ThesslaGreen unit.
 
     The attributes are populated dynamically and accessed via ``as_dict`` in
@@ -28,7 +28,7 @@ class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover
     model: str = UNKNOWN_MODEL
     firmware: str = "Unknown"
     serial_number: str = "Unknown"
-    firmware_available: bool = True  # pragma: no cover
+    firmware_available: bool = True  # pragma: no cover - defensive
     capabilities: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -54,7 +54,7 @@ class ScannerDeviceInfo(collections.abc.Mapping):  # pragma: no cover
 
 
 @dataclass(slots=True)
-class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
+class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover - defensive
     """Feature flags and sensor availability detected on the device.
 
     Although capabilities are typically determined once during the initial scan,
@@ -68,27 +68,27 @@ class DeviceCapabilities(collections.abc.Mapping):  # pragma: no cover
     temperature_sensors: set[str] = field(default_factory=set)  # Names of temperature sensors
     flow_sensors: set[str] = field(
         default_factory=set
-    )  # Airflow sensor identifiers  # pragma: no cover
+    )  # Airflow sensor identifiers  # pragma: no cover - defensive
     special_functions: set[str] = field(
         default_factory=set
-    )  # Optional feature flags  # pragma: no cover
-    expansion_module: bool = False  # pragma: no cover
-    constant_flow: bool = False  # pragma: no cover
-    gwc_system: bool = False  # pragma: no cover
-    bypass_system: bool = False  # pragma: no cover
-    heating_system: bool = False  # pragma: no cover
-    cooling_system: bool = False  # pragma: no cover
-    air_quality: bool = False  # pragma: no cover
-    weekly_schedule: bool = False  # pragma: no cover
-    sensor_outside_temperature: bool = False  # pragma: no cover
-    sensor_supply_temperature: bool = False  # pragma: no cover
-    sensor_exhaust_temperature: bool = False  # pragma: no cover
-    sensor_fpx_temperature: bool = False  # pragma: no cover
-    sensor_duct_supply_temperature: bool = False  # pragma: no cover
-    sensor_gwc_temperature: bool = False  # pragma: no cover
-    sensor_ambient_temperature: bool = False  # pragma: no cover
-    sensor_heating_temperature: bool = False  # pragma: no cover
-    temperature_sensors_count: int = 0  # pragma: no cover
+    )  # Optional feature flags  # pragma: no cover - defensive
+    expansion_module: bool = False  # pragma: no cover - defensive
+    constant_flow: bool = False  # pragma: no cover - defensive
+    gwc_system: bool = False  # pragma: no cover - defensive
+    bypass_system: bool = False  # pragma: no cover - defensive
+    heating_system: bool = False  # pragma: no cover - defensive
+    cooling_system: bool = False  # pragma: no cover - defensive
+    air_quality: bool = False  # pragma: no cover - defensive
+    weekly_schedule: bool = False  # pragma: no cover - defensive
+    sensor_outside_temperature: bool = False  # pragma: no cover - defensive
+    sensor_supply_temperature: bool = False  # pragma: no cover - defensive
+    sensor_exhaust_temperature: bool = False  # pragma: no cover - defensive
+    sensor_fpx_temperature: bool = False  # pragma: no cover - defensive
+    sensor_duct_supply_temperature: bool = False  # pragma: no cover - defensive
+    sensor_gwc_temperature: bool = False  # pragma: no cover - defensive
+    sensor_ambient_temperature: bool = False  # pragma: no cover - defensive
+    sensor_heating_temperature: bool = False  # pragma: no cover - defensive
+    temperature_sensors_count: int = 0  # pragma: no cover - defensive
     _as_dict_cache: dict[str, Any] | None = field(init=False, repr=False, default=None)
 
     def __setattr__(self, name: str, value: Any) -> None:

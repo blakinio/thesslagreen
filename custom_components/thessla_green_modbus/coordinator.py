@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import inspect
 import logging
 import re
@@ -16,11 +15,25 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from pymodbus.client import AsyncModbusTcpClient
 
-from ._compat import COORDINATOR_BASE, EVENT_HOMEASSISTANT_STOP, UTC, UpdateFailed
+from ._compat import COORDINATOR_BASE, EVENT_HOMEASSISTANT_STOP, UTC
 from ._compat import dt_util as _base_dt_util
 from ._coordinator_capabilities import _CoordinatorCapabilitiesMixin
-from ._coordinator_io import _ModbusIOMixin, _PermanentModbusError  # re-export for backward compat
+from ._coordinator_io import (
+    _ModbusIOMixin,
+    _PermanentModbusError,
+    handle_update_error as _handle_update_error_helper,
+)  # re-export for backward compat
 from ._coordinator_schedule import _CoordinatorScheduleMixin
+from ._coordinator_register_processing import (
+    create_consecutive_groups as _create_consecutive_groups_impl,
+)
+from ._coordinator_register_processing import (
+    find_register_name as _find_register_name_impl,
+)
+from ._coordinator_register_processing import (
+    process_register_value as _process_register_value_impl,
+)
+from ._coordinator_update import async_update_data as _async_update_data_impl
 from .const import (
     CONF_BACKOFF,
     CONF_BACKOFF_JITTER,
@@ -72,8 +85,6 @@ from .const import (
     MANUFACTURER,
     MAX_REGS_PER_REQUEST,
     MIN_SCAN_INTERVAL,
-    SENSOR_UNAVAILABLE,
-    SENSOR_UNAVAILABLE_REGISTERS,
     SERIAL_PARITY_MAP,
     SERIAL_STOP_BITS_MAP,
     UNKNOWN_MODEL,
@@ -82,7 +93,7 @@ from .const import (
     holding_registers,
     input_registers,
 )
-from .errors import CannotConnect, is_invalid_auth_error
+from .errors import CannotConnect
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from .modbus_helpers import group_reads
 from .modbus_transport import (
@@ -124,6 +135,10 @@ def get_register_definition(name: str) -> RegisterDef:
 
 
 _LOGGER = logging.getLogger(__name__)
+
+# Backward-compatible re-export used by tests and integrations importing
+# handle_update_error from this module.
+handle_update_error = _handle_update_error_helper
 
 
 @dataclass(slots=True)
@@ -200,30 +215,35 @@ class ThesslaGreenModbusCoordinator(
     def __init__(
         self,
         hass: HomeAssistant,
-        host: str,
-        port: int,
-        slave_id: int,
-        name: str = DEFAULT_NAME,
-        scan_interval: timedelta | int = DEFAULT_SCAN_INTERVAL,
-        timeout: int = 10,
-        retry: int = 3,
-        backoff: float = DEFAULT_BACKOFF,
-        backoff_jitter: float | tuple[float, float] | None = DEFAULT_BACKOFF_JITTER,
-        force_full_register_list: bool = False,
-        scan_uart_settings: bool = DEFAULT_SCAN_UART_SETTINGS,
-        deep_scan: bool = False,
-        safe_scan: bool = False,
-        max_registers_per_request: int = DEFAULT_MAX_REGISTERS_PER_REQUEST,
+        config: CoordinatorConfig,
+        *,
         entry: ConfigEntry | None = None,
-        skip_missing_registers: bool = False,
-        connection_type: str = DEFAULT_CONNECTION_TYPE,
-        connection_mode: str | None = None,
-        serial_port: str = DEFAULT_SERIAL_PORT,
-        baud_rate: int = DEFAULT_BAUD_RATE,
-        parity: str = DEFAULT_PARITY,
-        stop_bits: int = DEFAULT_STOP_BITS,
     ) -> None:
         """Initialize the coordinator."""
+        cfg = config
+
+        host = cfg.host
+        port = cfg.port
+        slave_id = cfg.slave_id
+        name = cfg.name
+        scan_interval = cfg.scan_interval
+        timeout = cfg.timeout
+        retry = cfg.retry
+        backoff = cfg.backoff
+        backoff_jitter = cfg.backoff_jitter
+        force_full_register_list = cfg.force_full_register_list
+        scan_uart_settings = cfg.scan_uart_settings
+        deep_scan = cfg.deep_scan
+        safe_scan = cfg.safe_scan
+        max_registers_per_request = cfg.max_registers_per_request
+        skip_missing_registers = cfg.skip_missing_registers
+        connection_type = cfg.connection_type
+        connection_mode = cfg.connection_mode
+        serial_port = cfg.serial_port
+        baud_rate = cfg.baud_rate
+        parity = cfg.parity
+        stop_bits = cfg.stop_bits
+
         if isinstance(scan_interval, timedelta):
             interval_seconds = int(scan_interval.total_seconds())
         else:
@@ -240,15 +260,51 @@ class ThesslaGreenModbusCoordinator(
             update_interval=update_interval,
         )
 
-        self.host = host
-        self.port = port
-        self.slave_id = slave_id
-        self._device_name = name
         resolved_type, resolved_mode = resolve_connection_settings(
             connection_type, connection_mode, port
         )
-        self.connection_type = resolved_type
-        self.connection_mode = resolved_mode
+        normalized_serial_port = serial_port or DEFAULT_SERIAL_PORT
+        try:
+            normalized_baud_rate = int(baud_rate)
+        except (TypeError, ValueError):
+            normalized_baud_rate = DEFAULT_BAUD_RATE
+        parity_norm = str(parity or DEFAULT_PARITY).lower()
+        if parity_norm not in SERIAL_PARITY_MAP:
+            parity_norm = DEFAULT_PARITY
+        normalized_stop_bits = SERIAL_STOP_BITS_MAP.get(
+            stop_bits,
+            SERIAL_STOP_BITS_MAP.get(str(stop_bits), DEFAULT_STOP_BITS),
+        )
+        if normalized_stop_bits not in (
+            1,
+            2,
+        ):  # pragma: no cover - SERIAL_STOP_BITS_MAP always yields 1 or 2
+            normalized_stop_bits = DEFAULT_STOP_BITS
+
+        self._device_name = name
+        self.config = CoordinatorConfig(
+            host=host,
+            port=port,
+            slave_id=slave_id,
+            name=name,
+            scan_interval=self.scan_interval,
+            timeout=timeout,
+            retry=retry,
+            backoff=backoff,
+            backoff_jitter=backoff_jitter,
+            force_full_register_list=force_full_register_list,
+            scan_uart_settings=scan_uart_settings,
+            deep_scan=deep_scan,
+            safe_scan=safe_scan,
+            max_registers_per_request=max_registers_per_request,
+            skip_missing_registers=skip_missing_registers,
+            connection_type=resolved_type,
+            connection_mode=resolved_mode,
+            serial_port=normalized_serial_port,
+            baud_rate=normalized_baud_rate,
+            parity=parity_norm,
+            stop_bits=normalized_stop_bits,
+        )
         self._resolved_connection_mode: str | None = (
             resolved_mode if resolved_mode != CONNECTION_MODE_AUTO else None
         )
@@ -273,25 +329,6 @@ class ThesslaGreenModbusCoordinator(
         else:
             self.enable_device_scan = DEFAULT_ENABLE_DEVICE_SCAN
 
-        self.serial_port = serial_port or DEFAULT_SERIAL_PORT
-        try:
-            self.baud_rate = int(baud_rate)
-        except (TypeError, ValueError):
-            self.baud_rate = DEFAULT_BAUD_RATE
-        parity_norm = str(parity or DEFAULT_PARITY).lower()
-        if parity_norm not in SERIAL_PARITY_MAP:
-            parity_norm = DEFAULT_PARITY
-        self.parity = parity_norm
-        self.stop_bits = SERIAL_STOP_BITS_MAP.get(
-            stop_bits,
-            SERIAL_STOP_BITS_MAP.get(str(stop_bits), DEFAULT_STOP_BITS),
-        )
-        if self.stop_bits not in (
-            1,
-            2,
-        ):  # pragma: no cover - SERIAL_STOP_BITS_MAP always yields 1 or 2
-            self.stop_bits = DEFAULT_STOP_BITS
-
         self._reauth_scheduled = False
 
         if entry is not None:
@@ -307,6 +344,10 @@ class ThesslaGreenModbusCoordinator(
         if self.effective_batch < 1:
             self.effective_batch = 1
         self.max_registers_per_request = self.effective_batch
+
+        self.config.max_registers_per_request = self.max_registers_per_request
+        self.config.backoff = self.backoff
+        self.config.backoff_jitter = self.backoff_jitter
 
         # Offline state shared with the Modbus client
         self.offline_state = False
@@ -379,39 +420,141 @@ class ThesslaGreenModbusCoordinator(
         self._last_power_timestamp = _utcnow()
         self._total_energy = 0.0
 
+    @property
+    def host(self) -> str:
+        """Backward-compatible host accessor backed by CoordinatorConfig."""
+        return self.config.host
+
+    @host.setter
+    def host(self, value: str) -> None:
+        self.config.host = value
+
+    @property
+    def port(self) -> int:
+        """Backward-compatible port accessor backed by CoordinatorConfig."""
+        return self.config.port
+
+    @port.setter
+    def port(self, value: int) -> None:
+        self.config.port = value
+
+    @property
+    def slave_id(self) -> int:
+        """Backward-compatible slave_id accessor backed by CoordinatorConfig."""
+        return self.config.slave_id
+
+    @slave_id.setter
+    def slave_id(self, value: int) -> None:
+        self.config.slave_id = value
+
+    @property
+    def connection_type(self) -> str:
+        """Backward-compatible connection_type accessor backed by CoordinatorConfig."""
+        return self.config.connection_type
+
+    @connection_type.setter
+    def connection_type(self, value: str) -> None:
+        self.config.connection_type = value
+
+    @property
+    def connection_mode(self) -> str | None:
+        """Backward-compatible connection_mode accessor backed by CoordinatorConfig."""
+        return self.config.connection_mode
+
+    @connection_mode.setter
+    def connection_mode(self, value: str | None) -> None:
+        self.config.connection_mode = value
+
+    @property
+    def serial_port(self) -> str:
+        """Backward-compatible serial_port accessor backed by CoordinatorConfig."""
+        return self.config.serial_port
+
+    @serial_port.setter
+    def serial_port(self, value: str) -> None:
+        self.config.serial_port = value
+
+    @property
+    def baud_rate(self) -> int:
+        """Backward-compatible baud_rate accessor backed by CoordinatorConfig."""
+        return self.config.baud_rate
+
+    @baud_rate.setter
+    def baud_rate(self, value: int) -> None:
+        self.config.baud_rate = value
+
+    @property
+    def parity(self) -> str:
+        """Backward-compatible parity accessor backed by CoordinatorConfig."""
+        return self.config.parity
+
+    @parity.setter
+    def parity(self, value: str) -> None:
+        self.config.parity = value
+
+    @property
+    def stop_bits(self) -> int:
+        """Backward-compatible stop_bits accessor backed by CoordinatorConfig."""
+        return self.config.stop_bits
+
+    @stop_bits.setter
+    def stop_bits(self, value: int) -> None:
+        self.config.stop_bits = value
+
     @classmethod
-    def from_config(
+    def from_legacy(
         cls,
         hass: HomeAssistant,
-        config: CoordinatorConfig,
-        *,
+        host: str,
+        port: int,
+        slave_id: int,
+        name: str = DEFAULT_NAME,
+        scan_interval: timedelta | int = DEFAULT_SCAN_INTERVAL,
+        timeout: int = 10,
+        retry: int = 3,
+        backoff: float = DEFAULT_BACKOFF,
+        backoff_jitter: float | tuple[float, float] | None = DEFAULT_BACKOFF_JITTER,
+        force_full_register_list: bool = False,
+        scan_uart_settings: bool = DEFAULT_SCAN_UART_SETTINGS,
+        deep_scan: bool = False,
+        safe_scan: bool = False,
+        max_registers_per_request: int = DEFAULT_MAX_REGISTERS_PER_REQUEST,
         entry: ConfigEntry | None = None,
+        skip_missing_registers: bool = False,
+        connection_type: str = DEFAULT_CONNECTION_TYPE,
+        connection_mode: str | None = None,
+        serial_port: str = DEFAULT_SERIAL_PORT,
+        baud_rate: int = DEFAULT_BAUD_RATE,
+        parity: str = DEFAULT_PARITY,
+        stop_bits: int = DEFAULT_STOP_BITS,
     ) -> ThesslaGreenModbusCoordinator:
-        """Create coordinator from a typed CoordinatorConfig payload."""
+        """Backward-compatible constructor used in tests and scripts."""
         return cls(
             hass=hass,
-            host=config.host,
-            port=config.port,
-            slave_id=config.slave_id,
-            name=config.name,
-            scan_interval=config.scan_interval,
-            timeout=config.timeout,
-            retry=config.retry,
-            backoff=config.backoff,
-            backoff_jitter=config.backoff_jitter,
-            force_full_register_list=config.force_full_register_list,
-            scan_uart_settings=config.scan_uart_settings,
-            deep_scan=config.deep_scan,
-            safe_scan=config.safe_scan,
-            max_registers_per_request=config.max_registers_per_request,
+            config=CoordinatorConfig(
+                host=host,
+                port=port,
+                slave_id=slave_id,
+                name=name,
+                scan_interval=scan_interval,
+                timeout=timeout,
+                retry=retry,
+                backoff=backoff,
+                backoff_jitter=backoff_jitter,
+                force_full_register_list=force_full_register_list,
+                scan_uart_settings=scan_uart_settings,
+                deep_scan=deep_scan,
+                safe_scan=safe_scan,
+                max_registers_per_request=max_registers_per_request,
+                skip_missing_registers=skip_missing_registers,
+                connection_type=connection_type,
+                connection_mode=connection_mode,
+                serial_port=serial_port,
+                baud_rate=baud_rate,
+                parity=parity,
+                stop_bits=stop_bits,
+            ),
             entry=entry,
-            skip_missing_registers=config.skip_missing_registers,
-            connection_type=config.connection_type,
-            connection_mode=config.connection_mode,
-            serial_port=config.serial_port,
-            baud_rate=config.baud_rate,
-            parity=config.parity,
-            stop_bits=config.stop_bits,
         )
 
     @staticmethod
@@ -439,41 +582,7 @@ class ThesslaGreenModbusCoordinator(
             result = 0.0
         return result
 
-    async def _handle_update_error(
-        self,
-        exc: Exception,
-        *,
-        reauth_reason: str,
-        message: str,
-        log_level: int = logging.ERROR,
-        timeout_error: bool = False,
-        check_auth: bool = False,
-        use_helper: bool = True,
-    ) -> UpdateFailed:
-        """Common error-handling path for _async_update_data."""
-        self.statistics["failed_reads"] += 1
-        if timeout_error:
-            self.statistics["timeout_errors"] += 1
-        self.statistics["last_error"] = str(exc)
-        self._consecutive_failures += 1
-        self.offline_state = True
-        await self._disconnect()
-
-        if self._consecutive_failures >= self._max_failures:
-            _LOGGER.error("Too many consecutive failures, disconnecting")
-            self._trigger_reauth(reauth_reason)
-
-        if check_auth and is_invalid_auth_error(exc):
-            self._trigger_reauth("invalid_auth")
-
-        _LOGGER.log(log_level, "%s: %s", message, exc)
-        full_message = f"{message}: {exc}"
-        if use_helper:
-            return UpdateFailed(full_message)
-        return UpdateFailed(full_message)
-
-
-    def _trigger_reauth(self, reason: str) -> None:  # pragma: no cover
+    def _trigger_reauth(self, reason: str) -> None:  # pragma: no cover - defensive
         """Schedule a reauthentication flow if not already triggered."""
 
         if self._reauth_scheduled or self.entry is None:
@@ -541,12 +650,12 @@ class ThesslaGreenModbusCoordinator(
             attempt=attempt,
         )
 
-    def _build_scanner_kwargs(self) -> dict[str, Any]:  # pragma: no cover
+    def _build_scanner_kwargs(self) -> dict[str, Any]:  # pragma: no cover - defensive
         """Return constructor kwargs shared by all scanner creation paths."""
         return {
-            "host": self.host,
-            "port": self.port,
-            "slave_id": self.slave_id,
+            "host": self.config.host,
+            "port": self.config.port,
+            "slave_id": self.config.slave_id,
             "timeout": self.timeout,
             "retry": self.retry,
             "backoff": self.backoff,
@@ -556,24 +665,24 @@ class ThesslaGreenModbusCoordinator(
             "deep_scan": self.deep_scan,
             "max_registers_per_request": self.effective_batch,
             "safe_scan": self.safe_scan,
-            "connection_type": self.connection_type,
-            "connection_mode": self._resolved_connection_mode or self.connection_mode,
-            "serial_port": self.serial_port,
-            "baud_rate": self.baud_rate,
-            "parity": self.parity,
-            "stop_bits": self.stop_bits,
+            "connection_type": self.config.connection_type,
+            "connection_mode": self._resolved_connection_mode or self.config.connection_mode,
+            "serial_port": self.config.serial_port,
+            "baud_rate": self.config.baud_rate,
+            "parity": self.config.parity,
+            "stop_bits": self.config.stop_bits,
             "hass": self.hass,
         }
 
-    async def _create_scanner(self) -> Any:  # pragma: no cover
+    async def _create_scanner(self) -> Any:  # pragma: no cover - defensive
         """Instantiate a ThesslaGreenDeviceScanner using its create() factory."""
         kwargs = self._build_scanner_kwargs()
         return await ThesslaGreenDeviceScanner.create(**kwargs)
 
-    def _apply_scan_result(self, scan_result: dict[str, Any]) -> None:  # pragma: no cover
+    def _apply_scan_result(self, scan_result: dict[str, Any]) -> None:  # pragma: no cover - defensive
         """Store and process a completed device scan result."""
         self.device_scan_result = scan_result
-        if self.connection_mode == CONNECTION_MODE_AUTO:
+        if self.config.connection_mode == CONNECTION_MODE_AUTO:
             if resolved := self.device_scan_result.get("resolved_connection_mode"):
                 self._resolved_connection_mode = resolved
         self.last_scan = _utcnow()
@@ -622,7 +731,7 @@ class ThesslaGreenModbusCoordinator(
             self.device_info.get("firmware", "Unknown"),
         )
 
-    async def _run_device_scan(self) -> None:  # pragma: no cover
+    async def _run_device_scan(self) -> None:  # pragma: no cover - defensive
         """Run a full device scan and apply the result."""
         _LOGGER.info("Scanning device for available registers...")
         scanner = None
@@ -650,7 +759,7 @@ class ThesslaGreenModbusCoordinator(
                 if inspect.isawaitable(close_result):
                     await close_result
 
-    def _warn_missing_device_info(self) -> None:  # pragma: no cover
+    def _warn_missing_device_info(self) -> None:  # pragma: no cover - defensive
         """Log warnings when model or firmware could not be identified."""
         model = self.device_info.get("model", UNKNOWN_MODEL)
         firmware = self.device_info.get("firmware", "Unknown")
@@ -661,22 +770,22 @@ class ThesslaGreenModbusCoordinator(
             missing.append("model")
             _LOGGER.debug(
                 "Device model missing for %s:%s%s",
-                self.host,
-                self.port,
-                f" (slave {self.slave_id})" if self.slave_id is not None else "",
+                self.config.host,
+                self.config.port,
+                f" (slave {self.config.slave_id})" if self.config.slave_id is not None else "",
             )
         if firmware == "Unknown":
             missing.append("firmware")
             _LOGGER.debug(
                 "Device firmware missing for %s:%s%s",
-                self.host,
-                self.port,
-                f" (slave {self.slave_id})" if self.slave_id is not None else "",
+                self.config.host,
+                self.config.port,
+                f" (slave {self.config.slave_id})" if self.config.slave_id is not None else "",
             )
         if missing:
-            device_details = f"{self.host}:{self.port}"
-            if self.slave_id is not None:
-                device_details += f", slave {self.slave_id}"
+            device_details = f"{self.config.host}:{self.config.port}"
+            if self.config.slave_id is not None:
+                device_details += f", slave {self.config.slave_id}"
             _LOGGER.warning(
                 "Device %s missing %s (%s). "
                 "Verify Modbus connectivity or ensure your firmware is supported.",
@@ -685,16 +794,16 @@ class ThesslaGreenModbusCoordinator(
                 device_details,
             )
 
-    async def async_setup(self) -> bool:  # pragma: no cover
+    async def async_setup(self) -> bool:  # pragma: no cover - defensive
         """Set up the coordinator by scanning the device."""
-        if self.connection_type == CONNECTION_TYPE_RTU:
-            endpoint = self.serial_port or "serial"
+        if self.config.connection_type == CONNECTION_TYPE_RTU:
+            endpoint = self.config.serial_port or "serial"
         else:
-            endpoint = f"{self.host}:{self.port}"
+            endpoint = f"{self.config.host}:{self.config.port}"
         _LOGGER.info(
             "Setting up ThesslaGreen coordinator for %s via %s",
             endpoint,
-            self.connection_type.upper(),
+            self.config.connection_type.upper(),
         )
 
         if self.force_full_register_list:
@@ -834,7 +943,7 @@ class ThesslaGreenModbusCoordinator(
         major = firmware.strip().split(".", 1)[0]
         return major in {"3"}
 
-    def _store_scan_cache(self) -> None:  # pragma: no cover
+    def _store_scan_cache(self) -> None:  # pragma: no cover - defensive
         """Store scan results in config entry options."""
 
         if self.entry is None:
@@ -945,7 +1054,7 @@ class ThesslaGreenModbusCoordinator(
 
                 for addr in test_addresses:
                     response = await transport.read_input_registers(
-                        self.slave_id,
+                        self.config.slave_id,
                         addr,
                         count=1,
                     )
@@ -961,7 +1070,7 @@ class ThesslaGreenModbusCoordinator(
                 # issues with keyword-only parameters in pymodbus.
                 count = 1
                 response = await transport.read_input_registers(
-                    self.slave_id,
+                    self.config.slave_id,
                     0,
                     count=count,
                 )
@@ -985,7 +1094,7 @@ class ThesslaGreenModbusCoordinator(
                 _LOGGER.exception("Unexpected error during connection test: %s", exc)
                 raise
 
-    async def _async_setup_client(self) -> bool:  # pragma: no cover
+    async def _async_setup_client(self) -> bool:  # pragma: no cover - defensive
         """Set up the Modbus client if needed.
 
         Although only invoked in tests within this repository, this helper
@@ -1016,8 +1125,8 @@ class ThesslaGreenModbusCoordinator(
     ) -> BaseModbusTransport:
         if mode == CONNECTION_MODE_TCP_RTU:
             return RawRtuOverTcpTransport(
-                host=self.host,
-                port=self.port,
+                host=self.config.host,
+                port=self.config.port,
                 max_retries=self.retry,
                 base_backoff=self.backoff,
                 max_backoff=DEFAULT_MAX_BACKOFF,
@@ -1025,8 +1134,8 @@ class ThesslaGreenModbusCoordinator(
                 offline_state=self.offline_state,
             )
         return TcpModbusTransport(
-            host=self.host,
-            port=self.port,
+            host=self.config.host,
+            port=self.config.port,
             connection_type=CONNECTION_TYPE_TCP,
             max_retries=self.retry,
             base_backoff=self.backoff,
@@ -1035,14 +1144,14 @@ class ThesslaGreenModbusCoordinator(
             offline_state=self.offline_state,
         )
 
-    async def _select_auto_transport(self) -> None:  # pragma: no cover
+    async def _select_auto_transport(self) -> None:  # pragma: no cover - defensive
         """Attempt auto-detection between RTU-over-TCP and Modbus TCP."""
 
         if self._resolved_connection_mode:
             self._transport = self._build_tcp_transport(self._resolved_connection_mode)
             return
 
-        prefer_tcp = self.port == DEFAULT_PORT
+        prefer_tcp = self.config.port == DEFAULT_PORT
         mode_order = (
             [CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU]
             if prefer_tcp
@@ -1060,7 +1169,7 @@ class ThesslaGreenModbusCoordinator(
         # Prefer client-based path first (including tests patching AsyncModbusTcpClient).
         tcp_client_cls = globals().get("AsyncModbusTcpClient", AsyncModbusTcpClient)
         try:
-            legacy_client = tcp_client_cls(self.host, port=self.port, timeout=self.timeout)
+            legacy_client = tcp_client_cls(self.config.host, port=self.config.port, timeout=self.timeout)
             connect_method = getattr(legacy_client, "connect", None)
             if callable(connect_method):
                 connect_result = connect_method()
@@ -1091,7 +1200,7 @@ class ThesslaGreenModbusCoordinator(
                 await asyncio.wait_for(transport.ensure_connected(), timeout=3.0)
                 try:
                     await asyncio.wait_for(
-                        transport.read_holding_registers(self.slave_id, 0, count=2),
+                        transport.read_holding_registers(self.config.slave_id, 0, count=2),
                         timeout=timeout,
                     )
                 except (ModbusIOException, ConnectionException):
@@ -1113,19 +1222,19 @@ class ThesslaGreenModbusCoordinator(
                 continue
             self._transport = transport
             self._resolved_connection_mode = mode
-            _LOGGER.info("Auto-selected Modbus transport %s for %s:%s", mode, self.host, self.port)
+            _LOGGER.info("Auto-selected Modbus transport %s for %s:%s", mode, self.config.host, self.config.port)
             return
 
         # Legacy fallback used by tests that patch AsyncModbusTcpClient.
         try:
             try:
                 tcp_client_cls = globals().get("AsyncModbusTcpClient", AsyncModbusTcpClient)
-                legacy_client = tcp_client_cls(self.host, port=self.port, timeout=self.timeout)
+                legacy_client = tcp_client_cls(self.config.host, port=self.config.port, timeout=self.timeout)
             except TypeError:
                 tcp_client_cls = globals().get("AsyncModbusTcpClient", AsyncModbusTcpClient)
                 legacy_client = tcp_client_cls()
-                legacy_client.host = self.host
-                legacy_client.port = self.port
+                legacy_client.host = self.config.host
+                legacy_client.port = self.config.port
             connect_method = getattr(legacy_client, "connect", None)
             if callable(connect_method):
                 connect_result = connect_method()
@@ -1152,7 +1261,7 @@ class ThesslaGreenModbusCoordinator(
 
         raise ConnectionException("Auto-detect Modbus transport failed") from last_error
 
-    async def _ensure_connected(self) -> None:  # pragma: no cover
+    async def _ensure_connected(self) -> None:  # pragma: no cover - defensive
         """Ensure Modbus connection is established using the shared client."""
 
         async with self._client_lock:
@@ -1174,14 +1283,14 @@ class ThesslaGreenModbusCoordinator(
 
             try:
                 if self._transport is None:
-                    parity = SERIAL_PARITY_MAP.get(self.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
+                    parity = SERIAL_PARITY_MAP.get(self.config.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
                     stop_bits = SERIAL_STOP_BITS_MAP.get(
-                        self.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
+                        self.config.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
                     )
-                    if self.connection_type == CONNECTION_TYPE_RTU:
+                    if self.config.connection_type == CONNECTION_TYPE_RTU:
                         self._transport = RtuModbusTransport(
-                            serial_port=self.serial_port,
-                            baudrate=self.baud_rate,
+                            serial_port=self.config.serial_port,
+                            baudrate=self.config.baud_rate,
                             parity=parity,
                             stopbits=stop_bits,
                             max_retries=self.retry,
@@ -1191,10 +1300,10 @@ class ThesslaGreenModbusCoordinator(
                             offline_state=self.offline_state,
                         )
                     else:
-                        if self.connection_mode == CONNECTION_MODE_AUTO:
+                        if self.config.connection_mode == CONNECTION_MODE_AUTO:
                             await self._select_auto_transport()
                         else:
-                            mode = self.connection_mode or CONNECTION_MODE_TCP
+                            mode = self.config.connection_mode or CONNECTION_MODE_TCP
                             self._transport = self._build_tcp_transport(mode)
 
                 if self._transport is not None:
@@ -1228,188 +1337,21 @@ class ThesslaGreenModbusCoordinator(
         This method overrides ``DataUpdateCoordinator._async_update_data``
         and is called by Home Assistant to refresh entity state.
         """
-        start_time = _utcnow()
-
-        if self._update_in_progress:
-            _LOGGER.debug("Data update already running; skipping duplicate task")
-            return self.data or {}
-
-        self._update_in_progress = True
-        self._failed_registers: set[str] = set()
-
-        async with self._write_lock:
-            try:
-                await self._ensure_connection()
-                transport = self._transport
-                if transport is not None and not transport.is_connected():
-                    raise ConnectionException("Modbus transport is not connected")
-                if transport is None and self.client is None:
-                    raise ConnectionException("Modbus client is not connected")
-
-                data = {}
-                data.update(await self._read_input_registers_optimized())
-                data.update(await self._read_holding_registers_optimized())
-                data.update(await self._read_coil_registers_optimized())
-                data.update(await self._read_discrete_inputs_optimized())
-
-                data = self._post_process_data(data)
-
-                if transport is not None and not transport.is_connected():
-                    _LOGGER.debug(
-                        "Modbus client disconnected during update; attempting reconnection"
-                    )
-                    await self._ensure_connection()
-                    transport = self._transport
-                    if transport is None or not transport.is_connected():
-                        raise ConnectionException("Modbus transport is not connected")
-
-                self.statistics["successful_reads"] += 1
-                self.statistics["last_successful_update"] = _utcnow()
-                self._consecutive_failures = 0
-                self.offline_state = False
-
-                response_time = (_utcnow() - start_time).total_seconds()
-                self.statistics["average_response_time"] = (
-                    self.statistics["average_response_time"]
-                    * (self.statistics["successful_reads"] - 1)
-                    + response_time
-                ) / self.statistics["successful_reads"]
-
-                _LOGGER.debug(
-                    "Data update successful: %d values read in %.2fs", len(data), response_time
-                )
-                return data
-
-            except asyncio.CancelledError:
-                # Don't count cancellation as a failure, but close the transport
-                # to avoid leaving it in an inconsistent state mid-read.
-                with contextlib.suppress(Exception):
-                    await self._disconnect()
-                raise
-            except (ModbusException, ConnectionException) as exc:
-                raise await self._handle_update_error(
-                    exc,
-                    reauth_reason="connection_failure",
-                    message="Error communicating with device",
-                    check_auth=True,
-                ) from exc
-            except TimeoutError as exc:
-                raise await self._handle_update_error(
-                    exc,
-                    reauth_reason="timeout",
-                    message="Timeout during data update",
-                    log_level=logging.WARNING,
-                    timeout_error=True,
-                ) from exc
-            except (OSError, ValueError) as exc:
-                raise await self._handle_update_error(
-                    exc,
-                    reauth_reason="connection_failure",
-                    message="Unexpected error",
-                    use_helper=False,
-                ) from exc
-            finally:
-                self._update_in_progress = False
+        return await _async_update_data_impl(self)
 
     def _find_register_name(self, register_type: str, address: int) -> str | None:
         """Find register name by address using pre-built reverse maps."""
-        return self._reverse_maps.get(register_type, {}).get(address)
+        return _find_register_name_impl(self._reverse_maps, register_type, address)
 
     def _process_register_value(self, register_name: str, value: int) -> Any:
-        """Decode a raw register value using its definition.
-
-        Order of checks:
-        1. DAC range guard (returns None on out-of-range).
-        2. Resolve definition (returns False on unknown name — preserves
-           legacy contract used by tests).
-        3. Sentinel check 0x8000 (SENSOR_UNAVAILABLE):
-           - for temperature registers: always None (no sensor / disconnected),
-           - for registers in SENSOR_UNAVAILABLE_REGISTERS: SENSOR_UNAVAILABLE,
-           - otherwise fall through to normal decode.
-        4. Two's-complement adjustment for signed temperatures.
-        5. Decode via register definition.
-        6. Post-decode SENSOR_UNAVAILABLE check (for definitions that decode
-           the sentinel into a non-zero value — keep for backward compat).
-        7. Per-register fixups (flow rate two's-complement, enum override).
-        """
-        if register_name in {"dac_supply", "dac_exhaust", "dac_heater", "dac_cooler"} and not (
-            0 <= value <= 4095
-        ):
-            _LOGGER.warning("Register %s out of range for DAC: %s", register_name, value)
-            return None
-        try:
-            definition = get_register_definition(register_name)
-        except KeyError:
-            _LOGGER.error("Unknown register name: %s", register_name)
-            return False
-
-        # --- step 3: sentinel ---
-        if value == SENSOR_UNAVAILABLE:
-            if definition.is_temperature():
-                _LOGGER.debug(
-                    "Processed %s: raw=%s value=None (temperature sentinel)",
-                    register_name,
-                    value,
-                )
-                return None
-            if register_name in SENSOR_UNAVAILABLE_REGISTERS:
-                _LOGGER.debug(
-                    "Processed %s: raw=%s value=SENSOR_UNAVAILABLE",
-                    register_name,
-                    value,
-                )
-                return SENSOR_UNAVAILABLE
-            # Falls through: register reports 0x8000 as a real value.
-
-        # --- step 4: two's-complement for signed temperature ---
-        raw_value = value
-        if definition.is_temperature() and isinstance(raw_value, int) and raw_value > 32767:
-            raw_value -= 65536
-
-        # --- step 5: decode ---
-        decoded = definition.decode(raw_value)
-
-        # --- step 6: post-decode sentinel safety net ---
-        if decoded == SENSOR_UNAVAILABLE:
-            _LOGGER.debug(
-                "Processed %s: raw=%s value=SENSOR_UNAVAILABLE (post-decode)",
-                register_name,
-                value,
-            )
-            return SENSOR_UNAVAILABLE
-
-        # --- step 7: per-register fixups ---
-        if register_name in {"supply_flow_rate", "exhaust_flow_rate"} and isinstance(decoded, int):
-            if decoded > 32767:
-                decoded -= 65536
-
-        if definition.enum is not None and isinstance(decoded, str) and isinstance(value, int):
-            decoded = value
-
-        _LOGGER.debug("Processed %s: raw=%s value=%s", register_name, value, decoded)
-        return decoded
+        """Decode a raw register value via dedicated register-processing helpers."""
+        return _process_register_value_impl(register_name, value)
 
     def _create_consecutive_groups(
         self, registers: dict[str, int]
     ) -> list[tuple[int, int, dict[str, int]]]:
         """Legacy helper returning grouped address ranges with key maps."""
-        ordered = sorted(registers.items(), key=lambda item: item[1])
-        if not ordered:
-            return []
-        groups: list[tuple[int, int, dict[str, int]]] = []
-        start = ordered[0][1]
-        prev = start
-        key_map: dict[str, int] = {ordered[0][0]: ordered[0][1]}
-        for key, addr in ordered[1:]:
-            if addr == prev + 1:
-                key_map[key] = addr
-            else:
-                groups.append((start, prev - start + 1, dict(key_map)))
-                start = addr
-                key_map = {key: addr}
-            prev = addr
-        groups.append((start, prev - start + 1, dict(key_map)))
-        return groups
+        return _create_consecutive_groups_impl(registers)
 
     def _update_data_sync(self) -> dict[str, Any]:
         """Legacy sync update hook retained for compatibility tests."""
@@ -1450,7 +1392,7 @@ class ThesslaGreenModbusCoordinator(
         async with self._client_lock:
             await self._disconnect_locked()
 
-    async def _async_handle_stop(self, _event: Any) -> None:  # pragma: no cover
+    async def _async_handle_stop(self, _event: Any) -> None:  # pragma: no cover - defensive
         """Handle Home Assistant stop to cancel tasks."""
         await self.async_shutdown()
 
@@ -1509,17 +1451,17 @@ class ThesslaGreenModbusCoordinator(
         """Return diagnostic information for Home Assistant."""
         last_update = self.statistics.get("last_successful_update")
         connection = {
-            "host": self.host,
-            "port": self.port,
-            "slave_id": self.slave_id,
+            "host": self.config.host,
+            "port": self.config.port,
+            "slave_id": self.config.slave_id,
             "connected": bool(self._transport and self._transport.is_connected()),
             "offline_state": self.offline_state,
             "last_successful_update": last_update.isoformat() if last_update else None,
-            "transport": self.connection_type,
-            "serial_port": self.serial_port,
-            "baud_rate": self.baud_rate,
-            "parity": self.parity,
-            "stop_bits": self.stop_bits,
+            "transport": self.config.connection_type,
+            "serial_port": self.config.serial_port,
+            "baud_rate": self.config.baud_rate,
+            "parity": self.config.parity,
+            "stop_bits": self.config.stop_bits,
         }
 
         statistics = self.statistics.copy()
@@ -1598,12 +1540,12 @@ class ThesslaGreenModbusCoordinator(
                     raise AttributeError(item) from exc
 
         return _CompatDeviceInfo(
-            identifiers={(DOMAIN, f"{self.host}:{self.port}:{self.slave_id}")},
+            identifiers={(DOMAIN, f"{self.config.host}:{self.config.port}:{self.config.slave_id}")},
             name=self.device_name,
             manufacturer=MANUFACTURER,
             model=model,
             sw_version=self.device_info.get("firmware", "Unknown"),
-            configuration_url=f"http://{self.host}",
+            configuration_url=f"http://{self.config.host}",
         )
 
     @property
@@ -1612,6 +1554,6 @@ class ThesslaGreenModbusCoordinator(
         return cast(str, self.device_info.get("device_name") or self._device_name)
 
     @property
-    def device_info_dict(self) -> dict[str, Any]:  # pragma: no cover
+    def device_info_dict(self) -> dict[str, Any]:  # pragma: no cover - defensive
         """Return device information as a plain dictionary for legacy use."""
         return self.get_device_info()

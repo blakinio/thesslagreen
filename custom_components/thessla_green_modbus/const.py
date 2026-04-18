@@ -8,6 +8,8 @@ from functools import cache, lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
+from homeassistant.const import Platform
+
 try:  # pragma: no cover - optional during isolated tests
     from .registers.loader import get_registers_by_function
 except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
@@ -235,32 +237,17 @@ KNOWN_MISSING_REGISTERS = {
 
 # Platforms supported by the integration
 # Diagnostics is handled separately and therefore not listed here
-try:  # pragma: no cover - optional during isolated tests
-    from homeassistant.const import Platform as _Platform
-
-    PLATFORMS: list[_Platform] = [
-        _Platform.SENSOR,
-        _Platform.BINARY_SENSOR,
-        _Platform.CLIMATE,
-        _Platform.FAN,
-        _Platform.SELECT,
-        _Platform.NUMBER,
-        _Platform.SWITCH,
-        _Platform.TEXT,
-        _Platform.TIME,
-    ]
-except (ImportError, AttributeError):  # pragma: no cover - fallback for test environments
-    PLATFORMS = [
-        "sensor",
-        "binary_sensor",
-        "climate",
-        "fan",
-        "select",
-        "number",
-        "switch",
-        "text",
-        "time",
-    ]
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.CLIMATE,
+    Platform.FAN,
+    Platform.SELECT,
+    Platform.NUMBER,
+    Platform.SWITCH,
+    Platform.TEXT,
+    Platform.TIME,
+]
 
 
 # Migration helpers

@@ -72,7 +72,7 @@ try:  # pragma: no cover - optional dependency for TCP RTU framing
 except (ImportError, ModuleNotFoundError):  # pragma: no cover - fallback
     try:  # pragma: no cover - older pymodbus layout
         from pymodbus.framer.rtu_framer import ModbusRtuFramer
-    except (ImportError, ModuleNotFoundError):  # pragma: no cover
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover - defensive
         ModbusRtuFramer = None
 
 
@@ -282,9 +282,9 @@ async def _call_modbus(
         elif "unit" in params and params["unit"].kind is not inspect.Parameter.POSITIONAL_ONLY:
             kwarg = "unit"
         else:
-            # Some tests use plain ``Mock``/``AsyncMock`` callables that do not
-            # expose a valid signature. Prefer ``slave`` as default because it
-            # matches modern pymodbus and is accepted by autospecced mocks.
+            # Default to "slave" when signature introspection failed — matches
+            # pymodbus 3.x convention. Pass no kwarg when signature is available
+            # but neither device_id/slave/unit is recognized.
             kwarg = "slave" if signature is None else ""
         _KWARG_CACHE[func] = kwarg
 

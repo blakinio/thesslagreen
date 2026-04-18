@@ -198,7 +198,7 @@ def test_async_setup_closes_scanner():
 
     async def run_test():
         hass = MagicMock()
-        coordinator = ThesslaGreenModbusCoordinator(
+        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
             hass=hass,
             host="localhost",
             port=502,
@@ -241,7 +241,7 @@ def test_async_setup_cancel_mid_scan(caplog):
 
     async def run_test(caplog):
         hass = MagicMock()
-        coordinator = ThesslaGreenModbusCoordinator(
+        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
             hass=hass,
             host="localhost",
             port=502,
@@ -284,7 +284,7 @@ def test_disconnect_closes_client():
 
     async def run_test():
         hass = MagicMock()
-        coordinator = ThesslaGreenModbusCoordinator(
+        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
             hass=hass,
             host="localhost",
             port=502,
@@ -313,7 +313,7 @@ def test_disconnect_closes_client_sync():
 
     async def run_test():
         hass = MagicMock()
-        coordinator = ThesslaGreenModbusCoordinator(
+        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
             hass=hass,
             host="localhost",
             port=502,

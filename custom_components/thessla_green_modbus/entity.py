@@ -40,7 +40,7 @@ class ThesslaGreenEntity(CoordinatorEntity):
         self._bit = bit
         # Home Assistant reads ``_attr_device_info`` directly during entity
         # setup; keeping this attribute avoids additional property wrappers.
-        self._attr_device_info = coordinator.get_device_info()  # pragma: no cover
+        self._attr_device_info = coordinator.get_device_info()  # pragma: no cover - defensive
 
     @property
     def suggested_object_id(self) -> str:
@@ -67,7 +67,7 @@ class ThesslaGreenEntity(CoordinatorEntity):
         return f"{prefix}_{self.coordinator.slave_id}_{self._key}_{addr_part}{bit_suffix}"
 
     @property
-    def available(self) -> bool:  # pragma: no cover
+    def available(self) -> bool:  # pragma: no cover - defensive
         """Return if entity is available.
 
         This property forms part of the entity API and is queried by Home

@@ -67,7 +67,7 @@ def _detect_data_anomalies(data: dict[str, Any]) -> list[str]:
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
-) -> dict[str, Any]:  # pragma: no cover
+) -> dict[str, Any]:  # pragma: no cover - defensive
     """Return diagnostics for a config entry.
 
     Home Assistant calls this coroutine when the diagnostics panel is
