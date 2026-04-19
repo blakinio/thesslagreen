@@ -105,18 +105,11 @@ ThesslaGreenDeviceScanner: Any | None = None
 DeviceCapabilities: Any | None = None
 
 
-async def _load_scanner_module(hass: Any) -> Any:
-    """Import scanner.core using the HA executor when available.
-
-    Falls back to a direct synchronous import when *hass* is ``None`` or does
-    not expose ``async_add_executor_job`` (e.g. SimpleNamespace test stubs).
-    """
+async def _load_scanner_module(hass: HomeAssistant | None) -> Any:
+    """Import scanner.core via the HA executor to avoid blocking the event loop."""
     module_name = "custom_components.thessla_green_modbus.scanner.core"
-    _aej = getattr(hass, "async_add_executor_job", None)
-    if _aej is not None:
-        result = _aej(import_module, module_name)
-        if inspect.isawaitable(result):
-            return await result
+    if hass is not None:
+        return await hass.async_add_executor_job(import_module, module_name)
     return import_module(module_name)
 
 
@@ -515,7 +508,7 @@ async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> di
 class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
     """Handle a config flow for ThesslaGreen Modbus."""
 
-    VERSION = 4  # pragma: no cover - defensive
+    VERSION = 4
 
     def __init__(self) -> None:
         """Initialize config flow."""
@@ -561,39 +554,6 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
                 }
             ),
         )
-
-    async def async_set_unique_id(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover - defensive
-        base = getattr(super(), "async_set_unique_id", None)
-        if callable(base):
-            result = base(*args, **kwargs)
-            if asyncio.iscoroutine(result):
-                return await result
-            return result
-        return None
-
-    def _abort_if_unique_id_configured(self, **kwargs: Any) -> Any:  # pragma: no cover - defensive
-        base = getattr(super(), "_abort_if_unique_id_configured", None)
-        if callable(base):
-            return base(**kwargs)
-        return None
-
-    def async_show_form(self, **kwargs: Any) -> Any:  # pragma: no cover - defensive
-        base = getattr(super(), "async_show_form", None)
-        if callable(base):
-            return base(**kwargs)
-        return {"type": "form", **kwargs}
-
-    def async_create_entry(self, **kwargs: Any) -> Any:  # pragma: no cover - defensive
-        base = getattr(super(), "async_create_entry", None)
-        if callable(base):
-            return base(**kwargs)
-        return {"type": "create_entry", **kwargs}
-
-    def async_abort(self, **kwargs: Any) -> Any:  # pragma: no cover - defensive
-        base = getattr(super(), "async_abort", None)
-        if callable(base):
-            return base(**kwargs)
-        return {"type": "abort", **kwargs}
 
     def _build_connection_schema(self, defaults: dict[str, Any]) -> vol.Schema:
         """Return schema for connection details with provided defaults."""

@@ -5,6 +5,33 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.5.1 — Config flow cleanup
+
+### Removed
+- 5 defensive `getattr(super(), ...)` method wrappers in `ConfigFlow`
+  (`async_set_unique_id`, `_abort_if_unique_id_configured`, `async_show_form`,
+  `async_create_entry`, `async_abort`). These methods exist in
+  `homeassistant.config_entries.ConfigFlow` since HA 2022; the fallbacks
+  were test-compat code for SimpleNamespace stubs.
+- `try/except ImportError` guard around `homeassistant.helpers` imports in
+  `_entity_registry_migrations.py`. HA helpers are always available given
+  manifest requirement >=2026.1.0.
+- Defensive `getattr(super(), "async_shutdown", None)` in
+  `ThesslaGreenModbusCoordinator.async_shutdown`; replaced with direct
+  `await super().async_shutdown()`.
+
+### Changed
+- `_load_scanner_module` in `config_flow.py` simplified: removed
+  `getattr(hass, "async_add_executor_job", None)` fallback and
+  `inspect.isawaitable` check; now uses `hass.async_add_executor_job` directly.
+  Parameter type narrowed from `Any` to `HomeAssistant | None`.
+- `BIT_ENTITY_KEYS` in `_legacy.py` comment updated to match canonical
+  "NOT LEGACY — active functional requirement" format.
+- `VERSION = 4` class attribute in `ConfigFlow` no longer has spurious
+  `# pragma: no cover - defensive` annotation.
+
+---
+
 ## 2.5.0 — Legacy cleanup (BREAKING)
 
 ### ⚠️ Breaking changes

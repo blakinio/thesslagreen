@@ -39,14 +39,11 @@ LEGACY_KEY_RENAMES: dict[str, str] = {
     "filter_type": "filter_change",
 }
 
-# Mapping from (register_key, bit_value) → bit-specific entity key.
-#
-# NOT LEGACY — this is an active functional requirement. The e_196_e_199
-# register is a 4-bit bitmask; each bit maps to a separate binary_sensor
-# entity (E196..E199). Without this map all 4 bits would collide on the
-# same entity_id. Do not remove.
+# NOT LEGACY — active functional requirement. The e_196_e_199 register is a
+# 4-bit bitmask; each bit maps to a separate binary_sensor entity (E196-E199).
+# Without this map all 4 bits would collide on the same entity_id.
+# Do not remove unless the underlying hardware/protocol changes.
 BIT_ENTITY_KEYS: dict[tuple[str, int], str] = {
-    # e_196_e_199 is a bitmask register; each bit gets its own entity key.
     # Key format: _to_snake_case(bit_name) inserts underscore before digits,
     # so "e196" → "e_196", giving "e_196_e_199_e_196".
     ("e_196_e_199", 1): "e_196_e_199_e_196",

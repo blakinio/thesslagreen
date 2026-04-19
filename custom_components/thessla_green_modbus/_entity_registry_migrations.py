@@ -8,11 +8,9 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.const import CONF_HOST, CONF_PORT
-
-try:  # pragma: no cover - optional in tests
-    from homeassistant.helpers import entity_registry as er
-except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover - defensive
-    er = None
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+from homeassistant.util import slugify
 
 from ._legacy import (
     BIT_ENTITY_KEYS,
@@ -31,13 +29,6 @@ _LOGGER = logging.getLogger(__name__.rsplit(".", maxsplit=1)[0])
 
 async def async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:  # pragma: no cover - defensive
     """Rename entity IDs from translation-based to register-key-based naming."""
-    try:
-        from homeassistant.helpers import device_registry as dr
-        from homeassistant.helpers import entity_registry as er
-        from homeassistant.util import slugify
-    except (ImportError, ModuleNotFoundError, AttributeError):
-        return
-
     entity_reg = er.async_get(hass)
     device_reg = dr.async_get(hass)
     if entity_reg is None or device_reg is None:
@@ -214,8 +205,6 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> N
 
 async def async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Migrate entity unique IDs stored in the entity registry."""
-    if er is None:
-        return
     registry = er.async_get(hass)
     coordinator = entry.runtime_data
     device_info = getattr(coordinator, "device_info", None)
