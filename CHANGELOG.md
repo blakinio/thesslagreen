@@ -5,6 +5,19 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.4.3 — Critical fix: ImportError at integration load
+
+### Fixed
+- `_coordinator_update.py` imported `utcnow` from `utils` but the function
+  did not exist — integration failed to load in HA with `ImportError`. Added
+  `utcnow()` helper to `utils.py`.
+- Ruff I001 in `coordinator.py` (import order) and F401 in `__init__.py`
+  (unused `CONF_SLAVE_ID`).
+- 9 mypy errors in `_entity_registry_migrations.py` (`dict[str, object]`
+  replaced with `dict[str, Any]` + `getattr` access).
+
+---
+
 ## 2.4.2 — Detox regression fixes
 
 Fixes several test-compat fallbacks that had crept back into production code

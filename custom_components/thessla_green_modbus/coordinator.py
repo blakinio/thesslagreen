@@ -15,15 +15,16 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from pymodbus.client import AsyncModbusTcpClient
 
-from ._compat import COORDINATOR_BASE, EVENT_HOMEASSISTANT_STOP, UTC
+from ._compat import COORDINATOR_BASE, EVENT_HOMEASSISTANT_STOP
 from ._compat import dt_util as _base_dt_util
 from ._coordinator_capabilities import _CoordinatorCapabilitiesMixin
 from ._coordinator_io import (
     _ModbusIOMixin,
     _PermanentModbusError,
-    handle_update_error as _handle_update_error_helper,
 )  # re-export for backward compat
-from ._coordinator_schedule import _CoordinatorScheduleMixin
+from ._coordinator_io import (
+    handle_update_error as _handle_update_error_helper,
+)
 from ._coordinator_register_processing import (
     create_consecutive_groups as _create_consecutive_groups_impl,
 )
@@ -33,6 +34,7 @@ from ._coordinator_register_processing import (
 from ._coordinator_register_processing import (
     process_register_value as _process_register_value_impl,
 )
+from ._coordinator_schedule import _CoordinatorScheduleMixin
 from ._coordinator_update import async_update_data as _async_update_data_impl
 from .const import (
     CONF_BACKOFF,
@@ -119,10 +121,8 @@ dt_util = _base_dt_util
 
 def _utcnow() -> datetime:
     """Return a timezone-aware UTC datetime."""
-    value = dt_util.utcnow()
-    if isinstance(value, datetime):
-        return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
-    return datetime.now(UTC)
+    from .utils import utcnow as _utils_utcnow
+    return _utils_utcnow()
 
 
 _ORIGINAL_ASYNC_MODBUS_TCP_CLIENT = AsyncModbusTcpClient
