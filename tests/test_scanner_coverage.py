@@ -17,7 +17,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
     ModbusIOException,
 )
-from custom_components.thessla_green_modbus.scanner_core import (
+from custom_components.thessla_green_modbus.scanner.core import (
     ThesslaGreenDeviceScanner,
     _build_register_maps,
 )
@@ -77,14 +77,14 @@ def _make_transport(*, raises_on_close=None, ensure_side_effect=None,
 def test_build_register_maps_direct():
     """Call _build_register_maps() directly to cover lines 245-247."""
     _build_register_maps()
-    from custom_components.thessla_green_modbus.scanner_core import REGISTER_DEFINITIONS
+    from custom_components.thessla_green_modbus.scanner.core import REGISTER_DEFINITIONS
     assert isinstance(REGISTER_DEFINITIONS, dict)
 
 
 @pytest.mark.asyncio
 async def test_maybe_retry_yield_backoff_positive():
     """Cover line 145: backoff > 0 causes early return without sleeping."""
-    from custom_components.thessla_green_modbus.scanner_core import _maybe_retry_yield
+    from custom_components.thessla_green_modbus.scanner.core import _maybe_retry_yield
 
     with patch("asyncio.sleep", AsyncMock()) as mock_sleep:
         # backoff > 0 → early return, no sleep
@@ -95,13 +95,13 @@ async def test_maybe_retry_yield_backoff_positive():
 @pytest.mark.asyncio
 async def test_call_modbus_compat_type_error_reraise():
     """Cover line 182: TypeError with non-'unexpected keyword' message is re-raised."""
-    from custom_components.thessla_green_modbus.scanner_core import _call_modbus_compat
+    from custom_components.thessla_green_modbus.scanner.core import _call_modbus_compat
 
     async def raise_other_type_error(*args, **kwargs):
         raise TypeError("something unrelated to keyword")
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+        "custom_components.thessla_green_modbus.scanner.core._call_modbus",
         side_effect=raise_other_type_error,
     ), pytest.raises(TypeError, match="something unrelated"):
         await _call_modbus_compat(
@@ -245,7 +245,7 @@ async def test_close_client_raises_modbus_io_exception():
 @pytest.mark.asyncio
 async def test_verify_connection_safe_holding_registers():
     """Lines 824-829: safe_holding is non-empty when date_time is in REGISTER_DEFINITIONS."""
-    from custom_components.thessla_green_modbus.scanner_core import REGISTER_DEFINITIONS
+    from custom_components.thessla_green_modbus.scanner.core import REGISTER_DEFINITIONS
 
     scanner = await _make_scanner()
     # date_time is a holding register in SAFE_REGISTERS
@@ -427,7 +427,7 @@ async def test_read_input_modbus_io_cancelled(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=exc),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -447,7 +447,7 @@ async def test_read_input_timeout_error(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=TimeoutError("timeout")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -467,7 +467,7 @@ async def test_read_input_oserror(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=OSError("connection reset")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -589,7 +589,7 @@ async def test_read_holding_skips_when_failures_exceed_retry():
     mock_client = AsyncMock()
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+        "custom_components.thessla_green_modbus.scanner.core._call_modbus",
         AsyncMock(),
     ) as mock_call:
         result = await scanner._read_holding(mock_client, 10, 1)
@@ -612,7 +612,7 @@ async def test_read_holding_success_clears_failure_counter():
     ok_resp = _make_ok_response([42])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(return_value=ok_resp),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -635,7 +635,7 @@ async def test_read_holding_cancelled_error_reraises():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=asyncio.CancelledError()),
         ),
         patch("asyncio.sleep", AsyncMock()),pytest.raises(asyncio.CancelledError)
@@ -651,7 +651,7 @@ async def test_read_holding_oserror_breaks(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=OSError("broken pipe")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -677,7 +677,7 @@ async def test_read_coil_two_arg_count_none():
     bit_resp = _make_bit_response([True])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(return_value=bit_resp),
         ),
     ):
@@ -696,7 +696,7 @@ async def test_read_coil_two_arg_int_address():
     bit_resp = _make_bit_response([False])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(return_value=bit_resp),
         ),
     ):
@@ -733,7 +733,7 @@ async def test_read_coil_timeout_error(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=TimeoutError("timeout")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -773,7 +773,7 @@ async def test_read_coil_modbus_exception_with_transport_reconnect(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             side_effect=call_modbus_side_effect,
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -798,7 +798,7 @@ async def test_read_coil_cancelled_error_reraises():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=asyncio.CancelledError()),
         ),pytest.raises(asyncio.CancelledError)
     ):
@@ -814,7 +814,7 @@ async def test_read_coil_oserror_breaks(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=OSError("broken pipe")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -840,7 +840,7 @@ async def test_read_discrete_two_arg_count_none():
     bit_resp = _make_bit_response([True])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(return_value=bit_resp),
         ),
     ):
@@ -859,7 +859,7 @@ async def test_read_discrete_two_arg_int_address():
     bit_resp = _make_bit_response([False])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(return_value=bit_resp),
         ),
     ):
@@ -892,7 +892,7 @@ async def test_read_discrete_timeout_error(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=TimeoutError("timeout")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -927,7 +927,7 @@ async def test_read_discrete_modbus_exception_with_transport_reconnect():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             side_effect=call_side_effect,
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -947,7 +947,7 @@ async def test_read_discrete_cancelled_error_reraises():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=asyncio.CancelledError()),
         ),pytest.raises(asyncio.CancelledError)
     ):
@@ -963,7 +963,7 @@ async def test_read_discrete_oserror_breaks(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=OSError("network error")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -1008,7 +1008,7 @@ async def test_scan_skip_known_missing_input_register():
     scanner = await _make_scanner(skip_known_missing=True)
     scanner._client = AsyncMock()
 
-    from custom_components.thessla_green_modbus.scanner_core import INPUT_REGISTERS
+    from custom_components.thessla_green_modbus.scanner.core import INPUT_REGISTERS
     if "compilation_days" not in INPUT_REGISTERS:
         pytest.skip("compilation_days not in INPUT_REGISTERS")
 
@@ -1024,7 +1024,7 @@ async def test_scan_input_batch_fail_probe_success():
     scanner = await _make_scanner(retry=1)
     scanner._client = AsyncMock()
 
-    from custom_components.thessla_green_modbus.scanner_core import INPUT_REGISTERS
+    from custom_components.thessla_green_modbus.scanner.core import INPUT_REGISTERS
     if "version_major" not in INPUT_REGISTERS:
         pytest.skip("version_major not in INPUT_REGISTERS")
 
@@ -1061,7 +1061,7 @@ async def test_scan_input_batch_fail_probe_fail(caplog):
     scanner = await _make_scanner(retry=1)
     scanner._client = AsyncMock()
 
-    from custom_components.thessla_green_modbus.scanner_core import INPUT_REGISTERS
+    from custom_components.thessla_green_modbus.scanner.core import INPUT_REGISTERS
     if "version_major" not in INPUT_REGISTERS:
         pytest.skip("version_major not in INPUT_REGISTERS")
 
@@ -1098,7 +1098,7 @@ async def test_scan_holding_batch_fail_probe_success():
     scanner = await _make_scanner(retry=1)
     scanner._client = AsyncMock()
 
-    from custom_components.thessla_green_modbus.scanner_core import HOLDING_REGISTERS
+    from custom_components.thessla_green_modbus.scanner.core import HOLDING_REGISTERS
     if "mode" not in HOLDING_REGISTERS:
         pytest.skip("mode not in HOLDING_REGISTERS")
 
@@ -1286,7 +1286,7 @@ async def test_scan_device_rtu_creates_transport():
 
     with (
         patch(
-        "custom_components.thessla_green_modbus.scanner_core.RtuModbusTransport",
+        "custom_components.thessla_green_modbus.scanner.core.RtuModbusTransport",
         return_value=mock_transport,
     ) as mock_rtu, patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
         patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
@@ -1345,7 +1345,7 @@ async def test_scan_device_scan_returns_non_dict_raises():
     mock_ctor.return_value = mock_client
 
     with patch.object(ThesslaGreenDeviceScanner, "scan", fake_scan), patch(
-        "custom_components.thessla_green_modbus.scanner_core.importlib.import_module"
+        "custom_components.thessla_green_modbus.scanner.core.importlib.import_module"
     ) as mock_import:
         mock_mod = MagicMock()
         mock_mod.ModbusTcpClient = mock_ctor
@@ -1384,7 +1384,7 @@ async def test_close_client_async_maybe_await_raises():
     scanner._client = AsyncMock()
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.async_maybe_await_close",
+        "custom_components.thessla_green_modbus.scanner.core.async_maybe_await_close",
         AsyncMock(side_effect=OSError("async close failed")),
     ):
         # Should not propagate
@@ -1399,13 +1399,13 @@ async def test_close_client_async_maybe_await_raises():
 
 def test_ensure_register_maps_rebuilds_on_hash_mismatch():
     """Line 262: rebuilds when hash differs from REGISTER_HASH."""
-    import custom_components.thessla_green_modbus.scanner_core as sc
+    import custom_components.thessla_green_modbus.scanner.core as sc
 
     original_hash = sc.REGISTER_HASH
     try:
         # Force a mismatch so _build_register_maps is called
         sc.REGISTER_HASH = "stale_hash"
-        from custom_components.thessla_green_modbus.scanner_core import _ensure_register_maps
+        from custom_components.thessla_green_modbus.scanner.core import _ensure_register_maps
         _ensure_register_maps()
         # After rebuild, hash should be updated
         assert sc.REGISTER_HASH != "stale_hash"
@@ -1764,7 +1764,7 @@ async def test_scan_holding_probe_addr_not_in_info():
     scanner = await _make_scanner(retry=1)
     scanner._client = AsyncMock()
 
-    import custom_components.thessla_green_modbus.scanner_core as sc
+    import custom_components.thessla_green_modbus.scanner.core as sc
     original_multi = dict(sc.MULTI_REGISTER_SIZES)
     try:
         # Register "fake_multi" at addr 9999 with size 2
@@ -1889,7 +1889,7 @@ async def test_scan_device_importlib_fails():
 
     with (
         patch.object(scanner, "_build_tcp_transport", return_value=mock_transport), patch(
-        "custom_components.thessla_green_modbus.scanner_core.importlib.import_module",
+        "custom_components.thessla_green_modbus.scanner.core.importlib.import_module",
         side_effect=Exception("import failed"),
     ), patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
         patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
@@ -2009,7 +2009,7 @@ async def test_load_registers_with_min_max():
     reg.max = 100
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.async_get_all_registers",
+        "custom_components.thessla_green_modbus.scanner.core.async_get_all_registers",
         AsyncMock(return_value=[reg]),
     ):
         result = await scanner._load_registers()
@@ -2034,7 +2034,7 @@ async def test_read_input_client_fallback_from_self():
     ok_resp = _make_ok_response([88])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(return_value=ok_resp),
         ),
     ):
@@ -2119,7 +2119,7 @@ async def test_read_holding_client_fallback_from_self():
     ok_resp = _make_ok_response([77])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(return_value=ok_resp),
         ),
     ):
@@ -2162,10 +2162,10 @@ async def test_mark_holding_unsupported_partial_overlap():
 
 def test_ensure_pymodbus_import_fails():
     """Lines 119-120: except Exception: return when importlib raises."""
-    from custom_components.thessla_green_modbus.scanner_core import _ensure_pymodbus_client_module
+    from custom_components.thessla_green_modbus.scanner.core import _ensure_pymodbus_client_module
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.importlib.import_module",
+        "custom_components.thessla_green_modbus.scanner.core.importlib.import_module",
         side_effect=ImportError("no pymodbus"),
     ):
         # Must not raise
@@ -2180,7 +2180,7 @@ def test_ensure_pymodbus_import_fails():
 async def test_stop_bits_map_returns_out_of_range():
     """Line 501: SERIAL_STOP_BITS_MAP returns 3 → clamped to DEFAULT_STOP_BITS."""
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.SERIAL_STOP_BITS_MAP",
+        "custom_components.thessla_green_modbus.scanner.core.SERIAL_STOP_BITS_MAP",
         {1: 3},
     ):
         scanner = await _make_scanner(stop_bits=1)
@@ -2196,7 +2196,7 @@ async def test_update_known_missing_name_not_in_mapping():
     """Line 581: continue when register name is not in the global mapping."""
     scanner = await _make_scanner()
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.KNOWN_MISSING_REGISTERS",
+        "custom_components.thessla_green_modbus.scanner.core.KNOWN_MISSING_REGISTERS",
         {
             "input_registers": {"nonexistent_reg_zzz_xyz"},
             "holding_registers": set(),
@@ -2221,7 +2221,7 @@ async def test_async_setup_load_registers_returns_plain_dict():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._async_ensure_register_maps",
+            "custom_components.thessla_green_modbus.scanner.core._async_ensure_register_maps",
             AsyncMock(),
         ),
         patch.object(scanner, "_load_registers", AsyncMock(return_value=plain_dict)),
@@ -2258,7 +2258,7 @@ async def test_verify_connection_tcp_explicit_mode():
 @pytest.mark.asyncio
 async def test_verify_connection_safe_holding_with_patched_definitions():
     """Lines 766, 824-829: safe_holding populated when REGISTER_DEFINITIONS has holding reg."""
-    from custom_components.thessla_green_modbus.scanner_core import (
+    from custom_components.thessla_green_modbus.scanner.core import (
         REGISTER_DEFINITIONS,
         SAFE_REGISTERS,
     )
@@ -2283,7 +2283,7 @@ async def test_verify_connection_safe_holding_with_patched_definitions():
             ("tcp", fake_transport, scanner.timeout)
         ]),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.REGISTER_DEFINITIONS",
+            "custom_components.thessla_green_modbus.scanner.core.REGISTER_DEFINITIONS",
             patched_defs,
         ),
     ):
@@ -2315,7 +2315,7 @@ async def test_verify_connection_rtu_with_serial_port():
     fake_transport = _make_transport(ensure_side_effect=asyncio.CancelledError())
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.RtuModbusTransport",
+        "custom_components.thessla_green_modbus.scanner.core.RtuModbusTransport",
         return_value=fake_transport,
     ), pytest.raises(asyncio.CancelledError):
         await scanner.verify_connection()
@@ -2491,7 +2491,7 @@ async def test_load_registers_empty_name():
     reg_valid.max = None
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.async_get_all_registers",
+        "custom_components.thessla_green_modbus.scanner.core.async_get_all_registers",
         AsyncMock(return_value=[reg_empty, reg_valid]),
     ):
         result = await scanner._load_registers()
@@ -2545,7 +2545,7 @@ async def test_read_coil_transport_reconnect_ensure_raises():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             side_effect=call_modbus_side_effect,
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -2583,7 +2583,7 @@ async def test_read_discrete_transport_reconnect_ensure_raises():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             side_effect=call_side_effect,
         ),
         patch("asyncio.sleep", AsyncMock()),

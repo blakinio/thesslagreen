@@ -153,7 +153,7 @@ async def test_form_user_port_out_of_range(invalid_port: int):
     flow.hass = None
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
         result = await flow.async_step_user(dict(DEFAULT_USER_INPUT, **{CONF_PORT: invalid_port}))
 
@@ -173,7 +173,7 @@ async def test_form_user_invalid_slave_id(slave_id: int, expected_error: str):
     flow.hass = None
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
         result = await flow.async_step_user(dict(DEFAULT_USER_INPUT, **{CONF_SLAVE_ID: slave_id}))
 
@@ -189,7 +189,7 @@ async def test_form_user_invalid_domain():
     flow.hass = None
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
         result = await flow.async_step_user(dict(DEFAULT_USER_INPUT, **{CONF_HOST: "bad host"}))
 
@@ -205,7 +205,7 @@ async def test_form_user_invalid_ipv4():
     flow.hass = None
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
         result = await flow.async_step_user(
             dict(DEFAULT_USER_INPUT, **{CONF_HOST: "256.256.256.256"})
@@ -223,7 +223,7 @@ async def test_form_user_rtu_requires_serial_port():
     flow.hass = None
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
         result = await flow.async_step_user(
             dict(
@@ -247,7 +247,7 @@ async def test_form_user_rtu_invalid_baud_rate():
     flow.hass = None
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
         result = await flow.async_step_user(
             dict(
@@ -272,7 +272,7 @@ async def test_form_user_invalid_ipv6():
     flow.hass = None
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create"
     ) as create_mock:
         result = await flow.async_step_user(
             {
@@ -902,7 +902,7 @@ async def test_form_user_attribute_error_scanner():
     scanner_instance.close = AsyncMock()
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ):
         result = await flow.async_step_user(
@@ -1244,7 +1244,7 @@ async def test_validate_input_success():
     }
     scanner_instance.verify_connection = AsyncMock()
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ):
         result = await validate_input(hass, data)
@@ -1267,7 +1267,7 @@ async def test_validate_input_invalid_domain():
     }
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create"
     ) as create_mock, pytest.raises(vol.Invalid) as err:
         await validate_input(None, data)
     assert err.value.error_message == "invalid_host"
@@ -1287,7 +1287,7 @@ async def test_validate_input_invalid_ipv4():
     }
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create"
     ) as create_mock, pytest.raises(vol.Invalid) as err:
         await validate_input(None, data)
     assert err.value.error_message == "invalid_host"
@@ -1307,7 +1307,7 @@ async def test_validate_input_invalid_ipv6():
     }
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create"
     ) as create_mock, pytest.raises(vol.Invalid) as err:
         await validate_input(None, data)
     assert err.value.error_message == "invalid_host"
@@ -1328,7 +1328,7 @@ async def test_validate_input_invalid_port(invalid_port: int):
     }
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create"
     ) as create_mock, pytest.raises(vol.Invalid) as err:
         await validate_input(None, data)
 
@@ -1356,7 +1356,7 @@ async def test_validate_input_invalid_slave(invalid_slave: int, err_code: str):
     }
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create"
     ) as create_mock, pytest.raises(vol.Invalid) as err:
         await validate_input(None, data)
 
@@ -1387,7 +1387,7 @@ async def test_validate_input_valid_ipv6():
     scanner_instance.close = AsyncMock()
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ):
         result = await validate_input(hass, data)
@@ -1419,7 +1419,7 @@ async def test_validate_input_valid_domain():
     scanner_instance.close = AsyncMock()
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ):
         result = await validate_input(hass, data)
@@ -1447,7 +1447,7 @@ async def test_validate_input_no_data():
     scanner_instance.close = AsyncMock()
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ), pytest.raises(CannotConnect):
         await validate_input(hass, data)
@@ -1474,7 +1474,7 @@ async def test_validate_input_modbus_exception():
     scanner_instance.close = AsyncMock()
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ), pytest.raises(CannotConnect):
         await validate_input(hass, data)
@@ -1500,7 +1500,7 @@ async def test_validate_input_scanner_closed_on_exception():
     scanner_instance.close = AsyncMock()
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ), pytest.raises(CannotConnect) as err:
         await validate_input(None, data)
@@ -1529,7 +1529,7 @@ async def test_validate_input_attribute_error():
     )
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ), pytest.raises(CannotConnect) as err:
         await validate_input(None, data)
@@ -1563,7 +1563,7 @@ async def test_validate_input_uses_scan_device_and_closes():
     )
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ):
         result = await validate_input(None, data)
@@ -1579,7 +1579,7 @@ async def test_validate_input_uses_scan_device_and_closes():
 async def test_validate_input_serializes_device_capabilities():
     """DeviceCapabilities from scanner should be converted to a dict."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
-    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+    from custom_components.thessla_green_modbus.scanner.core import DeviceCapabilities
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1601,7 +1601,7 @@ async def test_validate_input_serializes_device_capabilities():
     )
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ):
         result = await validate_input(None, data)
@@ -1631,7 +1631,7 @@ async def test_validate_input_verify_connection_failure():
     )
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ), pytest.raises(CannotConnect) as err:
         await validate_input(None, data)
@@ -1665,7 +1665,7 @@ async def test_validate_input_invalid_capabilities():
     )
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ), pytest.raises(CannotConnect) as err:
         await validate_input(None, data)
@@ -1693,7 +1693,7 @@ async def test_validate_input_invalid_scan_result_format():
     )
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ), pytest.raises(CannotConnect) as err:
         await validate_input(None, data)
@@ -1733,7 +1733,7 @@ async def test_validate_input_dataclass_capabilities_serialization():
     )
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ):
         result = await validate_input(None, data)
@@ -1768,7 +1768,7 @@ async def test_validate_input_missing_capabilities():
     )
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ), pytest.raises(CannotConnect) as err:
         await validate_input(None, data)
@@ -1783,7 +1783,7 @@ async def test_validate_input_capabilities_missing_fields():
     import dataclasses
 
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
-    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+    from custom_components.thessla_green_modbus.scanner.core import DeviceCapabilities
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1815,7 +1815,7 @@ async def test_validate_input_capabilities_missing_fields():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+            "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
             AsyncMock(return_value=scanner_instance),
         ),
         patch(
@@ -1865,11 +1865,11 @@ async def test_validate_input_slotted_capabilities_missing_fields():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+            "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
             AsyncMock(return_value=scanner_instance),
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.DeviceCapabilities",
+            "custom_components.thessla_green_modbus.scanner.core.DeviceCapabilities",
             SlotCaps,
         ),pytest.raises(CannotConnect) as err
     ):
@@ -1898,7 +1898,7 @@ async def test_validate_input_scan_device_connection_exception():
     )
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ), pytest.raises(CannotConnect) as err:
         await validate_input(None, data)
@@ -1926,7 +1926,7 @@ async def test_validate_input_scan_device_modbus_exception():
     )
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ), pytest.raises(CannotConnect) as err:
         await validate_input(None, data)
@@ -1954,7 +1954,7 @@ async def test_validate_input_scan_device_attribute_error():
     )
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(return_value=scanner_instance),
     ), pytest.raises(CannotConnect) as err:
         await validate_input(None, data)
@@ -1967,7 +1967,7 @@ async def test_validate_input_scan_device_attribute_error():
 async def test_validate_input_retries_transient_failures():
     """Transient failures during setup should be retried with backoff."""
     from custom_components.thessla_green_modbus.config_flow import validate_input
-    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+    from custom_components.thessla_green_modbus.scanner.core import DeviceCapabilities
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -1993,7 +1993,7 @@ async def test_validate_input_retries_transient_failures():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+            "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
             create_mock,
         ),
         patch("asyncio.sleep", sleep_mock),
@@ -2018,7 +2018,7 @@ async def test_validate_input_retries_transient_failures():
 async def test_validate_input_timeout_errors(exc, err_key):
     """Timeout and IO errors should map to appropriate UI errors."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
-    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+    from custom_components.thessla_green_modbus.scanner.core import DeviceCapabilities
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -2035,7 +2035,7 @@ async def test_validate_input_timeout_errors(exc, err_key):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+            "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
             AsyncMock(return_value=scanner_instance),
         ),
         patch("asyncio.sleep", AsyncMock()),pytest.raises(CannotConnect) as err
@@ -2052,7 +2052,7 @@ async def test_validate_input_timeout_errors(exc, err_key):
 async def test_validate_input_cancelled_timeout_suppresses_traceback(caplog):
     """Cancelled request timeout should not emit traceback debug logs."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
-    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+    from custom_components.thessla_green_modbus.scanner.core import DeviceCapabilities
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -2069,7 +2069,7 @@ async def test_validate_input_cancelled_timeout_suppresses_traceback(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+            "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
             AsyncMock(return_value=scanner_instance),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -2086,7 +2086,7 @@ async def test_validate_input_cancelled_timeout_suppresses_traceback(caplog):
 async def test_validate_input_cancelled_modbus_io_suppresses_traceback(caplog):
     """Cancelled ModbusIOException should not emit traceback debug logs."""
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
-    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+    from custom_components.thessla_green_modbus.scanner.core import DeviceCapabilities
 
     data = {
         CONF_HOST: "192.168.1.100",
@@ -2103,7 +2103,7 @@ async def test_validate_input_cancelled_modbus_io_suppresses_traceback(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+            "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
             AsyncMock(return_value=scanner_instance),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -2128,7 +2128,7 @@ async def test_validate_input_dns_failure():
     }
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(side_effect=socket.gaierror()),
     ), pytest.raises(CannotConnect) as err:
         await validate_input(None, data)
@@ -2149,7 +2149,7 @@ async def test_validate_input_connection_refused():
     }
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create",
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
         AsyncMock(side_effect=ConnectionRefusedError()),
     ), pytest.raises(CannotConnect) as err:
         await validate_input(None, data)
@@ -2159,7 +2159,7 @@ async def test_validate_input_connection_refused():
 
 def test_device_capabilities_serialization():
     """DeviceCapabilities.as_dict returns a JSON-serializable dict."""
-    from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+    from custom_components.thessla_green_modbus.scanner.core import DeviceCapabilities
 
     caps = DeviceCapabilities(
         basic_control=True,

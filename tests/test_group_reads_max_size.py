@@ -1,6 +1,6 @@
 import pytest
 from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
-from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
 
 @pytest.mark.parametrize("limit", [1, 8, MAX_BATCH_REGISTERS, 32])

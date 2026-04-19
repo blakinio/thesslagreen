@@ -380,7 +380,7 @@ class TestThesslaGreenConfigFlow:
         }
 
         with patch(
-            "custom_components.thessla_green_modbus.scanner_core."
+            "custom_components.thessla_green_modbus.scanner.core."
             "ThesslaGreenDeviceScanner.scan_device",
             return_value=scanner_result,
         ):
@@ -487,7 +487,7 @@ class TestThesslaGreenDeviceScanner:
     @pytest.mark.asyncio
     async def test_scanner_core_success(self, mock_modbus_client):
         """Test successful device scanning."""
-        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+        from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
@@ -518,7 +518,7 @@ class TestThesslaGreenDeviceScanner:
     async def test_scanner_core_connection_failure(self):
         """Test scanner behavior on connection failure."""
         from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
-        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+        from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
@@ -537,7 +537,7 @@ class TestThesslaGreenDeviceScanner:
 
     def test_register_value_validation(self):
         """Test register value validation logic."""
-        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+        from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
         scanner = asyncio.run(ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10))
 
@@ -568,7 +568,7 @@ class TestThesslaGreenDeviceScanner:
 
     def test_capability_analysis(self):
         """Test capability analysis logic."""
-        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+        from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
         scanner = asyncio.run(ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10))
         scanner.available_registers = {
@@ -767,7 +767,7 @@ class TestPerformanceOptimizations:
     @pytest.mark.asyncio
     async def test_scan_optimization_stats(self):
         """Test that device scanner provides optimization statistics."""
-        from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+        from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 

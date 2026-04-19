@@ -16,7 +16,6 @@ except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover -
 
 from ._legacy import (
     BIT_ENTITY_KEYS,
-    LEGACY_FAN_ENTITY_IDS,
     LEGACY_KEY_RENAMES,
     extract_key_from_unique_id,
     extract_legacy_problem_key_from_entity_id,
@@ -211,37 +210,6 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> N
         skipped_no_device,
         skipped_collision,
     )
-
-
-async def async_cleanup_legacy_fan_entity(hass: HomeAssistant, coordinator: object) -> None:
-    """Remove legacy number entity IDs replaced by the fan entity."""
-    if er is None:
-        return
-    registry = er.async_get(hass)
-    if registry is None:
-        return
-    new_entity_id = "fan.rekuperator_fan"
-    new_unique_id = f"{getattr(coordinator, 'slave_id', 1)}_0"
-    migrated = False
-
-    for old_entity_id in LEGACY_FAN_ENTITY_IDS:
-        if registry.async_get(old_entity_id):
-            try:
-                registry.async_update_entity(
-                    old_entity_id,
-                    new_entity_id=new_entity_id,
-                    new_unique_id=new_unique_id,
-                )
-            except (TypeError, AttributeError, OSError, RuntimeError):
-                registry.async_remove(old_entity_id)
-            migrated = True
-
-    if migrated:
-        _LOGGER.warning(
-            "Legacy fan entity detected. Migrated/removed legacy entities %s to '%s'.",
-            LEGACY_FAN_ENTITY_IDS,
-            new_entity_id,
-        )
 
 
 async def async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:

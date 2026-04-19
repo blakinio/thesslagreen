@@ -12,7 +12,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
     ModbusIOException,
 )
-from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
 # Stub minimal Home Assistant and pymodbus modules before importing the coordinator
 ha = types.ModuleType("homeassistant")

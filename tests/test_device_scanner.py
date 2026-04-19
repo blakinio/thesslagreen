@@ -15,7 +15,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusIOException,
 )
 from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
-from custom_components.thessla_green_modbus.scanner_core import (
+from custom_components.thessla_green_modbus.scanner.core import (
     DeviceCapabilities,
     ScannerDeviceInfo,
     ThesslaGreenDeviceScanner,
@@ -103,7 +103,7 @@ async def test_read_holding_skips_after_failure():
     # Initial failing scan
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=ModbusIOException("boom")),
         ) as call_mock1,
         patch("asyncio.sleep", AsyncMock()),
@@ -114,7 +114,7 @@ async def test_read_holding_skips_after_failure():
 
     # Subsequent call should be skipped
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+        "custom_components.thessla_green_modbus.scanner.core._call_modbus",
         AsyncMock(),
     ) as call_mock2:
         result = await scanner._read_holding(mock_client, 168, 1)
@@ -135,7 +135,7 @@ async def test_read_holding_exception_response(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(return_value=error_response),
         ) as call_mock,
         patch("asyncio.sleep", AsyncMock()),
@@ -155,7 +155,7 @@ async def test_read_holding_timeout_logging(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=TimeoutError()),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -178,7 +178,7 @@ async def test_read_holding_cancelled_request_logs_without_traceback(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=cancelled_exc),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -310,7 +310,7 @@ async def test_read_input_logs_warning_on_failure(caplog):
     caplog.set_level(logging.WARNING)
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=ModbusIOException("boom")),
         ) as call_mock,
         patch("asyncio.sleep", AsyncMock()),
@@ -329,7 +329,7 @@ async def test_read_input_skips_cached_failures():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=ModbusIOException("boom")),
         ) as call_mock,
         patch("asyncio.sleep", AsyncMock()),
@@ -342,7 +342,7 @@ async def test_read_input_skips_cached_failures():
 
     # Subsequent call should be skipped
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+        "custom_components.thessla_green_modbus.scanner.core._call_modbus",
         AsyncMock(),
     ) as call_mock2:
         result = await scanner._read_input(mock_client, 1, 1)
@@ -361,7 +361,7 @@ async def test_read_input_skips_range_on_exception_response(caplog):
 
     caplog.set_level(logging.WARNING)
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+        "custom_components.thessla_green_modbus.scanner.core._call_modbus",
         AsyncMock(return_value=error_response),
     ) as call_mock:
         result = await scanner._read_input(mock_client, 256, 3)
@@ -375,7 +375,7 @@ async def test_read_input_skips_range_on_exception_response(caplog):
 
     # Further reads within the range should be skipped without new calls
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+        "custom_components.thessla_green_modbus.scanner.core._call_modbus",
         AsyncMock(),
     ) as call_mock2:
         result = await scanner._read_input(mock_client, 257, 1)
@@ -394,7 +394,7 @@ async def test_read_holding_skips_range_on_exception_response(caplog):
 
     caplog.set_level(logging.WARNING)
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+        "custom_components.thessla_green_modbus.scanner.core._call_modbus",
         AsyncMock(return_value=error_response),
     ) as call_mock:
         result = await scanner._read_holding(mock_client, 512, 2)
@@ -408,7 +408,7 @@ async def test_read_holding_skips_range_on_exception_response(caplog):
 
     # Further reads within the range should be skipped without new calls
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+        "custom_components.thessla_green_modbus.scanner.core._call_modbus",
         AsyncMock(),
     ) as call_mock2:
         result = await scanner._read_holding(mock_client, 513, 1)
@@ -428,7 +428,7 @@ async def test_read_holding_skip_cache_reads_unsupported_range():
     response.registers = [123]
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+        "custom_components.thessla_green_modbus.scanner.core._call_modbus",
         AsyncMock(return_value=response),
     ) as call_mock:
         result = await scanner._read_holding(mock_client, 512, 1, skip_cache=True)
@@ -449,7 +449,7 @@ async def test_single_read_clears_failed_holding_cache():
     response.registers = [55]
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+        "custom_components.thessla_green_modbus.scanner.core._call_modbus",
         AsyncMock(return_value=response),
     ) as call_mock:
         result = await scanner._read_holding(client, 769, 1, skip_cache=True)
@@ -502,7 +502,7 @@ async def test_read_holding_exponential_backoff(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=ModbusException("boom")),
         ),
         patch(
@@ -530,7 +530,7 @@ async def test_read_holding_returns_none_on_modbus_error():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             call_modbus,
         ),
         patch(
@@ -613,7 +613,7 @@ async def test_read_coil_retries_on_failure(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=ModbusException("boom")),
         ) as call_mock,
         caplog.at_level(logging.DEBUG),
@@ -631,7 +631,7 @@ async def test_read_discrete_retries_on_failure(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=ModbusException("boom")),
         ) as call_mock,
         caplog.at_level(logging.DEBUG),
@@ -1026,19 +1026,19 @@ async def test_scan_device_batch_fallback():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.INPUT_REGISTERS",
             {"ir1": 16, "ir2": 17},
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.HOLDING_REGISTERS",
             {"hr1": 32, "hr2": 33},
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.COIL_REGISTERS",
             {"cr1": 0, "cr2": 1},
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.DISCRETE_INPUT_REGISTERS",
             {"dr1": 0, "dr2": 1},
         ),
         patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
@@ -1101,23 +1101,23 @@ async def test_missing_register_logged_once(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.INPUT_REGISTERS",
             {"reg_ok": 1, "reg_missing": 2},
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.HOLDING_REGISTERS",
             {},
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.COIL_REGISTERS",
             {},
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.DISCRETE_INPUT_REGISTERS",
             {},
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.KNOWN_MISSING_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.KNOWN_MISSING_REGISTERS",
             {},
         ),
         patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
@@ -1608,7 +1608,7 @@ async def test_scan_falls_back_to_single_input_reads_after_failed_batch():
 
     with (
         patch.dict(
-            "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.INPUT_REGISTERS",
             {
                 "version_major": 0,
                 "version_minor": 1,
@@ -1619,17 +1619,17 @@ async def test_scan_falls_back_to_single_input_reads_after_failed_batch():
             clear=True,
         ),
         patch.dict(
-            "custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.HOLDING_REGISTERS",
             {},
             clear=True,
         ),
         patch.dict(
-            "custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.COIL_REGISTERS",
             {},
             clear=True,
         ),
         patch.dict(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.DISCRETE_INPUT_REGISTERS",
             {},
             clear=True,
         ),
@@ -1671,7 +1671,7 @@ async def test_scan_reports_diagnostic_registers_on_error():
     }
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.HOLDING_REGISTERS",
             diag_regs,
         ),
         patch.object(scanner, "_read_input", AsyncMock(return_value=[])),
@@ -1777,23 +1777,23 @@ async def test_failed_addresses_recorded_on_exception():
 
     with (
         patch.dict(
-            "custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.INPUT_REGISTERS",
             {"version_major": 0},
         ),
         patch.dict(
-            "custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.HOLDING_REGISTERS",
             {},
         ),
         patch.dict(
-            "custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.COIL_REGISTERS",
             {},
         ),
         patch.dict(
-            "custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.DISCRETE_INPUT_REGISTERS",
             {},
         ),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
             AsyncMock(side_effect=fake_call),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -1864,12 +1864,12 @@ async def test_scan_logs_missing_expected_registers(caplog):
 
     scanner = ThesslaGreenDeviceScanner("host", 502)
     with (
-        patch("custom_components.thessla_green_modbus.scanner_core.INPUT_REGISTERS", input_regs),
-        patch("custom_components.thessla_green_modbus.scanner_core.HOLDING_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.COIL_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner_core.DISCRETE_INPUT_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.scanner.core.INPUT_REGISTERS", input_regs),
+        patch("custom_components.thessla_green_modbus.scanner.core.HOLDING_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.scanner.core.COIL_REGISTERS", {}),
+        patch("custom_components.thessla_green_modbus.scanner.core.DISCRETE_INPUT_REGISTERS", {}),
         patch(
-            "custom_components.thessla_green_modbus.scanner_core.KNOWN_MISSING_REGISTERS",
+            "custom_components.thessla_green_modbus.scanner.core.KNOWN_MISSING_REGISTERS",
             {
                 "input_registers": set(),
                 "holding_registers": set(),

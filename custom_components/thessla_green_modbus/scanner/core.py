@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Any
 from pymodbus.client import AsyncModbusTcpClient
 
 from .. import modbus_helpers as _mh
-from .. import scanner_io as _scanner_io
 from .. import scanner_register_maps as _register_maps
 from ..const import (
     CONNECTION_MODE_AUTO,
@@ -64,6 +63,7 @@ from ..utils import (
 )
 from . import capabilities as scanner_capabilities
 from . import firmware as scanner_firmware
+from . import io as _scanner_io_impl
 from . import io as scanner_domain_io
 from . import orchestration as scanner_orchestration
 from . import registers as scanner_registers
@@ -121,7 +121,7 @@ else:
 
 def _ensure_pymodbus_client_module() -> None:
     """Ensure `pymodbus.client` is importable and attached to `pymodbus`."""
-    _scanner_io.ensure_pymodbus_client_module()
+    _scanner_io_impl.ensure_pymodbus_client_module()
 
 
 # Register definition caches - populated lazily
@@ -129,12 +129,12 @@ def _ensure_pymodbus_client_module() -> None:
 
 def is_request_cancelled_error(exc: ModbusIOException) -> bool:
     """Return True when a modbus IO error indicates a cancelled request."""
-    return bool(_scanner_io.is_request_cancelled_error(exc))
+    return bool(_scanner_io_impl.is_request_cancelled_error(exc))
 
 
 async def _maybe_retry_yield(backoff: float, attempt: int, retry: int) -> None:
     """Yield control between retries to allow cancellation to propagate."""
-    await _scanner_io.maybe_retry_yield(backoff=backoff, attempt=attempt, retry=retry)
+    await _scanner_io_impl._maybe_retry_yield(backoff=backoff, attempt=attempt, retry=retry)
 
 
 async def _call_modbus_compat(
@@ -151,7 +151,7 @@ async def _call_modbus_compat(
     apply_backoff: bool = True,
 ) -> Any:
     """Call `_call_modbus` with rich kwargs, fallback to minimal mock signatures."""
-    return await _scanner_io.call_modbus_compat(
+    return await _scanner_io_impl._call_modbus_compat_fn(
         _call_modbus,
         func,
         slave_id,
@@ -170,7 +170,7 @@ async def _sleep_retry_backoff(
     *, backoff: float, backoff_jitter: float | tuple[float, float] | None, attempt: int, retry: int
 ) -> None:
     """Sleep between retries using modbus_helpers timing semantics."""
-    await _scanner_io.sleep_retry_backoff(
+    await _scanner_io_impl._sleep_retry_backoff_fn(
         calculate_backoff_delay=lambda base, at, jitter: _mh._calculate_backoff_delay(
             base=base, attempt=at, jitter=jitter
         ),

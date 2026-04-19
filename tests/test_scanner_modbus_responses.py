@@ -8,7 +8,7 @@ import pytest
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
 )
-from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
 pytestmark = pytest.mark.asyncio
 
@@ -30,7 +30,7 @@ async def test_scanner_retries_after_timeout() -> None:
         return response
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner_core._call_modbus",
+        "custom_components.thessla_green_modbus.scanner.core._call_modbus",
         side_effect=fake_call,
     ):
         result = await scanner._read_input(AsyncMock(), 1, 1)

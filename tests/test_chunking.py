@@ -5,7 +5,7 @@ from custom_components.thessla_green_modbus.modbus_helpers import (
     chunk_register_range,
     chunk_register_values,
 )
-from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
 
 def test_chunk_register_values_max_16():
