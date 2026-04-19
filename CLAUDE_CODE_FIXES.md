@@ -1,992 +1,662 @@
-# thessla_green_modbus — instrukcja napraw dla Claude Code (v9)
+# thessla_green_modbus — instrukcja napraw dla Claude Code (v11)
 
 **Repozytorium:** `github.com/blakinio/thesslagreen`
-**Branch:** `main` (HEAD: `cb2a33d` — merge PR #1329)
-**Wersja docelowa:** `2.4.1 → 2.4.2`
-**Data audytu:** 2026-04-17
+**Branch:** `main` (HEAD: `aea7cb9`)
+**Wersja docelowa:** `2.4.2 → 2.5.0`
+**Data audytu:** 2026-04-19
 
 ---
 
-## Co ten audyt odkrywa
+## Stan wyjściowy 2.4.2
 
-Po pobraniu świeżego repo okazało się że:
+- 🔴 **Ruff:** 2 errory — `F401` w `__init__.py:46`, `I001` w `coordinator.py:3`
+- 🔴 **Mypy:** 10 errorów w 2 plikach
+- 🔴 **RUNTIME:** `ImportError` przy starcie HA — `_coordinator_update.py:15` importuje `utcnow` z `utils`, której tam nie ma
+- 🟡 Brak `.python-version` / `.tool-versions` dla pyenv/asdf
+- 🟡 `pre-commit-config.yaml` bez jawnego `python3.13`, używa starego `black`+`isort` zamiast `ruff-format`
+- 🟡 ~540 linii legacy: migracje v1, port 8899, polskie entity_ids, fan entity legacy, scanner shimsy
 
-✅ **V8 wdrożone** (PR #1329): `_compat_asdict` usunięty, `_HAS_HA + "pytest" in sys.modules` usunięte, `inspect.signature` w 3 miejscach usunięty, `"Skipping in mock context"` usunięte, trywialne `_schema`/`_required` usunięte.
+---
 
-✅ **Bonus — Fix #10 i #11 z v8 Grupa B wdrożone**:
-- `_setup.py` wydzielony z `__init__.py` (246 linii) → `__init__.py` schudł z 1067 do **755 linii**.
-- `scanner/core.py` podzielony: **1596 → 1043 linie** (−553), nowe moduły `scanner/orchestration.py` (385 linii) i `scanner/setup.py` (151 linii).
+## Podział: 3 PR-y
 
-✅ **Fix #9 z v8 Grupa B wdrożone częściowo**: `CoordinatorConfig` dataclass istnieje, z metodą `from_entry(entry)` i factory `from_config(hass, config, entry)`. **ALE** nie usunięto 24-param `__init__` coordynatora — `from_config` to tylko wrapper który mapuje config na stary `__init__`.
+- **PR 1 → patch 2.4.3:** Fixy #1-#4 (KRYTYCZNE — runtime bug, ruff, mypy)
+- **PR 2 → patch 2.4.4:** Fixy #5-#8 (środowisko Python 3.13)
+- **PR 3 → major 2.5.0:** Fixy #9-#17 (usunięcie legacy, breaking)
 
-🚨 **REGRESJA** — część pracy z v7 została **cofnięta**:
-- `_compat.py` wrócił do 75 linii z `try/except ImportError` i fallbackami (po v7 miał być tylko re-exportem)
-- `config_flow.py` odzyskał `DhcpServiceInfo`/`ZeroconfServiceInfo`/`ConfigFlowResult` fallbacki (v7 Fix #14a-b)
-- `const.py` odzyskał `PLATFORMS` fallback (v7 Fix #5)
-- `register_map.py` dodał `except (ImportError, ModuleNotFoundError): def get_all_registers(): return []` fallback
+---
 
-🚨 **NOWY SMELL krytyczny** — `_setup.py:40-48`:
+# CZĘŚĆ 1 — Krytyczne naprawy (2.4.3)
+
+## Fix #1 — `utcnow` brakuje w `utils.py` (RUNTIME BUG)
+
+**Problem:** `_coordinator_update.py:15` robi `from .utils import utcnow as _utcnow`, ale `utils.py` nie ma tej funkcji. Integracja nie uruchomi się w HA.
+
+### Krok 1a — dodaj `utcnow` do `utils.py`
+
+**Plik:** `custom_components/thessla_green_modbus/utils.py`
+
+#### SZUKAJ
 ```python
-def _supports_typed_factory(coordinator_cls):
-    if not hasattr(coordinator_cls, "from_config"): return False
-    from unittest.mock import Mock
-    return not isinstance(coordinator_cls, Mock)
+from datetime import time
 ```
-**Produkcja sprawdza czy klasa jest `Mock`-iem**. Jeśli tak — wraca do starej ścieżki 22-kwarg. Nowy detox hack który zamiast usunąć, tylko skomplikował problem.
 
-**Baseline:**
-- ✅ Ruff: 0 findings
-- ✅ Mypy strict: 0 errors (53 pliki — +3 od v2.4.0)
-- ✅ Zero TODO/FIXME/HACK
+#### ZASTĄP
+```python
+from datetime import UTC, datetime, time
+```
 
----
+#### SZUKAJ
+```python
+def _to_snake_case(name: str) -> str:
+```
 
-## Motywacja v2.4.2
+#### ZASTĄP (wstaw przed)
+```python
+def utcnow() -> datetime:
+    """Return current UTC time as timezone-aware datetime."""
+    return datetime.now(UTC)
 
-Dwa cele:
 
-1. **Naprawa regresji** — przywrócenie stanu `_compat.py`/`config_flow.py` z v7 (czyste re-exports).
-2. **Nowy detox** — usunięcie `_supports_typed_factory` Mock check + finalna unifikacja ścieżki konstrukcji coordynatora.
+def _to_snake_case(name: str) -> str:
+```
 
-**Plus kilka nowych drobnych znalezisk** (sys.modules hacks w `mappings/`, test-compat komentarze w `modbus_helpers.py`).
+### Krok 1b — uprość `_utcnow` w `coordinator.py`
 
-**Minor bump (2.4.2)** — czysto removals/cleanups, zero feature changes.
+**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
 
----
+#### SZUKAJ
+```python
+def _utcnow() -> datetime:
+    """Return a timezone-aware UTC datetime."""
+    return dt_util.utcnow()
+```
 
-## Zakres i kolejność
+#### ZASTĄP
+```python
+def _utcnow() -> datetime:
+    """Return a timezone-aware UTC datetime."""
+    from .utils import utcnow as _utils_utcnow
+    return _utils_utcnow()
+```
 
-**Grupa A — Detox regresji (średnie ryzyko, każdy pojedyńczo):**
-
-1. **Fix #1** — `_supports_typed_factory` + dual path w `async_create_coordinator` → jedna ścieżka przez `from_config`
-2. **Fix #2** — `_compat.py` — powrót do czystych re-exports z v7
-3. **Fix #3** — `config_flow.py` — usunięcie fallback `DhcpServiceInfo`/`ZeroconfServiceInfo`/`ConfigFlowResult`
-4. **Fix #4** — `const.py` — usunięcie `PLATFORMS` fallback
-5. **Fix #5** — `register_map.py` — usunięcie `get_all_registers` fallback
-
-**Grupa B — Nowe znaleziska (niskie ryzyko):**
-
-6. **Fix #6** — `modbus_helpers.py:285` — usunięcie komentarza + signature-based Mock workaround
-7. **Fix #7** — `mappings/_loaders.py`/`legacy.py`/`_helpers.py` — audit wzorca `_get_parent()` z `sys.modules`
-
-**Grupa C — Dokończenie Fix #9 z v8 (rekomendowane, niskie ryzyko):**
-
-8. **Fix #8** — Uproszczenie 24-param `__init__` coordynatora przez prawdziwe użycie `CoordinatorConfig`
-
-Po każdym fixie:
+Uwaga: import wewnątrz funkcji unika circular import (coordinator.py jest importowany przez wiele miejsc). Alternatywnie dodaj `from .utils import utcnow as _utcnow` do bloku lokalnych importów na górze pliku i usuń funkcję — ale najpierw sprawdź czy circular import nie występuje:
 ```bash
+python -c "from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator"
+```
+
+---
+
+## Fix #2 — Typing w `_entity_registry_migrations.py` (9 mypy errorów)
+
+**Plik:** `custom_components/thessla_green_modbus/_entity_registry_migrations.py`
+
+#### SZUKAJ
+```python
+    candidates: dict[str, object] = {}
+    for entity in all_platform_entries:
+        candidates[entity.entity_id] = entity
+    for entity in config_entry_list:
+        candidates[entity.entity_id] = entity
+```
+
+#### ZASTĄP
+```python
+    candidates: dict[str, Any] = {}
+    for entity in all_platform_entries:
+        candidates[getattr(entity, "entity_id", "")] = entity
+    for entity in config_entry_list:
+        candidates[getattr(entity, "entity_id", "")] = entity
+```
+
+Sprawdź czy `Any` jest już importowany:
+```bash
+grep "from typing import" custom_components/thessla_green_modbus/_entity_registry_migrations.py | head -3
+```
+
+Jeśli nie — dodaj do istniejącego `from typing import ...` bloku.
+
+Analogicznie dla pozostałych linii z mypy errorami (109, 116, 119, 124, 134, 139, 144) — zamień bezpośrednie dostępy do atrybutów `entity.entity_id`/`entity.unique_id` na `getattr(entity, "entity_id", "")` / `getattr(entity, "unique_id", "")`.
+
+Sprawdź je wszystkie:
+```bash
+grep -n "entity\.entity_id\|entity\.unique_id" custom_components/thessla_green_modbus/_entity_registry_migrations.py
+```
+
+---
+
+## Fix #3 — Ruff I001: import order w `coordinator.py`
+
+**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
+
+Najszybszy fix:
+```bash
+ruff check --fix custom_components/thessla_green_modbus/coordinator.py
+```
+
+Ręcznie — zamień kolejność bloków `_coordinator_*` (muszą być alfabetycznie):
+
+#### SZUKAJ (linie 26-36)
+```python
+from ._coordinator_schedule import _CoordinatorScheduleMixin
+from ._coordinator_register_processing import (
+    create_consecutive_groups as _create_consecutive_groups_impl,
+)
+from ._coordinator_register_processing import (
+    find_register_name as _find_register_name_impl,
+)
+from ._coordinator_register_processing import (
+    process_register_value as _process_register_value_impl,
+)
+from ._coordinator_update import async_update_data as _async_update_data_impl
+```
+
+#### ZASTĄP
+```python
+from ._coordinator_register_processing import (
+    create_consecutive_groups as _create_consecutive_groups_impl,
+    find_register_name as _find_register_name_impl,
+    process_register_value as _process_register_value_impl,
+)
+from ._coordinator_schedule import _CoordinatorScheduleMixin
+from ._coordinator_update import async_update_data as _async_update_data_impl
+```
+
+---
+
+## Fix #4 — Ruff F401: nieużywany `CONF_SLAVE_ID` w `__init__.py`
+
+**Plik:** `custom_components/thessla_green_modbus/__init__.py`
+
+```bash
+ruff check --fix --select F401 custom_components/thessla_green_modbus/__init__.py
+```
+
+Lub ręcznie:
+
+#### SZUKAJ
+```python
+    CONF_SCAN_INTERVAL,
+    CONF_SLAVE_ID,
+    DEFAULT_LOG_LEVEL,
+```
+
+#### ZASTĄP
+```python
+    CONF_SCAN_INTERVAL,
+    DEFAULT_LOG_LEVEL,
+```
+
+### Weryfikacja Grupy A
+
+```bash
+ruff check custom_components/ tests/ tools/   # Expected: All checks passed!
+mypy custom_components/thessla_green_modbus/  # Expected: Success: no issues found
+```
+
+### Bump dla PR 1
+
+`manifest.json`: `"version": "2.4.3"` | `pyproject.toml`: `version = "2.4.3"`
+
+```markdown
+## 2.4.3 — Critical fix: ImportError at integration load
+
+### Fixed
+- `_coordinator_update.py` imported `utcnow` from `utils` but the function
+  did not exist — integration failed to load in HA with `ImportError`. Added
+  `utcnow()` helper to `utils.py`.
+- Ruff I001 in `coordinator.py` (import order) and F401 in `__init__.py`
+  (unused `CONF_SLAVE_ID`).
+- 9 mypy errors in `_entity_registry_migrations.py` (`dict[str, object]`
+  replaced with `dict[str, Any]` + `getattr` access).
+```
+
+---
+
+# CZĘŚĆ 2 — Środowisko Python 3.13 (2.4.4)
+
+## Fix #5 — `.python-version` dla pyenv
+
+**Plik:** `.python-version` (NOWY, root)
+
+```
+3.13
+```
+
+## Fix #6 — `.tool-versions` dla asdf
+
+**Plik:** `.tool-versions` (NOWY, root)
+
+```
+python 3.13.0
+```
+
+## Fix #7 — Przebuduj `.pre-commit-config.yaml`
+
+**Plik:** `.pre-commit-config.yaml`
+
+Obecna konfiguracja ma trzy problemy:
+1. Brak `default_language_version: python: python3.13`
+2. Używa `black` + `isort` — projekt używa `ruff` dla formatu i sortowania
+3. `mypy` sprawdza tylko `registers/` zamiast całego pakietu
+
+#### ZASTĄP cały plik
+```yaml
+default_language_version:
+  python: python3.13
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        pass_filenames: false
+        args:
+          - "--config-file=pyproject.toml"
+          - "custom_components/thessla_green_modbus"
+        additional_dependencies:
+          - types-PyYAML>=6.0.12
+          - pymodbus>=3.6.0
+          - voluptuous>=0.13.1
+          - pydantic>=2,<3
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+```
+
+## Fix #8 — `__init__.py`: explicit Python version check
+
+**Plik:** `custom_components/thessla_green_modbus/__init__.py`
+
+#### SZUKAJ
+```python
+"""ThesslaGreen Modbus integration for Home Assistant."""
+
+from __future__ import annotations
+```
+
+#### ZASTĄP
+```python
+"""ThesslaGreen Modbus integration for Home Assistant."""
+
+from __future__ import annotations
+
+import sys as _sys
+
+if _sys.version_info < (3, 13):
+    raise RuntimeError(
+        f"ThesslaGreen Modbus requires Python 3.13+; "
+        f"running on {_sys.version_info.major}.{_sys.version_info.minor}. "
+        "Update Home Assistant to 2026.1.0+ which ships Python 3.13."
+    )
+```
+
+## Fix #9 — README: sekcja Development
+
+**Plik:** `README.md` — dodaj sekcję (lub `CONTRIBUTING.md` jeśli istnieje):
+
+```markdown
+## Development
+
+**Python 3.13 is required** (matches Home Assistant 2026.1+).
+
+```bash
+pyenv install 3.13 && pyenv local 3.13   # lub: asdf install python 3.13.0
+pip install -r requirements-dev.txt
+pre-commit install
 ruff check custom_components/ tests/ tools/
 mypy custom_components/thessla_green_modbus/
 pytest tests/ -x -q
 ```
 
+> **Note for Codex / AI agents:** The integration uses `enum.StrEnum`
+> (Python 3.11+). Running `pytest` in a container with Python < 3.13 will
+> fail at import with `ImportError: cannot import name 'StrEnum' from 'enum'`.
+> This is expected — the test environment must use Python 3.13.
+```
+
+### Bump dla PR 2
+
+`manifest.json`: `"version": "2.4.4"` | `pyproject.toml`: `version = "2.4.4"`
+
+```markdown
+## 2.4.4 — Python 3.13 environment enforcement
+
+### Added
+- `.python-version` (pyenv) and `.tool-versions` (asdf) declare Python 3.13.
+- Explicit `sys.version_info` check in `__init__.py` — clear error on older Python.
+- `.pre-commit-config.yaml` rebuilt: `default_language_version: python3.13`,
+  replaced `black`+`isort` with `ruff-format`, expanded mypy scope to full package.
+- README development setup section.
+```
+
 ---
 
-## Fix #1 — Usuń `_supports_typed_factory` Mock check
+# CZĘŚĆ 3 — Usunięcie legacy (2.5.0, BREAKING)
 
-**Plik:** `custom_components/thessla_green_modbus/_setup.py`
+## Fix #10 — Usuń migrację `config_entry.version == 1` (pre-2021)
 
-**Dowód (linie 40-48):**
+**Plik:** `custom_components/thessla_green_modbus/_entry_migrations.py`
+
+#### SZUKAJ
 ```python
-def _supports_typed_factory(coordinator_cls: Any) -> bool:
-    """Return True when class can safely use from_config in runtime."""
-    if not hasattr(coordinator_cls, "from_config"):
-        return False
-    try:
-        from unittest.mock import Mock
-    except ImportError:  # pragma: no cover
-        return True
-    return not isinstance(coordinator_cls, Mock)
-```
+    if config_entry.version == 1:
+        if "unit" in new_data and CONF_SLAVE_ID not in new_data:
+            new_data[CONF_SLAVE_ID] = new_data["unit"]
+            _LOGGER.info("Migrated 'unit' to '%s'", CONF_SLAVE_ID)
 
-**Co to robi:** sprawdza czy `coordinator_cls`:
-1. Ma atrybut `from_config` (tak, **zawsze** ma — jest classmethod na `ThesslaGreenModbusCoordinator`).
-2. **Nie jest instancją `Mock`**. Jeśli jest Mockiem → zwraca `False` → idziemy starą ścieżką 22-kwarg.
+        if CONF_PORT not in new_data:
+            new_data[CONF_PORT] = LEGACY_DEFAULT_PORT
+            _LOGGER.info("Added '%s' with legacy default %s", CONF_PORT, LEGACY_DEFAULT_PORT)
 
-**Produkcja importuje `unittest.mock` w hot path** żeby wykryć testy. To jest **dokładnie ten sam gatunek smelli** który usuwaliśmy w v6/v8: produkcja-pod-testy.
+        if CONF_SCAN_INTERVAL not in new_options:
+            new_options[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
+        if CONF_TIMEOUT not in new_options:
+            new_options[CONF_TIMEOUT] = DEFAULT_TIMEOUT
+        if CONF_RETRY not in new_options:
+            new_options[CONF_RETRY] = DEFAULT_RETRY
+        if CONF_FORCE_FULL_REGISTER_LIST not in new_options:
+            new_options[CONF_FORCE_FULL_REGISTER_LIST] = False
 
-**Dual code path w `async_create_coordinator` (linie 132-159):**
-```python
-if _supports_typed_factory(ThesslaGreenModbusCoordinator):
-    return ThesslaGreenModbusCoordinator.from_config(hass, config, entry=entry)
-
-return ThesslaGreenModbusCoordinator(
-    hass=hass,
-    host=config.host,
-    port=config.port,
-    # ... 19 więcej kwargs
-    entry=entry,
-)
-```
-
-**Dlaczego to istnieje:** testy podstawiają `Mock()` jako `ThesslaGreenModbusCoordinator` w `_setup.py`. `Mock()` ma każdy atrybut (włącznie z `from_config`) i każdą metodę. Gdyby produkcja wywołała `Mock.from_config(hass, config, entry)`, mock dostałby 3 argumenty zamiast 22 kwargs — test weryfikujący "czy coordinator został utworzony z properties X, Y, Z" padłby.
-
-**Prawidłowe rozwiązanie:** zmuszenie testów do używania `MagicMock(spec=ThesslaGreenModbusCoordinator)` (z `spec=` mock akceptuje tylko prawdziwe metody) lub prawdziwego coordynatora.
-
-### Krok 1a — usuń `_supports_typed_factory`
-
-**Plik:** `custom_components/thessla_green_modbus/_setup.py`
-
-#### SZUKAJ (linie 40-48)
-```python
-def _supports_typed_factory(coordinator_cls: Any) -> bool:
-    """Return True when class can safely use from_config in runtime."""
-    if not hasattr(coordinator_cls, "from_config"):
-        return False
-    try:
-        from unittest.mock import Mock
-    except ImportError:  # pragma: no cover
-        return True
-    return not isinstance(coordinator_cls, Mock)
-```
-
-#### USUŃ (całość)
-
-### Krok 1b — uprość `async_create_coordinator`
-
-**Plik:** `custom_components/thessla_green_modbus/_setup.py`
-
-#### SZUKAJ (linie 130-159)
-```python
-    scan_interval_seconds = _scan_interval_seconds(config.scan_interval)
-
-    if _supports_typed_factory(ThesslaGreenModbusCoordinator):
-        return ThesslaGreenModbusCoordinator.from_config(hass, config, entry=entry)
-
-    return ThesslaGreenModbusCoordinator(
-        hass=hass,
-        host=config.host,
-        port=config.port,
-        slave_id=config.slave_id,
-        name=config.name,
-        connection_type=config.connection_type,
-        connection_mode=config.connection_mode,
-        serial_port=config.serial_port,
-        baud_rate=config.baud_rate,
-        parity=config.parity,
-        stop_bits=config.stop_bits,
-        timeout=config.timeout,
-        retry=config.retry,
-        backoff=config.backoff,
-        backoff_jitter=config.backoff_jitter,
-        force_full_register_list=config.force_full_register_list,
-        scan_uart_settings=config.scan_uart_settings,
-        deep_scan=config.deep_scan,
-        safe_scan=config.safe_scan,
-        skip_missing_registers=config.skip_missing_registers,
-        max_registers_per_request=config.max_registers_per_request,
-        scan_interval=timedelta(seconds=scan_interval_seconds),
-        entry=entry,
-    )
+        config_entry.version = 2
 ```
 
 #### ZASTĄP
 ```python
-    return ThesslaGreenModbusCoordinator.from_config(hass, config, entry=entry)
+    if config_entry.version == 1:
+        _LOGGER.error(
+            "ThesslaGreen Modbus: config entry version 1 (pre-2021) is no longer "
+            "supported. Please remove and re-add the integration."
+        )
+        return False
 ```
 
-### Krok 1c — sprawdź czy `timedelta` jeszcze używana
+## Fix #11 — Usuń `LEGACY_DEFAULT_PORT = 8899`
+
+**Plik:** `custom_components/thessla_green_modbus/_entry_migrations.py`
+
+#### SZUKAJ
+```python
+LEGACY_DEFAULT_PORT = 8899
+```
+
+#### USUŃ (całą linię)
+
+Zamień wszystkie użycia `LEGACY_DEFAULT_PORT` na `DEFAULT_PORT`:
+```bash
+grep -n "LEGACY_DEFAULT_PORT" custom_components/thessla_green_modbus/_entry_migrations.py
+```
+
+Sprawdź testy:
+```bash
+grep -rn "LEGACY_DEFAULT_PORT\|8899" tests/ --include="*.py"
+```
+Zaktualizuj — użyj `port=8899` explicit tam gdzie testy migracji wymagają tej konkretnej wartości.
+
+## Fix #12 — Usuń polskie entity_id aliasy z `mappings/legacy.py`
+
+**Plik:** `custom_components/thessla_green_modbus/mappings/legacy.py`
+
+#### SZUKAJ (w `LEGACY_ENTITY_ID_OBJECT_ALIASES`)
+```python
+    # Polish-language entity IDs (installations with HA language set to pl before 2026)
+    "rekuperator_moc_odzysku_ciepla": ("sensor", "rekuperator_heat_recovery_power"),
+    "rekuperator_sprawnosc_rekuperatora": ("sensor", "rekuperator_heat_recovery_efficiency"),
+    "rekuperator_pobor_mocy_elektrycznej": ("sensor", "rekuperator_electrical_power"),
+```
+
+#### USUŃ te 4 linie (wpisy + komentarz)
+
+Sprawdź czy są kolejne z nieanglieskim słowem jako klucz:
+```bash
+grep -n "rekuperator_[a-z]*[ą-ż]" custom_components/thessla_green_modbus/mappings/legacy.py
+```
+
+## Fix #13 — Usuń `LEGACY_FAN_ENTITY_IDS` i fan entity cleanup
+
+### Krok 13a — `_legacy.py`
+
+**Plik:** `custom_components/thessla_green_modbus/_legacy.py`
+
+#### SZUKAJ
+```python
+# Legacy entity IDs that were replaced by the fan entity
+LEGACY_FAN_ENTITY_IDS = [
+    "number.rekuperator_predkosc",
+    "number.rekuperator_speed",
+]
+```
+
+#### USUŃ (4 linie)
+
+### Krok 13b — `_entity_registry_migrations.py`
+
+Usuń w całości funkcję `async_cleanup_legacy_fan_entity`:
+```bash
+grep -n "def async_cleanup_legacy_fan_entity" custom_components/thessla_green_modbus/_entity_registry_migrations.py
+```
+
+Usuń od `async def async_cleanup_legacy_fan_entity` do następnej funkcji na tym samym poziomie wcięcia.
+
+### Krok 13c — `__init__.py`
+
+#### SZUKAJ
+```python
+    await _async_cleanup_legacy_fan_entity(hass, coordinator)
+```
+#### USUŃ
+
+#### SZUKAJ (w bloku importów)
+```python
+    async_cleanup_legacy_fan_entity as _async_cleanup_legacy_fan_entity,
+```
+#### USUŃ
+
+### Krok 13d — `_migrations.py`
 
 ```bash
-grep -n "\btimedelta\b" custom_components/thessla_green_modbus/_setup.py
+grep -n "async_cleanup_legacy_fan_entity" custom_components/thessla_green_modbus/_migrations.py
+```
+Usuń linię z listy importów i z `__all__` jeśli jest tam wymienione.
+
+### Krok 13e — `mappings/legacy.py`: usuń `predkosc`/`speed` aliasy
+
+#### SZUKAJ
+```python
+LEGACY_ENTITY_ID_ALIASES: dict[str, tuple[str, str]] = {
+    # "number.rekuperator_predkosc" / "number.rekuperator_speed" → fan entity
+    "predkosc": ("fan", "fan"),
+    "speed": ("fan", "fan"),
+}
 ```
 
-Jeśli nie — usuń `from datetime import timedelta` z nagłówka. Jeśli wciąż używana (np. w `_scan_interval_seconds`) — zostaw.
+#### ZASTĄP (lub usuń cały dict jeśli pusty po cleanup)
+```python
+LEGACY_ENTITY_ID_ALIASES: dict[str, tuple[str, str]] = {}
+```
 
-### Krok 1d — napraw testy
+Jeśli dict pusty — szukaj wszystkich użyć i usuń:
+```bash
+grep -rn "LEGACY_ENTITY_ID_ALIASES" custom_components/ --include="*.py"
+```
+
+### Weryfikacja fix #13
+```bash
+grep -rn "LEGACY_FAN_ENTITY_IDS\|async_cleanup_legacy_fan_entity" custom_components/ --include="*.py"
+# Expected: 0 wyników
+```
+
+## Fix #14 — Udokumentuj `BIT_ENTITY_KEYS` jako "not legacy"
+
+**Plik:** `custom_components/thessla_green_modbus/_legacy.py`
+
+#### SZUKAJ
+```python
+# Mapping from (register_key, bit_value) → bit-specific entity key.
+# Used during migration to assign unique entity_ids to individual bits of
+# bitmask registers.  Without this, all 4 bits of e_196_e_199 would all
+# target the same entity_id (collision) and only one could be migrated.
+BIT_ENTITY_KEYS: dict[tuple[str, int], str] = {
+```
+
+#### ZASTĄP
+```python
+# Mapping from (register_key, bit_value) → bit-specific entity key.
+#
+# NOT LEGACY — this is an active functional requirement. The e_196_e_199
+# register is a 4-bit bitmask; each bit maps to a separate binary_sensor
+# entity (E196..E199). Without this map all 4 bits would collide on the
+# same entity_id. Do not remove.
+BIT_ENTITY_KEYS: dict[tuple[str, int], str] = {
+```
+
+## Fix #15 — `LEGACY_KEY_RENAMES`: dodaj deprecation schedule
+
+**Plik:** `custom_components/thessla_green_modbus/_legacy.py`
+
+#### SZUKAJ
+```python
+# Map old register keys (as they appeared in unique_ids) to current keys.
+# Needed for entities where the dict_key itself was renamed across versions,
+# not just the entity_id naming mechanism (translation → key-based).
+LEGACY_KEY_RENAMES: dict[str, str] = {
+```
+
+#### ZASTĄP
+```python
+# Map old register keys to current keys for unique_id migration.
+#
+# DEPRECATION SCHEDULE: entries older than 2 years are candidates for
+# removal in 2.7.0+ (planned end-2026). When adding new entries, annotate
+# the version in which the rename happened, e.g.:
+#   "old_key": "new_key",  # renamed in 2.3.0
+LEGACY_KEY_RENAMES: dict[str, str] = {
+```
+
+## Fix #16 — Usuń shim `scanner_core.py`
+
+### Krok 16a — znajdź użycia w testach
 
 ```bash
-grep -rn "ThesslaGreenModbusCoordinator\s*=\s*Mock\|coordinator_cls\s*=\s*Mock" tests/ --include="*.py"
+grep -rn "scanner_core" tests/ --include="*.py" | head -20
 ```
 
-Dla każdego testu podstawiającego `Mock()` jako coordinator class:
+### Krok 16b — zamień ścieżki importów w testach
+
+Dla każdego wystąpienia `custom_components.thessla_green_modbus.scanner_core`:
 
 ```python
-# Było (działało dzięki _supports_typed_factory który zwracał False):
-mock_coordinator_cls = Mock()
-monkeypatch.setattr("custom_components.thessla_green_modbus._setup.ThesslaGreenModbusCoordinator", mock_coordinator_cls)
-await async_create_coordinator(hass, entry)
-mock_coordinator_cls.assert_called_once_with(host="1.2.3.4", port=502, ...)
-
-# Ma być (explicit spec, `from_config` activates):
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-mock_coordinator = MagicMock(spec=ThesslaGreenModbusCoordinator)
-# Lub jeszcze lepiej:
-mock_from_config = AsyncMock()
-monkeypatch.setattr(ThesslaGreenModbusCoordinator, "from_config", mock_from_config)
-await async_create_coordinator(hass, entry)
-mock_from_config.assert_called_once_with(hass, config_object, entry=entry)
+# Było:
+"custom_components.thessla_green_modbus.scanner_core.ThesslaGreenDeviceScanner.create"
+# Ma być:
+"custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create"
 ```
 
-### Oczekiwany efekt
-- −9 linii funkcji `_supports_typed_factory`
-- −25 linii dual-path construction w `async_create_coordinator`
-- Jedna ścieżka konstrukcji — jaśniejszy flow
-- `unittest.mock` nie jest już importowany w produkcji
+### Krok 16c — usuń plik
 
----
-
-## Fix #2 — `_compat.py` powrót do czystych re-exports
-
-**Plik:** `custom_components/thessla_green_modbus/_compat.py`
-
-**Dowód (linie 10-53):**
-```python
-try:
-    from homeassistant.components.binary_sensor import BinarySensorDeviceClass
-    from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-    from homeassistant.const import (
-        EVENT_HOMEASSISTANT_STOP,
-        PERCENTAGE,
-        UnitOfElectricPotential,
-        UnitOfPower,
-        UnitOfTemperature,
-        UnitOfTime,
-        UnitOfVolumeFlowRate,
-    )
-    from homeassistant.helpers.device_registry import DeviceInfo
-    from homeassistant.helpers.entity import EntityCategory
-    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-    from homeassistant.util import dt as dt_util
-except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover - test stubs
-    from homeassistant.components.binary_sensor import BinarySensorDeviceClass
-    from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-    from homeassistant.helpers.device_registry import DeviceInfo
-    from homeassistant.helpers.entity import EntityCategory
-    from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-    from homeassistant.util import dt as dt_util
-
-    EVENT_HOMEASSISTANT_STOP = "homeassistant_stop"
-    PERCENTAGE = "%"
-
-    class UnitOfElectricPotential:  # type: ignore[no-redef]
-        VOLT = "V"
-    # ... więcej takich klas
+```bash
+rm custom_components/thessla_green_modbus/scanner_core.py
 ```
 
-**To jest nielogiczne:**
-- `try` block importuje z 5 modułów HA.
-- `except` block importuje z **dokładnie tych samych 5 modułów HA**, z wyjątkiem `homeassistant.const`.
-- Jedyne co `except` robi inaczej: re-defines `EVENT_HOMEASSISTANT_STOP`, `PERCENTAGE`, `UnitOf*` jako lokalne klasy.
+## Fix #17 — Uprość shim `scanner_io.py`
 
-**Kiedy except trigger'uje:** tylko gdy `homeassistant.const` jest dostępne **częściowo** (brak `EVENT_HOMEASSISTANT_STOP` lub `UnitOf*`). Te symbole są w HA od 2022. Manifest wymaga HA 2026.1.0.
+**Plik:** `custom_components/thessla_green_modbus/scanner_io.py`
 
-**Po v7 (Fix #5):** ten plik był czystym re-exportem bez `try/except`. Regresja.
+Sprawdź które funkcje są faktycznie używane przez produkcję:
+```bash
+grep -rn "from \.\.scanner_io\|from \. import scanner_io\|scanner_io\." custom_components/thessla_green_modbus/ --include="*.py"
+```
 
-### Krok 2 — przywróć stan z v7
+Sprawdź że `is_request_cancelled_error` i `ensure_pymodbus_client_module` są już w `scanner/io.py`:
+```bash
+grep -n "def is_request_cancelled_error\|def ensure_pymodbus_client_module" custom_components/thessla_green_modbus/scanner/io.py
+```
 
-**Plik:** `custom_components/thessla_green_modbus/_compat.py`
+Jeśli są — **zastąp całą zawartość `scanner_io.py`** cienkim shimem:
 
-#### ZASTĄP cały plik
+#### ZASTĄP całą zawartość
 ```python
-"""Compatibility re-exports for Home Assistant symbols used across the integration.
-
-Manifest requires homeassistant>=2026.1.0 and python>=3.13, so all fallbacks
-for running without Home Assistant have been removed. This module is now a
-single import point for HA symbols used across the integration.
-"""
+"""Backward compatibility shim — moved to scanner.io."""
 
 from __future__ import annotations
 
-from datetime import UTC
-from typing import Any
-
-from homeassistant.components.binary_sensor import BinarySensorDeviceClass
-from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-from homeassistant.const import (
-    EVENT_HOMEASSISTANT_STOP,
-    PERCENTAGE,
-    UnitOfElectricPotential,
-    UnitOfPower,
-    UnitOfTemperature,
-    UnitOfTime,
-    UnitOfVolumeFlowRate,
+from .scanner.io import (
+    ensure_pymodbus_client_module,
+    is_request_cancelled_error,
 )
-from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.util import dt as dt_util
 
-COORDINATOR_BASE = DataUpdateCoordinator[dict[str, Any]]
-
-__all__ = [
-    "COORDINATOR_BASE",
-    "EVENT_HOMEASSISTANT_STOP",
-    "PERCENTAGE",
-    "UTC",
-    "BinarySensorDeviceClass",
-    "DataUpdateCoordinator",
-    "DeviceInfo",
-    "EntityCategory",
-    "SensorDeviceClass",
-    "SensorStateClass",
-    "UnitOfElectricPotential",
-    "UnitOfPower",
-    "UnitOfTemperature",
-    "UnitOfTime",
-    "UnitOfVolumeFlowRate",
-    "UpdateFailed",
-    "dt_util",
-]
+__all__ = ["ensure_pymodbus_client_module", "is_request_cancelled_error"]
 ```
 
-### Oczekiwany efekt
-- 75 → ~40 linii czystego re-exportu (jak po v7)
-- Brak fallbacków dla symbolów które są w HA od 2022
-- `datetime.UTC` z Python 3.13 (nie `dt.timezone.utc` z `# noqa`)
-
----
-
-## Fix #3 — `config_flow.py` — usuń fallbacki HA service info
-
-**Plik:** `custom_components/thessla_green_modbus/config_flow.py`
-
-**Dowód (linie 25-110):**
-```python
-try:
-    from homeassistant.config_entries import ConfigFlowResult
-except (ImportError, ModuleNotFoundError):  # pragma: no cover - test stubs
-    ConfigFlowResult = dict[str, Any]
-
-# ...
-
-if TYPE_CHECKING:
-    from homeassistant.components.dhcp import DhcpServiceInfo
-    from homeassistant.components.zeroconf import ZeroconfServiceInfo
-else:
-    try:
-        from homeassistant.components.dhcp import DhcpServiceInfo
-    except (ImportError, ModuleNotFoundError):  # pragma: no cover - lightweight test stubs
-
-        @dataclasses.dataclass
-        class DhcpServiceInfo:
-            macaddress: str | None = None
-            ip: str | None = None
-
-    try:
-        from homeassistant.components.zeroconf import ZeroconfServiceInfo
-    except (ImportError, ModuleNotFoundError):  # pragma: no cover - lightweight test stubs
-
-        @dataclasses.dataclass
-        class ZeroconfServiceInfo:
-            host: str | None = None
-```
-
-**To są te same fallbacki które usunęliśmy w v7 Fix #14a-b.** Wróciły.
-
-### Krok 3a — usuń `ConfigFlowResult` fallback
-
-#### SZUKAJ (linie 25-28)
-```python
-try:
-    from homeassistant.config_entries import ConfigFlowResult
-except (ImportError, ModuleNotFoundError):  # pragma: no cover - test stubs
-    ConfigFlowResult = dict[str, Any]
-```
-
-#### ZASTĄP
-```python
-from homeassistant.config_entries import ConfigFlowResult
-```
-
-### Krok 3b — usuń `DhcpServiceInfo`/`ZeroconfServiceInfo` fallback
-
-#### SZUKAJ (linie 91-110)
-```python
-if TYPE_CHECKING:
-    from homeassistant.components.dhcp import DhcpServiceInfo
-    from homeassistant.components.zeroconf import ZeroconfServiceInfo
-else:
-    try:
-        from homeassistant.components.dhcp import DhcpServiceInfo
-    except (ImportError, ModuleNotFoundError):  # pragma: no cover - lightweight test stubs
-
-        @dataclasses.dataclass
-        class DhcpServiceInfo:
-            macaddress: str | None = None
-            ip: str | None = None
-
-    try:
-        from homeassistant.components.zeroconf import ZeroconfServiceInfo
-    except (ImportError, ModuleNotFoundError):  # pragma: no cover - lightweight test stubs
-
-        @dataclasses.dataclass
-        class ZeroconfServiceInfo:
-            host: str | None = None
-```
-
-#### ZASTĄP
-```python
-from homeassistant.components.dhcp import DhcpServiceInfo
-from homeassistant.components.zeroconf import ZeroconfServiceInfo
-```
-
-### Krok 3c — sprawdź `dataclasses` import
-
-```bash
-grep -n "dataclasses" custom_components/thessla_green_modbus/config_flow.py
-```
-
-Jeśli `dataclasses` był używany tylko w usuniętych fallbackach — usuń `import dataclasses` z nagłówka.
-
-### Krok 3d — sprawdź `TYPE_CHECKING` guard
-
-Jeśli fallbacki były jedynym użyciem `TYPE_CHECKING` w tym pliku — sprawdź czy guard potrzebny dla innych importów (class `_ConfigFlowBase` na linii 112 używa `TYPE_CHECKING`).
-
-### Oczekiwany efekt
-- −25 linii test-compat kodu
-- `config_flow.py` z 1304 → ~1280 linii
-
----
-
-## Fix #4 — `const.py` — usuń `PLATFORMS` fallback
-
-**Plik:** `custom_components/thessla_green_modbus/const.py`
-
-**Dowód (linie ~236-262):**
-```python
-try:
-    from homeassistant.const import Platform as _Platform
-
-    PLATFORMS: list[_Platform] = [
-        _Platform.SENSOR,
-        _Platform.BINARY_SENSOR,
-        _Platform.CLIMATE,
-        _Platform.FAN,
-        _Platform.SELECT,
-        _Platform.NUMBER,
-        _Platform.SWITCH,
-        _Platform.TEXT,
-        _Platform.TIME,
-    ]
-except (ImportError, AttributeError):  # pragma: no cover - fallback for test environments
-    PLATFORMS = [
-        "sensor",
-        "binary_sensor",
-        "climate",
-        "fan",
-        "select",
-        "number",
-        "switch",
-        "text",
-        "time",
-    ]
-```
-
-**HA `Platform` enum** istnieje od 2022. Fallback istnieje dla stubów testowych.
-
-### Krok 4 — uprość
-
-**Plik:** `custom_components/thessla_green_modbus/const.py`
-
-#### SZUKAJ (cały blok try/except dla `PLATFORMS`)
-```python
-try:
-    from homeassistant.const import Platform as _Platform
-
-    PLATFORMS: list[_Platform] = [
-        _Platform.SENSOR,
-        # ...
-    ]
-except (ImportError, AttributeError):  # pragma: no cover - fallback for test environments
-    PLATFORMS = [
-        "sensor",
-        # ...
-    ]
-```
-
-#### ZASTĄP
-```python
-from homeassistant.const import Platform
-
-PLATFORMS: list[Platform] = [
-    Platform.SENSOR,
-    Platform.BINARY_SENSOR,
-    Platform.CLIMATE,
-    Platform.FAN,
-    Platform.SELECT,
-    Platform.NUMBER,
-    Platform.SWITCH,
-    Platform.TEXT,
-    Platform.TIME,
-]
-```
-
-### Oczekiwany efekt
-- −12 linii
-- `PLATFORMS` jest listą `Platform` enum zamiast `list[_Platform | str]` union
-
----
-
-## Fix #5 — `register_map.py` — usuń loader fallback
-
-**Plik:** `custom_components/thessla_green_modbus/register_map.py`
-
-**Dowód (linie 22-28):**
-```python
-try:
-    from .registers.loader import RegisterDef, get_all_registers
-except (ImportError, ModuleNotFoundError):  # pragma: no cover - fallback for test stubs
-    from typing import Any as RegisterDef  # type: ignore
-
-    def get_all_registers():  # type: ignore
-        return []
-```
-
-**Kiedy to trigger'uje:** tylko gdy ktoś wykomentuje `registers/loader.py` lub nie zainstaluje JSON-a. W produkcji **zawsze dostępne**.
-
-**Problem z fallbackiem:** `def get_all_registers(): return []` zwraca pustą listę. Jeśli coś poszłoby nie tak z loaderem, integracja **uruchomi się z 0 rejestrami** zamiast rzucić błąd. Defensywa która maskuje bug.
-
-### Krok 5 — usuń fallback
-
-**Plik:** `custom_components/thessla_green_modbus/register_map.py`
-
-#### SZUKAJ (linie 22-28)
-```python
-try:
-    from .registers.loader import RegisterDef, get_all_registers
-except (ImportError, ModuleNotFoundError):  # pragma: no cover - fallback for test stubs
-    from typing import Any as RegisterDef  # type: ignore
-
-    def get_all_registers():  # type: ignore
-        return []
-```
-
-#### ZASTĄP
-```python
-from .registers.loader import RegisterDef, get_all_registers
-```
-
-### Krok 5b — napraw testy
-
-Testy które polegały na pustym loaderze:
-```python
-# Źle:
-monkeypatch.setattr("custom_components.thessla_green_modbus.registers.loader.get_all_registers", lambda: [])
-
-# Jeśli test potrzebuje custom register list:
-monkeypatch.setattr(
-    "custom_components.thessla_green_modbus.registers.loader.get_all_registers",
-    lambda: [custom_register_1, custom_register_2]
-)
-```
-
-### Oczekiwany efekt
-- −6 linii
-- Jeśli `loader.py` zepsuty → błąd jawny przy imporcie, nie cicha pusta lista
-
----
-
-## Fix #6 — `modbus_helpers.py` — usuń Mock-oriented signature workaround
-
-**Plik:** `custom_components/thessla_green_modbus/modbus_helpers.py`
-
-**Dowód (linie 280-289):**
-```python
-        elif "slave" in params and params["slave"].kind is not inspect.Parameter.POSITIONAL_ONLY:
-            kwarg = "slave"
-        elif "unit" in params and params["unit"].kind is not inspect.Parameter.POSITIONAL_ONLY:
-            kwarg = "unit"
-        else:
-            # Some tests use plain ``Mock``/``AsyncMock`` callables that do not
-            # expose a valid signature. Prefer ``slave`` as default because it
-            # matches modern pymodbus and is accepted by autospecced mocks.
-            kwarg = "slave" if signature is None else ""
-        _KWARG_CACHE[func] = kwarg
-```
-
-**Kontekst:** `modbus_helpers._call_modbus` dynamicznie wykrywa czy funkcja pymodbus akceptuje `device_id`/`slave`/`unit` jako kwarg (zmiana API w pymodbus 3.x). Signature inspection jest uzasadnione dla real-world zgodności z różnymi wersjami pymodbus.
-
-**Co jest smellem:** specific fallback `kwarg = "slave" if signature is None else ""` z komentarzem o Mock/AsyncMock.
-
-**Czy to naprawdę smell:**
-- Produkcyjnie `signature` zwraca valid signature dla pymodbus funkcji.
-- `signature is None` może się zdarzyć gdy `inspect.signature` rzuci wyjątek — w teorii może się to zdarzyć dla niektórych C-extension funkcji.
-- Ale komentarz jasno wskazuje że fallback jest **dla testów**.
-
-### Krok 6 — uprość komentarz i fallback
-
-**Plik:** `custom_components/thessla_green_modbus/modbus_helpers.py`
-
-#### SZUKAJ (linie 280-289)
-```python
-        elif "slave" in params and params["slave"].kind is not inspect.Parameter.POSITIONAL_ONLY:
-            kwarg = "slave"
-        elif "unit" in params and params["unit"].kind is not inspect.Parameter.POSITIONAL_ONLY:
-            kwarg = "unit"
-        else:
-            # Some tests use plain ``Mock``/``AsyncMock`` callables that do not
-            # expose a valid signature. Prefer ``slave`` as default because it
-            # matches modern pymodbus and is accepted by autospecced mocks.
-            kwarg = "slave" if signature is None else ""
-        _KWARG_CACHE[func] = kwarg
-```
-
-#### ZASTĄP
-```python
-        elif "slave" in params and params["slave"].kind is not inspect.Parameter.POSITIONAL_ONLY:
-            kwarg = "slave"
-        elif "unit" in params and params["unit"].kind is not inspect.Parameter.POSITIONAL_ONLY:
-            kwarg = "unit"
-        else:
-            # Default to "slave" when signature introspection failed — matches
-            # pymodbus 3.x convention. Pass no kwarg when signature is available
-            # but neither device_id/slave/unit is recognized.
-            kwarg = "slave" if signature is None else ""
-        _KWARG_CACHE[func] = kwarg
-```
-
-Zmiana to tylko refactor komentarza — usunięcie wzmianki o Mockach w produkcji. Logika pozostaje (bo jest legitymacznie potrzebna dla pymodbus C-extensions).
-
-### Oczekiwany efekt
-- Komentarze produkcyjne mówią o **produkcyjnych scenariuszach**, nie o tym jak kod obsługuje mocki testów.
-- Zero funkcjonalnej zmiany.
-
----
-
-## Fix #7 — Audit `_get_parent()` pattern w `mappings/`
-
-**Pliki:**
-- `custom_components/thessla_green_modbus/mappings/_loaders.py`
-- `custom_components/thessla_green_modbus/mappings/legacy.py`
-- `custom_components/thessla_green_modbus/mappings/_helpers.py`
-
-**Dowód z `mappings/_loaders.py:48-65`:**
-```python
-def _get_parent() -> Any:
-    """Return the parent mappings package module.
-
-    Using ``sys.modules`` lookup allows test monkeypatching on the parent
-    module (e.g. ``monkeypatch.setattr(em, "get_all_registers", ...)``) to
-    transparently propagate into the functions below.
-    """
-    return sys.modules.get(__package__)
-
-
-def _resolve(attr: str, fallback: Any) -> Any:
-    """Look up *attr* on the parent mappings module, falling back to *fallback*."""
-    parent = _get_parent()
-    if parent is not None:
-        val = getattr(parent, attr, None)
-        if val is not None:
-            return val
-    return fallback
-
-
-def _load_number_mappings() -> dict[str, dict[str, Any]]:
-    _get_all = _resolve("get_all_registers", get_all_registers)
-    _get_info = _resolve("_get_register_info", _get_register_info)
-    _parse = _resolve("_parse_states", _parse_states)
-    # ...
-```
-
-**Co to robi:** `_resolve` przy każdym wywołaniu `_load_number_mappings()` sprawdza moduł nadrzędny `mappings` w `sys.modules`, próbuje znaleźć zmienioną (patched) wersję funkcji, i jeśli jest — używa jej zamiast lokalnie zaimportowanej.
-
-**Dlaczego to istnieje:** testy robią:
-```python
-import custom_components.thessla_green_modbus.mappings as em
-monkeypatch.setattr(em, "get_all_registers", custom_registers_func)
-em._load_number_mappings()  # chce użyć custom_registers_func
-```
-
-**Rzeczywiście uzasadnione jednak:** **jest to akceptowalne.** Bez tego wzorca monkey-patch na parent module nie propagowałby się do loadera. To NIE jest smell — to rozsądny wzorzec dla **testowalności**.
-
-**ALE**: komentarze które są smellami:
-```python
-# Comment in mappings/_helpers.py:
-# monkeypatching on the parent module so that test monkeypatching on 
-# ``em._REGISTER_INFO_CACHE`` is still visible
-```
-
-**Decyzja:** Pattern jest legit. **Nie ruszamy**. Ale wartościowe jest **udokumentowanie decyzji** — żeby następny audyt wiedział że to NIE jest smell do usunięcia.
-
-### Krok 7 — dodaj komentarz decision-doc
-
-**Plik:** `custom_components/thessla_green_modbus/mappings/_loaders.py`
-
-#### SZUKAJ (linia 48)
-```python
-def _get_parent() -> Any:
-    """Return the parent mappings package module.
-
-    Using ``sys.modules`` lookup allows test monkeypatching on the parent
-    module (e.g. ``monkeypatch.setattr(em, "get_all_registers", ...)``) to
-    transparently propagate into the functions below.
-    """
-    return sys.modules.get(__package__)
-```
-
-#### ZASTĄP
-```python
-def _get_parent() -> Any:
-    """Return the parent mappings package module for attribute resolution.
-
-    Design note: all loaders in this module resolve attributes via the parent
-    package rather than direct imports. This is intentional — it allows tests
-    to patch attributes on the ``mappings`` package and have those patches
-    visible to loaders without monkey-patching each individual private function.
-
-    This is NOT a test-induced production smell; it is a deliberate design
-    choice for module-level indirection. The pattern is established and
-    documented here to prevent accidental removal in future audits.
-    """
-    return sys.modules.get(__package__)
-```
-
-### Oczekiwany efekt
-- Zero kodowej zmiany
-- Jasne oznaczenie "to jest zamierzone, nie usuwaj"
-- Ochrona przed błędnym fixem w kolejnym audycie
-
----
-
-## Fix #8 — Prawdziwe uproszczenie 24-param `__init__` coordynatora
-
-**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
-
-**Kontekst:** `CoordinatorConfig` dataclass istnieje (linia 130). `from_config` factory istnieje (linia 383). Ale `ThesslaGreenModbusCoordinator.__init__` wciąż ma **24 parametry** (linia ~200). `from_config` to **wrapper** który dekonstruuje `config` na 22 kwargs i przekazuje do `__init__`.
-
-**Właściwy refactor:** `__init__` przyjmuje `CoordinatorConfig` zamiast 24 kwargs.
-
-**Dowód obecnego stanu:**
-
-```python
-# Linia ~200 - 24 parametry
-def __init__(
-    self,
-    hass: HomeAssistant,
-    host: str,
-    port: int,
-    slave_id: int,
-    name: str = DEFAULT_NAME,
-    scan_interval: timedelta | int = DEFAULT_SCAN_INTERVAL,
-    # ... 18 więcej
-    stop_bits: int = DEFAULT_STOP_BITS,
-) -> None:
-
-# Linia ~383 - wrapper robi dokładnie to samo
-@classmethod
-def from_config(cls, hass, config, *, entry=None) -> ThesslaGreenModbusCoordinator:
-    return cls(
-        hass=hass,
-        host=config.host,
-        port=config.port,
-        # ... 21 więcej
-        stop_bits=config.stop_bits,
-    )
-```
-
-**Idealny stan docelowy:**
-```python
-def __init__(
-    self,
-    hass: HomeAssistant,
-    config: CoordinatorConfig,
-    *,
-    entry: ConfigEntry | None = None,
-) -> None:
-    # Body używa self.config.host etc. zamiast self.host
-
-@classmethod
-def from_config(cls, hass, config, *, entry=None) -> ThesslaGreenModbusCoordinator:
-    return cls(hass, config, entry=entry)  # trywialne, można usunąć
-```
-
-**ALE** — to jest **większy refactor**:
-- Body `__init__` używa `self.host`, `self.port` etc. (ustawiane w linii ~200-260).
-- Mixiny coordynatora (`_ModbusIOMixin`, `_CoordinatorCapabilitiesMixin`, `_CoordinatorScheduleMixin`) prawdopodobnie używają `self.host` etc. bezpośrednio.
-- Testy tworzące coordinator z kwargs musiałyby zostać przepisane.
-
-**Ryzyko:** ŚREDNIE-WYSOKIE. To major bump (breaking change publicznego API klasy).
-
-### Opcja A — Minimalna refactor (rekomendowana dla 2.4.2)
-
-**Zostaw `__init__` jak jest, ale zapisz `config` jako atrybut:**
-
-**Plik:** `custom_components/thessla_green_modbus/coordinator.py`
-
-W `__init__` na końcu (po ustawieniu wszystkich `self.*`):
-
-#### SZUKAJ (koniec `__init__`, po wszystkich `self.X = X`)
-```python
-        # Initialize other coordinator state
-        self._total_energy = 0.0
-```
-
-(lub ostatnia linia inicjalizacji w `__init__`)
-
-#### ZASTĄP (dodaj przed/po)
-```python
-        # Initialize other coordinator state
-        self._total_energy = 0.0
-
-        # Store normalized config for access by mixins and external code.
-        # This is a read-only snapshot of the initialization parameters —
-        # mutations should happen via explicit methods, not via config.X = ...
-        self.config = CoordinatorConfig(
-            host=host,
-            port=port,
-            slave_id=slave_id,
-            name=name,
-            scan_interval=scan_interval,
-            timeout=timeout,
-            retry=retry,
-            backoff=backoff,
-            backoff_jitter=backoff_jitter,
-            force_full_register_list=force_full_register_list,
-            scan_uart_settings=scan_uart_settings,
-            deep_scan=deep_scan,
-            safe_scan=safe_scan,
-            max_registers_per_request=max_registers_per_request,
-            skip_missing_registers=skip_missing_registers,
-            connection_type=connection_type,
-            connection_mode=connection_mode or CONNECTION_MODE_AUTO,
-            serial_port=serial_port,
-            baud_rate=baud_rate,
-            parity=parity,
-            stop_bits=stop_bits,
-        )
-```
-
-**Efekt:** `coordinator.config` jest dostępne jako `CoordinatorConfig` dataclass, ale stare atrybuty (`coordinator.host`, `coordinator.port`) **pozostają** — zero breaking change.
-
-### Opcja B — Pełny refactor (odłożone na 2.5.0)
-
-Odłożyć do 2.5.0 major bump:
-1. Zmiana `__init__` na `def __init__(self, hass, config: CoordinatorConfig, *, entry=None)`.
-2. Aktualizacja wszystkich odwołań `self.host` → `self.config.host` (podobnie dla 22 atrybutów).
-3. Aktualizacja wszystkich testów konstruujących coordinator (10+ miejsc w `tests/test_coordinator.py`).
-4. `from_config` staje się trywialnym `return cls(hass, config, entry=entry)`.
-
-**Decyzja dla 2.4.2:** Opcja A. Coordinator ma `self.config` dostępne dla mixinów i zewnętrznego kodu, ale 24-param `__init__` pozostaje (zamrożony API). Fix #1 (usunięcie `_supports_typed_factory`) robi z `from_config` jedyną ścieżkę konstrukcji w produkcji.
-
-### Oczekiwany efekt
-- `coordinator.config` nowy atrybut jako `CoordinatorConfig`
-- Zero breaking change dla callerów używających `coordinator.host` etc.
-- Foundation pod Opcję B w 2.5.0
+Zaktualizuj importy wewnątrz `scanner/*.py` (które robią `from .. import scanner_io as _scanner_io`) żeby importowały z `scanner/io.py` bezpośrednio.
 
 ---
 
 ## Weryfikacja końcowa
 
-Po zastosowaniu Fixów #1-#8:
-
 ```bash
-ruff check custom_components/ tests/ tools/      # Expected: All checks passed!
-mypy custom_components/thessla_green_modbus/     # Expected: Success: 53 source files
-pytest tests/ -x -q                               # Expected: po napraw testów wszystko przechodzi
-python tools/compare_registers_with_reference.py # Expected: pass
-```
-
-**Metryki:**
-
-```
-                                v2.4.1       v2.4.2 (target)
-_supports_typed_factory:           ✗ (exists)   ✓ (removed)
-_compat.py test fallback:         Present      Removed
-config_flow.py HA fallbacks:      Present      Removed
-const.py PLATFORMS fallback:      Present      Removed
-register_map.py loader fallback:  Present      Removed
-Production imports unittest.mock:  1            0
-Production sys.modules hacks:      4 (shim+3 mappings pattern)   3 (mappings pattern udokumentowany)
-coordinator.config attribute:      No          Yes (nowy)
+ruff check custom_components/ tests/ tools/         # 0 findings
+mypy custom_components/thessla_green_modbus/        # 0 errors
+python tools/compare_registers_with_reference.py    # pass
 ```
 
 ---
 
-## Bump wersji i CHANGELOG
+## Bump i CHANGELOG (2.5.0)
 
-**Plik:** `custom_components/thessla_green_modbus/manifest.json`
-```json
-"version": "2.4.2",
-```
+`manifest.json`: `"version": "2.5.0"` | `pyproject.toml`: `version = "2.5.0"`
 
-**Plik:** `pyproject.toml`
-```toml
-version = "2.4.2"
-```
-
-**Plik:** `CHANGELOG.md` — dodaj na górze:
 ```markdown
-## 2.4.2 — Detox regression fixes
+## 2.5.0 — Legacy cleanup (BREAKING)
 
-Fixes several test-compat fallbacks that had crept back into production code
-after the 2.4.1 detox, and completes the `CoordinatorConfig` refactor started
-in 2.4.1.
+### ⚠️ Breaking changes
+- Config entry version 1 (pre-2021) no longer migrates automatically — remove
+  and re-add the integration.
+- Polish-language entity IDs (`rekuperator_moc_odzysku_ciepla` etc.) no longer
+  have migration aliases — update automations to use current English entity names.
+- Legacy fan entity IDs (`number.rekuperator_predkosc`, `number.rekuperator_speed`)
+  are not cleaned up automatically — remove them manually from entity registry if
+  present.
 
 ### Removed
-- `_supports_typed_factory` function and dual-path coordinator construction in `_setup.async_create_coordinator`. Production code no longer imports `unittest.mock.Mock` at runtime; `from_config` is the single code path.
-- `try/except ImportError` fallbacks in `_compat.py`. `__compat.py` is now a pure re-export module as intended after v2.4.0.
-- `DhcpServiceInfo` / `ZeroconfServiceInfo` / `ConfigFlowResult` fallback imports in `config_flow.py`. These HA symbols are stable; direct imports are used.
-- `PLATFORMS` string-list fallback in `const.py`. Direct `Platform` enum is used.
-- `get_all_registers()` fallback in `register_map.py`. Register loader failure now raises `ImportError` explicitly instead of returning an empty register list.
+- `config_entry.version == 1` migration path.
+- `LEGACY_DEFAULT_PORT = 8899` constant.
+- Polish-language entity_id aliases in `mappings/legacy.py`.
+- `LEGACY_FAN_ENTITY_IDS` list and `async_cleanup_legacy_fan_entity` function.
+- `predkosc`/`speed` entries from `LEGACY_ENTITY_ID_ALIASES`.
+- `scanner_core.py` shim — use `scanner.core` directly.
 
 ### Changed
-- Comment in `modbus_helpers._get_kwarg_for_slave` updated to describe production behavior (pymodbus C-extensions) instead of referring to test Mock handling.
-- Added design-note docstring on `mappings/_loaders._get_parent` explaining that the `sys.modules`-based attribute resolution pattern is intentional and should not be removed in future audits.
-
-### Added
-- `ThesslaGreenModbusCoordinator.config` attribute — a `CoordinatorConfig` dataclass snapshot of initialization parameters. This is a non-breaking addition; existing `coordinator.host`, `coordinator.port` etc. attributes continue to work.
-
-### Migration notes
-- Tests that replaced `ThesslaGreenModbusCoordinator` with a plain `Mock()` for `async_create_coordinator` will now fail because `from_config` is called unconditionally. Use `MagicMock(spec=ThesslaGreenModbusCoordinator)` or patch `from_config` explicitly.
-- Tests that monkey-patched `get_all_registers` to return `[]` at import time will now fail at import. Patch at test setup time using `monkeypatch.setattr`.
+- `scanner_io.py` reduced to thin re-export shim of `scanner/io.py`.
+- `BIT_ENTITY_KEYS` documented as active functional requirement (e_196_e_199
+  bitmask), not legacy.
+- `LEGACY_KEY_RENAMES` annotated with deprecation schedule (2.7.0+).
 ```
 
 ---
 
-## Odłożone na 2.5.0 (major bump)
+## Metryki docelowe
 
-**Fix #9 — Pełny refactor `__init__` → `def __init__(self, hass, config)`.**
-- Change signature from 24-param to 2-param.
-- Update all `self.host` → `self.config.host` (i 22 podobnych).
-- Update all test constructors (10+ miejsc).
-- Usunąć `from_config` wrapper (redundant).
-
-**Fix #10 — Dalsza redukcja `coordinator.py` (1617 linii).**
-Kandydaci do extraktu:
-- `_handle_update_error` (w coordinator.py) → potencjalnie do `_coordinator_io.py`.
-- Register-reading logic w `_async_update_data` → delegacja do mixinów lepsza.
-
-**Fix #11 — Dalszy podział `__init__.py` (755 linii).**
-13 funkcji migracji/setup wciąż w jednym pliku:
-- Nowy `_migrations.py` — `_async_migrate_unique_ids`, `_async_migrate_entity_ids`, `_async_cleanup_legacy_fan_entity`, `async_migrate_entry`.
-- Nowy `_legacy.py` — legacy entity ID mapping.
-
-**Fix #12 — Redukcja `# pragma: no cover` w całym codebase.**
-Obecnie 33 plików z `# pragma: no cover`. Każde jedno wystąpienie powinno mieć uzasadnienie — "test env" lub "defensive" (nie testowalne łatwo). Audit dla każdego.
-
----
-
-## Notatki końcowe
-
-**Dlaczego to minor bump (2.4.2):**
-- Fixy są czysto removalami/cleanupami, zero nowych funkcji.
-- `coordinator.config` atrybut to dodawanie non-breaking (stare atrybuty pozostają).
-- Brak breaking changes w publicznym API.
-
-**Ryzyko regresu — niskie-średnie:**
-- Fix #1 — ryzyko ze testy z `Mock()` coordynatora będą padać → naprawić używając `spec=`.
-- Fix #2-5 — ryzyko że jakieś środowisko testowe bez pełnego HA padało z `ImportError` → używać `pytest-homeassistant-custom-component`.
-- Fix #6-7 — zero ryzyka, same komentarze.
-- Fix #8 — czysto additive, zero ryzyka.
-
-**Strategia wdrożenia:**
-- **Commit 1**: Fix #1 (najbardziej spektakularny — produkcja nie importuje `unittest.mock`).
-- **Commit 2**: Fix #2-5 (restore v7 state dla plików które cofnęły się).
-- **Commit 3**: Fix #6-7 (komentarze).
-- **Commit 4**: Fix #8 (`coordinator.config` atrybut).
-- Tag **2.4.2**.
-
-**Co ten audyt wykrywa:** przypadek gdzie **fixy z v7 częściowo się cofnęły** w czasie implementacji kolejnych PR-ów. To normalne dla dużych PR-ów mergowanych bez pełnej code review — autor PR #1328 (wdrażającego v7) prawdopodobnie miał konflikty z innymi zmianami i wrócił do starszej wersji niektórych plików. Ten audyt przywraca intencję v7 + dodaje dwa nowe znaleziska (`_supports_typed_factory`, `coordinator.config`).
-
-**Długofalowo:** warto by skrypt w CI sprawdzał "anti-regression" — listę wzorców które zostały usunięte i nie powinny wrócić. Np.:
-```bash
-# W CI:
-if grep -rn "from unittest.mock" custom_components/thessla_green_modbus/ --include="*.py"; then
-    echo "ERROR: unittest.mock imported in production code"
-    exit 1
-fi
 ```
-
-To by wyłapało dziesiątki smelli automatycznie zanim trafią do głównej gałęzi.
+                            2.4.2 (obecne)    2.4.3    2.4.4    2.5.0
+Ruff findings:              2                 0        0        0
+Mypy errors:                10                0        0        0
+Runtime ImportError:        Tak               Nie      Nie      Nie
+Python 3.13 enforced:       1 layer           1        5        6
+Legacy migration v1:        Present           →        →        Removed
+Polish entity aliases:      3                 →        →        0
+scanner_core.py shim:       16 linii          →        →        Removed
+Linie legacy kodu:          ~540              →        →        ~200
+```
