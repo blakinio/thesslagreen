@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+import sys as _sys
+
+if _sys.version_info < (3, 13):  # noqa: UP036
+    raise RuntimeError(
+        f"ThesslaGreen Modbus requires Python 3.13+; "
+        f"running on {_sys.version_info.major}.{_sys.version_info.minor}. "
+        "Update Home Assistant to 2026.1.0+ which ships Python 3.13."
+    )
+
 import logging
 from datetime import timedelta
 from functools import partial

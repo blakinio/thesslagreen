@@ -5,6 +5,17 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.4.4 — Python 3.13 environment enforcement
+
+### Added
+- `.python-version` (pyenv) and `.tool-versions` (asdf) declare Python 3.13.
+- Explicit `sys.version_info` check in `__init__.py` — clear error on older Python.
+- `.pre-commit-config.yaml` rebuilt: `default_language_version: python3.13`,
+  replaced `black`+`isort` with `ruff-format`, expanded mypy scope to full package.
+- README development setup section.
+
+---
+
 ## 2.4.3 — Critical fix: ImportError at integration load
 
 ### Fixed

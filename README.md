@@ -87,3 +87,21 @@ pytest
 ```
 
 Kontrybucja: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Development
+
+**Python 3.13 is required** (matches Home Assistant 2026.1+).
+
+```bash
+pyenv install 3.13 && pyenv local 3.13   # lub: asdf install python 3.13.0
+pip install -r requirements-dev.txt
+pre-commit install
+ruff check custom_components/ tests/ tools/
+mypy custom_components/thessla_green_modbus/
+pytest tests/ -x -q
+```
+
+> **Note for Codex / AI agents:** The integration uses `enum.StrEnum`
+> (Python 3.11+). Running `pytest` in a container with Python < 3.13 will
+> fail at import with `ImportError: cannot import name 'StrEnum' from 'enum'`.
+> This is expected — the test environment must use Python 3.13.
