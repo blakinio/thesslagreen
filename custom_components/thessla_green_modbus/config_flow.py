@@ -106,12 +106,12 @@ DeviceCapabilities: Any | None = None
 
 
 async def _load_scanner_module(hass: Any) -> Any:
-    """Import scanner_core using the HA executor when available.
+    """Import scanner.core using the HA executor when available.
 
     Falls back to a direct synchronous import when *hass* is ``None`` or does
     not expose ``async_add_executor_job`` (e.g. SimpleNamespace test stubs).
     """
-    module_name = "custom_components.thessla_green_modbus.scanner_core"
+    module_name = "custom_components.thessla_green_modbus.scanner.core"
     _aej = getattr(hass, "async_add_executor_job", None)
     if _aej is not None:
         result = _aej(import_module, module_name)

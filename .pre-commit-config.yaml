@@ -1,34 +1,32 @@
+default_language_version:
+  python: python3.13
+
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+    rev: v0.7.4
     hooks:
       - id: ruff
-        args: ["--fix"]
-  - repo: https://github.com/psf/black
-    rev: 24.8.0
-    hooks:
-      - id: black
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
+        args: [--fix]
+      - id: ruff-format
+
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.12.0
+    rev: v1.13.0
     hooks:
       - id: mypy
         pass_filenames: false
         args:
-          [
-            "--config-file=pyproject.toml",
-            "custom_components/thessla_green_modbus/registers",
-          ]
+          - "--config-file=pyproject.toml"
+          - "custom_components/thessla_green_modbus"
         additional_dependencies:
           - types-PyYAML>=6.0.12
-          - pymodbus>=3.5.0
+          - pymodbus>=3.6.0
           - voluptuous>=0.13.1
           - pydantic>=2,<3
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
+      - id: check-yaml
+      - id: check-json
       - id: end-of-file-fixer
       - id: trailing-whitespace

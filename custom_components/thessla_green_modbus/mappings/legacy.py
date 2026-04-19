@@ -11,12 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 # subset of legacy names existed in early versions of the integration. These
 # mappings allow services to transparently use the new entity IDs while warning
 # users to update their automations.
-LEGACY_ENTITY_ID_ALIASES: dict[str, tuple[str, str]] = {
-    # Keys are suffixes of legacy entity_ids.
-    # "number.rekuperator_predkosc" / "number.rekuperator_speed" → fan entity
-    "predkosc": ("fan", "fan"),
-    "speed": ("fan", "fan"),
-}
+LEGACY_ENTITY_ID_ALIASES: dict[str, tuple[str, str]] = {}
 
 # Exact object_id aliases used by earlier releases. These are matched before
 # ``LEGACY_ENTITY_ID_ALIASES`` to avoid ambiguity for names ending with
@@ -73,10 +68,6 @@ LEGACY_ENTITY_ID_OBJECT_ALIASES: dict[str, tuple[str, str]] = {
     # Time entity renames
     "rekuperator_filter_check_start_time": ("time", "rekuperator_pres_check_time"),
     "rekuperator_filter_check_start_time_ext": ("time", "rekuperator_pres_check_time_ggmm"),
-    # Polish-language entity IDs (installations with HA language set to pl before 2026)
-    "rekuperator_moc_odzysku_ciepla": ("sensor", "rekuperator_heat_recovery_power"),
-    "rekuperator_sprawnosc_rekuperatora": ("sensor", "rekuperator_heat_recovery_efficiency"),
-    "rekuperator_pobor_mocy_elektrycznej": ("sensor", "rekuperator_electrical_power"),
     "rekuperator_nazwa_urzadzenia": ("text", "rekuperator_device_name"),
     "rekuperator_predkosc_1": ("fan", "rekuperator_ventilation"),
     # Legacy split aliases for e_196_e_199 bitmask register
@@ -127,26 +118,7 @@ def map_legacy_entity_id(entity_id: str) -> str:
                 _parent._alias_warning_logged = True  # type: ignore[attr-defined]
         return new_entity_id
 
-    suffix = object_id.rsplit("_", 1)[-1]
-    if suffix not in LEGACY_ENTITY_ID_ALIASES:
-        return entity_id
-
-    new_domain, new_suffix = LEGACY_ENTITY_ID_ALIASES[suffix]
-    parts = object_id.split("_")
-    new_object_id = "_".join([*parts[:-1], new_suffix]) if len(parts) > 1 else new_suffix
-    new_entity_id = f"{new_domain}.{new_object_id}"
-
-    if not _already_logged:
-        _LOGGER.warning(
-            "Legacy entity ID '%s' detected. Please update automations to use '%s'.",
-            entity_id,
-            new_entity_id,
-        )
-        _alias_warning_logged = True
-        if _parent is not None:
-            _parent._alias_warning_logged = True  # type: ignore[attr-defined]
-
-    return new_entity_id
+    return entity_id
 
 
 __all__ = [

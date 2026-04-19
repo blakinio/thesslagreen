@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.const import CONF_HOST, CONF_PORT
 
@@ -16,7 +16,6 @@ except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover -
 
 from ._legacy import (
     BIT_ENTITY_KEYS,
-    LEGACY_FAN_ENTITY_IDS,
     LEGACY_KEY_RENAMES,
     extract_key_from_unique_id,
     extract_legacy_problem_key_from_entity_id,
@@ -60,11 +59,11 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> N
         except (TypeError, AttributeError, OSError, RuntimeError):
             all_platform_entries = []
 
-    candidates: dict[str, object] = {}
+    candidates: dict[str, Any] = {}
     for entity in all_platform_entries:
-        candidates[entity.entity_id] = entity
+        candidates[getattr(entity, "entity_id", "")] = entity
     for entity in config_entry_list:
-        candidates[entity.entity_id] = entity
+        candidates[getattr(entity, "entity_id", "")] = entity
 
     if not candidates:
         _LOGGER.debug(
@@ -106,22 +105,24 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> N
     removed_stale = 0
 
     for reg_entry in list(candidates.values()):
-        current = entity_reg.async_get(reg_entry.entity_id)
+        current = entity_reg.async_get(getattr(reg_entry, "entity_id", ""))
         if current is None:
             continue
 
         unique_id = getattr(current, "unique_id", None) or ""
         key = _extract_key(unique_id)
         if not key:
-            legacy_problem_key = extract_legacy_problem_key_from_entity_id(reg_entry.entity_id)
+            legacy_problem_key = extract_legacy_problem_key_from_entity_id(
+                getattr(reg_entry, "entity_id", "")
+            )
             if legacy_problem_key:
                 try:
-                    entity_reg.async_remove(reg_entry.entity_id)
+                    entity_reg.async_remove(getattr(reg_entry, "entity_id", ""))
                     removed_stale += 1
                 except (TypeError, AttributeError, OSError, RuntimeError) as exc:
                     _LOGGER.warning(
                         "entity_id migration: could not remove stale entity %s: %s",
-                        reg_entry.entity_id,
+                        getattr(reg_entry, "entity_id", ""),
                         exc,
                     )
                 continue
@@ -131,17 +132,17 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> N
         key = LEGACY_KEY_RENAMES.get(key, key)
         if re.fullmatch(r"problem(?:_\d+)?", key):
             try:
-                entity_reg.async_remove(reg_entry.entity_id)
+                entity_reg.async_remove(getattr(reg_entry, "entity_id", ""))
                 removed_stale += 1
             except (TypeError, AttributeError, OSError, RuntimeError) as exc:
                 _LOGGER.warning(
                     "entity_id migration: could not remove stale entity %s: %s",
-                    reg_entry.entity_id,
+                    getattr(reg_entry, "entity_id", ""),
                     exc,
                 )
             continue
 
-        bit_match = re.search(r"_bit(\d+)$", reg_entry.unique_id)
+        bit_match = re.search(r"_bit(\d+)$", getattr(reg_entry, "unique_id", ""))
         if bit_match:
             bit_num = int(bit_match.group(1))
             bit_key = BIT_ENTITY_KEYS.get((key, bit_num))
@@ -209,37 +210,6 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> N
         skipped_no_device,
         skipped_collision,
     )
-
-
-async def async_cleanup_legacy_fan_entity(hass: HomeAssistant, coordinator: object) -> None:
-    """Remove legacy number entity IDs replaced by the fan entity."""
-    if er is None:
-        return
-    registry = er.async_get(hass)
-    if registry is None:
-        return
-    new_entity_id = "fan.rekuperator_fan"
-    new_unique_id = f"{getattr(coordinator, 'slave_id', 1)}_0"
-    migrated = False
-
-    for old_entity_id in LEGACY_FAN_ENTITY_IDS:
-        if registry.async_get(old_entity_id):
-            try:
-                registry.async_update_entity(
-                    old_entity_id,
-                    new_entity_id=new_entity_id,
-                    new_unique_id=new_unique_id,
-                )
-            except (TypeError, AttributeError, OSError, RuntimeError):
-                registry.async_remove(old_entity_id)
-            migrated = True
-
-    if migrated:
-        _LOGGER.warning(
-            "Legacy fan entity detected. Migrated/removed legacy entities %s to '%s'.",
-            LEGACY_FAN_ENTITY_IDS,
-            new_entity_id,
-        )
 
 
 async def async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:

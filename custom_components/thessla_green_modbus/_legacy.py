@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import re
 
-# Map old register keys (as they appeared in unique_ids) to current keys.
-# Needed for entities where the dict_key itself was renamed across versions,
-# not just the entity_id naming mechanism (translation → key-based).
+# Map old register keys to current keys for unique_id migration.
+#
+# DEPRECATION SCHEDULE: entries older than 2 years are candidates for
+# removal in 2.7.0+ (planned end-2026). When adding new entries, annotate
+# the version in which the rename happened, e.g.:
+#   "old_key": "new_key",  # renamed in 2.3.0
 LEGACY_KEY_RENAMES: dict[str, str] = {
     # Binary sensor key renames
     "gwc_regeneration_active": "gwc_regen_flag",
@@ -37,9 +40,11 @@ LEGACY_KEY_RENAMES: dict[str, str] = {
 }
 
 # Mapping from (register_key, bit_value) → bit-specific entity key.
-# Used during migration to assign unique entity_ids to individual bits of
-# bitmask registers.  Without this, all 4 bits of e_196_e_199 would all
-# target the same entity_id (collision) and only one could be migrated.
+#
+# NOT LEGACY — this is an active functional requirement. The e_196_e_199
+# register is a 4-bit bitmask; each bit maps to a separate binary_sensor
+# entity (E196..E199). Without this map all 4 bits would collide on the
+# same entity_id. Do not remove.
 BIT_ENTITY_KEYS: dict[tuple[str, int], str] = {
     # e_196_e_199 is a bitmask register; each bit gets its own entity key.
     # Key format: _to_snake_case(bit_name) inserts underscore before digits,
@@ -49,12 +54,6 @@ BIT_ENTITY_KEYS: dict[tuple[str, int], str] = {
     ("e_196_e_199", 4): "e_196_e_199_e_198",
     ("e_196_e_199", 8): "e_196_e_199_e_199",
 }
-
-# Legacy entity IDs that were replaced by the fan entity
-LEGACY_FAN_ENTITY_IDS = [
-    "number.rekuperator_predkosc",
-    "number.rekuperator_speed",
-]
 
 
 def extract_key_from_unique_id(unique_id: str, prefix: str, slave_id: int | str) -> str | None:

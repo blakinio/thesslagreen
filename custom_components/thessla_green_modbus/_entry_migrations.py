@@ -10,18 +10,11 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 from .const import (
     CONF_CONNECTION_MODE,
     CONF_CONNECTION_TYPE,
-    CONF_FORCE_FULL_REGISTER_LIST,
-    CONF_RETRY,
-    CONF_SCAN_INTERVAL,
     CONF_SLAVE_ID,
-    CONF_TIMEOUT,
     CONNECTION_TYPE_TCP,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_PORT,
-    DEFAULT_RETRY,
-    DEFAULT_SCAN_INTERVAL,
     DEFAULT_SLAVE_ID,
-    DEFAULT_TIMEOUT,
 )
 from .utils import resolve_connection_settings
 
@@ -30,8 +23,6 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__.rsplit(".", maxsplit=1)[0])
-LEGACY_DEFAULT_PORT = 8899
-
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Migrate old entry.
@@ -44,24 +35,11 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
     new_options = {**config_entry.options}
 
     if config_entry.version == 1:
-        if "unit" in new_data and CONF_SLAVE_ID not in new_data:
-            new_data[CONF_SLAVE_ID] = new_data["unit"]
-            _LOGGER.info("Migrated 'unit' to '%s'", CONF_SLAVE_ID)
-
-        if CONF_PORT not in new_data:
-            new_data[CONF_PORT] = LEGACY_DEFAULT_PORT
-            _LOGGER.info("Added '%s' with legacy default %s", CONF_PORT, LEGACY_DEFAULT_PORT)
-
-        if CONF_SCAN_INTERVAL not in new_options:
-            new_options[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
-        if CONF_TIMEOUT not in new_options:
-            new_options[CONF_TIMEOUT] = DEFAULT_TIMEOUT
-        if CONF_RETRY not in new_options:
-            new_options[CONF_RETRY] = DEFAULT_RETRY
-        if CONF_FORCE_FULL_REGISTER_LIST not in new_options:
-            new_options[CONF_FORCE_FULL_REGISTER_LIST] = False
-
-        config_entry.version = 2
+        _LOGGER.error(
+            "ThesslaGreen Modbus: config entry version 1 (pre-2021) is no longer "
+            "supported. Please remove and re-add the integration."
+        )
+        return False
 
     if config_entry.version == 2:
         if CONF_CONNECTION_TYPE not in new_data:
@@ -83,7 +61,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         config_entry.version = 4
 
     host = new_data.get(CONF_HOST)
-    port = new_data.get(CONF_PORT, LEGACY_DEFAULT_PORT)
+    port = new_data.get(CONF_PORT, DEFAULT_PORT)
     if CONF_SLAVE_ID in new_data:
         slave_id = new_data[CONF_SLAVE_ID]
     elif "slave_id" in new_data:

@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import logging
 import sys
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, cast
 
 from pymodbus.client import AsyncModbusTcpClient
 
 from .. import modbus_helpers as _mh
-from .. import scanner_io as _scanner_io
 from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from ..modbus_helpers import _call_modbus, chunk_register_range
 
@@ -26,6 +27,78 @@ def is_request_cancelled_error(exc: Exception) -> bool:
     """Return True when an exception indicates a cancelled Modbus request."""
     message = str(exc).lower()
     return "request cancelled outside pymodbus" in message or "cancelled" in message
+
+
+def ensure_pymodbus_client_module() -> None:
+    """Ensure ``pymodbus.client`` is importable and attached to ``pymodbus``."""
+    try:
+        pymodbus_mod: Any = importlib.import_module("pymodbus")
+        client_mod: Any = importlib.import_module("pymodbus.client")
+    except (ImportError, ModuleNotFoundError, AttributeError):
+        return
+    if not hasattr(pymodbus_mod, "client"):
+        pymodbus_mod.client = client_mod
+    if hasattr(client_mod, "AsyncModbusTcpClient") and not hasattr(client_mod, "ModbusTcpClient"):
+        client_mod.ModbusTcpClient = client_mod.AsyncModbusTcpClient
+
+
+async def _maybe_retry_yield(backoff: float, attempt: int, retry: int) -> None:
+    """Yield control between retries to allow cancellation to propagate."""
+    if attempt >= retry or backoff > 0:
+        return
+    await asyncio.sleep(0)
+
+
+async def _call_modbus_compat_fn(
+    call_modbus: Callable[..., Any],
+    func: Any,
+    slave_id: int,
+    address: int,
+    *,
+    count: int,
+    attempt: int,
+    retry: int,
+    timeout: int,
+    backoff: float,
+    backoff_jitter: float | tuple[float, float] | None,
+    apply_backoff: bool = True,
+) -> Any:
+    """Call ``call_modbus`` with rich kwargs, fallback to minimal mock signatures."""
+    try:
+        return await call_modbus(
+            func,
+            slave_id,
+            address,
+            count=count,
+            attempt=attempt,
+            max_attempts=retry,
+            timeout=timeout,
+            backoff=0.0,
+            backoff_jitter=None,
+            apply_backoff=False,
+        )
+    except TypeError as exc:
+        if "unexpected keyword" not in str(exc):
+            raise
+        return await call_modbus(func, slave_id, address, count=count)
+
+
+async def _sleep_retry_backoff_fn(
+    *,
+    calculate_backoff_delay: Callable[[float, int, float | tuple[float, float] | None], float],
+    backoff: float,
+    backoff_jitter: float | tuple[float, float] | None,
+    attempt: int,
+    retry: int,
+) -> None:
+    """Sleep between retries using provided backoff delay calculator."""
+    if attempt >= retry:
+        return
+    delay = calculate_backoff_delay(backoff, attempt + 1, backoff_jitter)
+    if delay > 0:
+        await asyncio.sleep(delay)
+    else:
+        await _maybe_retry_yield(backoff=backoff, attempt=attempt, retry=retry)
 
 
 async def _call_modbus_compat(
@@ -45,7 +118,7 @@ async def _call_modbus_compat(
     """Call `_call_modbus` with rich kwargs, fallback to minimal mock signatures."""
     scanner_module = sys.modules.get(scanner.__class__.__module__)
     call_modbus = getattr(scanner_module, "_call_modbus", _call_modbus)
-    return await _scanner_io.call_modbus_compat(
+    return await _call_modbus_compat_fn(
         call_modbus,
         func,
         slave_id,
@@ -64,7 +137,7 @@ async def _sleep_retry_backoff(
     *, backoff: float, backoff_jitter: float | tuple[float, float] | None, attempt: int, retry: int
 ) -> None:
     """Sleep between retries using modbus_helpers timing semantics."""
-    await _scanner_io.sleep_retry_backoff(
+    await _sleep_retry_backoff_fn(
         calculate_backoff_delay=lambda base, at, jitter: _mh._calculate_backoff_delay(
             base=base, attempt=at, jitter=jitter
         ),
@@ -536,6 +609,8 @@ async def read_discrete(
 
 
 __all__ = [
+    "ensure_pymodbus_client_module",
+    "is_request_cancelled_error",
     "read_bit_registers",
     "read_coil",
     "read_discrete",

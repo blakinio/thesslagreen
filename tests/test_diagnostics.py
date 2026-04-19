@@ -39,7 +39,7 @@ from custom_components.thessla_green_modbus.diagnostics import (
     _redact_sensitive_data,
     async_get_config_entry_diagnostics,
 )
-from custom_components.thessla_green_modbus.scanner_core import DeviceCapabilities
+from custom_components.thessla_green_modbus.scanner.core import DeviceCapabilities
 
 # Restore real registers module for subsequent tests
 if original_registers is not None:

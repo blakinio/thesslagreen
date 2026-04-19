@@ -14,7 +14,7 @@ def loader_mod():
     return sys.modules.get(mod_name) or importlib.import_module(mod_name)
 
 try:
-    from custom_components.thessla_green_modbus.scanner_core import ThesslaGreenDeviceScanner
+    from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 except Exception:  # pragma: no cover - scanner requires HA deps
     ThesslaGreenDeviceScanner = None
 from custom_components.thessla_green_modbus.scanner_helpers import MAX_BATCH_REGISTERS

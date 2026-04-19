@@ -5,6 +5,57 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.5.0 — Legacy cleanup (BREAKING)
+
+### ⚠️ Breaking changes
+- Config entry version 1 (pre-2021) no longer migrates automatically — remove
+  and re-add the integration.
+- Polish-language entity IDs (`rekuperator_moc_odzysku_ciepla` etc.) no longer
+  have migration aliases — update automations to use current English entity names.
+- Legacy fan entity IDs (`number.rekuperator_predkosc`, `number.rekuperator_speed`)
+  are not cleaned up automatically — remove them manually from entity registry if
+  present.
+
+### Removed
+- `config_entry.version == 1` migration path.
+- `LEGACY_DEFAULT_PORT = 8899` constant.
+- Polish-language entity_id aliases in `mappings/legacy.py`.
+- `LEGACY_FAN_ENTITY_IDS` list and `async_cleanup_legacy_fan_entity` function.
+- `predkosc`/`speed` entries from `LEGACY_ENTITY_ID_ALIASES`.
+- `scanner_core.py` shim — use `scanner.core` directly.
+
+### Changed
+- `scanner_io.py` reduced to thin re-export shim of `scanner/io.py`.
+- `BIT_ENTITY_KEYS` documented as active functional requirement (e_196_e_199
+  bitmask), not legacy.
+- `LEGACY_KEY_RENAMES` annotated with deprecation schedule (2.7.0+).
+
+---
+
+## 2.4.4 — Python 3.13 environment enforcement
+
+### Added
+- `.python-version` (pyenv) and `.tool-versions` (asdf) declare Python 3.13.
+- Explicit `sys.version_info` check in `__init__.py` — clear error on older Python.
+- `.pre-commit-config.yaml` rebuilt: `default_language_version: python3.13`,
+  replaced `black`+`isort` with `ruff-format`, expanded mypy scope to full package.
+- README development setup section.
+
+---
+
+## 2.4.3 — Critical fix: ImportError at integration load
+
+### Fixed
+- `_coordinator_update.py` imported `utcnow` from `utils` but the function
+  did not exist — integration failed to load in HA with `ImportError`. Added
+  `utcnow()` helper to `utils.py`.
+- Ruff I001 in `coordinator.py` (import order) and F401 in `__init__.py`
+  (unused `CONF_SLAVE_ID`).
+- 9 mypy errors in `_entity_registry_migrations.py` (`dict[str, object]`
+  replaced with `dict[str, Any]` + `getattr` access).
+
+---
+
 ## 2.4.2 — Detox regression fixes
 
 Fixes several test-compat fallbacks that had crept back into production code

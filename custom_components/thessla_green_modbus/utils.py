@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import time
+from datetime import UTC, datetime, time
 
 __all__ = [
     "BCD_TIME_PREFIXES",
@@ -15,7 +15,13 @@ __all__ = [
     "default_connection_mode",
     "encode_bcd_time",
     "resolve_connection_settings",
+    "utcnow",
 ]
+
+
+def utcnow() -> datetime:
+    """Return current UTC time as timezone-aware datetime."""
+    return datetime.now(UTC)
 
 
 def _to_snake_case(name: str) -> str:

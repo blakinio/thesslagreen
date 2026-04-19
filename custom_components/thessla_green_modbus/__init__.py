@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+import sys as _sys
+
+if _sys.version_info < (3, 13):  # noqa: UP036
+    raise RuntimeError(
+        f"ThesslaGreen Modbus requires Python 3.13+; "
+        f"running on {_sys.version_info.major}.{_sys.version_info.minor}. "
+        "Update Home Assistant to 2026.1.0+ which ships Python 3.13."
+    )
+
 import logging
 from datetime import timedelta
 from functools import partial
@@ -15,9 +24,6 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
     from .coordinator import ThesslaGreenModbusCoordinator
 
-from ._migrations import (
-    async_cleanup_legacy_fan_entity as _async_cleanup_legacy_fan_entity,
-)
 from ._migrations import async_migrate_entity_ids as _async_migrate_entity_ids
 from ._migrations import async_migrate_entry as _async_migrate_entry
 from ._migrations import async_migrate_unique_ids as _async_migrate_unique_ids
@@ -43,7 +49,6 @@ from .const import (
     CONF_LOG_LEVEL,
     CONF_SAFE_SCAN,
     CONF_SCAN_INTERVAL,
-    CONF_SLAVE_ID,
     DEFAULT_LOG_LEVEL,
     DEFAULT_NAME,
     DEFAULT_SAFE_SCAN,
@@ -83,7 +88,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         return False
     entry.runtime_data = coordinator
 
-    await _async_cleanup_legacy_fan_entity(hass, coordinator)
     await _async_migrate_unique_ids(hass, entry)
     await _async_migrate_entity_ids(hass, entry)
     await _async_setup_mappings(hass)
