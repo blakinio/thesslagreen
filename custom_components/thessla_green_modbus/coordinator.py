@@ -1402,9 +1402,7 @@ class ThesslaGreenModbusCoordinator(
         if self._stop_listener is not None:
             self._stop_listener()
             self._stop_listener = None
-        shutdown = getattr(super(), "async_shutdown", None)
-        if shutdown is not None:
-            await shutdown()
+        await super().async_shutdown()
         await self._disconnect()
 
     @property
