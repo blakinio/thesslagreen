@@ -16,7 +16,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 
-from tests.conftest import CoordinatorMock
 
 # Setup logging for tests
 logging.basicConfig(level=logging.DEBUG)
@@ -66,7 +65,7 @@ class TestThesslaGreenIntegration:
     @pytest.fixture
     def mock_coordinator(self):
         """Create a mock coordinator with realistic data."""
-        coordinator = CoordinatorMock()
+        coordinator = MagicMock()
         coordinator.host = "192.168.1.100"
         coordinator.port = 502
         coordinator.slave_id = 10
@@ -599,7 +598,7 @@ class TestThesslaGreenClimate:
     @pytest.fixture
     def mock_climate_coordinator(self):
         """Create a coordinator specifically for climate testing."""
-        coordinator = CoordinatorMock()
+        coordinator = MagicMock()
         coordinator.host = "192.168.1.100"
         coordinator.slave_id = 10
         coordinator.device_scan_result = {

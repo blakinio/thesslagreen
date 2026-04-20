@@ -4,14 +4,8 @@ This module keeps public migration imports stable while delegating implementatio
 into smaller, purpose-specific modules.
 """
 
-from ._entity_registry_migrations import (
-    async_migrate_entity_ids,
-    async_migrate_unique_ids,
-)
 from ._entry_migrations import async_migrate_entry
 
 __all__ = [
-    "async_migrate_entity_ids",
     "async_migrate_entry",
-    "async_migrate_unique_ids",
 ]

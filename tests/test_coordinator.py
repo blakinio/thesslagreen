@@ -2,10 +2,9 @@
 
 import asyncio
 import logging
-import os
 import sys
 import types
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -27,163 +26,25 @@ from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
 
-# Stub minimal Home Assistant and pymodbus modules before importing the coordinator
-ha = types.ModuleType("homeassistant")
-ha.__path__ = []
-const = types.ModuleType("homeassistant.const")
-core = types.ModuleType("homeassistant.core")
-helpers_pkg = types.ModuleType("homeassistant.helpers")
-helpers = types.ModuleType("homeassistant.helpers.update_coordinator")
-helpers_cv = types.ModuleType("homeassistant.helpers.config_validation")
-helpers_dr = types.ModuleType("homeassistant.helpers.device_registry")
-helpers_pkg.update_coordinator = helpers
-helpers_pkg.config_validation = helpers_cv
-helpers_pkg.device_registry = helpers_dr
-exceptions = types.ModuleType("homeassistant.exceptions")
-config_entries = types.ModuleType("homeassistant.config_entries")
-pymodbus = types.ModuleType("pymodbus")
-pymodbus_client = types.ModuleType("pymodbus.client")
-pymodbus_exceptions = types.ModuleType("pymodbus.exceptions")
-util = types.ModuleType("homeassistant.util")
-util.__path__ = []
-network_module = types.ModuleType("homeassistant.util.network")
-network_module.is_host_valid = lambda host: True
-util.network = network_module
+try:
+    from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
+    from homeassistant.helpers.update_coordinator import UpdateFailed
+except ImportError:
+    CONF_HOST = "host"
+    CONF_NAME = "name"
+    CONF_PORT = "port"
 
-const.CONF_HOST = "host"
-const.CONF_PORT = "port"
-const.CONF_SCAN_INTERVAL = "scan_interval"
-const.CONF_NAME = "name"
-
-
-class Platform:
-    SENSOR = "sensor"
-    BINARY_SENSOR = "binary_sensor"
-    SELECT = "select"
-    NUMBER = "number"
-    SWITCH = "switch"
-    CLIMATE = "climate"
-    FAN = "fan"
-
-
-const.Platform = Platform
-
-
-class HomeAssistant:
-    pass
-
-
-core.HomeAssistant = HomeAssistant
-
-
-class ServiceCall:
-    pass
-
-
-core.ServiceCall = ServiceCall
-
-
-class ConfigEntry:
-    def __init__(self, data, entry_id="1", options=None):
-        self.data = data
-        self.entry_id = entry_id
-        self.options = options or {}
-
-
-config_entries.ConfigEntry = ConfigEntry
-
-
-class _ConfigFlow:
-    def __init_subclass__(cls, **kwargs):
-        return super().__init_subclass__()
-
-
-config_entries.ConfigFlow = _ConfigFlow
-config_entries.OptionsFlow = type("OptionsFlow", (), {})
-
-
-class DataUpdateCoordinator:
-    def __init__(self, hass, logger, name=None, update_interval=None):
-        self.hass = hass
-        self.logger = logger
-        self.name = name
-        self.update_interval = update_interval
-
-    async def async_request_refresh(self):
+    class UpdateFailed(Exception):  # type: ignore[no-redef]
         pass
 
-    async def async_shutdown(self):  # pragma: no cover - stub
-        pass
 
-    @classmethod
-    def __class_getitem__(cls, item):
-        return cls
-
-
-helpers.DataUpdateCoordinator = DataUpdateCoordinator
-
-
-from tests.conftest import UpdateFailed
-
-helpers.UpdateFailed = UpdateFailed
-
-
-class ConfigEntryNotReady(Exception):
-    pass
-
-
-class HomeAssistantError(Exception):
-    pass
-
-
-exceptions.HomeAssistantError = HomeAssistantError
-exceptions.ConfigEntryNotReady = ConfigEntryNotReady
-
-
-class ModbusTcpClient:
-    pass
-
-
-class AsyncModbusTcpClient(ModbusTcpClient):
-    pass
-
-
-pymodbus_client.ModbusTcpClient = ModbusTcpClient
-pymodbus_client.AsyncModbusTcpClient = AsyncModbusTcpClient
-
-
-pymodbus_exceptions.ModbusException = ModbusException
-
-pymodbus_exceptions.ConnectionException = ConnectionException
-
-modules = {
-    "homeassistant": ha,
-    "homeassistant.const": const,
-    "homeassistant.core": core,
-    "homeassistant.helpers": helpers_pkg,
-    "homeassistant.helpers.update_coordinator": helpers,
-    "homeassistant.helpers.config_validation": helpers_cv,
-    "homeassistant.helpers.device_registry": helpers_dr,
-    "homeassistant.exceptions": exceptions,
-    "homeassistant.config_entries": config_entries,
-    "homeassistant.util": util,
-    "homeassistant.util.network": network_module,
-    "pymodbus": pymodbus,
-    "pymodbus.client": pymodbus_client,
-    "pymodbus.exceptions": pymodbus_exceptions,
-}
-for name, module in modules.items():
-    sys.modules[name] = module
-
-# Provide a minimal timezone-aware ``homeassistant.util.dt`` stub for imports.
-dt_module = types.ModuleType("homeassistant.util.dt")
-dt_module.now = lambda: datetime.now(UTC)
-dt_module.utcnow = lambda: datetime.now(UTC)
-util.dt = dt_module
-sys.modules["homeassistant.util.dt"] = dt_module
-
-# Ensure repository root is on path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+def _make_config_entry(data: dict, options: dict | None = None) -> MagicMock:
+    """Create a minimal config entry mock."""
+    entry = MagicMock()
+    entry.data = data
+    entry.entry_id = "test"
+    entry.options = options or {}
+    return entry
 
 
 INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
@@ -232,7 +93,7 @@ def coordinator():
 def test_coordinator_clamps_effective_batch():
     """Coordinator clamps batch size to ``MAX_BATCH_REGISTERS``."""
     hass = MagicMock()
-    entry = ConfigEntry(
+    entry = _make_config_entry(
         data={},
         options={CONF_MAX_REGISTERS_PER_REQUEST: MAX_BATCH_REGISTERS + 8},
     )
@@ -577,7 +438,6 @@ def test_device_info(coordinator):
 def test_device_info_dict_fallback(monkeypatch):
     """device_info_dict should work without HA DeviceInfo."""
     import importlib
-    import sys
 
     import custom_components.thessla_green_modbus as _thg_pkg
 
@@ -589,7 +449,6 @@ def test_device_info_dict_fallback(monkeypatch):
 
     # Simulate missing device_registry module
     monkeypatch.delitem(sys.modules, "homeassistant.helpers.device_registry", raising=False)
-    monkeypatch.delattr(helpers_pkg, "device_registry", raising=False)
     monkeypatch.delitem(
         sys.modules, "custom_components.thessla_green_modbus.coordinator", raising=False
     )
@@ -1005,12 +864,12 @@ async def test_setup_and_refresh_no_cancelled_error(coordinator):
 async def test_capabilities_loaded_from_config_entry():
     """Coordinator should hydrate capabilities from stored entry data."""
     caps = {"expansion_module": True}
-    entry = config_entries.ConfigEntry(
+    entry = _make_config_entry(
         {
-            const.CONF_HOST: "localhost",
-            const.CONF_PORT: 502,
+            CONF_HOST: "localhost",
+            CONF_PORT: 502,
             "slave_id": 1,
-            const.CONF_NAME: "test",
+            CONF_NAME: "test",
             "capabilities": caps,
         }
     )
@@ -1210,16 +1069,6 @@ async def test_read_with_retry_skips_illegal_data_address():
     coordinator._disconnect.assert_not_awaited()
 
 
-def cleanup_modules():
-    """Clean up injected modules."""
-    for name in modules:
-        sys.modules.pop(name, None)
-
-
-# Register cleanup
-import atexit
-
-atexit.register(cleanup_modules)
 
 
 class TestParseBackoffJitter:

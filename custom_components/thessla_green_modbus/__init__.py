@@ -24,9 +24,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from .coordinator import ThesslaGreenModbusCoordinator
 
-from ._migrations import async_migrate_entity_ids as _async_migrate_entity_ids
 from ._migrations import async_migrate_entry as _async_migrate_entry
-from ._migrations import async_migrate_unique_ids as _async_migrate_unique_ids
 from ._setup import (
     _apply_log_level as _setup_apply_log_level,
 )
@@ -83,8 +81,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return False
     entry.runtime_data = coordinator
 
-    await _async_migrate_unique_ids(hass, entry)
-    await _async_migrate_entity_ids(hass, entry)
     await _async_setup_mappings(hass)
     await _async_setup_platforms(hass, entry, PLATFORM_DOMAINS)
 

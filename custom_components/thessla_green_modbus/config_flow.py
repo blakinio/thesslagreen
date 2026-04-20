@@ -749,7 +749,6 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
         entry_data: dict[str, Any] = {
             CONF_CONNECTION_TYPE: normalized_type,
             CONF_SLAVE_ID: self._data[CONF_SLAVE_ID],
-            "unit": self._data[CONF_SLAVE_ID],  # legacy compatibility
             CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
             "capabilities": caps_dict,
         }

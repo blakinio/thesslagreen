@@ -5,9 +5,7 @@ import asyncio
 import logging
 import socket
 import sys
-import types
-from pathlib import Path
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -15,20 +13,7 @@ import pytest
 import voluptuous as vol
 from homeassistant.const import CONF_HOST, CONF_PORT
 
-# Stub loader module to avoid heavy imports during tests
-loader_stub = SimpleNamespace(
-    plan_group_reads=lambda *args, **kwargs: [],
-    get_registers_by_function=lambda *args, **kwargs: [],
-    get_all_registers=lambda *args, **kwargs: [],
-    registers_sha256=lambda *args, **kwargs: "",
-    load_registers=lambda *args, **kwargs: [],
-    _REGISTERS_PATH=Path("dummy"),
-)
-sys.modules.setdefault(
-    "custom_components.thessla_green_modbus.registers.loader",
-    loader_stub,
-)
-# Stub network validation to avoid homeassistant dependency
+# Stub network validation module — config_flow uses is_host_valid at import time
 network_module = SimpleNamespace(
     is_host_valid=lambda host: bool(host)
     and " " not in host
@@ -37,39 +22,6 @@ network_module = SimpleNamespace(
 )
 sys.modules.setdefault("homeassistant.util", SimpleNamespace(network=network_module))
 sys.modules.setdefault("homeassistant.util.network", network_module)
-
-# Stub registers module to avoid heavy imports during tests
-registers_module = types.ModuleType("custom_components.thessla_green_modbus.registers")
-registers_module.__path__ = []  # type: ignore[attr-defined]
-registers_loader = types.ModuleType("custom_components.thessla_green_modbus.registers.loader")
-registers_loader.get_registers_by_function = lambda *args, **kwargs: []
-registers_loader.get_all_registers = lambda *args, **kwargs: []
-registers_loader.registers_sha256 = lambda *args, **kwargs: ""
-registers_loader.plan_group_reads = lambda *args, **kwargs: []
-registers_loader.load_registers = lambda *args, **kwargs: []
-registers_loader._REGISTERS_PATH = Path("dummy")
-registers_module.loader = registers_loader
-registers_module.get_registers_by_function = registers_loader.get_registers_by_function
-registers_module.get_all_registers = registers_loader.get_all_registers
-registers_module.registers_sha256 = registers_loader.registers_sha256
-registers_module.plan_group_reads = registers_loader.plan_group_reads
-sys.modules.setdefault("custom_components.thessla_green_modbus.registers", registers_module)
-sys.modules.setdefault("custom_components.thessla_green_modbus.registers.loader", registers_loader)
-registers_module = ModuleType("custom_components.thessla_green_modbus.registers")
-registers_module.__path__ = []
-registers_module.loader = None
-registers_module.get_registers_by_function = lambda *args, **kwargs: []
-registers_module.get_all_registers = lambda *args, **kwargs: []
-registers_module.registers_sha256 = lambda *args, **kwargs: ""
-registers_module.plan_group_reads = lambda *args, **kwargs: []
-sys.modules.setdefault("custom_components.thessla_green_modbus.registers", registers_module)
-loader_module = ModuleType("custom_components.thessla_green_modbus.registers.loader")
-loader_module.get_registers_by_function = lambda *args, **kwargs: []
-loader_module.load_registers = lambda *args, **kwargs: []
-loader_module.get_all_registers = lambda *args, **kwargs: []
-loader_module.registers_sha256 = lambda *args, **kwargs: ""
-loader_module._REGISTERS_PATH = Path("dummy")
-sys.modules.setdefault("custom_components.thessla_green_modbus.registers.loader", loader_module)
 
 from custom_components.thessla_green_modbus.config_flow import (
     CannotConnect,
