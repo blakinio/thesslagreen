@@ -51,9 +51,6 @@ from ._static_numbers import NUMBER_ENTITY_MAPPINGS, NUMBER_OVERRIDES
 from ._static_sensors import SENSOR_ENTITY_MAPPINGS
 from .legacy import (
     LEGACY_ENTITY_ID_ALIASES,
-    LEGACY_ENTITY_ID_OBJECT_ALIASES,
-    _alias_warning_logged,
-    map_legacy_entity_id,
 )
 from .special_modes import SPECIAL_MODE_ICONS
 
@@ -65,7 +62,6 @@ __all__ = [
     "ENTITY_MAPPINGS",
     # legacy
     "LEGACY_ENTITY_ID_ALIASES",
-    "LEGACY_ENTITY_ID_OBJECT_ALIASES",
     "NUMBER_ENTITY_MAPPINGS",
     "NUMBER_OVERRIDES",
     "SELECT_ENTITY_MAPPINGS",
@@ -77,7 +73,6 @@ __all__ = [
     "TIME_ENTITY_MAPPINGS",
     # helpers
     "_REGISTER_INFO_CACHE",
-    "_alias_warning_logged",
     # loaders
     "_build_entity_mappings",
     "_extend_entity_mappings_from_registers",
@@ -95,7 +90,6 @@ __all__ = [
     "discrete_input_registers",
     "get_all_registers",
     "holding_registers",
-    "map_legacy_entity_id",
 ]
 
 

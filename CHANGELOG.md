@@ -5,6 +5,36 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.8.0 — Legacy removal + test infrastructure overhaul (BREAKING)
+
+### ⚠️ Breaking
+- Config entry v2/v3 (pre-2023) no longer migrate — remove and re-add the integration.
+- Legacy service call entity IDs (`rekuperator_*` old names) no longer mapped —
+  update automations to use current entity names.
+
+### Removed
+- Entity registry migrations (`async_migrate_entity_ids`, `async_migrate_unique_ids`)
+  no longer run on startup — idempotent since 2022, dead after 2+ years.
+- `_entity_registry_migrations.py`, `_legacy.py` (dead code after migration removal).
+- `mappings/legacy.py` `LEGACY_ENTITY_ID_OBJECT_ALIASES` (70 entries) and
+  `map_legacy_entity_id` function.
+- `scanner_io.py` shim (no importers). `tools/py_compile_all.py`.
+- `"unit"` key from new config entries. v2/v3 migration paths.
+
+### Tests
+- Removed: `test_legacy_entity_id_aliases.py`, `test_legacy_entity_migration.py`,
+  `test_services_legacy_ids.py`.
+- Fixed: `test_migration.py` — v1/v2/v3 now expect `False`; added explicit v4 test.
+- Infrastructure: `pytest-homeassistant-custom-component` plugin re-enabled,
+  `conftest.py` rebuilt on real HA fixtures.
+- `test_coordinator.py`: removed 130-line module-level HA stub block.
+- `test_services.py`: removed 18 HA module stubs.
+- `test_config_flow.py`: consolidated duplicate register loader stubs.
+- `test_coordinator_coverage.py`: replaced `is not None` assertions with type checks.
+- `test_optimized_integration.py`: replaced `CoordinatorMock` with `MagicMock`.
+
+---
+
 ## 2.7.0 — Dead fallback & pragma cleanup
 
 ### Removed

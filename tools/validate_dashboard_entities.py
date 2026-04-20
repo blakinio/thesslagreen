@@ -145,9 +145,6 @@ def validate_dashboard(
     content = path.read_text(encoding="utf-8")
     entities = sorted(set(_collect_entities(content)))
 
-    _install_homeassistant_stubs()
-    from custom_components.thessla_green_modbus.mappings import map_legacy_entity_id
-
     current = _current_entity_ids()
     valid: list[str] = []
     legacy: list[tuple[str, str]] = []
@@ -157,10 +154,6 @@ def validate_dashboard(
     for entity_id in entities:
         if entity_id in current:
             valid.append(entity_id)
-            continue
-        mapped = map_legacy_entity_id(entity_id)
-        if mapped != entity_id:
-            legacy.append((entity_id, mapped))
             continue
         unknown.append(entity_id)
         if SUSPICIOUS_FALLBACK_PATTERN.match(entity_id):

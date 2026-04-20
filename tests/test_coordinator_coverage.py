@@ -671,8 +671,8 @@ def test_coordinator_init_entry_bad_capabilities():
         coord = ThesslaGreenModbusCoordinator.from_legacy(
             hass=hass, host="localhost", port=502, slave_id=1, entry=entry
         )
-    # Should not raise; capabilities remains default
-    assert coord.capabilities is not None
+    # Should not raise; capabilities falls back to default (no capabilities set)
+    assert isinstance(coord.capabilities, DeviceCapabilities)
 
 
 # ---------------------------------------------------------------------------
@@ -1460,19 +1460,21 @@ async def test_test_connection_basic_register_response_none():
 
 
 def test_build_tcp_transport_tcp_rtu_mode():
-    """TCP_RTU mode returns RawRtuOverTcpTransport (lines 1172-1181)."""
+    """TCP_RTU mode returns RawRtuOverTcpTransport."""
     from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP_RTU
+    from custom_components.thessla_green_modbus.modbus_transport import RawRtuOverTcpTransport
     coord = _make_coordinator()
     result = coord._build_tcp_transport(CONNECTION_MODE_TCP_RTU)
-    assert result is not None
+    assert isinstance(result, RawRtuOverTcpTransport)
 
 
 def test_build_tcp_transport_tcp_mode():
-    """TCP mode returns TcpModbusTransport (line 1182)."""
+    """TCP mode returns TcpModbusTransport."""
     from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP
+    from custom_components.thessla_green_modbus.modbus_transport import TcpModbusTransport
     coord = _make_coordinator()
     result = coord._build_tcp_transport(CONNECTION_MODE_TCP)
-    assert result is not None
+    assert isinstance(result, TcpModbusTransport)
 
 
 # ---------------------------------------------------------------------------

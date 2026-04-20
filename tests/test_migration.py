@@ -10,8 +10,8 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 
 
 @pytest.mark.asyncio
-async def test_migrate_entry_adds_legacy_port():
-    """Test migration adds legacy default port when missing."""
+async def test_migrate_entry_v1_returns_false():
+    """v1 entries (pre-2021) are no longer supported since 2.5.0."""
     hass = MagicMock()
     hass.config_entries.async_update_entry = MagicMock()
 
@@ -22,39 +22,49 @@ async def test_migrate_entry_adds_legacy_port():
 
     result = await async_migrate_entry(hass, config_entry)
 
-    assert result is True
-    new_data = hass.config_entries.async_update_entry.call_args.kwargs["data"]
-    assert new_data[CONF_PORT] == 8899
-    assert config_entry.version == 4
+    assert result is False
 
 
 @pytest.mark.asyncio
-async def test_migrate_entry_preserves_existing_port():
-    """Test migration keeps existing port value."""
-    hass = MagicMock()
-    hass.config_entries.async_update_entry = MagicMock()
-
-    config_entry = MagicMock(spec=ConfigEntry)
-    config_entry.version = 1
-    config_entry.data = {CONF_HOST: "192.168.0.10", CONF_PORT: 1234}
-    config_entry.options = {}
-
-    result = await async_migrate_entry(hass, config_entry)
-
-    assert result is True
-    new_data = hass.config_entries.async_update_entry.call_args.kwargs["data"]
-    assert new_data[CONF_PORT] == 1234
-    assert config_entry.version == 4
-
-
-@pytest.mark.asyncio
-async def test_migrate_entry_updates_unique_id():
-    """Test migration replaces colons in host for unique_id."""
+async def test_migrate_entry_v2_returns_false():
+    """v2 entries are no longer supported since 2.8.0."""
     hass = MagicMock()
     hass.config_entries.async_update_entry = MagicMock()
 
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.version = 2
+    config_entry.data = {CONF_HOST: "192.168.0.10"}
+    config_entry.options = {}
+
+    result = await async_migrate_entry(hass, config_entry)
+
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_migrate_entry_v3_returns_false():
+    """v3 entries are no longer supported since 2.8.0."""
+    hass = MagicMock()
+    hass.config_entries.async_update_entry = MagicMock()
+
+    config_entry = MagicMock(spec=ConfigEntry)
+    config_entry.version = 3
+    config_entry.data = {CONF_HOST: "192.168.0.10"}
+    config_entry.options = {}
+
+    result = await async_migrate_entry(hass, config_entry)
+
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_migrate_entry_v4_updates_unique_id():
+    """v4 migration replaces colons in host for unique_id."""
+    hass = MagicMock()
+    hass.config_entries.async_update_entry = MagicMock()
+
+    config_entry = MagicMock(spec=ConfigEntry)
+    config_entry.version = 4
     config_entry.data = {
         CONF_HOST: "fe80::1",
         CONF_PORT: 1234,
@@ -67,4 +77,3 @@ async def test_migrate_entry_updates_unique_id():
 
     assert result is True
     assert hass.config_entries.async_update_entry.call_args.kwargs["unique_id"] == "fe80--1:1234:5"
-    assert config_entry.version == 4

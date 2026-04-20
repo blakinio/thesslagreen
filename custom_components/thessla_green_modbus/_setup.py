@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Any
 from .const import (
     CONF_CONNECTION_MODE,
     CONF_LOG_LEVEL,
-    CONF_SLAVE_ID,
     CONNECTION_MODE_AUTO,
     CONNECTION_MODE_TCP_RTU,
     CONNECTION_TYPE_RTU,
@@ -67,9 +66,6 @@ async def async_create_coordinator(hass: HomeAssistant, entry: ConfigEntry) -> A
     from .coordinator import CoordinatorConfig, ThesslaGreenModbusCoordinator
 
     config = CoordinatorConfig.from_entry(entry)
-    if CONF_SLAVE_ID not in entry.data and "unit" in entry.data:
-        config.slave_id = int(entry.data["unit"])
-
     connection_type = config.connection_type
     if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
         connection_type = DEFAULT_CONNECTION_TYPE
