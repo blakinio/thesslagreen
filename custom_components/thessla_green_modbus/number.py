@@ -36,7 +36,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:  # pragma: no cover - defensive
+) -> None:
     """Set up ThesslaGreen number entities from config entry.
 
     This hook is invoked by Home Assistant during platform setup.
@@ -119,7 +119,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         self.register_type = register_type
 
         # Entity configuration
-        self._attr_translation_key = register_name  # pragma: no cover - defensive
+        self._attr_translation_key = register_name
 
         # Number configuration
         self._setup_number_attributes()
@@ -133,7 +133,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             unit = self.entity_config["unit"]
             self._attr_native_unit_of_measurement = UNIT_MAPPINGS.get(
                 unit, unit
-            )  # pragma: no cover - defensive
+            )
 
         # Min/max values
         self._attr_native_min_value = self.entity_config.get("min", 0)
@@ -147,9 +147,9 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             keyword in self.register_name
             for keyword in ["temperature", "duration", "coef", "percentage"]
         ):
-            self._attr_mode = NumberMode.SLIDER  # pragma: no cover - defensive
+            self._attr_mode = NumberMode.SLIDER
         else:
-            self._attr_mode = NumberMode.BOX  # pragma: no cover - defensive
+            self._attr_mode = NumberMode.BOX
 
         # Icon
         if "temperature" in self.register_name:
@@ -174,10 +174,10 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             keyword in self.register_name
             for keyword in ["hysteresis", "correction", "max", "min", "balance", "coef"]
         ):
-            self._attr_entity_category = EntityCategory.CONFIG  # pragma: no cover - defensive
+            self._attr_entity_category = EntityCategory.CONFIG
 
     @property
-    def native_value(self) -> float | None:  # pragma: no cover - defensive
+    def native_value(self) -> float | None:
         """Return the current value."""
         if self.register_name not in self.coordinator.data:
             return None
@@ -190,7 +190,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
 
         return float(raw_value) if isinstance(raw_value, int | float) else None
 
-    async def async_set_native_value(self, value: float) -> None:  # pragma: no cover - defensive
+    async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
         try:
             success = await self.coordinator.async_write_register(
@@ -216,7 +216,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             raise
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover - defensive
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attributes: dict[str, Any] = {}
 
@@ -249,6 +249,6 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         return attributes
 
     @property
-    def available(self) -> bool:  # pragma: no cover - defensive
+    def available(self) -> bool:
         """Return if entity is available."""
         return super().available

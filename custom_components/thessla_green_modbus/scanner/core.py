@@ -82,8 +82,8 @@ try:
     _pymodbus_client: Any = importlib.import_module("pymodbus.client")
     if not hasattr(_pymodbus, "client"):
         _pymodbus.client = _pymodbus_client  # pragma: no cover - defensive
-except (ImportError, AttributeError) as _exc:  # pragma: no cover - defensive
-    _LOGGER.debug("Could not attach pymodbus.client submodule: %s", _exc)
+except (ImportError, AttributeError):  # pragma: no cover
+    pass
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper only
     from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType

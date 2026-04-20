@@ -5,6 +5,28 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.7.0 — Dead fallback & pragma cleanup
+
+### Removed
+- `_get_platforms` try/except for missing `homeassistant.const.Platform`; now uses `Platform(d)` directly.
+- `scanner_register_maps.py` loader fallback stubs (5 dummy functions).
+- `modbus_exceptions.py` fallback exception classes; now a direct pymodbus re-export.
+- pydantic v1 compatibility shims in `registers/schema.py` (`RootModel`, `model_validator`).
+- `from types import SimpleNamespace` in `services.py`.
+- ~100 spurious `# pragma: no cover - defensive` annotations across entity platform files,
+  coordinator.py, registers/schema.py, scanner_device_info.py, and support modules.
+
+### Changed
+- `services.py`: `SimpleNamespace` → typed `_MappedCall` inner class.
+- `config_flow.py`: collapsed duplicate `isinstance` branches in `_prepare_entry_payload`
+  and `_async_show_confirmation` caps_obj handling.
+- `modbus_helpers.py`: cleaned pragma comments on framer imports.
+- `scanner/core.py`: simplified pymodbus.client attach error handling.
+- `_coordinator_io.py`, `registers/loader.py`, `modbus_transport.py`: pragma comments
+  simplified (removed verbose suffixes, kept `# pragma: no cover` where truly unreachable).
+
+---
+
 ## 2.6.0 — Dead fallback cleanup
 
 ### Removed

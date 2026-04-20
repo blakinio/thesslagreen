@@ -149,7 +149,7 @@ async def run_full_scan(
                 unknown_registers["discrete_inputs"][addr] = value
 
 
-async def scan(scanner: Any) -> dict[str, Any]:  # pragma: no cover - defensive
+async def scan(scanner: Any) -> dict[str, Any]:
     """Perform the actual register scan using an established connection."""
     scan_started = time.monotonic()
     transport = scanner._transport

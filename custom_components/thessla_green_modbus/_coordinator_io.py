@@ -194,13 +194,13 @@ class _ModbusIOMixin:
                 last_error = exc
                 disconnect_cb = getattr(self, "_disconnect", None)
                 if self._transport is not None and callable(disconnect_cb):
-                    await disconnect_cb()  # pragma: no cover - defensive
+                    await disconnect_cb()  # pragma: no cover
                 elif isinstance(exc, ConnectionException) and callable(
                     disconnect_cb
-                ):  # pragma: no cover - defensive
+                ):  # pragma: no cover
                     await disconnect_cb()
                 if attempt >= self.retry:
-                    raise  # pragma: no cover - defensive
+                    raise  # pragma: no cover
                 _LOGGER.warning(
                     "Timeout reading %s registers at %s (attempt %s/%s)",
                     register_type,
@@ -208,7 +208,7 @@ class _ModbusIOMixin:
                     attempt,
                     self.retry,
                 )
-                if self._transport is not None:  # pragma: no cover - defensive
+                if self._transport is not None:  # pragma: no cover
                     try:
                         await self._ensure_connection()
                     except (
@@ -239,14 +239,14 @@ class _ModbusIOMixin:
                 last_error = exc
                 disconnect_cb = getattr(self, "_disconnect", None)
                 if self._transport is not None and callable(disconnect_cb):
-                    await disconnect_cb()  # pragma: no cover - defensive
+                    await disconnect_cb()  # pragma: no cover
                 elif isinstance(exc, ConnectionException) and callable(
                     disconnect_cb
-                ):  # pragma: no cover - defensive
+                ):  # pragma: no cover
                     await disconnect_cb()
                 if attempt >= self.retry:
                     raise
-                if self._transport is not None:  # pragma: no cover - defensive
+                if self._transport is not None:  # pragma: no cover
                     try:
                         await self._ensure_connection()
                     except (
@@ -286,11 +286,11 @@ class _ModbusIOMixin:
                     exc,
                 )
                 continue
-        if last_error is not None:  # pragma: no cover - defensive
-            raise last_error  # pragma: no cover - defensive
+        if last_error is not None:  # pragma: no cover
+            raise last_error  # pragma: no cover
         raise ModbusException(
             f"Failed to read {register_type} registers at {start_address}"
-        )  # pragma: no cover - defensive
+        )  # pragma: no cover
 
     async def _read_input_registers_optimized(self) -> dict[str, Any]:
         """Read input registers using optimized batch reading."""
@@ -607,7 +607,7 @@ class _ModbusIOMixin:
 
         return data
 
-    async def _read_discrete_inputs_optimized(self) -> dict[str, Any]:  # pragma: no cover - defensive
+    async def _read_discrete_inputs_optimized(self) -> dict[str, Any]:  # pragma: no cover
         """Read discrete input registers using optimized batch reading."""
         data: dict[str, Any] = {}
 

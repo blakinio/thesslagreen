@@ -62,17 +62,17 @@ async def async_maybe_await(result: Any) -> Any:
     return result
 
 
-try:  # pragma: no cover - optional dependency for TCP RTU framing
+try:
     from pymodbus.framer import FramerType
-except (ImportError, ModuleNotFoundError):  # pragma: no cover - fallback
+except (ImportError, ModuleNotFoundError):  # pragma: no cover
     FramerType = None
 
-try:  # pragma: no cover - optional dependency for TCP RTU framing
+try:
     from pymodbus.framer import ModbusRtuFramer
-except (ImportError, ModuleNotFoundError):  # pragma: no cover - fallback
-    try:  # pragma: no cover - older pymodbus layout
+except (ImportError, ModuleNotFoundError):  # pragma: no cover
+    try:
         from pymodbus.framer.rtu_framer import ModbusRtuFramer
-    except (ImportError, ModuleNotFoundError):  # pragma: no cover - defensive
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover
         ModbusRtuFramer = None
 
 

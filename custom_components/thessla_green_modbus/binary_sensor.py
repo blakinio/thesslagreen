@@ -35,7 +35,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:  # pragma: no cover - defensive
+) -> None:
     """Set up ThesslaGreen binary sensor entities.
 
     This coroutine is a Home Assistant platform setup hook and is invoked
@@ -135,13 +135,13 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         self._attr_icon = sensor_definition.get("icon")
         self._attr_device_class: BinarySensorDeviceClass | None = sensor_definition.get(
             "device_class"
-        )  # pragma: no cover - defensive
+        )
 
-        _ec = sensor_definition.get("entity_category")  # pragma: no cover - defensive
-        self._attr_entity_category = EntityCategory(_ec) if _ec else None  # pragma: no cover - defensive
+        _ec = sensor_definition.get("entity_category")
+        self._attr_entity_category = EntityCategory(_ec) if _ec else None
 
         # Translation setup
-        self._attr_translation_key = sensor_definition.get("translation_key")  # pragma: no cover - defensive
+        self._attr_translation_key = sensor_definition.get("translation_key")
 
         _LOGGER.debug(
             "Binary sensor initialized: %s (%s)",
@@ -150,7 +150,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         )
 
     @property
-    def suggested_object_id(self) -> str:  # pragma: no cover - defensive
+    def suggested_object_id(self) -> str:
         """Return bit-specific object ID for bitmask sensors, register key otherwise.
 
         For bit-level entities, ``_attr_translation_key`` holds the unique
@@ -169,7 +169,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
     _DIAG_NAMES: ClassVar[frozenset[str]] = frozenset({"alarm", "error"})
 
     @property
-    def available(self) -> bool:  # pragma: no cover - defensive
+    def available(self) -> bool:
         """Return if entity is available.
 
         Alarm, error and fault status registers (alarm, error, s_*, e_*, f_*)
@@ -218,7 +218,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         return result
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover - defensive
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attrs = {}
 
@@ -246,7 +246,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         return attrs
 
     @property
-    def icon(self) -> str:  # pragma: no cover - defensive
+    def icon(self) -> str:
         """Return the icon for the binary sensor."""
         # Ensure base_icon is a string before using it
         base_icon = self._attr_icon if isinstance(self._attr_icon, str) else None

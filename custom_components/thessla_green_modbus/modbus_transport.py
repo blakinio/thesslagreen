@@ -10,12 +10,12 @@ from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
 
-try:  # pragma: no cover - serial extras optional at runtime
+try:  # pragma: no cover
     from pymodbus.client import AsyncModbusSerialClient as _AsyncModbusSerialClient
-except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover - defensive
+except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover
     _AsyncModbusSerialClient = None
     SERIAL_IMPORT_ERROR: Exception | None = serial_import_err
-else:  # pragma: no cover - executed when serial client available
+else:  # pragma: no cover
     SERIAL_IMPORT_ERROR = None
 
 from .const import CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU

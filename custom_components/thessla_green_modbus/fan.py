@@ -27,7 +27,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:  # pragma: no cover - defensive
+) -> None:
     """Set up ThesslaGreen fan from config entry.
 
     This is a Home Assistant callback invoked during platform setup.
@@ -78,18 +78,18 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         super().__init__(coordinator, "ventilation", 0)
 
         # Entity configuration
-        self._attr_translation_key = "thessla_green_fan"  # pragma: no cover - defensive
+        self._attr_translation_key = "thessla_green_fan"
 
         # Fan configuration
-        self._attr_supported_features = FanEntityFeature.SET_SPEED  # pragma: no cover - defensive
+        self._attr_supported_features = FanEntityFeature.SET_SPEED
 
         # Speed range (0-150% as per ThesslaGreen specs)
-        self._attr_speed_count = FAN_SPEED_LEVELS  # pragma: no cover - defensive
+        self._attr_speed_count = FAN_SPEED_LEVELS
 
         _LOGGER.debug("Initialized fan entity")
 
     @property
-    def available(self) -> bool:  # pragma: no cover - defensive
+    def available(self) -> bool:
         """Return if the fan entity is available."""
         return (
             self.coordinator.last_update_success
@@ -148,7 +148,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         percentage: int | None = None,
         preset_mode: str | None = None,
         **kwargs: Any,
-    ) -> None:  # pragma: no cover - defensive
+    ) -> None:
         """Turn on the fan."""
         try:
             # First ensure system is on
@@ -279,7 +279,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         )
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:  # pragma: no cover - defensive
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attributes = {}
 
