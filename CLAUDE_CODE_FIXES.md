@@ -1,408 +1,371 @@
-# thessla_green_modbus — instrukcja napraw dla Claude Code (v12)
-
-**Repozytorium:** `github.com/blakinio/thesslagreen`
-**Branch:** `main` (HEAD: `dba1a47` — merge PR #1331)
-**Wersja docelowa:** `2.5.0 → 2.5.1`
-**Data audytu:** 2026-04-19
+# thessla_green_modbus — CLAUDE_CODE_FIXES v18
+# 2.7.0 → 2.8.0 | Legacy + Test quality
 
 ---
 
-## Stan po 2.5.0
+# ═══ CZĘŚĆ 1 — LEGACY REMOVAL (z v17) ═══
 
-✅ Ruff: 0 | Mypy: 0 (58 plików) | Baseline przywrócony po regresji z 2.4.2  
-✅ `utcnow()` w `utils.py` — runtime ImportError naprawiony  
-✅ `_compat.py` — czyste re-exports, brak fallbacków  
-✅ `CoordinatorConfig` dataclass — `__init__` przyjmuje `config: CoordinatorConfig` (Fix #9 z v8 w końcu wdrożony)  
-✅ `.python-version` (3.13), `.tool-versions` (python 3.13.0)  
-✅ `pre-commit-config.yaml` — `python3.13`, `ruff-format` zamiast `black`+`isort`  
-✅ `sys.version_info` check w `__init__.py`  
-✅ Legacy usunięte: polskie entity_ids, `LEGACY_FAN_ENTITY_IDS`, `LEGACY_DEFAULT_PORT`, `scanner_core.py`  
-✅ `scanner_io.py` — 10-liniowy shim re-exportujący z `scanner/io.py`
+## Fix #1 — Usuń zapis "unit" z nowych config entries
+# Plik: config_flow.py ~752
+### SZUKAJ
+            "unit": self._data[CONF_SLAVE_ID],  # legacy compatibility
+### USUŃ tę linię
 
-**Pozostałe smelle znalezione w tej turze:**
+## Fix #2 — Usuń odczyt "unit" z setup
+# Plik: _setup.py ~70
+### SZUKAJ
+    if CONF_SLAVE_ID not in entry.data and "unit" in entry.data:
+        config.slave_id = int(entry.data["unit"])
+### USUŃ obie linie
 
-| # | Plik | Smell |
-|---|---|---|
-| 1 | `config_flow.py:565-592` | 5 metod `ConfigFlow` z `getattr(super(), ...)` fallback — test-compat |
-| 2 | `_entity_registry_migrations.py:38` | `except (ImportError, ModuleNotFoundError, AttributeError): return` dla HA helpers — dead path |
-| 3 | `config_flow.py:112-122` | `_load_scanner_module` z `getattr(hass, "async_add_executor_job", None)` — SimpleNamespace fallback |
-| 4 | `_legacy.py` | `BIT_ENTITY_KEYS` komentarz nie-legacy nie dodany |
-| 5 | `config_flow.py` | 43× `# pragma: no cover` — wysoka gęstość |
+## Fix #3 — Usuń "unit" fallback z _entry_migrations.py
+### SZUKAJ
+    elif "unit" in new_data:
+        slave_id = new_data["unit"]
+### USUŃ
 
-**Priorytet: niski-średni.** Funkcjonalność działa, to cleanup jakościowy. Minor bump.
+## Fix #4 — Zatrzymaj entity migrations przy restarcie
+# Plik: __init__.py linie 86-87
+### SZUKAJ
+    await _async_migrate_unique_ids(hass, entry)
+    await _async_migrate_entity_ids(hass, entry)
+### USUŃ obie linie + ich importy z nagłówka
 
----
-
-## Fix #1 — `ConfigFlow` defensive method wrappers
-
-**Plik:** `custom_components/thessla_green_modbus/config_flow.py`
-
-**Dowód (linie 565-592):**
-```python
-async def async_set_unique_id(self, *args, **kwargs):  # pragma: no cover - defensive
-    base = getattr(super(), "async_set_unique_id", None)
-    if callable(base):
-        result = base(*args, **kwargs)
-        if asyncio.iscoroutine(result):
-            return await result
-        return result
-    return None
-
-def _abort_if_unique_id_configured(self, **kwargs):  # pragma: no cover - defensive
-    base = getattr(super(), "_abort_if_unique_id_configured", None)
-    if callable(base):
-        return base(**kwargs)
-    return None
-
-def async_show_form(self, **kwargs):  # pragma: no cover - defensive
-    base = getattr(super(), "async_show_form", None)
-    if callable(base):
-        return base(**kwargs)
-    return {"type": "form", **kwargs}
-
-def async_create_entry(self, **kwargs):  # pragma: no cover - defensive
-    base = getattr(super(), "async_create_entry", None)
-    if callable(base):
-        return base(**kwargs)
-    return {"type": "create_entry", **kwargs}
-
-def async_abort(self, **kwargs):  # pragma: no cover - defensive
-    base = getattr(super(), "async_abort", None)
-    if callable(base):
-        return base(**kwargs)
-    return {"type": "abort", **kwargs}
-```
-
-**Problem:** `ConfigFlow` dziedziczy z `_ConfigFlowBase = config_entries.ConfigFlow`. Wszystkie te metody (`async_set_unique_id`, `_abort_if_unique_id_configured`, `async_show_form`, `async_create_entry`, `async_abort`) istnieją w `homeassistant.config_entries.ConfigFlow` od co najmniej HA 2022. Manifest wymaga HA 2026.1.0. `getattr(super(), "method", None)` dla metod które **zawsze istnieją** to wzorzec z czasów gdy testy używały stubów bez pełnego HA.
-
-### Krok 1 — zastąp defensive wrappers prostymi delegatami
-
-#### SZUKAJ (linie ~565-593)
-```python
-    async def async_set_unique_id(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover - defensive
-        base = getattr(super(), "async_set_unique_id", None)
-        if callable(base):
-            result = base(*args, **kwargs)
-            if asyncio.iscoroutine(result):
-                return await result
-            return result
-        return None
-
-    def _abort_if_unique_id_configured(self, **kwargs: Any) -> Any:  # pragma: no cover - defensive
-        base = getattr(super(), "_abort_if_unique_id_configured", None)
-        if callable(base):
-            return base(**kwargs)
-        return None
-
-    def async_show_form(self, **kwargs: Any) -> Any:  # pragma: no cover - defensive
-        base = getattr(super(), "async_show_form", None)
-        if callable(base):
-            return base(**kwargs)
-        return {"type": "form", **kwargs}
-
-    def async_create_entry(self, **kwargs: Any) -> Any:  # pragma: no cover - defensive
-        base = getattr(super(), "async_create_entry", None)
-        if callable(base):
-            return base(**kwargs)
-        return {"type": "create_entry", **kwargs}
-
-    def async_abort(self, **kwargs: Any) -> Any:  # pragma: no cover - defensive
-        base = getattr(super(), "async_abort", None)
-        if callable(base):
-            return base(**kwargs)
-        return {"type": "abort", **kwargs}
-```
-
-#### USUŃ wszystkie 5 metod w całości
-
-`ConfigFlow` odziedziczy te metody bezpośrednio z `homeassistant.config_entries.ConfigFlow`. Żadna nadpisana implementacja nie jest potrzebna.
-
-### Krok 1b — sprawdź `VERSION = 4`
-
-```python
-VERSION = 4  # pragma: no cover - defensive
-```
-
-`# pragma: no cover - defensive` na stałej klasowej to nonsens — to nie jest kod który się "wykonuje" lub nie. Usuń komentarz:
-
-#### SZUKAJ
-```python
-    VERSION = 4  # pragma: no cover - defensive
-```
-
-#### ZASTĄP
-```python
-    VERSION = 4
-```
-
-### Weryfikacja
+## Fix #5 — Usuń _entity_registry_migrations.py
 ```bash
-ruff check custom_components/thessla_green_modbus/config_flow.py
-mypy custom_components/thessla_green_modbus/config_flow.py
-pytest tests/test_config_flow.py -x -q
+rm custom_components/thessla_green_modbus/_entity_registry_migrations.py
 ```
+Zaktualizuj _migrations.py — usuń referencje do async_migrate_entity_ids i async_migrate_unique_ids.
 
-### Oczekiwany efekt
-- −30 linii defensywnego kodu
-- −5 `# pragma: no cover` z `config_flow.py` (43 → ~38)
-
----
-
-## Fix #2 — `except (ImportError, ModuleNotFoundError)` dla HA helpers
-
-**Plik:** `custom_components/thessla_green_modbus/_entity_registry_migrations.py`
-
-**Dowód (linie 38-40):**
-```python
-    try:
-        from homeassistant.helpers import device_registry as dr
-        from homeassistant.helpers import entity_registry as er
-        from homeassistant.util import slugify
-    except (ImportError, ModuleNotFoundError, AttributeError):
-        return
-```
-
-**Problem:** `homeassistant.helpers.entity_registry`, `device_registry`, i `homeassistant.util.slugify` są w HA od 2019. Manifest wymaga HA 2026.1.0. Ten `try/except` jest dead path — **jeśli import padnie, byłby to błąd w instalacji HA, nie edge case**. Cichy `return` maskuje taką awarię.
-
-### Krok 2 — usuń try/except, importy na poziomie modułu
-
-**Plik:** `custom_components/thessla_green_modbus/_entity_registry_migrations.py`
-
-Sprawdź nagłówek pliku — co jest już importowane:
+## Fix #6 — Usuń _legacy.py (staje się dead code po Fix #5)
 ```bash
-head -25 custom_components/thessla_green_modbus/_entity_registry_migrations.py
+grep -rn "from \._legacy\|from \..*_legacy\b" custom_components/ tests/ --include="*.py"
+# Jeśli tylko z _entity_registry_migrations.py (usuniętego) → bezpiecznie usunąć
+rm custom_components/thessla_green_modbus/_legacy.py
 ```
 
-#### SZUKAJ (w ciele funkcji `async_migrate_entity_ids` lub podobnej)
-```python
-    try:
-        from homeassistant.helpers import device_registry as dr
-        from homeassistant.helpers import entity_registry as er
-        from homeassistant.util import slugify
-    except (ImportError, ModuleNotFoundError, AttributeError):
-        return
-```
+## Fix #7 — Usuń LEGACY_ENTITY_ID_OBJECT_ALIASES i map_legacy_entity_id
+# Plik: mappings/legacy.py — usuń cały dict (70 wpisów) i funkcję map_legacy_entity_id
+# Plik: services.py — zastąp wywołania:
+### SZUKAJ
+    mapped_ids = [map_legacy_entity_id(entity_id) for entity_id in raw_ids]
+### ZASTĄP
+    mapped_ids = list(raw_ids)
+### SZUKAJ
+    mapped_entity_id = map_legacy_entity_id(entity_id)
+### ZASTĄP
+    mapped_entity_id = entity_id
+# Usuń import z services.py. Usuń LEGACY_ENTITY_ID_ALIASES (pusty) z mappings/__init__.py.
 
-#### ZASTĄP
-```python
-    from homeassistant.helpers import device_registry as dr
-    from homeassistant.helpers import entity_registry as er
-    from homeassistant.util import slugify
-```
+## Fix #8 — Migracje v2/v3 → error
+# Plik: _entry_migrations.py — zastąp bloki v2 i v3:
+### ZASTĄP
+    if config_entry.version in (2, 3):
+        _LOGGER.error("Config entry version %s (pre-2023) no longer supported.", config_entry.version)
+        return False
+# Uruchom: ruff check --fix custom_components/thessla_green_modbus/_entry_migrations.py
 
-Alternatywnie (lepiej) — przenieś te importy na top-level pliku jeśli używane w wielu funkcjach:
-
-```python
-# Na górze pliku, po istniejących importach:
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
-from homeassistant.util import slugify
-```
-
-Usuń wtedy te local importy całkowicie.
-
-### Oczekiwany efekt
-- −5 linii try/except
-- Awaria importu HA będzie widoczna jako jawny błąd, nie ciche `return`
-
----
-
-## Fix #3 — `_load_scanner_module` SimpleNamespace fallback
-
-**Plik:** `custom_components/thessla_green_modbus/config_flow.py`
-
-**Dowód (linie 112-122):**
-```python
-async def _load_scanner_module(hass: Any) -> Any:
-    """Import scanner.core using the HA executor when available.
-
-    Falls back to a direct synchronous import when *hass* is ``None`` or does
-    not expose ``async_add_executor_job`` (e.g. SimpleNamespace test stubs).
-    """
-    module_name = "custom_components.thessla_green_modbus.scanner.core"
-    _aej = getattr(hass, "async_add_executor_job", None)
-    if _aej is not None:
-        result = _aej(import_module, module_name)
-        if inspect.isawaitable(result):
-            return await result
-    return import_module(module_name)
-```
-
-**Problem:** `hass.async_add_executor_job` istnieje w każdym prawdziwym HA `HomeAssistant` obiekcie. `getattr(hass, "async_add_executor_job", None)` jest fallbackiem dla SimpleNamespace (testy bez HA). Po v2.4.0 detox testy powinny używać prawdziwego `hass` fixture.
-
-### Krok 3 — uprość
-
-#### SZUKAJ
-```python
-async def _load_scanner_module(hass: Any) -> Any:
-    """Import scanner.core using the HA executor when available.
-
-    Falls back to a direct synchronous import when *hass* is ``None`` or does
-    not expose ``async_add_executor_job`` (e.g. SimpleNamespace test stubs).
-    """
-    module_name = "custom_components.thessla_green_modbus.scanner.core"
-    _aej = getattr(hass, "async_add_executor_job", None)
-    if _aej is not None:
-        result = _aej(import_module, module_name)
-        if inspect.isawaitable(result):
-            return await result
-    return import_module(module_name)
-```
-
-#### ZASTĄP
-```python
-async def _load_scanner_module(hass: HomeAssistant) -> Any:
-    """Import scanner.core via the HA executor to avoid blocking the event loop."""
-    module_name = "custom_components.thessla_green_modbus.scanner.core"
-    return await hass.async_add_executor_job(import_module, module_name)
-```
-
-### Krok 3b — sprawdź typ `hass` w signature callerów
-
+## Fix #9 — Usuń scanner_io.py (0 importerów)
 ```bash
-grep -n "_load_scanner_module" custom_components/thessla_green_modbus/config_flow.py
+rm custom_components/thessla_green_modbus/scanner_io.py
 ```
 
-Jeśli caller przekazuje `hass: Any` — zmień na `hass: HomeAssistant`. Sprawdź czy `HomeAssistant` jest importowany w pliku:
+## Fix #10 — Usuń tools/py_compile_all.py
 ```bash
-grep "from homeassistant.core import" custom_components/thessla_green_modbus/config_flow.py
+rm tools/py_compile_all.py
 ```
 
-### Krok 3c — czy `inspect` jest wciąż używany?
-
+## Testy do usunięcia (testują usunięty kod)
 ```bash
-grep -n "\binspect\." custom_components/thessla_green_modbus/config_flow.py
-```
-
-Jeśli `inspect.isawaitable` był jedynym użyciem po tej zmianie — usuń `import inspect`.
-
-### Oczekiwany efekt
-- −6 linii
-- Czystsza sygnatura (nie `Any` ale `HomeAssistant`)
-- Mniej defensywnego kodu
-
----
-
-## Fix #4 — `BIT_ENTITY_KEYS` — brak "not legacy" komentarza
-
-**Plik:** `custom_components/thessla_green_modbus/_legacy.py`
-
-**Dowód:**
-```python
-BIT_ENTITY_KEYS: dict[tuple[str, int], str] = {
-    # e_196_e_199 is a bitmask register; each bit gets its own entity key.
-    # Key format: _to_snake_case(bit_name) inserts underscore before digits,
-    # so "e196" → "e_196", giving "e_196_e_199_e_196".
-    (\"e_196_e_199\", 1): \"e_196_e_199_e_196\",
-```
-
-Komentarz z v11 o tym że to NOT LEGACY nie został dodany.
-
-### Krok 4
-
-**Plik:** `custom_components/thessla_green_modbus/_legacy.py`
-
-#### SZUKAJ
-```python
-BIT_ENTITY_KEYS: dict[tuple[str, int], str] = {
-    # e_196_e_199 is a bitmask register; each bit gets its own entity key.
-    # Key format: _to_snake_case(bit_name) inserts underscore before digits,
-    # so "e196" → "e_196", giving "e_196_e_199_e_196".
-```
-
-#### ZASTĄP
-```python
-# NOT LEGACY — active functional requirement. The e_196_e_199 register is a
-# 4-bit bitmask; each bit maps to a separate binary_sensor entity (E196-E199).
-# Without this map all 4 bits would collide on the same entity_id.
-# Do not remove unless the underlying hardware/protocol changes.
-BIT_ENTITY_KEYS: dict[tuple[str, int], str] = {
-    # Key format: _to_snake_case(bit_name) inserts underscore before digits,
-    # so "e196" → "e_196", giving "e_196_e_199_e_196".
+rm tests/test_legacy_entity_id_aliases.py
+rm tests/test_legacy_entity_migration.py
+rm tests/test_services_legacy_ids.py
+# test_init_helpers.py — usuń testy dla extract_legacy_problem_key i extract_key_from_unique_id
+# test_migration.py — zaktualizuj: v1 → False, v2/v3 → False, v4 → True
 ```
 
 ---
 
-## Fix #5 — Redukcja `# pragma: no cover` w `config_flow.py`
+# ═══ CZĘŚĆ 2 — AUDYT JAKOŚCI TESTÓW ═══
 
-**Plik:** `custom_components/thessla_green_modbus/config_flow.py` (43 pragmas)
+## Problem architektoniczny — fundamentalny
 
-Po Fix #1 (usunięcie 5 defensive methods) zostanie ~38. Pozostałe to głównie linie w error-handling paths które nie są pokryte testami.
+Testy używają własnych stubów HA zamiast `pytest-homeassistant-custom-component`.
+Efekt: **96 plików testów testuje głównie własne mocki, nie realny kod integracji z HA.**
 
-### Krok 5 — audit remaining pragmas
-
-```bash
-grep -n "# pragma: no cover" custom_components/thessla_green_modbus/config_flow.py
+```
+pytest.ini: -p no:pytest_homeassistant_custom_component  ← WYŁĄCZONE!
+conftest.py: DataUpdateCoordinator stub, ConfigEntry stub, ConfigFlow stub...
+test_coordinator.py: 17 HA module stubs budowanych od zera
+test_services.py: 18 HA module stubs + voluptuous stub
+test_all_entity_creation.py: 19 stubs
 ```
 
-Dla każdego `# pragma: no cover - defensive` zadaj pytanie:
-- Czy ta linia/blok jest w rzeczywistości nieosiągalny w produkcji?
-- Czy nieosiągalność wynika z logiki kodu, czy z braku testu?
+Konsekwencje:
+- `ThesslaGreenModbusCoordinator.super().__init__()` wywołuje STUB, nie HA
+- `async_setup_entry` nigdy nie wchodzi w HA entity registry pipeline
+- Testy config_flow testują ConfigFlow dziedziczący po StubClass, nie HA ConfigFlow
+- 23 klasy HA monkey-patchowane w conftest → każda jest uproszczona
 
-**Decyzja per kategoria:**
-
-| Pattern | Akcja |
-|---|---|
-| `raise` po `except` który właśnie obsłużył inny wyjątek | Zostaw (faktycznie defensive) |
-| `return {"type": "form", ...}` w usuniętych wrapperach | Usuwa się z Fix #1 |
-| `VERSION = 4` | Usuwa się z Fix #1 |
-| Error logging w `except` bloku który jest przetestowany | Rozważ usunięcie pragma i dodanie testu |
-
-Priorytet: usuń pragmas które wylądowały "bo test nie istnieje" — dodaj test albo zaakceptuj jako defensive.
+**To nie jest błąd testerów — to wynik historyczny, kiedy testy pisano zanim dodano pytest-homeassistant-custom-component. Teraz `requirements-dev.txt` ma go, ale `pytest.ini` wyłącza.**
 
 ---
 
-## Weryfikacja końcowa
+## Fix #11 — Włącz pytest-homeassistant-custom-component
+
+### SZUKAJ w tests/pytest.ini
+    -p no:pytest_homeassistant_custom_component
+
+### USUŃ tę linię
+
+**Po tej zmianie większość testów PADNIE** — bo oczekują stubów, a dostają prawdziwe HA.
+To jest pożądane — ujawnia gdzie testy były fasadą.
+
+---
+
+## Fix #12 — Przepisz conftest.py
+
+Obecny conftest (912 linii) to głównie HA module stubs. Po Fix #11 (prawdziwe HA):
+te stuby są zbędne albo szkodliwe (nadpisują rzeczywiste klasy).
+
+### Cel nowego conftest.py:
+```python
+"""Test configuration for ThesslaGreen Modbus integration."""
+from __future__ import annotations
+
+import pytest
+from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components.thessla_green_modbus.const import DOMAIN
+
+
+@pytest.fixture
+def mock_config_entry() -> MockConfigEntry:
+    return MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            "host": "192.168.1.100",
+            "port": 502,
+            "slave_id": 10,
+            "name": "Test Device",
+            "connection_type": "tcp",
+            "connection_mode": "tcp",
+        },
+        options={
+            "scan_interval": 30,
+            "timeout": 10,
+            "retry": 3,
+            "force_full_register_list": False,
+        },
+    )
+
+
+def _fake_modbus_response(*, registers=None, bits=None):
+    """Build a minimal pymodbus-like response object for tests."""
+    from unittest.mock import MagicMock
+    resp = MagicMock()
+    resp.isError.return_value = False
+    if registers is not None:
+        resp.registers = registers
+    if bits is not None:
+        resp.bits = bits
+    return resp
+```
+
+**Usuń:** wszystkie `types.ModuleType("homeassistant.*")` bloki, klasy ConfigEntry/ConfigFlow/DataUpdateCoordinator/HomeAssistant.
+
+---
+
+## Fix #13 — test_coordinator.py: usuń module-level HA stubs
+
+**Problem:** Plik buduje 17 HA modułów od zera na poziomie modułu (przed importami!):
+```python
+ha = types.ModuleType("homeassistant")
+core = types.ModuleType("homeassistant.core")
+# ... 15 więcej
+sys.modules["homeassistant"] = ha
+```
+
+Oznacza to że `ThesslaGreenModbusCoordinator` jest importowany z FAKE homeassistant.
+`self.hass` to SimpleNamespace, `super().__init__()` to stub bez HA behavior.
+
+### Co zrobić:
+1. Usuń cały blok module-level stub (pierwsze ~130 linii)
+2. Użyj `from homeassistant.core import HomeAssistant` bezpośrednio
+3. Użyj `pytest.fixture` z prawdziwym `hass` z PHCC
+4. Konstruuj coordinator przez `ThesslaGreenModbusCoordinator(hass, config, entry=mock_entry)`
+
+Testy które sprawdzają logikę Modbus (timeout, retry, cancellation) **mogą zostać** — tylko usunąć stub infrastructure.
+
+---
+
+## Fix #14 — test_services.py: przepisz na HA fixtures
+
+**Problem:** 18 HA module stubs + voluptuous stub. Testy sprawdzają czy service handler wywołuje `coordinator.async_write_register` z właściwymi argumentami — logika biznesowa testowana przez głęboki stub.
+
+### Priorytet testów do zachowania (wysokiej wartości):
+- `test_async_set_ventilation_speed` — testuje konkretną wartość rejestru
+- `test_async_set_bypass` — testuje logikę trybu
+- `test_get_entity_ids_from_call` — testuje parsowanie entity_ids
+
+### Strategia refactoru:
+```python
+@pytest.fixture
+async def services_hass(hass: HomeAssistant, mock_config_entry):
+    mock_config_entry.add_to_hass(hass)
+    coordinator = MagicMock(spec=ThesslaGreenModbusCoordinator)
+    coordinator.async_write_register = AsyncMock(return_value=True)
+    mock_config_entry.runtime_data = coordinator
+    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    return hass, coordinator
+```
+
+---
+
+## Fix #15 — test_config_flow.py: 56 stubs to too much
+
+**Problem:** config_flow.py ma 56 `sys.modules` manipulations. Test_config_flow powinien testować rzeczywisty przepływ konfiguracji przez HA.
+
+### Przepisz kluczowe testy:
+```python
+async def test_config_flow_tcp_success(hass: HomeAssistant):
+    """Config flow should create entry on successful TCP connection."""
+    with patch("custom_components.thessla_green_modbus.config_flow._load_scanner_module") as mock_scanner:
+        mock_scanner.return_value = AsyncMock(...)
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        assert result["type"] == FlowResultType.FORM
+```
+
+---
+
+## Fix #16 — Specyficzne dummy/błędne testy do naprawy
+
+### test_coordinator_coverage.py — coverage-driven tests (bad practice)
+**Problem:** Plik istnieje "żeby osiągnąć coverage", nie żeby testować zachowanie.
+Testuje linie, nie invarianty.
+
+Przykład złego testu:
+```python
+def test_get_rtu_framer_returns_something():
+    result = get_rtu_framer()
+    assert result is not None  # ← co to sprawdza??
+```
+
+**Akcja:** Przejrzyj każdy test — jeśli assertion sprawdza tylko "czy nie None" bez kontekstu biznesowego → usuń lub przepisz z konkretnym oczekiwaniem.
+
+### test_example_configuration.py — czy istnieje?
+```bash
+cat tests/test_example_configuration.py | head -30
+```
+Jeśli testuje tylko "czy można załadować JSON przykładu" → niskiej wartości.
+
+### test_strings_json_generation.py i test_strings_translations.py
+Testy generowania plików strings.json — **wartościowe**, zostaw.
+
+### test_manifest_files.py
+Testy poprawności manifest.json — **wartościowe**, zostaw.
+
+### test_register_json_schema.py, test_register_uniqueness.py
+Testy spójności danych JSON — **wysokiej wartości**, zostaw.
+
+---
+
+## Fix #17 — Usuń CoordinatorMock z conftest i test_optimized_integration.py
+
+**Problem:** `CoordinatorMock` w conftest to ręcznie napisany mock koordynatora.
+`test_optimized_integration.py` używa go zamiast prawdziwego coordinatora.
 
 ```bash
+grep -n "CoordinatorMock" tests/conftest.py tests/test_optimized_integration.py | head -10
+```
+
+Jeśli `CoordinatorMock` reimplementuje zachowanie które `ThesslaGreenModbusCoordinator` już ma → zastąp przez `MagicMock(spec=ThesslaGreenModbusCoordinator)` lub prawdziwy coordinator z mock transport.
+
+---
+
+## Fix #18 — test_migration.py: zaktualizuj do nowej logiki
+
+Po Fix #8 (v2/v3 → return False):
+
+### SZUKAJ test który oczekuje v2 migration success
+```python
+async def test_migrate_entry_v2_adds_connection_type():
+    config_entry.version = 2
+    result = await async_migrate_entry(hass, config_entry)
+    assert result is True  # ← to teraz False!
+```
+
+### ZASTĄP
+```python
+async def test_migrate_entry_v2_returns_false():
+    """v2 entries are no longer supported since 2.8.0."""
+    config_entry.version = 2
+    result = await async_migrate_entry(hass, config_entry)
+    assert result is False
+```
+
+Analogicznie dla v3. Test dla v1 już oczekuje False (z 2.5.0) — zostaw.
+
+---
+
+## Weryfikacja
+
+```bash
+# Baseline po legacy removal:
 ruff check custom_components/ tests/ tools/
-# Expected: All checks passed!
-
 mypy custom_components/thessla_green_modbus/
-# Expected: Success: no issues found in 58 source files
 
-pytest tests/ -x -q
-# Na Python 3.13 z HA: wszystkie przechodzą
+# Testy — najpierw bez Fix #11 (bez prawdziwego HA):
+pytest tests/ -x -q --ignore=tests/test_legacy_entity_id_aliases.py \
+    --ignore=tests/test_legacy_entity_migration.py \
+    --ignore=tests/test_services_legacy_ids.py
+
+# Po Fix #11 (z prawdziwym HA — wymaga Python 3.13 + HA installed):
+THESSLA_GREEN_USE_HA=1 pytest tests/ -x -q
 ```
 
 ---
 
-## Bump i CHANGELOG
+## Bump + CHANGELOG
 
-`manifest.json`: `"version": "2.5.1"` | `pyproject.toml`: `version = "2.5.1"`
+manifest.json + pyproject.toml: `version = "2.8.0"`
 
 ```markdown
-## 2.5.1 — Config flow cleanup
+## 2.8.0 — Legacy removal + test infrastructure overhaul (BREAKING)
+
+### ⚠️ Breaking
+- Config entry v2/v3 (pre-2023) no longer migrate — remove and re-add.
+- Legacy service call entity IDs (`rekuperator_*`) no longer mapped —
+  update automations to use current entity names.
 
 ### Removed
-- 5 defensive `getattr(super(), ...)` method wrappers in `ConfigFlow`
-  (`async_set_unique_id`, `_abort_if_unique_id_configured`, `async_show_form`,
-  `async_create_entry`, `async_abort`). These methods exist in
-  `homeassistant.config_entries.ConfigFlow` since HA 2022; the fallbacks
-  were test-compat code for SimpleNamespace stubs.
-- `try/except ImportError` guard around `homeassistant.helpers` imports in
-  `_entity_registry_migrations.py`. HA helpers are always available given
-  manifest requirement >=2026.1.0.
+- Entity registry migrations (`async_migrate_entity_ids`, `async_migrate_unique_ids`)
+  no longer run on startup — idempotent since 2022, dead after 2+ years.
+- `_entity_registry_migrations.py`, `_legacy.py` (now dead code).
+- `mappings/legacy.py` LEGACY_ENTITY_ID_OBJECT_ALIASES (70 entries) and
+  `map_legacy_entity_id`.
+- `scanner_io.py` shim (no importers). `tools/py_compile_all.py`.
+- `"unit"` key from new config entries. v2/v3 migration paths.
 
-### Changed
-- `_load_scanner_module` in `config_flow.py` simplified: removed
-  `getattr(hass, "async_add_executor_job", None)` fallback, now uses
-  `hass.async_add_executor_job` directly. Parameter type narrowed from
-  `Any` to `HomeAssistant`.
-- `BIT_ENTITY_KEYS` in `_legacy.py` documented as "NOT LEGACY — active
-  functional requirement" to prevent accidental removal in future cleanups.
-- `VERSION = 4` class attribute in `ConfigFlow` no longer has spurious
-  `# pragma: no cover - defensive` annotation.
+### Tests
+- Removed: `test_legacy_entity_id_aliases.py`, `test_legacy_entity_migration.py`,
+  `test_services_legacy_ids.py`.
+- Fixed: `test_migration.py` — v2/v3 now expect `False`.
+- Infrastructure: `pytest-homeassistant-custom-component` plugin re-enabled,
+  conftest.py rebuilt on real HA fixtures.
 ```
 
 ---
 
-## Odłożone (nie w tym release)
+## Priorytet wykonania
 
-**`config_flow.py` 38+ `# pragma: no cover`** — wymaga napisania dodatkowych testów dla error paths w `_validate_connection`. Osobna praca.
+```
+Sprint 1 (niskie ryzyko, Fix #1-10): legacy removal
+Sprint 2 (średnie ryzyko, Fix #11-12): test infrastructure
+Sprint 3 (wysokie ryzyko, Fix #13-17): test rewrite per file
+```
 
-**`_entity_registry_migrations.py` — `list[object]` dla `config_entry_list`** — po Fix #2 (import na top-level) można dodać property type na `RegistryEntry` i usunąć `getattr` pattern na atrybutach. Niskopriorytowe.
-
-**`modbus_helpers.py:36` — `inspect.signature`** — użyte do detekcji pymodbus API version. **Legit** — różne wersje pymodbus mają różną signature dla `read_holding_registers`. Nie ruszać.
-
-**`scanner/io.py:624 linii`** — największy moduł po scaleniu logiiki z `scanner_io.py`. Kandydat do przyszłego podziału.
+Sprint 2-3 można rozbić na osobne PR-y per plik testów.
