@@ -5,6 +5,34 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.6.0 — Dead fallback cleanup
+
+### Removed
+- `OptionsFlow` defensive `getattr(super(), ...)` wrappers for `async_show_form`,
+  `async_create_entry`, `async_abort` — HA guarantees these since 2022.
+- `try/except ImportError` fallbacks for `entity_registry` in `__init__.py`,
+  `get_registers_by_function` in `const.py`, `get_all_registers` in
+  `mappings/_helpers.py` and `mappings/_loaders.py`, and 5 loader stubs in
+  `scanner/core.py` — all guarding symbols always present given
+  `homeassistant>=2026.1.0`.
+- `try/except (ImportError, AttributeError)` dead path in
+  `register_map._resolve_entity_domain`; ENTITY_MAPPINGS is always available.
+- `hass is not None` guard in `_load_scanner_module`; `validate_input` now
+  requires `HomeAssistant` (not `None`).
+- `# re-exported for test monkeypatching` comment on `scanner/core.asdict`.
+- Unused `RegisterDef` TYPE_CHECKING imports in `const.py`, `mappings/_helpers.py`,
+  `mappings/_loaders.py`, `scanner/core.py` (were only needed for fallback stubs).
+
+### Changed
+- `_entity_registry_migrations`: uses `er.async_entries_for_config_entry` directly
+  in both `async_migrate_entity_ids` and `async_migrate_unique_ids` instead of
+  `getattr(er, "async_entries_for_config_entry", None)` + `callable()` guard.
+- `list[object]` annotation in `async_migrate_entity_ids` replaced with `list[Any]`.
+- `scanner/core.py` now imports only `async_get_all_registers` from `registers.loader`
+  (the other 4 symbols were only present as fallback re-exports).
+
+---
+
 ## 2.5.1 — Config flow cleanup
 
 ### Removed

@@ -161,14 +161,11 @@ def _infer_data_type(definition: RegisterDef) -> str:
 
 
 def _resolve_entity_domain(register_name: str) -> str | None:
-    try:
-        from .mappings import ENTITY_MAPPINGS
+    from .mappings import ENTITY_MAPPINGS
 
-        for domain, mapping in ENTITY_MAPPINGS.items():
-            if register_name in mapping:
-                return domain
-    except (ImportError, AttributeError):  # pragma: no cover - defensive during bootstrap
-        return None
+    for domain, mapping in ENTITY_MAPPINGS.items():
+        if register_name in mapping:
+            return domain
     return None
 
 

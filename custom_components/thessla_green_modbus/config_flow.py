@@ -105,12 +105,11 @@ ThesslaGreenDeviceScanner: Any | None = None
 DeviceCapabilities: Any | None = None
 
 
-async def _load_scanner_module(hass: HomeAssistant | None) -> Any:
+async def _load_scanner_module(hass: HomeAssistant) -> Any:
     """Import scanner.core via the HA executor to avoid blocking the event loop."""
-    module_name = "custom_components.thessla_green_modbus.scanner.core"
-    if hass is not None:
-        return await hass.async_add_executor_job(import_module, module_name)
-    return import_module(module_name)
+    return await hass.async_add_executor_job(
+        import_module, "custom_components.thessla_green_modbus.scanner.core"
+    )
 
 
 # Delay between retries when establishing the connection during the config flow.
@@ -380,7 +379,7 @@ def _process_scan_capabilities(
     return caps_dict
 
 
-async def validate_input(hass: HomeAssistant | None, data: dict[str, Any]) -> dict[str, Any]:
+async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     connection_type = _normalize_connection_type(data)
     slave_id = _validate_slave_id(data)
@@ -1081,24 +1080,6 @@ class OptionsFlow(config_entries.OptionsFlow):
     def config_entry(self) -> config_entries.ConfigEntry:  # pragma: no cover - defensive
         """Return the config entry for this options flow."""
         return self._stored_config_entry
-
-    def async_show_form(self, **kwargs: Any) -> Any:  # pragma: no cover - defensive
-        base = getattr(super(), "async_show_form", None)
-        if callable(base):
-            return base(**kwargs)
-        return {"type": "form", **kwargs}
-
-    def async_create_entry(self, **kwargs: Any) -> Any:  # pragma: no cover - defensive
-        base = getattr(super(), "async_create_entry", None)
-        if callable(base):
-            return base(**kwargs)
-        return {"type": "create_entry", **kwargs}
-
-    def async_abort(self, **kwargs: Any) -> Any:  # pragma: no cover - defensive
-        base = getattr(super(), "async_abort", None)
-        if callable(base):
-            return base(**kwargs)
-        return {"type": "abort", **kwargs}
 
     async def async_step_init(  # pragma: no cover - defensive
         self, user_input: dict[str, Any] | None = None

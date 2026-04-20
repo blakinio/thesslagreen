@@ -6,7 +6,6 @@ import importlib
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict as _dataclasses_asdict
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from pymodbus.client import AsyncModbusTcpClient
@@ -44,6 +43,9 @@ from ..modbus_transport import (
     RtuModbusTransport,
     TcpModbusTransport,
 )
+from ..registers.loader import (
+    async_get_all_registers,
+)
 from ..scanner_device_info import DeviceCapabilities, ScannerDeviceInfo
 from ..scanner_helpers import (
     MAX_BATCH_REGISTERS,
@@ -69,35 +71,7 @@ from . import orchestration as scanner_orchestration
 from . import registers as scanner_registers
 from . import setup as scanner_setup
 
-try:  # pragma: no cover - optional during isolated tests
-    from ..registers.loader import (
-        async_get_all_registers,
-        async_registers_sha256,
-        get_all_registers,
-        get_registers_path,
-        registers_sha256,
-    )
-except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
-
-    async def async_get_all_registers(
-        hass: Any | None, json_path: Path | str | None = None
-    ) -> list[RegisterDef]:
-        return []
-
-    async def async_registers_sha256(hass: Any | None, json_path: Path | str) -> str:
-        return ""
-
-    def get_all_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
-        return []
-
-    def get_registers_path() -> Path:
-        return Path(".")
-
-    def registers_sha256(json_path: Path | str) -> str:
-        return ""
-
-
-asdict = _dataclasses_asdict  # re-exported for test monkeypatching
+asdict = _dataclasses_asdict
 
 _LOGGER = logging.getLogger(__name__)
 REGISTER_DEFINITIONS = _register_maps.REGISTER_DEFINITIONS
@@ -113,8 +87,6 @@ except (ImportError, AttributeError) as _exc:  # pragma: no cover - defensive
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper only
     from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType
-
-    from ..registers.loader import RegisterDef
 else:
     AsyncModbusSerialClientType = Any
 

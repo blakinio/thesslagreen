@@ -36,12 +36,9 @@ async def async_migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> N
 
     coordinator = entry.runtime_data
     slave_id = getattr(coordinator, "slave_id", 1)
-    entries_for_config = getattr(er, "async_entries_for_config_entry", None)
-    config_entry_list: list[object] = (
-        list(entries_for_config(entity_reg, entry.entry_id)) if callable(entries_for_config) else []
-    )
+    config_entry_list = list(er.async_entries_for_config_entry(entity_reg, entry.entry_id))
 
-    all_platform_entries: list[object] = []
+    all_platform_entries: list[Any] = []
     entities_dict = getattr(entity_reg, "entities", None)
     if entities_dict is not None:
         try:
@@ -223,10 +220,7 @@ async def async_migrate_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> N
     host = getattr(coordinator, "host", None) or entry.data.get(CONF_HOST)
     port = getattr(coordinator, "port", None) or entry.data.get(CONF_PORT)
     slave_id = getattr(coordinator, "slave_id", None) or entry.data.get(CONF_SLAVE_ID)
-    entries_for_config = getattr(er, "async_entries_for_config_entry", None)
-    if not callable(entries_for_config):
-        return
-    for reg_entry in entries_for_config(registry, entry.entry_id):
+    for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
         if registry.async_get(reg_entry.entity_id) is None:
             continue
         if reg_entry.entity_id == "fan.rekuperator_fan":

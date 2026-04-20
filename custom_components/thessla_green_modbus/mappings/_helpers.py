@@ -6,21 +6,11 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from ..registers.loader import RegisterDef
+from typing import Any
 
 from .._compat import PERCENTAGE
+from ..registers.loader import get_all_registers
 from ..utils import _to_snake_case
-
-try:  # pragma: no cover - optional during isolated tests
-    from ..registers.loader import get_all_registers
-except (ImportError, AttributeError):  # pragma: no cover - defensive
-
-    def get_all_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
-        return []
-
 
 _LOGGER = logging.getLogger(__name__)
 _REGISTER_INFO_CACHE: dict[str, dict[str, Any]] | None = None

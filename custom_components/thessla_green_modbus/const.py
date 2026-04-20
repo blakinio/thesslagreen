@@ -10,20 +10,10 @@ from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.const import Platform
 
-try:  # pragma: no cover - optional during isolated tests
-    from .registers.loader import get_registers_by_function
-except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
-
-    def get_registers_by_function(
-        fn: str, json_path: Path | str | None = None
-    ) -> list[RegisterDef]:
-        return []
-
+from .registers.loader import get_registers_by_function
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from homeassistant.core import HomeAssistant
-
-    from .registers.loader import RegisterDef
 
 # Maximum number of registers that can be read in a single request.
 # The registers loader previously created a circular dependency with
