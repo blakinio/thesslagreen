@@ -67,7 +67,7 @@ def _detect_data_anomalies(data: dict[str, Any]) -> list[str]:
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
-) -> dict[str, Any]:  # pragma: no cover - defensive
+) -> dict[str, Any]:
     """Return diagnostics for a config entry.
 
     Home Assistant calls this coroutine when the diagnostics panel is
@@ -141,7 +141,7 @@ async def async_get_config_entry_diagnostics(
         ValueError,
         HomeAssistantError,
         RuntimeError,
-    ) as err:  # pragma: no cover - defensive
+    ) as err:
         _LOGGER.debug("Translation load failed: %s", err)
     except (
         BaseException

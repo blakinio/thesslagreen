@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, cast
 
 from homeassistant.const import CONF_NAME
 
-if TYPE_CHECKING:  # pragma: no cover - typing only
+if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
@@ -59,7 +59,7 @@ from .const import PLATFORMS as PLATFORM_DOMAINS
 
 _LOGGER = logging.getLogger(__name__)
 
-if TYPE_CHECKING:  # pragma: no cover - typing only
+if TYPE_CHECKING:  # pragma: no cover
     ThesslaGreenConfigEntry = ConfigEntry[ThesslaGreenModbusCoordinator]
 
 
@@ -67,7 +67,7 @@ _get_platforms = partial(_setup_get_platforms, PLATFORM_DOMAINS)
 _apply_log_level = _setup_apply_log_level
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  # pragma: no cover - defensive
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up ThesslaGreen Modbus from a config entry.
 
     This hook is invoked by Home Assistant during config entry setup even
@@ -98,7 +98,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  # pragma: no cover - defensive
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry.
 
     Called by Home Assistant when a config entry is removed.  Kept for the
@@ -126,7 +126,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  
     return unload_ok
 
 
-async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:  # pragma: no cover - defensive
+async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Update options."""
     _LOGGER.debug("Updating options for ThesslaGreen Modbus integration")
 
@@ -151,7 +151,7 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
             AttributeError,
             RuntimeError,
             OSError,
-        ):  # pragma: no cover - defensive
+        ):
             _LOGGER.debug("Failed to recompute register groups after option update", exc_info=True)
 
         await coordinator.async_request_refresh()
@@ -160,6 +160,6 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 async def async_migrate_entry(
     hass: HomeAssistant, config_entry: ConfigEntry
-) -> bool:  # pragma: no cover - defensive
+) -> bool:
     """Migrate old entry."""
     return await _async_migrate_entry(hass, config_entry)

@@ -29,7 +29,7 @@ async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:  # pragma: no cover - defensive
+) -> None:
     """Set up ThesslaGreen text entities.
 
     Home Assistant invokes this during platform setup.
@@ -81,27 +81,27 @@ class ThesslaGreenText(ThesslaGreenEntity, TextEntity):
     ) -> None:
         super().__init__(coordinator, register_name, address)
         self._register_name = register_name
-        self._attr_translation_key = definition["translation_key"]  # pragma: no cover - defensive
+        self._attr_translation_key = definition["translation_key"]
         self._attr_icon = definition.get("icon", "mdi:rename")
-        self._attr_has_entity_name = True  # pragma: no cover - defensive
+        self._attr_has_entity_name = True
         self._attr_native_max = definition.get("max_length", 16)
 
     @property
-    def available(self) -> bool:  # pragma: no cover - defensive
+    def available(self) -> bool:
         """Return True whenever the coordinator is connected."""
         return self.coordinator.last_update_success and not getattr(
             self.coordinator, "offline_state", False
         )
 
     @property
-    def native_value(self) -> str | None:  # pragma: no cover - defensive
+    def native_value(self) -> str | None:
         """Return the current string value decoded from the register."""
         raw = self.coordinator.data.get(self._register_name)
         if raw is None:
             return None
         return str(raw) if not isinstance(raw, str) else raw
 
-    async def async_set_value(self, value: str) -> None:  # pragma: no cover - defensive
+    async def async_set_value(self, value: str) -> None:
         """Write a new string value to the register."""
         try:
             success = await self.coordinator.async_write_register(

@@ -234,7 +234,7 @@ async def _run_with_retry(
             if delay:
                 await asyncio.sleep(delay)
 
-    raise RuntimeError("Retry wrapper failed without raising")  # pragma: no cover - defensive
+    raise RuntimeError("Retry wrapper failed without raising")
 
 
 async def _call_with_optional_timeout(func: Callable[[], Any], timeout: float) -> Any:
@@ -313,7 +313,7 @@ def _validate_tcp_config(data: dict[str, Any]) -> tuple[str, int]:
         if not _looks_like_hostname(host):
             raise VOL_INVALID("invalid_host", path=[CONF_HOST]) from None
         if not is_host_valid(host):
-            raise VOL_INVALID("invalid_host", path=[CONF_HOST]) from None  # pragma: no cover - defensive
+            raise VOL_INVALID("invalid_host", path=[CONF_HOST]) from None
     data[CONF_HOST] = host
     data[CONF_PORT] = port
     data.pop(CONF_SERIAL_PORT, None)
@@ -456,11 +456,11 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("cannot_connect") from exc
     except asyncio.CancelledError:
-        raise  # pragma: no cover - defensive
+        raise
     except ModbusIOException as exc:
         if _is_request_cancelled_error(exc):
-            _LOGGER.info("Modbus request cancelled during device validation.")  # pragma: no cover - defensive
-            raise CannotConnect("timeout") from exc  # pragma: no cover - defensive
+            _LOGGER.info("Modbus request cancelled during device validation.")
+            raise CannotConnect("timeout") from exc
         _LOGGER.error("Modbus IO error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("io_error") from exc
@@ -473,7 +473,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         _LOGGER.error("Modbus error: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         if is_invalid_auth_error(exc):
-            raise InvalidAuth from exc  # pragma: no cover - defensive
+            raise InvalidAuth from exc
         raise CannotConnect("modbus_error") from exc
     except AttributeError as exc:
         _LOGGER.error("Attribute error during device validation: %s", exc)
@@ -488,9 +488,9 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
             _LOGGER.error("Connection refused: %s", exc)
             _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
             raise CannotConnect("connection_refused") from exc
-        _LOGGER.error("Unexpected error during device validation: %s", exc)  # pragma: no cover - defensive
-        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())  # pragma: no cover - defensive
-        raise CannotConnect("cannot_connect") from exc  # pragma: no cover - defensive
+        _LOGGER.error("Unexpected error during device validation: %s", exc)
+        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
+        raise CannotConnect("cannot_connect") from exc
     except CannotConnect:
         raise
     except (ValueError, TypeError, RuntimeError, ImportError) as exc:
@@ -730,15 +730,13 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
     def _prepare_entry_payload(self, cap_cls: Any) -> tuple[dict[str, Any], dict[str, Any]]:
         """Return data and options payloads for the config entry."""
         caps_obj = self._scan_result.get("capabilities")
-        if dataclasses.is_dataclass(caps_obj):
-            caps_dict = _caps_to_dict(caps_obj)  # pragma: no cover - defensive
+        if dataclasses.is_dataclass(caps_obj) or isinstance(caps_obj, cap_cls):
+            caps_dict = _caps_to_dict(caps_obj)
         elif isinstance(caps_obj, dict):
-            try:  # pragma: no cover - defensive
-                caps_dict = _caps_to_dict(cap_cls(**caps_obj))  # pragma: no cover - defensive
-            except (TypeError, ValueError):  # pragma: no cover - defensive
-                caps_dict = _caps_to_dict(cap_cls())  # pragma: no cover - defensive
-        elif isinstance(caps_obj, cap_cls):
-            caps_dict = _caps_to_dict(caps_obj)  # pragma: no cover - defensive
+            try:
+                caps_dict = _caps_to_dict(cap_cls(**caps_obj))
+            except (TypeError, ValueError):
+                caps_dict = _caps_to_dict(cap_cls())
         else:
             caps_dict = _caps_to_dict(cap_cls())
 
@@ -791,18 +789,16 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
 
         available_registers = self._scan_result.get("available_registers", {})
         caps_obj = self._scan_result.get("capabilities")
-        if dataclasses.is_dataclass(caps_obj):
-            try:  # pragma: no cover - defensive
-                caps_data = cap_cls(**_caps_to_dict(caps_obj))  # pragma: no cover - defensive
-            except (TypeError, ValueError):  # pragma: no cover - defensive
-                caps_data = cap_cls()  # pragma: no cover - defensive
+        if dataclasses.is_dataclass(caps_obj) or isinstance(caps_obj, cap_cls):
+            try:
+                caps_data = cap_cls(**_caps_to_dict(caps_obj))
+            except (TypeError, ValueError):
+                caps_data = cap_cls()
         elif isinstance(caps_obj, dict):
-            try:  # pragma: no cover - defensive
-                caps_data = cap_cls(**caps_obj)  # pragma: no cover - defensive
-            except TypeError:  # pragma: no cover - defensive
-                caps_data = cap_cls()  # pragma: no cover - defensive
-        elif isinstance(caps_obj, cap_cls):
-            caps_data = caps_obj  # pragma: no cover - defensive
+            try:
+                caps_data = cap_cls(**caps_obj)
+            except TypeError:
+                caps_data = cap_cls()
         else:
             caps_data = cap_cls()
 
@@ -825,9 +821,9 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
             translations = await translation.async_get_translations(
                 self.hass, language, "component", [DOMAIN]
             )
-        except (OSError, ValueError, HomeAssistantError) as err:  # pragma: no cover - defensive
+        except (OSError, ValueError, HomeAssistantError) as err:
             _LOGGER.debug("Translation load failed: %s", err)
-        except (TypeError, AttributeError, RuntimeError) as err:  # pragma: no cover - defensive
+        except (TypeError, AttributeError, RuntimeError) as err:
             _LOGGER.exception("Unexpected error loading translations: %s", err)
 
         key = "auto_detected_note_success" if register_count > 0 else "auto_detected_note_limited"
@@ -866,7 +862,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
                 f"component.{DOMAIN}.connection_mode_auto_label", "Modbus TCP (Auto)"
             )
             if resolved_mode == CONNECTION_MODE_TCP:
-                transport_label = translations.get(  # pragma: no cover - defensive
+                transport_label = translations.get(
                     f"component.{DOMAIN}.connection_type_tcp_label", "Modbus TCP"
                 )
 
@@ -906,7 +902,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
         self._discovered_host = discovery_info.host
         return await self.async_step_user()
 
-    async def async_step_user(  # pragma: no cover - defensive
+    async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle the initial step."""
@@ -958,7 +954,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_reauth(  # pragma: no cover - defensive
+    async def async_step_reauth(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle reauthentication by collecting updated connection details."""
@@ -1026,7 +1022,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_reauth_confirm(  # pragma: no cover - defensive
+    async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Confirm reauthentication details and update the existing entry."""
@@ -1062,7 +1058,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
         return await self._async_show_confirmation(cap_cls, "reauth_confirm")
 
     @staticmethod
-    def async_get_options_flow(  # pragma: no cover - defensive
+    def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
     ) -> OptionsFlow:
         """Return the options flow handler."""
@@ -1072,16 +1068,16 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
 class OptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for ThesslaGreen Modbus."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:  # pragma: no cover - defensive
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self._stored_config_entry = config_entry
 
     @property
-    def config_entry(self) -> config_entries.ConfigEntry:  # pragma: no cover - defensive
+    def config_entry(self) -> config_entries.ConfigEntry:
         """Return the config entry for this options flow."""
         return self._stored_config_entry
 
-    async def async_step_init(  # pragma: no cover - defensive
+    async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle options flow."""

@@ -12,7 +12,7 @@ from homeassistant.const import Platform
 
 from .registers.loader import get_registers_by_function
 
-if TYPE_CHECKING:  # pragma: no cover - typing only
+if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.core import HomeAssistant
 
 # Maximum number of registers that can be read in a single request.

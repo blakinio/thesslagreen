@@ -28,13 +28,13 @@ from .mappings import async_setup_entity_mappings
 from .modbus_exceptions import ConnectionException, ModbusException
 from .utils import resolve_connection_settings
 
-if TYPE_CHECKING:  # pragma: no cover - defensive
+if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__.rsplit(".", maxsplit=1)[0])
 
-_platform_cache: list[object] | None = None
+_platform_cache: list[Any] | None = None
 
 
 def _scan_interval_seconds(scan_interval: timedelta | int) -> int:
@@ -44,29 +44,14 @@ def _scan_interval_seconds(scan_interval: timedelta | int) -> int:
     return int(scan_interval)
 
 
-def _get_platforms(platform_domains: list[str]) -> list[object]:
-    """Return supported platform enums or plain strings."""
+def _get_platforms(platform_domains: list[str]) -> list[Any]:
+    """Return Platform enums for the given domain strings."""
     global _platform_cache
     if _platform_cache is not None:
         return _platform_cache
-
-    try:  # Import only when running inside Home Assistant
-        from homeassistant.const import Platform
-    except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover - defensive
-        _platform_cache = list(platform_domains)
-        return _platform_cache
-
-    platforms: list[Platform] = []
-    for domain in platform_domains:
-        if hasattr(Platform, domain.upper()):
-            platforms.append(getattr(Platform, domain.upper()))
-        else:  # pragma: no cover - defensive
-            try:
-                platforms.append(Platform(domain))
-            except (ValueError, TypeError):  # pragma: no cover - defensive
-                _LOGGER.warning("Skipping unsupported platform: %s", domain)
-    _platform_cache = platforms
-    return platforms
+    from homeassistant.const import Platform
+    _platform_cache = [Platform(d) for d in platform_domains]
+    return _platform_cache
 
 
 def _apply_log_level(log_level: str) -> None:
@@ -77,7 +62,7 @@ def _apply_log_level(log_level: str) -> None:
     _LOGGER.debug("Log level set to %s", log_level)
 
 
-async def async_create_coordinator(hass: HomeAssistant, entry: ConfigEntry) -> Any:  # pragma: no cover - defensive
+async def async_create_coordinator(hass: HomeAssistant, entry: ConfigEntry) -> Any:
     """Read config entry options and instantiate the coordinator."""
     from .coordinator import CoordinatorConfig, ThesslaGreenModbusCoordinator
 
@@ -121,7 +106,7 @@ async def async_create_coordinator(hass: HomeAssistant, entry: ConfigEntry) -> A
 
 async def async_start_coordinator(
     hass: HomeAssistant, entry: ConfigEntry, coordinator: Any
-) -> bool:  # pragma: no cover - defensive
+) -> bool:  # pragma: no cover
     """Run coordinator async_setup and first refresh."""
     from homeassistant.exceptions import ConfigEntryNotReady
     from homeassistant.helpers.update_coordinator import UpdateFailed
@@ -177,7 +162,7 @@ async def async_start_coordinator(
     return True
 
 
-async def async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover - defensive
+async def async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover
     """Load option lists and entity mappings."""
     await async_setup_options(hass)
     await async_setup_entity_mappings(hass)
@@ -185,7 +170,7 @@ async def async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover
 
 async def async_setup_platforms(
     hass: HomeAssistant, entry: ConfigEntry, platform_domains: list[str]
-) -> None:  # pragma: no cover - defensive
+) -> None:  # pragma: no cover
     """Preload platform modules and forward config entry setup."""
     for platform in platform_domains:
         try:

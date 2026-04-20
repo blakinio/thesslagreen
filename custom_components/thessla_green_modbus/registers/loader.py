@@ -335,7 +335,7 @@ class RegisterDef:
                 hours, minutes = divmod(value, 60)
             elif isinstance(value, tuple | list):
                 hours, minutes = int(value[0]), int(value[1])
-            else:  # pragma: no cover - defensive
+            else:  # pragma: no cover
                 raise ValueError(f"Unsupported BCD value: {value}")
             from ..schedule_helpers import time_to_bcd
 
@@ -401,15 +401,15 @@ Register = RegisterDef
 
 _SPECIAL_MODES_PATH = Path(__file__).resolve().parents[1] / "options" / "special_modes.json"
 _SPECIAL_MODES_ENUM: dict[int, str] = {}
-try:  # pragma: no cover - defensive
+try:  # pragma: no cover
     _SPECIAL_MODES_ENUM = {
         idx: key.split("_")[-1]
         for idx, key in enumerate(json.loads(_SPECIAL_MODES_PATH.read_text()))
     }
-except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover - defensive
+except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover
     _LOGGER.debug("Failed to load special modes: %s", err)
     _SPECIAL_MODES_ENUM = {}
-except (AttributeError, TypeError) as err:  # pragma: no cover - unexpected
+except (AttributeError, TypeError) as err:  # pragma: no cover
     _LOGGER.exception("Unexpected error loading special modes: %s", err)
     _SPECIAL_MODES_ENUM = {}
 
@@ -427,7 +427,7 @@ def _parse_registers(raw: Any) -> list[RegisterDef]:
     registers: list[RegisterDef] = []
     if hasattr(RegisterList, "model_validate"):
         parsed_items = RegisterList.model_validate(items).registers
-    else:  # pragma: no cover - defensive
+    else:  # pragma: no cover
         parsed_items = RegisterList.parse_obj(items).registers
 
     for parsed in parsed_items:
@@ -453,10 +453,10 @@ def _parse_registers(raw: Any) -> list[RegisterDef]:
                 enum_map = cast(dict[int | str, Any], {int(k): v for k, v in enum_map.items()})
             elif all(
                 isinstance(v, int | float) or str(v).isdigit() for v in enum_map.values()
-            ):  # pragma: no cover - defensive
+            ):  # pragma: no cover
                 enum_map = cast(
                     dict[int | str, Any], {int(v): k for k, v in enum_map.items()}
-                )  # pragma: no cover - defensive
+                )  # pragma: no cover
 
         # ``multiplier`` and ``resolution`` are optional in the JSON.  The
         # dataclass defaults to ``1`` for both fields but passing ``None`` would
@@ -503,14 +503,14 @@ def _load_registers_from_file(path: Path, *, mtime: float, file_hash: str) -> li
 
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError as err:  # pragma: no cover - sanity check
+    except FileNotFoundError as err:  # pragma: no cover
         raise RuntimeError(f"Register definition file missing: {path}") from err
     except (
         OSError,
         TypeError,
         ValueError,
         json.JSONDecodeError,
-    ) as err:  # pragma: no cover - defensive
+    ) as err:  # pragma: no cover
         raise RuntimeError(f"Failed to read register definitions from {path}") from err
 
     return _parse_registers(raw)
@@ -524,14 +524,14 @@ async def async_load_registers_from_file(
     try:
         raw_text = await _async_executor(hass, path.read_text, encoding="utf-8")
         raw = json.loads(raw_text)
-    except FileNotFoundError as err:  # pragma: no cover - sanity check
+    except FileNotFoundError as err:  # pragma: no cover
         raise RuntimeError(f"Register definition file missing: {path}") from err
     except (
         OSError,
         TypeError,
         ValueError,
         json.JSONDecodeError,
-    ) as err:  # pragma: no cover - defensive
+    ) as err:  # pragma: no cover
         raise RuntimeError(f"Failed to read register definitions from {path}") from err
 
     return _parse_registers(raw)
@@ -612,7 +612,7 @@ async def async_load_registers(
     return regs
 
 
-def clear_cache() -> None:  # pragma: no cover - defensive
+def clear_cache() -> None:  # pragma: no cover
     """Clear the register definition cache.
 
     Exposed for tests and tooling that need to reload register

@@ -30,26 +30,8 @@ from ..utils import _normalise_name
 
 _LOGGER = logging.getLogger(__name__)
 
-if hasattr(pydantic, "RootModel"):
-    RootModel = pydantic.RootModel
-else:  # pragma: no cover - defensive
-
-    class RootModel(BaseModel):  # type: ignore[no-redef]
-        """Compatibility wrapper for pydantic v1 RootModel."""
-
-        __root__: Any
-
-
-if hasattr(pydantic, "model_validator"):
-    model_validator = pydantic.model_validator
-else:  # pragma: no cover - defensive
-
-    def model_validator(*args: Any, **kwargs: Any) -> Any:
-        if "mode" in kwargs:
-            kwargs = dict(kwargs)
-            mode = kwargs.pop("mode")
-            kwargs["pre"] = mode == "before"
-        return pydantic.root_validator(*args, **kwargs)
+RootModel = pydantic.RootModel
+model_validator = pydantic.model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -92,10 +74,10 @@ def _normalise_function(fn: int | str) -> int:
         fn = mapping.get(key, fn)
         try:
             fn = int(fn)
-        except (TypeError, ValueError) as err:  # pragma: no cover - defensive
+        except (TypeError, ValueError) as err:
             raise ValueError(f"unknown function code: {fn}") from err
 
-    if fn not in {1, 2, 3, 4}:  # pragma: no cover - defensive
+    if fn not in {1, 2, 3, 4}:
         raise ValueError(f"unknown function code: {fn}")
 
     return fn
@@ -157,7 +139,7 @@ class RegisterDefinition(BaseModel):
 
     if hasattr(pydantic, "field_validator"):
         model_config = ConfigDict(extra="allow")
-    else:  # pragma: no cover - defensive
+    else:
 
         class Config:
             extra = "allow"
@@ -247,15 +229,15 @@ class RegisterDefinition(BaseModel):
 
         @pydantic.field_validator("function")
         @classmethod
-        def _check_function(cls, v: int) -> int:  # pragma: no cover - defensive
+        def _check_function(cls, v: int) -> int:
             if v not in {1, 2, 3, 4}:
                 raise ValueError("function code must be between 1 and 4")
             return v
 
-    else:  # pragma: no cover - defensive
+    else:
 
         @pydantic.validator("function")
-        def _check_function(cls, v: int) -> int:  # pragma: no cover - defensive
+        def _check_function(cls, v: int) -> int:
             if v not in {1, 2, 3, 4}:
                 raise ValueError("function code must be between 1 and 4")
             return v
@@ -268,7 +250,7 @@ class RegisterDefinition(BaseModel):
                 raise ValueError("read-only functions must have R access")
             return self
 
-    else:  # pragma: no cover - defensive
+    else:
 
         @pydantic.root_validator
         def _check_access(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -285,11 +267,11 @@ class RegisterDefinition(BaseModel):
     if hasattr(pydantic, "model_validator"):
 
         @model_validator(mode="after")
-        def check_consistency(self) -> RegisterDefinition:  # pragma: no cover - defensive
+        def check_consistency(self) -> RegisterDefinition:
             if self.type is not None:
                 try:
                     reg_enum = RegisterType(self.type)
-                except ValueError as err:  # pragma: no cover - defensive
+                except ValueError as err:
                     raise ValueError(f"unsupported type: {self.type}") from err
                 expected = _TYPE_LENGTHS.get(reg_enum.value)
                 if expected is None:
@@ -351,16 +333,16 @@ class RegisterDefinition(BaseModel):
                     raise ValueError("default above max")
             return self
 
-    else:  # pragma: no cover - defensive
+    else:
 
         @pydantic.root_validator
-        def check_consistency(cls, values: dict[str, Any]) -> dict[str, Any]:  # pragma: no cover - defensive
+        def check_consistency(cls, values: dict[str, Any]) -> dict[str, Any]:
             reg_type = values.get("type")
             length = values.get("length")
             if reg_type is not None:
                 try:
                     reg_enum = RegisterType(reg_type)
-                except ValueError as err:  # pragma: no cover - defensive
+                except ValueError as err:
                     raise ValueError(f"unsupported type: {reg_type}") from err
                 expected = _TYPE_LENGTHS.get(reg_enum.value)
                 if expected is None:
@@ -432,15 +414,15 @@ class RegisterDefinition(BaseModel):
 
         @pydantic.field_validator("name")
         @classmethod
-        def name_is_snake(cls, v: str) -> str:  # pragma: no cover - defensive
+        def name_is_snake(cls, v: str) -> str:
             if not re.fullmatch(r"[a-z0-9_]+", v):
                 raise ValueError("name must be snake_case")
             return v
 
-    else:  # pragma: no cover - defensive
+    else:
 
         @pydantic.validator("name")
-        def name_is_snake(cls, v: str) -> str:  # pragma: no cover - defensive
+        def name_is_snake(cls, v: str) -> str:
             if not re.fullmatch(r"[a-z0-9_]+", v):
                 raise ValueError("name must be snake_case")
             return v
@@ -458,12 +440,12 @@ if hasattr(pydantic, "RootModel"):
                 return cast(list[RegisterDefinition], root_val)
             return cast(
                 list[RegisterDefinition], self.__root__
-            )  # pragma: no cover - defensive
+            )
 
         if hasattr(pydantic, "model_validator"):
 
             @model_validator(mode="after")
-            def unique(self) -> RegisterList:  # pragma: no cover - defensive
+            def unique(self) -> RegisterList:
                 registers = self.registers
                 seen_pairs: set[tuple[int, int]] = set()
                 seen_names: set[str] = set()
@@ -479,7 +461,7 @@ if hasattr(pydantic, "RootModel"):
                     seen_names.add(name)
                 return self
 
-else:  # pragma: no cover - defensive
+else:
 
     class RegisterList(RootModel):  # type: ignore[no-redef,valid-type,misc]
         """Container model to validate a list of registers."""
@@ -491,7 +473,7 @@ else:  # pragma: no cover - defensive
             return self.__root__
 
         @pydantic.root_validator
-        def unique(cls, values: dict[str, Any]) -> dict[str, Any]:  # pragma: no cover - defensive
+        def unique(cls, values: dict[str, Any]) -> dict[str, Any]:
             registers = values.get("__root__", [])
             seen_pairs: set[tuple[int, int]] = set()
             seen_names: set[str] = set()

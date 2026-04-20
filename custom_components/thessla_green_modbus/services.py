@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
 
 import voluptuous as vol
@@ -114,11 +113,20 @@ def _extract_legacy_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[st
     raw_ids = [raw_ids] if isinstance(raw_ids, str) else list(raw_ids)
 
     mapped_ids = [map_legacy_entity_id(entity_id) for entity_id in raw_ids]
-    mapped_call = SimpleNamespace(
-        domain=getattr(call, "domain", DOMAIN),
-        service=getattr(call, "service", ""),
+    class _MappedCall:
+        __slots__ = ("context", "data", "domain", "service")
+
+        def __init__(self, domain: str, service: str, data: dict[str, Any], context: Any) -> None:
+            self.domain = domain
+            self.service = service
+            self.data = data
+            self.context = context
+
+    mapped_call = _MappedCall(
+        domain=call.domain,
+        service=call.service,
         data={**call.data, "entity_id": mapped_ids},
-        context=getattr(call, "context", None),
+        context=call.context,
     )
     return cast(set[str], async_extract_entity_ids(hass, mapped_call))
 

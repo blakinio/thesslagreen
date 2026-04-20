@@ -582,7 +582,7 @@ class ThesslaGreenModbusCoordinator(
             result = 0.0
         return result
 
-    def _trigger_reauth(self, reason: str) -> None:  # pragma: no cover - defensive
+    def _trigger_reauth(self, reason: str) -> None:
         """Schedule a reauthentication flow if not already triggered."""
 
         if self._reauth_scheduled or self.entry is None:
@@ -650,7 +650,7 @@ class ThesslaGreenModbusCoordinator(
             attempt=attempt,
         )
 
-    def _build_scanner_kwargs(self) -> dict[str, Any]:  # pragma: no cover - defensive
+    def _build_scanner_kwargs(self) -> dict[str, Any]:
         """Return constructor kwargs shared by all scanner creation paths."""
         return {
             "host": self.config.host,
@@ -674,12 +674,12 @@ class ThesslaGreenModbusCoordinator(
             "hass": self.hass,
         }
 
-    async def _create_scanner(self) -> Any:  # pragma: no cover - defensive
+    async def _create_scanner(self) -> Any:
         """Instantiate a ThesslaGreenDeviceScanner using its create() factory."""
         kwargs = self._build_scanner_kwargs()
         return await ThesslaGreenDeviceScanner.create(**kwargs)
 
-    def _apply_scan_result(self, scan_result: dict[str, Any]) -> None:  # pragma: no cover - defensive
+    def _apply_scan_result(self, scan_result: dict[str, Any]) -> None:
         """Store and process a completed device scan result."""
         self.device_scan_result = scan_result
         if self.config.connection_mode == CONNECTION_MODE_AUTO:
@@ -731,7 +731,7 @@ class ThesslaGreenModbusCoordinator(
             self.device_info.get("firmware", "Unknown"),
         )
 
-    async def _run_device_scan(self) -> None:  # pragma: no cover - defensive
+    async def _run_device_scan(self) -> None:
         """Run a full device scan and apply the result."""
         _LOGGER.info("Scanning device for available registers...")
         scanner = None
@@ -759,7 +759,7 @@ class ThesslaGreenModbusCoordinator(
                 if inspect.isawaitable(close_result):
                     await close_result
 
-    def _warn_missing_device_info(self) -> None:  # pragma: no cover - defensive
+    def _warn_missing_device_info(self) -> None:
         """Log warnings when model or firmware could not be identified."""
         model = self.device_info.get("model", UNKNOWN_MODEL)
         firmware = self.device_info.get("firmware", "Unknown")
@@ -794,7 +794,7 @@ class ThesslaGreenModbusCoordinator(
                 device_details,
             )
 
-    async def async_setup(self) -> bool:  # pragma: no cover - defensive
+    async def async_setup(self) -> bool:
         """Set up the coordinator by scanning the device."""
         if self.config.connection_type == CONNECTION_TYPE_RTU:
             endpoint = self.config.serial_port or "serial"
@@ -943,7 +943,7 @@ class ThesslaGreenModbusCoordinator(
         major = firmware.strip().split(".", 1)[0]
         return major in {"3"}
 
-    def _store_scan_cache(self) -> None:  # pragma: no cover - defensive
+    def _store_scan_cache(self) -> None:
         """Store scan results in config entry options."""
 
         if self.entry is None:
@@ -1094,7 +1094,7 @@ class ThesslaGreenModbusCoordinator(
                 _LOGGER.exception("Unexpected error during connection test: %s", exc)
                 raise
 
-    async def _async_setup_client(self) -> bool:  # pragma: no cover - defensive
+    async def _async_setup_client(self) -> bool:
         """Set up the Modbus client if needed.
 
         Although only invoked in tests within this repository, this helper
@@ -1144,7 +1144,7 @@ class ThesslaGreenModbusCoordinator(
             offline_state=self.offline_state,
         )
 
-    async def _select_auto_transport(self) -> None:  # pragma: no cover - defensive
+    async def _select_auto_transport(self) -> None:
         """Attempt auto-detection between RTU-over-TCP and Modbus TCP."""
 
         if self._resolved_connection_mode:
@@ -1261,7 +1261,7 @@ class ThesslaGreenModbusCoordinator(
 
         raise ConnectionException("Auto-detect Modbus transport failed") from last_error
 
-    async def _ensure_connected(self) -> None:  # pragma: no cover - defensive
+    async def _ensure_connected(self) -> None:
         """Ensure Modbus connection is established using the shared client."""
 
         async with self._client_lock:
@@ -1392,7 +1392,7 @@ class ThesslaGreenModbusCoordinator(
         async with self._client_lock:
             await self._disconnect_locked()
 
-    async def _async_handle_stop(self, _event: Any) -> None:  # pragma: no cover - defensive
+    async def _async_handle_stop(self, _event: Any) -> None:
         """Handle Home Assistant stop to cancel tasks."""
         await self.async_shutdown()
 
@@ -1552,6 +1552,6 @@ class ThesslaGreenModbusCoordinator(
         return cast(str, self.device_info.get("device_name") or self._device_name)
 
     @property
-    def device_info_dict(self) -> dict[str, Any]:  # pragma: no cover - defensive
+    def device_info_dict(self) -> dict[str, Any]:
         """Return device information as a plain dictionary for legacy use."""
         return self.get_device_info()
