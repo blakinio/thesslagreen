@@ -4,11 +4,7 @@ from __future__ import annotations
 
 import re
 import sys
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from ..registers.loader import RegisterDef
+from typing import Any
 
 from .._compat import BinarySensorDeviceClass, EntityCategory
 from ..const import (
@@ -17,6 +13,7 @@ from ..const import (
     discrete_input_registers,
     holding_registers,
 )
+from ..registers.loader import get_all_registers
 from ..utils import BCD_TIME_PREFIXES, _to_snake_case
 from ._helpers import (
     _get_register_info,
@@ -25,14 +22,6 @@ from ._helpers import (
     _number_translation_keys,
     _parse_states,
 )
-
-try:  # pragma: no cover - optional during isolated tests
-    from ..registers.loader import get_all_registers
-except (ImportError, AttributeError):  # pragma: no cover - fallback when stubs incomplete
-
-    def get_all_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
-        return []
-
 
 _TIME_ENTITY_PREFIXES = (
     "schedule_",

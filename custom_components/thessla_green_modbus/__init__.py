@@ -57,11 +57,6 @@ from .const import (
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
 
-try:  # pragma: no cover - optional in tests
-    from homeassistant.helpers import entity_registry as er
-except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover - defensive
-    er = None
-
 _LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
