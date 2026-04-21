@@ -1,4 +1,4 @@
-"""Backward-compatible migration export surface.
+"""Migration export surface.
 
 This module keeps public migration imports stable while delegating implementation
 into smaller, purpose-specific modules.

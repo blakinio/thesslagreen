@@ -93,9 +93,9 @@ async def test_maybe_retry_yield_backoff_positive():
 
 
 @pytest.mark.asyncio
-async def test_call_modbus_compat_type_error_reraise():
+async def test_call_modbus_with_fallback_type_error_reraise():
     """Cover line 182: TypeError with non-'unexpected keyword' message is re-raised."""
-    from custom_components.thessla_green_modbus.scanner.core import _call_modbus_compat
+    from custom_components.thessla_green_modbus.scanner.core import _call_modbus_with_fallback
 
     async def raise_other_type_error(*args, **kwargs):
         raise TypeError("something unrelated to keyword")
@@ -104,7 +104,7 @@ async def test_call_modbus_compat_type_error_reraise():
         "custom_components.thessla_green_modbus.scanner.core._call_modbus",
         side_effect=raise_other_type_error,
     ), pytest.raises(TypeError, match="something unrelated"):
-        await _call_modbus_compat(
+        await _call_modbus_with_fallback(
             MagicMock(), 1, 0,
             count=1, attempt=1, retry=1, timeout=5, backoff=0.0, backoff_jitter=None,
         )
@@ -2157,19 +2157,19 @@ async def test_mark_holding_unsupported_partial_overlap():
 
 
 # ---------------------------------------------------------------------------
-# Lines 119-120: _ensure_pymodbus_client_module except branch
+# Lines 119-120: ensure_pymodbus_client_module except branch
 # ---------------------------------------------------------------------------
 
 def test_ensure_pymodbus_import_fails():
     """Lines 119-120: except Exception: return when importlib raises."""
-    from custom_components.thessla_green_modbus.scanner.core import _ensure_pymodbus_client_module
+    from custom_components.thessla_green_modbus.scanner.core import ensure_pymodbus_client_module
 
     with patch(
         "custom_components.thessla_green_modbus.scanner.core.importlib.import_module",
         side_effect=ImportError("no pymodbus"),
     ):
         # Must not raise
-        _ensure_pymodbus_client_module()
+        ensure_pymodbus_client_module()
 
 
 # ---------------------------------------------------------------------------

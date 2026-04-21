@@ -56,7 +56,7 @@ def test_cache_invalidation_on_mtime_change(tmp_path: Path) -> None:
 
 @pytest.fixture
 def minimal_coordinator() -> ThesslaGreenModbusCoordinator:
-    coord = ThesslaGreenModbusCoordinator.from_legacy(
+    coord = ThesslaGreenModbusCoordinator.from_params(
         hass=MagicMock(),
         host="localhost",
         port=502,

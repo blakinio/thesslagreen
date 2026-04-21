@@ -1,127 +1,14 @@
 """Tests for ThesslaGreen sensor platform setup."""
 
 import asyncio
-import sys
 import types
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-# ---------------------------------------------------------------------------
-# Minimal Home Assistant stubs
-# ---------------------------------------------------------------------------
+from tests.platform_stubs import install_sensor_platform_stubs
 
-const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
-const.PERCENTAGE = "%"
-const.STATE_UNAVAILABLE = "unavailable"
-
-# Stub network utilities used by config_flow when select module is imported
-network_mod = types.ModuleType("homeassistant.util.network")
-
-
-def is_host_valid(host: str) -> bool:  # pragma: no cover - simple stub
-    return True
-
-
-network_mod.is_host_valid = is_host_valid
-sys.modules["homeassistant.util.network"] = network_mod
-
-
-class UnitOfTemperature:  # pragma: no cover - enum stub
-    CELSIUS = "°C"
-
-
-class UnitOfVolumeFlowRate:  # pragma: no cover - enum stub
-    CUBIC_METERS_PER_HOUR = "m³/h"
-
-
-class UnitOfElectricPotential:  # pragma: no cover - enum stub
-    VOLT = "V"
-
-
-const.UnitOfTemperature = UnitOfTemperature
-const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
-const.UnitOfElectricPotential = UnitOfElectricPotential
-
-sensor_mod = types.ModuleType("homeassistant.components.sensor")
-
-
-class SensorEntity:  # pragma: no cover - simple stub
-    pass
-
-
-class SensorDeviceClass:  # pragma: no cover - enum stubs
-    TEMPERATURE = "temperature"
-    VOLTAGE = "voltage"
-    POWER = "power"
-    ENERGY = "energy"
-
-
-class SensorStateClass:  # pragma: no cover - enum stubs
-    MEASUREMENT = "measurement"
-    TOTAL_INCREASING = "total_increasing"
-
-
-sensor_mod.SensorEntity = SensorEntity
-sensor_mod.SensorDeviceClass = SensorDeviceClass
-sensor_mod.SensorStateClass = SensorStateClass
-sys.modules["homeassistant.components.sensor"] = sensor_mod
-
-select_mod = types.ModuleType("homeassistant.components.select")
-
-
-class SelectEntity:  # pragma: no cover - simple stub
-    pass
-
-
-select_mod.SelectEntity = SelectEntity
-sys.modules["homeassistant.components.select"] = select_mod
-
-entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
-
-update_coord = types.ModuleType("homeassistant.helpers.update_coordinator")
-
-
-class CoordinatorEntity:  # pragma: no cover - simple stub
-    def __init__(self, coordinator=None):
-        self.coordinator = coordinator
-
-    @classmethod
-    def __class_getitem__(cls, item):  # pragma: no cover - allow subscripting
-        return cls
-
-
-class DataUpdateCoordinator:  # pragma: no cover - minimal stub
-    def __init__(self, hass=None, logger=None, name=None, update_interval=None):
-        self.hass = hass
-        self.logger = logger
-        self.name = name
-        self.update_interval = update_interval
-
-    async def async_shutdown(self):  # pragma: no cover - stub
-        return None
-
-    @classmethod
-    def __class_getitem__(cls, item):  # pragma: no cover - allow subscripting
-        return cls
-
-
-class UpdateFailed(Exception):  # pragma: no cover - simple stub
-    pass
-
-
-update_coord.CoordinatorEntity = CoordinatorEntity
-update_coord.DataUpdateCoordinator = DataUpdateCoordinator
-update_coord.UpdateFailed = UpdateFailed
-sys.modules["homeassistant.helpers.update_coordinator"] = update_coord
-
-
-class AddEntitiesCallback:  # pragma: no cover - simple stub
-    pass
-
-
-entity_platform.AddEntitiesCallback = AddEntitiesCallback
-sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
+install_sensor_platform_stubs()
 
 # ---------------------------------------------------------------------------
 # Actual tests

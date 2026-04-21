@@ -4,17 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from .._compat import (
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.const import (
     PERCENTAGE,
-    EntityCategory,
-    SensorDeviceClass,
-    SensorStateClass,
     UnitOfElectricPotential,
     UnitOfPower,
     UnitOfTemperature,
     UnitOfTime,
     UnitOfVolumeFlowRate,
 )
+from homeassistant.helpers.entity import EntityCategory
 
 SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # Temperature sensors (Input Registers)

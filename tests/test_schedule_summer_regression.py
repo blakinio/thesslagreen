@@ -43,7 +43,7 @@ SUMMER_BASE_ADDR = 0x10  # 16
 
 @pytest.fixture
 def coordinator() -> ThesslaGreenModbusCoordinator:
-    coord = ThesslaGreenModbusCoordinator.from_legacy(
+    coord = ThesslaGreenModbusCoordinator.from_params(
         hass=MagicMock(),
         host="localhost",
         port=502,

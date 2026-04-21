@@ -21,6 +21,7 @@ from .const import (
     DEFAULT_LOG_LEVEL,
     DOMAIN,
     async_setup_options,
+    migrate_unique_id,
 )
 from .errors import is_invalid_auth_error
 from .mappings import async_setup_entity_mappings
@@ -162,6 +163,62 @@ async def async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover
     """Load option lists and entity mappings."""
     await async_setup_options(hass)
     await async_setup_entity_mappings(hass)
+
+
+async def async_migrate_entity_unique_ids(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: Any,
+) -> None:
+    """Migrate legacy entity unique IDs to the current format."""
+    try:
+        from homeassistant.helpers import entity_registry as er
+    except (ImportError, ModuleNotFoundError):
+        return
+
+    try:
+        entity_registry = er.async_get(hass) if hasattr(er, "async_get") else None
+    except (AttributeError, TypeError, ValueError):
+        entity_registry = None
+
+    if entity_registry is None:
+        return
+
+    serial_number = None
+    try:
+        serial_number = (coordinator.device_info or {}).get("serial_number")
+    except (AttributeError, TypeError, ValueError):
+        serial_number = None
+
+    host = getattr(coordinator, "host", None) or getattr(coordinator.config, "host", "")
+    port = getattr(coordinator, "port", None) or getattr(coordinator.config, "port", 0)
+    slave_id = getattr(coordinator, "slave_id", None) or getattr(coordinator.config, "slave_id", 0)
+
+    entries = []
+    try:
+        entries = er.async_entries_for_config_entry(entity_registry, entry.entry_id)
+    except (AttributeError, TypeError, ValueError):
+        entries = []
+
+    for entity in entries:
+        old_unique_id = getattr(entity, "unique_id", None)
+        if not old_unique_id:
+            continue
+        new_unique_id = migrate_unique_id(
+            old_unique_id,
+            serial_number=serial_number,
+            host=str(host),
+            port=int(port),
+            slave_id=int(slave_id),
+        )
+        if new_unique_id != old_unique_id:
+            try:
+                entity_registry.async_update_entity(
+                    entity.entity_id,
+                    new_unique_id=new_unique_id,
+                )
+            except (AttributeError, TypeError, ValueError):
+                _LOGGER.debug("Failed to migrate unique_id for entity %s", entity.entity_id, exc_info=True)
 
 
 async def async_setup_platforms(

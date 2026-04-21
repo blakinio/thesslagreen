@@ -30,12 +30,6 @@ async def test_no_blocking_import_log(caplog: pytest.LogCaptureFixture) -> None:
         patch(
             "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
         ) as mock_coord,
-        patch("custom_components.thessla_green_modbus.er.async_get"),
-        patch(
-            "custom_components.thessla_green_modbus.er.async_entries_for_config_entry",
-            return_value=[],
-            create=True,
-        ),
     ):
         mock_coordinator = MagicMock()
         mock_coordinator.async_config_entry_first_refresh = AsyncMock()

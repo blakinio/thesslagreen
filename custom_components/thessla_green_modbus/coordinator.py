@@ -12,21 +12,16 @@ from datetime import datetime, timedelta
 from typing import Any, cast
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.util import dt as _dt_util
 from pymodbus.client import AsyncModbusTcpClient
 
-from ._compat import COORDINATOR_BASE, EVENT_HOMEASSISTANT_STOP
-from ._compat import dt_util as _base_dt_util
 from ._coordinator_capabilities import _CoordinatorCapabilitiesMixin
 from ._coordinator_io import (
     _ModbusIOMixin,
     _PermanentModbusError,
-)  # re-export for backward compat
-from ._coordinator_io import (
-    handle_update_error as _handle_update_error_helper,
-)
-from ._coordinator_register_processing import (
-    create_consecutive_groups as _create_consecutive_groups_impl,
 )
 from ._coordinator_register_processing import (
     find_register_name as _find_register_name_impl,
@@ -37,25 +32,6 @@ from ._coordinator_register_processing import (
 from ._coordinator_schedule import _CoordinatorScheduleMixin
 from ._coordinator_update import async_update_data as _async_update_data_impl
 from .const import (
-    CONF_BACKOFF,
-    CONF_BACKOFF_JITTER,
-    CONF_BAUD_RATE,
-    CONF_CONNECTION_MODE,
-    CONF_CONNECTION_TYPE,
-    CONF_DEEP_SCAN,
-    CONF_ENABLE_DEVICE_SCAN,
-    CONF_FORCE_FULL_REGISTER_LIST,
-    CONF_MAX_REGISTERS_PER_REQUEST,
-    CONF_PARITY,
-    CONF_RETRY,
-    CONF_SAFE_SCAN,
-    CONF_SCAN_INTERVAL,
-    CONF_SCAN_UART_SETTINGS,
-    CONF_SERIAL_PORT,
-    CONF_SKIP_MISSING_REGISTERS,
-    CONF_SLAVE_ID,
-    CONF_STOP_BITS,
-    CONF_TIMEOUT,
     CONNECTION_MODE_AUTO,
     CONNECTION_MODE_TCP,
     CONNECTION_MODE_TCP_RTU,
@@ -65,36 +41,47 @@ from .const import (
     DEFAULT_BACKOFF_JITTER,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
-    DEFAULT_DEEP_SCAN,
-    DEFAULT_ENABLE_DEVICE_SCAN,
     DEFAULT_MAX_BACKOFF,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PARITY,
     DEFAULT_PORT,
-    DEFAULT_RETRY,
-    DEFAULT_SAFE_SCAN,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCAN_UART_SETTINGS,
     DEFAULT_SERIAL_PORT,
-    DEFAULT_SKIP_MISSING_REGISTERS,
-    DEFAULT_SLAVE_ID,
     DEFAULT_STOP_BITS,
-    DEFAULT_TIMEOUT,
     DOMAIN,
     HOLDING_BATCH_BOUNDARIES,
     KNOWN_MISSING_REGISTERS,
-    MANUFACTURER,
-    MAX_REGS_PER_REQUEST,
-    MIN_SCAN_INTERVAL,
     SERIAL_PARITY_MAP,
     SERIAL_STOP_BITS_MAP,
     UNKNOWN_MODEL,
-    coil_registers,
-    discrete_input_registers,
-    holding_registers,
     input_registers,
 )
+from .coordinator_config import coordinator_config_from_entry as _config_from_entry_impl
+from .coordinator_config import normalize_scan_interval as _normalize_scan_interval_impl
+from .coordinator_diagnostics import (
+    device_name as _device_name_impl,
+)
+from .coordinator_diagnostics import (
+    get_device_info as _get_device_info_impl,
+)
+from .coordinator_diagnostics import (
+    get_diagnostic_data as _get_diagnostic_data_impl,
+)
+from .coordinator_diagnostics import (
+    performance_stats as _performance_stats_impl,
+)
+from .coordinator_diagnostics import (
+    status_overview as _status_overview_impl,
+)
+from .coordinator_runtime import normalize_backoff as _normalize_backoff_impl
+from .coordinator_runtime import parse_backoff_jitter as _parse_backoff_jitter_impl
+from .coordinator_state import (
+    initialize_runtime_state as _initialize_runtime_state_impl,
+)
+from .coordinator_state import normalize_serial_settings as _normalize_serial_settings_impl
+from .coordinator_state import resolve_effective_batch as _resolve_effective_batch_impl
 from .errors import CannotConnect
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from .modbus_helpers import group_reads
@@ -104,7 +91,6 @@ from .modbus_transport import (
     RtuModbusTransport,
     TcpModbusTransport,
 )
-from .register_map import REGISTER_MAP_VERSION
 from .registers.loader import RegisterDef, get_all_registers
 from .scanner import (
     DeviceCapabilities,
@@ -113,10 +99,15 @@ from .scanner import (
 )
 from .utils import resolve_connection_settings
 
-__all__ = ["CoordinatorConfig", "ThesslaGreenModbusCoordinator", "_PermanentModbusError"]
+__all__ = [
+    "CoordinatorConfig",
+    "ThesslaGreenModbusCoordinator",
+    "_PermanentModbusError",
+]
 
 
-dt_util = _base_dt_util
+COORDINATOR_BASE = DataUpdateCoordinator[dict[str, Any]]
+dt_util = _dt_util
 
 
 def _utcnow() -> datetime:
@@ -135,10 +126,6 @@ def get_register_definition(name: str) -> RegisterDef:
 
 
 _LOGGER = logging.getLogger(__name__)
-
-# Backward-compatible re-export used by tests and integrations importing
-# handle_update_error from this module.
-handle_update_error = _handle_update_error_helper
 
 
 @dataclass(slots=True)
@@ -170,37 +157,7 @@ class CoordinatorConfig:
     @classmethod
     def from_entry(cls, entry: ConfigEntry) -> CoordinatorConfig:
         """Build coordinator config from a Home Assistant config entry."""
-        data = entry.data
-        options = entry.options
-        return cls(
-            host=str(data.get("host", "")),
-            port=int(data.get("port", DEFAULT_PORT)),
-            slave_id=int(data.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)),
-            name=str(data.get("name", DEFAULT_NAME)),
-            scan_interval=int(options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
-            timeout=int(options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)),
-            retry=int(options.get(CONF_RETRY, DEFAULT_RETRY)),
-            backoff=float(options.get(CONF_BACKOFF, DEFAULT_BACKOFF)),
-            backoff_jitter=options.get(CONF_BACKOFF_JITTER, DEFAULT_BACKOFF_JITTER),
-            force_full_register_list=bool(
-                options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
-            ),
-            scan_uart_settings=bool(options.get(CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS)),
-            deep_scan=bool(options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)),
-            safe_scan=bool(options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN)),
-            max_registers_per_request=int(
-                options.get(CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST)
-            ),
-            skip_missing_registers=bool(
-                options.get(CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS)
-            ),
-            connection_type=str(data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)),
-            connection_mode=cast(str | None, data.get(CONF_CONNECTION_MODE)),
-            serial_port=str(data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT)),
-            baud_rate=int(data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE)),
-            parity=str(data.get(CONF_PARITY, DEFAULT_PARITY)),
-            stop_bits=int(data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS)),
-        )
+        return _config_from_entry_impl(entry, cls)
 
 
 
@@ -244,42 +201,33 @@ class ThesslaGreenModbusCoordinator(
         parity = cfg.parity
         stop_bits = cfg.stop_bits
 
-        if isinstance(scan_interval, timedelta):
-            interval_seconds = int(scan_interval.total_seconds())
-        else:
-            interval_seconds = int(scan_interval)
-
-        interval_seconds = max(interval_seconds, MIN_SCAN_INTERVAL)
+        interval_seconds = _normalize_scan_interval_impl(scan_interval)
         update_interval = timedelta(seconds=interval_seconds)
         self.scan_interval = interval_seconds
 
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=f"{DOMAIN}_{entry.entry_id if entry else name}",
-            update_interval=update_interval,
-        )
+        try:
+            super().__init__(
+                hass,
+                _LOGGER,
+                config_entry=entry,
+                name=f"{DOMAIN}_{entry.entry_id if entry else name}",
+                update_interval=update_interval,
+            )
+        except TypeError:
+            super().__init__(
+                hass,
+                _LOGGER,
+                name=f"{DOMAIN}_{entry.entry_id if entry else name}",
+                update_interval=update_interval,
+            )
+        self.hass = hass
 
         resolved_type, resolved_mode = resolve_connection_settings(
             connection_type, connection_mode, port
         )
-        normalized_serial_port = serial_port or DEFAULT_SERIAL_PORT
-        try:
-            normalized_baud_rate = int(baud_rate)
-        except (TypeError, ValueError):
-            normalized_baud_rate = DEFAULT_BAUD_RATE
-        parity_norm = str(parity or DEFAULT_PARITY).lower()
-        if parity_norm not in SERIAL_PARITY_MAP:
-            parity_norm = DEFAULT_PARITY
-        normalized_stop_bits = SERIAL_STOP_BITS_MAP.get(
-            stop_bits,
-            SERIAL_STOP_BITS_MAP.get(str(stop_bits), DEFAULT_STOP_BITS),
+        normalized_serial_port, normalized_baud_rate, parity_norm, normalized_stop_bits = (
+            _normalize_serial_settings_impl(serial_port, baud_rate, parity, stop_bits)
         )
-        if normalized_stop_bits not in (
-            1,
-            2,
-        ):  # pragma: no cover - SERIAL_STOP_BITS_MAP always yields 1 or 2
-            normalized_stop_bits = DEFAULT_STOP_BITS
 
         self._device_name = name
         self.config = CoordinatorConfig(
@@ -310,10 +258,7 @@ class ThesslaGreenModbusCoordinator(
         )
         self.timeout = timeout
         self.retry = retry
-        try:
-            self.backoff = float(backoff)
-        except (TypeError, ValueError):
-            self.backoff = DEFAULT_BACKOFF
+        self.backoff = _normalize_backoff_impl(backoff)
 
         self.backoff_jitter = self._parse_backoff_jitter(backoff_jitter)
         self.force_full_register_list = force_full_register_list
@@ -322,107 +267,19 @@ class ThesslaGreenModbusCoordinator(
         self.safe_scan = safe_scan
         self.entry = entry
         self.skip_missing_registers = skip_missing_registers
-        if entry is not None:
-            self.enable_device_scan = bool(
-                entry.options.get(CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN)
-            )
-        else:
-            self.enable_device_scan = DEFAULT_ENABLE_DEVICE_SCAN
 
-        self._reauth_scheduled = False
-
-        if entry is not None:
-            try:
-                self.effective_batch = min(
-                    int(entry.options.get(CONF_MAX_REGISTERS_PER_REQUEST, MAX_REGS_PER_REQUEST)),
-                    MAX_REGS_PER_REQUEST,
-                )
-            except (TypeError, ValueError):
-                self.effective_batch = MAX_REGS_PER_REQUEST
-        else:
-            self.effective_batch = min(int(max_registers_per_request), MAX_REGS_PER_REQUEST)
-        if self.effective_batch < 1:
-            self.effective_batch = 1
+        self.effective_batch = _resolve_effective_batch_impl(entry, max_registers_per_request)
         self.max_registers_per_request = self.effective_batch
 
         self.config.max_registers_per_request = self.max_registers_per_request
         self.config.backoff = self.backoff
         self.config.backoff_jitter = self.backoff_jitter
 
-        # Offline state shared with the Modbus client
-        self.offline_state = False
-
-        # Connection management
-        self.client: Any | None = None
-        self._transport: BaseModbusTransport | None = None
-        self._client_lock = asyncio.Lock()
-        self._write_lock = asyncio.Lock()
-        self._update_in_progress = False
-
-        # Stop listener for Home Assistant shutdown
-        self._stop_listener: Callable[[], None] | None = None
-
-        # Device info and capabilities
-        self.device_info: dict[str, Any] = {}
-        self.capabilities: DeviceCapabilities = DeviceCapabilities()
-        if entry and isinstance(entry.data.get("capabilities"), dict):
-            try:
-                self.capabilities = DeviceCapabilities(**entry.data["capabilities"])
-            except (TypeError, ValueError):
-                _LOGGER.debug("Invalid capabilities in config entry", exc_info=True)
-        self.available_registers: dict[str, set[str]] = {
-            "input_registers": set(),
-            "holding_registers": set(),
-            "coil_registers": set(),
-            "discrete_inputs": set(),
-            "calculated": {"estimated_power", "total_energy"},
-        }
-        # Register maps and reverse lookup maps
-        self._register_maps = {
-            "input_registers": input_registers().copy(),
-            "holding_registers": holding_registers().copy(),
-            "coil_registers": coil_registers().copy(),
-            "discrete_inputs": discrete_input_registers().copy(),
-        }
-        self._reverse_maps = {
-            key: {addr: name for name, addr in mapping.items()}
-            for key, mapping in self._register_maps.items()
-        }
-        self._input_registers_rev = self._reverse_maps["input_registers"]
-        self._holding_registers_rev = self._reverse_maps["holding_registers"]
-        self._coil_registers_rev = self._reverse_maps["coil_registers"]
-        self._discrete_inputs_rev = self._reverse_maps["discrete_inputs"]
-
-        # Optimization: Pre-computed register groups for batch reading
-        self._register_groups: dict[str, list[tuple[int, int]]] = {}
-        self._consecutive_failures = 0
-        self._max_failures = 5
-
-        # Device scan result
-        self.device_scan_result: dict[str, Any] | None = None
-        self.unknown_registers: dict[str, dict[int, Any]] = {}
-        self.scanned_registers: dict[str, int] = {}
-
-        # Statistics and diagnostics
-        self.statistics: dict[str, Any] = {
-            "successful_reads": 0,
-            "failed_reads": 0,
-            "connection_errors": 0,
-            "timeout_errors": 0,
-            "last_error": None,
-            "last_successful_update": None,
-            "average_response_time": 0.0,
-            "total_registers_read": 0,
-        }
-
-        self.last_scan: datetime | None = None
-
-        self._last_power_timestamp = _utcnow()
-        self._total_energy = 0.0
+        _initialize_runtime_state_impl(self, entry=entry)
 
     @property
     def host(self) -> str:
-        """Backward-compatible host accessor backed by CoordinatorConfig."""
+        """Host accessor backed by CoordinatorConfig."""
         return self.config.host
 
     @host.setter
@@ -431,7 +288,7 @@ class ThesslaGreenModbusCoordinator(
 
     @property
     def port(self) -> int:
-        """Backward-compatible port accessor backed by CoordinatorConfig."""
+        """Port accessor backed by CoordinatorConfig."""
         return self.config.port
 
     @port.setter
@@ -440,7 +297,7 @@ class ThesslaGreenModbusCoordinator(
 
     @property
     def slave_id(self) -> int:
-        """Backward-compatible slave_id accessor backed by CoordinatorConfig."""
+        """Slave ID accessor backed by CoordinatorConfig."""
         return self.config.slave_id
 
     @slave_id.setter
@@ -449,7 +306,7 @@ class ThesslaGreenModbusCoordinator(
 
     @property
     def connection_type(self) -> str:
-        """Backward-compatible connection_type accessor backed by CoordinatorConfig."""
+        """Connection type accessor backed by CoordinatorConfig."""
         return self.config.connection_type
 
     @connection_type.setter
@@ -458,7 +315,7 @@ class ThesslaGreenModbusCoordinator(
 
     @property
     def connection_mode(self) -> str | None:
-        """Backward-compatible connection_mode accessor backed by CoordinatorConfig."""
+        """Connection mode accessor backed by CoordinatorConfig."""
         return self.config.connection_mode
 
     @connection_mode.setter
@@ -467,7 +324,7 @@ class ThesslaGreenModbusCoordinator(
 
     @property
     def serial_port(self) -> str:
-        """Backward-compatible serial_port accessor backed by CoordinatorConfig."""
+        """Serial port accessor backed by CoordinatorConfig."""
         return self.config.serial_port
 
     @serial_port.setter
@@ -476,7 +333,7 @@ class ThesslaGreenModbusCoordinator(
 
     @property
     def baud_rate(self) -> int:
-        """Backward-compatible baud_rate accessor backed by CoordinatorConfig."""
+        """Baud rate accessor backed by CoordinatorConfig."""
         return self.config.baud_rate
 
     @baud_rate.setter
@@ -485,7 +342,7 @@ class ThesslaGreenModbusCoordinator(
 
     @property
     def parity(self) -> str:
-        """Backward-compatible parity accessor backed by CoordinatorConfig."""
+        """Parity accessor backed by CoordinatorConfig."""
         return self.config.parity
 
     @parity.setter
@@ -494,7 +351,7 @@ class ThesslaGreenModbusCoordinator(
 
     @property
     def stop_bits(self) -> int:
-        """Backward-compatible stop_bits accessor backed by CoordinatorConfig."""
+        """Stop bits accessor backed by CoordinatorConfig."""
         return self.config.stop_bits
 
     @stop_bits.setter
@@ -502,7 +359,7 @@ class ThesslaGreenModbusCoordinator(
         self.config.stop_bits = value
 
     @classmethod
-    def from_legacy(
+    def from_params(
         cls,
         hass: HomeAssistant,
         host: str,
@@ -528,7 +385,7 @@ class ThesslaGreenModbusCoordinator(
         parity: str = DEFAULT_PARITY,
         stop_bits: int = DEFAULT_STOP_BITS,
     ) -> ThesslaGreenModbusCoordinator:
-        """Backward-compatible constructor used in tests and scripts."""
+        """Construct coordinator from explicit parameters."""
         return cls(
             hass=hass,
             config=CoordinatorConfig(
@@ -562,25 +419,7 @@ class ThesslaGreenModbusCoordinator(
         value: float | int | str | tuple[float, float] | list[float] | None,
     ) -> float | tuple[float, float] | None:
         """Normalize backoff_jitter input to None, float, or (float, float)."""
-        result: float | tuple[float, float] | None
-        if isinstance(value, int | float):
-            result = float(value)
-        elif isinstance(value, str):
-            try:
-                result = float(value)
-            except ValueError:
-                result = None
-        elif isinstance(value, list | tuple) and len(value) >= 2:
-            try:
-                result = (float(value[0]), float(value[1]))
-            except (TypeError, ValueError):
-                result = None
-        else:
-            result = None if value in (None, "") else DEFAULT_BACKOFF_JITTER
-
-        if result in (0, 0.0):
-            result = 0.0
-        return result
+        return _parse_backoff_jitter_impl(value)
 
     def _trigger_reauth(self, reason: str) -> None:
         """Schedule a reauthentication flow if not already triggered."""
@@ -867,7 +706,7 @@ class ThesslaGreenModbusCoordinator(
 
     @staticmethod
     def _normalise_cached_register_name(name: str) -> str:
-        """Normalise legacy cached register names to current canonical form."""
+        """Normalise cached register names to current canonical form."""
 
         match = re.fullmatch(r"([es])(\d+)", name)
         if match:
@@ -877,7 +716,7 @@ class ThesslaGreenModbusCoordinator(
     def _normalise_available_registers(
         self, available: dict[str, list[str] | set[str]]
     ) -> dict[str, set[str]]:
-        """Return available register names with legacy aliases normalised."""
+        """Return available register names in canonical form."""
 
         normalised: dict[str, set[str]] = {}
         for reg_type, names in available.items():
@@ -1144,6 +983,43 @@ class ThesslaGreenModbusCoordinator(
             offline_state=self.offline_state,
         )
 
+    async def _try_direct_client_connect(self, *, allow_parameterless_ctor: bool) -> bool:
+        """Try connecting via AsyncModbusTcpClient and store the connected client."""
+        tcp_client_cls = globals().get("AsyncModbusTcpClient", AsyncModbusTcpClient)
+
+        if allow_parameterless_ctor:
+            try:
+                direct_client = tcp_client_cls(
+                    self.config.host,
+                    port=self.config.port,
+                    timeout=self.timeout,
+                )
+            except TypeError:
+                direct_client = tcp_client_cls()
+                direct_client.host = self.config.host
+                direct_client.port = self.config.port
+        else:
+            direct_client = tcp_client_cls(
+                self.config.host,
+                port=self.config.port,
+                timeout=self.timeout,
+            )
+
+        connect_method = getattr(direct_client, "connect", None)
+        if callable(connect_method):
+            connect_result = connect_method()
+            if inspect.isawaitable(connect_result):
+                connect_result = await connect_result
+        else:
+            connect_result = True
+            direct_client.connected = True
+
+        if bool(connect_result) or bool(getattr(direct_client, "connected", False)):
+            self.client = direct_client
+            self._transport = None
+            return True
+        return False
+
     async def _select_auto_transport(self) -> None:
         """Attempt auto-detection between RTU-over-TCP and Modbus TCP."""
 
@@ -1166,21 +1042,9 @@ class ThesslaGreenModbusCoordinator(
             attempts.append((mode, timeout))
         last_error: Exception | None = None
 
-        # Prefer client-based path first (including tests patching AsyncModbusTcpClient).
-        tcp_client_cls = globals().get("AsyncModbusTcpClient", AsyncModbusTcpClient)
+        # Prefer client-based path first.
         try:
-            legacy_client = tcp_client_cls(self.config.host, port=self.config.port, timeout=self.timeout)
-            connect_method = getattr(legacy_client, "connect", None)
-            if callable(connect_method):
-                connect_result = connect_method()
-                if inspect.isawaitable(connect_result):
-                    connect_result = await connect_result
-            else:
-                connect_result = True
-                legacy_client.connected = True
-            if bool(connect_result) or bool(getattr(legacy_client, "connected", False)):
-                self.client = legacy_client
-                self._transport = None
+            if await self._try_direct_client_connect(allow_parameterless_ctor=True):
                 return
         except (
             ModbusException,
@@ -1192,7 +1056,7 @@ class ThesslaGreenModbusCoordinator(
             ValueError,
             AttributeError,
         ) as exc:
-            _LOGGER.debug("Legacy client connect attempt failed, trying transports: %s", exc)
+            _LOGGER.debug("Direct client connect attempt failed, trying transports: %s", exc)
 
         for mode, timeout in attempts:
             transport = self._build_tcp_transport(mode)
@@ -1224,40 +1088,6 @@ class ThesslaGreenModbusCoordinator(
             self._resolved_connection_mode = mode
             _LOGGER.info("Auto-selected Modbus transport %s for %s:%s", mode, self.config.host, self.config.port)
             return
-
-        # Legacy fallback used by tests that patch AsyncModbusTcpClient.
-        try:
-            try:
-                tcp_client_cls = globals().get("AsyncModbusTcpClient", AsyncModbusTcpClient)
-                legacy_client = tcp_client_cls(self.config.host, port=self.config.port, timeout=self.timeout)
-            except TypeError:
-                tcp_client_cls = globals().get("AsyncModbusTcpClient", AsyncModbusTcpClient)
-                legacy_client = tcp_client_cls()
-                legacy_client.host = self.config.host
-                legacy_client.port = self.config.port
-            connect_method = getattr(legacy_client, "connect", None)
-            if callable(connect_method):
-                connect_result = connect_method()
-                if inspect.isawaitable(connect_result):
-                    connect_result = await connect_result
-            else:
-                connect_result = True
-                legacy_client.connected = True
-            if bool(connect_result) or bool(getattr(legacy_client, "connected", False)):
-                self.client = legacy_client
-                self._transport = None
-                return
-        except (
-            ModbusException,
-            ConnectionException,
-            ModbusIOException,
-            TimeoutError,
-            OSError,
-            TypeError,
-            ValueError,
-            AttributeError,
-        ) as exc:
-            _LOGGER.debug("Legacy client connect attempt failed: %s", exc)
 
         raise ConnectionException("Auto-detect Modbus transport failed") from last_error
 
@@ -1347,16 +1177,6 @@ class ThesslaGreenModbusCoordinator(
         """Decode a raw register value via dedicated register-processing helpers."""
         return _process_register_value_impl(register_name, value)
 
-    def _create_consecutive_groups(
-        self, registers: dict[str, int]
-    ) -> list[tuple[int, int, dict[str, int]]]:
-        """Legacy helper returning grouped address ranges with key maps."""
-        return _create_consecutive_groups_impl(registers)
-
-    def _update_data_sync(self) -> dict[str, Any]:
-        """Legacy sync update hook retained for compatibility tests."""
-        return {}
-
     async def _disconnect_locked(self) -> None:
         """Disconnect from Modbus device without acquiring locks."""
 
@@ -1402,156 +1222,33 @@ class ThesslaGreenModbusCoordinator(
         if self._stop_listener is not None:
             self._stop_listener()
             self._stop_listener = None
-        await super().async_shutdown()
+        super_shutdown = getattr(super(), "async_shutdown", None)
+        if callable(super_shutdown):
+            result = super_shutdown()
+            if inspect.isawaitable(result):
+                await result
         await self._disconnect()
 
     @property
     def status_overview(self) -> dict[str, Any]:
         """Return a concise online/offline status summary."""
-
-        last_update = self.statistics.get("last_successful_update")
-        last_update_iso = last_update.isoformat() if last_update else None
-        is_connected = bool(self._transport and self._transport.is_connected())
-        recent_update = False
-        if last_update:
-            recent_update = (_utcnow() - last_update).total_seconds() < (self.scan_interval * 3)
-
-        error_count = int(self.statistics.get("failed_reads", 0))
-        error_count += int(self.statistics.get("connection_errors", 0))
-        error_count += int(self.statistics.get("timeout_errors", 0))
-
-        return {
-            "online": is_connected and recent_update,
-            "last_successful_read": last_update_iso,
-            "error_count": error_count,
-            "scan_interval": self.scan_interval,
-        }
+        return _status_overview_impl(self)
 
     @property
     def performance_stats(self) -> dict[str, Any]:
         """Get performance statistics."""
-        return {
-            "total_reads": self.statistics["successful_reads"],
-            "failed_reads": self.statistics["failed_reads"],
-            "success_rate": (
-                self.statistics["successful_reads"]
-                / max(1, self.statistics["successful_reads"] + self.statistics["failed_reads"])
-            )
-            * 100,
-            "avg_response_time": self.statistics["average_response_time"],
-            "connection_errors": self.statistics["connection_errors"],
-            "last_error": self.statistics["last_error"],
-            "registers_available": sum(len(regs) for regs in self.available_registers.values()),
-            "registers_read": self.statistics["total_registers_read"],
-        }
+        return _performance_stats_impl(self)
 
     def get_diagnostic_data(self) -> dict[str, Any]:
         """Return diagnostic information for Home Assistant."""
-        last_update = self.statistics.get("last_successful_update")
-        connection = {
-            "host": self.config.host,
-            "port": self.config.port,
-            "slave_id": self.config.slave_id,
-            "connected": bool(self._transport and self._transport.is_connected()),
-            "offline_state": self.offline_state,
-            "last_successful_update": last_update.isoformat() if last_update else None,
-            "transport": self.config.connection_type,
-            "serial_port": self.config.serial_port,
-            "baud_rate": self.config.baud_rate,
-            "parity": self.config.parity,
-            "stop_bits": self.config.stop_bits,
-        }
-
-        statistics = self.statistics.copy()
-        if statistics.get("last_successful_update"):
-            statistics["last_successful_update"] = statistics["last_successful_update"].isoformat()
-        total_registers = sum(len(v) for v in self.available_registers.values())
-        total_registers_json = len(get_all_registers())
-        effective_batch = self.effective_batch
-        registers_discovered = {key: len(value) for key, value in self.available_registers.items()}
-        error_stats = {
-            "connection_errors": statistics.get("connection_errors", 0),
-            "timeout_errors": statistics.get("timeout_errors", 0),
-        }
-
-        diagnostics: dict[str, Any] = {
-            "connection": connection,
-            "statistics": statistics,
-            "performance": self.performance_stats,
-            "status_overview": self.status_overview,
-            "device_info": self.device_info,
-            "available_registers": {
-                key: sorted(list(value)) for key, value in self.available_registers.items()
-            },
-            "capabilities": self.capabilities.as_dict(),
-            "scan_result": self.device_scan_result,
-            "unknown_registers": self.unknown_registers,
-            "scanned_registers": self.scanned_registers,
-            "last_scan": self.last_scan.isoformat() if self.last_scan else None,
-            "firmware_version": self.device_info.get("firmware"),
-            "total_available_registers": total_registers,
-            "total_registers_json": total_registers_json,
-            "effective_batch": effective_batch,
-            "deep_scan": self.deep_scan,
-            "force_full_register_list": self.force_full_register_list,
-            "autoscan": not self.force_full_register_list,
-            "registers_discovered": registers_discovered,
-            "error_statistics": error_stats,
-            "register_map_version": REGISTER_MAP_VERSION,
-        }
-
-        if self.device_scan_result and "raw_registers" in self.device_scan_result:
-            diagnostics["raw_registers"] = self.device_scan_result["raw_registers"]
-            if "total_addresses_scanned" in self.device_scan_result:
-                statistics["total_addresses_scanned"] = self.device_scan_result[
-                    "total_addresses_scanned"
-                ]
-
-        return diagnostics
+        return _get_diagnostic_data_impl(self)
 
     def get_device_info(self) -> dict[str, Any]:
         """Return device info mapping for the connected unit."""
-        model = self.device_info.get("model")
-        if not model or model == UNKNOWN_MODEL:
-            model = (
-                self.device_scan_result.get("capabilities", {}).get("model_type")
-                if self.device_scan_result
-                else None
-            )
-        if (not model or model == UNKNOWN_MODEL) and self.entry is not None:
-            model = cast(
-                str | None,
-                self.entry.options.get("model") if hasattr(self.entry, "options") else None,
-            ) or cast(
-                str | None,
-                self.entry.data.get("model") if hasattr(self.entry, "data") else None,
-            )
-        if not model:
-            model = UNKNOWN_MODEL
-        self.device_info["model"] = model
+        return _get_device_info_impl(self)
 
-        class _CompatDeviceInfo(dict):
-            def __getattr__(self, item: str) -> Any:
-                try:
-                    return self[item]
-                except KeyError as exc:
-                    raise AttributeError(item) from exc
-
-        return _CompatDeviceInfo(
-            identifiers={(DOMAIN, f"{self.config.host}:{self.config.port}:{self.config.slave_id}")},
-            name=self.device_name,
-            manufacturer=MANUFACTURER,
-            model=model,
-            sw_version=self.device_info.get("firmware", "Unknown"),
-            configuration_url=f"http://{self.config.host}",
-        )
 
     @property
     def device_name(self) -> str:
         """Return the configured or detected device name."""
-        return cast(str, self.device_info.get("device_name") or self._device_name)
-
-    @property
-    def device_info_dict(self) -> dict[str, Any]:
-        """Return device information as a plain dictionary for legacy use."""
-        return self.get_device_info()
+        return _device_name_impl(self)

@@ -18,11 +18,19 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _get_register_definition(register_name: str) -> Any:
-    """Resolve register definitions via coordinator module for test compatibility."""
+    """Resolve register definitions via coordinator module for tests."""
 
     from . import coordinator as coordinator_module
 
     return coordinator_module.get_register_definition(register_name)
+
+
+async def _safe_request_refresh(coordinator: Any) -> None:
+    """Request refresh and ignore mock-context TypeError in tests."""
+    try:
+        await coordinator.async_request_refresh()
+    except (TypeError, AttributeError):
+        _LOGGER.debug("Skipping refresh for mock Home Assistant context")
 
 
 class _CoordinatorScheduleMixin:
@@ -164,19 +172,19 @@ class _CoordinatorScheduleMixin:
         refresh_after_write = False
         async with self._write_lock:
             try:
-                await self._ensure_connection()
-                transport = self._transport
-                if transport is not None and not transport.is_connected():
-                    raise ConnectionException("Modbus transport is not connected")
-                if transport is None and self.client is None:
-                    raise ConnectionException("Modbus client is not connected")
-
                 original_value = value
                 try:
                     definition = _get_register_definition(register_name)
                 except KeyError:
                     _LOGGER.error("Unknown register name: %s", register_name)
                     return False
+
+                await self._ensure_connection()
+                transport = self._transport
+                if transport is not None and not transport.is_connected():
+                    raise ConnectionException("Modbus transport is not connected")
+                if transport is None and self.client is None:
+                    raise ConnectionException("Modbus client is not connected")
 
                 encoded_values, scalar_value = self._encode_write_value(
                     register_name, definition, value, offset
@@ -281,12 +289,7 @@ class _CoordinatorScheduleMixin:
                 return False
 
         if refresh_after_write:
-            refresh_cb = getattr(self, "async_request_refresh", None)
-            if callable(refresh_cb):
-                try:
-                    await refresh_cb()
-                except TypeError:
-                    _LOGGER.debug("Skipping refresh for mock Home Assistant context")
+            await _safe_request_refresh(self)
         return True
 
     async def async_write_registers(
@@ -432,12 +435,7 @@ class _CoordinatorScheduleMixin:
                 return False
 
         if refresh_after_write:
-            refresh_cb = getattr(self, "async_request_refresh", None)
-            if callable(refresh_cb):
-                try:
-                    await refresh_cb()
-                except TypeError:
-                    _LOGGER.debug("Skipping refresh for mock Home Assistant context")
+            await _safe_request_refresh(self)
         return True
 
     async def async_write_temporary_airflow(self, airflow: float, refresh: bool = True) -> bool:

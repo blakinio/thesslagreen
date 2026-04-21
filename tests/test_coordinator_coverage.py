@@ -24,7 +24,7 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
 def _make_coordinator(**kwargs) -> ThesslaGreenModbusCoordinator:
     hass = MagicMock()
     hass.async_add_executor_job = None
-    return ThesslaGreenModbusCoordinator.from_legacy(
+    return ThesslaGreenModbusCoordinator.from_params(
         hass=hass,
         host="192.168.1.1",
         port=502,
@@ -625,7 +625,7 @@ def test_coordinator_init_super_type_error_fallback():
 
     with patch.object(ThesslaGreenModbusCoordinator.__bases__[0], "__init__", patched_init):
         with pytest.raises(TypeError, match="unexpected keyword argument"):
-            ThesslaGreenModbusCoordinator.from_legacy(hass=MagicMock(), host="localhost", port=502, slave_id=1)
+            ThesslaGreenModbusCoordinator.from_params(hass=MagicMock(), host="localhost", port=502, slave_id=1)
 
 
 def test_coordinator_init_entry_bad_max_registers_per_request():
@@ -636,7 +636,7 @@ def test_coordinator_init_entry_bad_max_registers_per_request():
     entry.data = {}
     entry.options = {CONF_MAX_REGISTERS_PER_REQUEST: "not_a_number"}
     hass = MagicMock()
-    coord = ThesslaGreenModbusCoordinator.from_legacy(
+    coord = ThesslaGreenModbusCoordinator.from_params(
         hass=hass, host="localhost", port=502, slave_id=1, entry=entry
     )
     from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
@@ -668,7 +668,7 @@ def test_coordinator_init_entry_bad_capabilities():
         original_init(self)
 
     with patch.object(DeviceCapabilities, "__init__", patched_init):
-        coord = ThesslaGreenModbusCoordinator.from_legacy(
+        coord = ThesslaGreenModbusCoordinator.from_params(
             hass=hass, host="localhost", port=502, slave_id=1, entry=entry
         )
     # Should not raise; capabilities falls back to default (no capabilities set)
@@ -980,15 +980,13 @@ def test_process_register_value_sensor_unavailable_non_temperature():
 
 def test_process_register_value_schedule_hh_mm():
     """schedule_ register with HH:MM decoded → stored as HH:MM string (not minutes)."""
+    from custom_components.thessla_green_modbus import _coordinator_register_processing as rp
     coord = _make_coordinator()
     mock_def = MagicMock()
     mock_def.is_temperature.return_value = False
     mock_def.enum = None
     mock_def.decode.return_value = "06:30"
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
-        return_value=mock_def,
-    ):
+    with patch.dict(rp.REGISTER_DEFS, {"schedule_on_1": mock_def}, clear=False):
         result = coord._process_register_value("schedule_on_1", 390)
     assert result == "06:30"
 
@@ -1136,30 +1134,26 @@ async def test_async_write_registers_too_many_for_single_request():
 def test_process_register_value_decoded_equals_sensor_unavailable():
     """When decode() returns SENSOR_UNAVAILABLE, the function returns SENSOR_UNAVAILABLE (lines 1831-1838)."""
     from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+    from custom_components.thessla_green_modbus import _coordinator_register_processing as rp
     coord = _make_coordinator()
     mock_def = MagicMock()
     mock_def.is_temperature.return_value = False
     mock_def.enum = None
     mock_def.decode.return_value = SENSOR_UNAVAILABLE  # decoded == SENSOR_UNAVAILABLE
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
-        return_value=mock_def,
-    ):
+    with patch.dict(rp.REGISTER_DEFS, {"mode": mock_def}, clear=False):
         result = coord._process_register_value("mode", 1)
     assert result == SENSOR_UNAVAILABLE
 
 
 def test_process_register_value_schedule_hh_mm_invalid():
     """schedule_ register with bad HH:MM → ValueError caught, decoded unchanged (lines 1850-1851)."""
+    from custom_components.thessla_green_modbus import _coordinator_register_processing as rp
     coord = _make_coordinator()
     mock_def = MagicMock()
     mock_def.is_temperature.return_value = False
     mock_def.enum = None
     mock_def.decode.return_value = "ab:cd"  # valid format but int() will fail
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
-        return_value=mock_def,
-    ):
+    with patch.dict(rp.REGISTER_DEFS, {"schedule_on_1": mock_def}, clear=False):
         result = coord._process_register_value("schedule_on_1", 999)
     assert result == "ab:cd"  # returned unchanged after ValueError
 
@@ -1242,16 +1236,12 @@ def test_post_process_data_naive_now_aware_last_ts():
 
 def test_create_consecutive_groups_empty():
     """Empty registers dict returns [] (line 1931)."""
-    coord = _make_coordinator()
-    result = coord._create_consecutive_groups({})
+    from custom_components.thessla_green_modbus._coordinator_register_processing import (
+        create_consecutive_groups,
+    )
+
+    result = create_consecutive_groups({})
     assert result == []
-
-
-def test_update_data_sync_returns_empty():
-    """_update_data_sync returns empty dict (line 1949)."""
-    coord = _make_coordinator()
-    result = coord._update_data_sync()
-    assert result == {}
 
 
 def test_process_register_value_unknown_register():

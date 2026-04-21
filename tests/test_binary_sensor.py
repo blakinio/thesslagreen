@@ -1,60 +1,12 @@
 """Tests for ThesslaGreenBinarySensor entity."""
 
-import sys
-import types
-from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-# ---------------------------------------------------------------------------
-# Minimal Home Assistant stubs
-# ---------------------------------------------------------------------------
+from tests.platform_stubs import install_binary_sensor_stubs
 
-const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
-
-binary_sensor_mod = cast(Any, types.ModuleType("homeassistant.components.binary_sensor"))
-
-
-class BinarySensorEntity:  # pragma: no cover - simple stub
-    pass
-
-
-class BinarySensorDeviceClass:  # pragma: no cover - enum stubs
-    RUNNING = "running"
-    OPENING = "opening"
-    POWER = "power"
-    HEAT = "heat"
-    CONNECTIVITY = "connectivity"
-    PROBLEM = "problem"
-    SAFETY = "safety"
-    COLD = "cold"
-    MOISTURE = "moisture"
-
-
-binary_sensor_mod.BinarySensorEntity = BinarySensorEntity
-binary_sensor_mod.BinarySensorDeviceClass = BinarySensorDeviceClass
-sys.modules["homeassistant.components.binary_sensor"] = binary_sensor_mod
-
-entity_platform = cast(Any, types.ModuleType("homeassistant.helpers.entity_platform"))
-
-
-class AddEntitiesCallback:  # pragma: no cover - simple stub
-    pass
-
-
-entity_platform.AddEntitiesCallback = AddEntitiesCallback
-sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
-
-network_mod = cast(Any, types.ModuleType("homeassistant.util.network"))
-
-
-def is_host_valid(host: str) -> bool:  # pragma: no cover - simple stub
-    return True
-
-
-network_mod.is_host_valid = is_host_valid
-sys.modules["homeassistant.util.network"] = network_mod
+install_binary_sensor_stubs()
 
 # ---------------------------------------------------------------------------
 # Actual tests

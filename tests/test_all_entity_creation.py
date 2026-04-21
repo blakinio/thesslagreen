@@ -16,159 +16,29 @@ Design:
 
 from __future__ import annotations
 
-import sys
-import types
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from tests.platform_stubs import (
+    install_binary_sensor_stubs,
+    install_fan_stubs,
+    install_number_stubs,
+    install_select_stubs,
+    install_switch_stubs,
+    install_time_stubs,
+)
 
 # ---------------------------------------------------------------------------
-# Complete missing HA component stubs that conftest does not set up
+# Required HA component stubs
 # ---------------------------------------------------------------------------
 
-def _ensure_attr(mod, name, value):
-    """Set attribute on a module only if it is not already present."""
-    if not hasattr(mod, name):
-        setattr(mod, name, value)
-
-
-# -- binary_sensor: BinarySensorEntity is absent in conftest stub ------------
-_bs_mod = sys.modules.setdefault(
-    "homeassistant.components.binary_sensor",
-    types.ModuleType("homeassistant.components.binary_sensor"),
-)
-
-
-class _BinarySensorEntity:  # pragma: no cover - stub
-    pass
-
-
-class _BinarySensorDeviceClass:  # pragma: no cover - stub
-    PROBLEM = "problem"
-    RUNNING = "running"
-
-
-_ensure_attr(_bs_mod, "BinarySensorEntity", _BinarySensorEntity)
-_ensure_attr(_bs_mod, "BinarySensorDeviceClass", _BinarySensorDeviceClass)
-
-# -- fan ---------------------------------------------------------------------
-_fan_mod = sys.modules.setdefault(
-    "homeassistant.components.fan",
-    types.ModuleType("homeassistant.components.fan"),
-)
-
-
-class _FanEntity:  # pragma: no cover - stub
-    pass
-
-
-class _FanEntityFeature:  # pragma: no cover - stub
-    SET_SPEED = 1
-    PRESET_MODE = 8
-
-
-_ensure_attr(_fan_mod, "FanEntity", _FanEntity)
-_ensure_attr(_fan_mod, "FanEntityFeature", _FanEntityFeature)
-
-# -- switch ------------------------------------------------------------------
-_sw_mod = sys.modules.setdefault(
-    "homeassistant.components.switch",
-    types.ModuleType("homeassistant.components.switch"),
-)
-
-
-class _SwitchEntity:  # pragma: no cover - stub
-    pass
-
-
-_ensure_attr(_sw_mod, "SwitchEntity", _SwitchEntity)
-
-# -- number ------------------------------------------------------------------
-_num_mod = sys.modules.setdefault(
-    "homeassistant.components.number",
-    types.ModuleType("homeassistant.components.number"),
-)
-
-
-class _NumberEntity:  # pragma: no cover - stub
-    pass
-
-
-class _NumberMode:  # pragma: no cover - stub
-    BOX = "box"
-    SLIDER = "slider"
-
-
-_ensure_attr(_num_mod, "NumberEntity", _NumberEntity)
-_ensure_attr(_num_mod, "NumberMode", _NumberMode)
-
-# -- select ------------------------------------------------------------------
-_sel_mod = sys.modules.setdefault(
-    "homeassistant.components.select",
-    types.ModuleType("homeassistant.components.select"),
-)
-
-
-class _SelectEntity:  # pragma: no cover - stub
-    pass
-
-
-_ensure_attr(_sel_mod, "SelectEntity", _SelectEntity)
-
-# -- components.time (TimeEntity used by time.py) ----------------------------
-_time_mod = sys.modules.setdefault(
-    "homeassistant.components.time",
-    types.ModuleType("homeassistant.components.time"),
-)
-
-
-class _TimeEntity:  # pragma: no cover - stub
-    pass
-
-
-_ensure_attr(_time_mod, "TimeEntity", _TimeEntity)
-
-# -- helpers.entity (EntityCategory used by number.py) ----------------------
-_he_mod = sys.modules.setdefault(
-    "homeassistant.helpers.entity",
-    types.ModuleType("homeassistant.helpers.entity"),
-)
-
-
-class _EntityCategory:  # pragma: no cover - stub
-    CONFIG = "config"
-    DIAGNOSTIC = "diagnostic"
-
-
-_ensure_attr(_he_mod, "EntityCategory", _EntityCategory)
-
-# -- UnitOfTime / UnitOfVolumeFlowRate / PERCENTAGE on ha_const (number.py) -
-# Conftest defines UnitOfTime but without MINUTES — patch the existing class.
-_ha_const = sys.modules.get("homeassistant.const")
-if _ha_const is not None:
-    _unit_time = getattr(_ha_const, "UnitOfTime", None)
-    if _unit_time is None:
-        class _UnitOfTime:  # pragma: no cover - stub
-            MINUTES = "min"
-            HOURS = "h"
-            DAYS = "d"
-            SECONDS = "s"
-        _ha_const.UnitOfTime = _UnitOfTime
-    else:
-        for _attr, _val in [("MINUTES", "min"), ("HOURS", "h"), ("DAYS", "d"), ("SECONDS", "s")]:
-            if not hasattr(_unit_time, _attr):
-                setattr(_unit_time, _attr, _val)
-
-    _unit_vol = getattr(_ha_const, "UnitOfVolumeFlowRate", None)
-    if _unit_vol is None:
-        class _UnitOfVolumeFlowRate:  # pragma: no cover - stub
-            CUBIC_METERS_PER_HOUR = "m³/h"
-        _ha_const.UnitOfVolumeFlowRate = _UnitOfVolumeFlowRate
-    else:
-        _ensure_attr(_unit_vol, "CUBIC_METERS_PER_HOUR", "m³/h")
-
-    _ensure_attr(_ha_const, "PERCENTAGE", "%")
+install_binary_sensor_stubs()
+install_fan_stubs()
+install_switch_stubs()
+install_number_stubs()
+install_select_stubs()
+install_time_stubs()
 
 # ---------------------------------------------------------------------------
 # Now it is safe to import the integration domain constant

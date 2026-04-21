@@ -5,9 +5,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import inspect
-import ipaddress
 import logging
-import socket
 import traceback
 from collections.abc import Awaitable, Callable
 from importlib import import_module
@@ -15,16 +13,37 @@ from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.components.dhcp import DhcpServiceInfo
-from homeassistant.components.zeroconf import ZeroconfServiceInfo
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import translation
-from homeassistant.util.network import is_host_valid
 from voluptuous import Invalid as VOL_INVALID
 
+from .config_flow_errors import classify_os_error as _classify_os_error_impl
+from .config_flow_errors import (
+    should_log_timeout_traceback as _should_log_timeout_traceback_impl,
+)
+from .config_flow_network import looks_like_hostname as _looks_like_hostname_impl
+from .config_flow_options import denormalize_option as _denormalize_option_impl
+from .config_flow_options import normalize_baud_rate as _normalize_baud_rate_impl
+from .config_flow_options import normalize_parity as _normalize_parity_impl
+from .config_flow_options import normalize_stop_bits as _normalize_stop_bits_impl
+from .config_flow_options import strip_translation_prefix as _strip_translation_prefix_impl
+from .config_flow_payloads import caps_to_dict as _caps_to_dict_impl
+from .config_flow_payloads import normalize_connection_type as _normalize_connection_type_impl
+from .config_flow_runtime import TIMEOUT_EXCEPTIONS
+from .config_flow_runtime import (
+    call_with_optional_timeout as _call_with_optional_timeout_impl,
+)
+from .config_flow_runtime import (
+    is_request_cancelled_error as _is_request_cancelled_error_impl,
+)
+from .config_flow_runtime import run_with_retry as _run_with_retry_impl
+from .config_flow_validation import process_scan_capabilities as _process_scan_capabilities_impl
+from .config_flow_validation import validate_rtu_config as _validate_rtu_config_impl
+from .config_flow_validation import validate_slave_id as _validate_slave_id_impl
+from .config_flow_validation import validate_tcp_config as _validate_tcp_config_impl
 from .const import (
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
@@ -84,21 +103,24 @@ from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOExc
 from .utils import resolve_connection_settings
 
 _LOGGER = logging.getLogger(__name__)
-TIMEOUT_EXCEPTIONS = (TimeoutError, asyncio.TimeoutError)
 
 if TYPE_CHECKING:
+    from homeassistant.components.dhcp import DhcpServiceInfo
+    from homeassistant.components.zeroconf import ZeroconfServiceInfo
+
     class _ConfigFlowBase(config_entries.ConfigFlow):
         def __init_subclass__(cls, *, domain: str, **kwargs: Any) -> None: ...
 
 else:
     _ConfigFlowBase = config_entries.ConfigFlow
+    DhcpServiceInfo = Any
+    ZeroconfServiceInfo = Any
 
 
 
 def _is_request_cancelled_error(exc: ModbusIOException) -> bool:
     """Return True when a modbus IO error indicates a cancelled request."""
-    message = str(exc).lower()
-    return "request cancelled" in message or "cancelled" in message
+    return _is_request_cancelled_error_impl(exc)
 
 
 ThesslaGreenDeviceScanner: Any | None = None
@@ -107,6 +129,8 @@ DeviceCapabilities: Any | None = None
 
 async def _load_scanner_module(hass: HomeAssistant) -> Any:
     """Import scanner.core via the HA executor to avoid blocking the event loop."""
+    if hass is None or not hasattr(hass, "async_add_executor_job"):
+        return import_module("custom_components.thessla_green_modbus.scanner.core")
     return await hass.async_add_executor_job(
         import_module, "custom_components.thessla_green_modbus.scanner.core"
     )
@@ -120,84 +144,32 @@ CONFIG_FLOW_BACKOFF = 0.1
 
 def _strip_translation_prefix(value: str) -> str:
     """Remove integration/domain prefixes from option strings."""
-    if value.startswith(f"{DOMAIN}."):
-        value = value.split(".", 1)[1]
-    return value
+    return _strip_translation_prefix_impl(value)
 
 
 def _normalize_baud_rate(value: Any) -> int:
     """Normalize a Modbus baud rate option to an integer."""
-    if isinstance(value, int):
-        if value <= 0:
-            raise ValueError("invalid_baud_rate")
-        return value
-    if not isinstance(value, str):
-        raise ValueError("invalid_baud_rate")
-    option = _strip_translation_prefix(value.strip())
-    if option.startswith("modbus_baud_rate_"):
-        option = option[len("modbus_baud_rate_") :]
-    try:
-        baud = int(option)
-    except (TypeError, ValueError) as exc:
-        raise ValueError("invalid_baud_rate") from exc
-    if baud <= 0:
-        raise ValueError("invalid_baud_rate")
-    return baud
+    return _normalize_baud_rate_impl(value)
 
 
 def _normalize_parity(value: Any) -> str:
     """Normalize a Modbus parity option to a canonical string."""
-    if not isinstance(value, str):
-        if value is None:
-            raise ValueError("invalid_parity")
-        value = str(value)
-    option = _strip_translation_prefix(value.strip().lower())
-    if option.startswith("modbus_parity_"):
-        option = option[len("modbus_parity_") :]
-    if option not in {"none", "even", "odd"}:
-        raise ValueError("invalid_parity")
-    return option
+    return _normalize_parity_impl(value)
 
 
 def _normalize_stop_bits(value: Any) -> int:
     """Normalize a Modbus stop bits option to an integer."""
-    if isinstance(value, int):
-        stop_bits = value
-    else:
-        if not isinstance(value, str):
-            raise ValueError("invalid_stop_bits")
-        option = _strip_translation_prefix(value.strip())
-        if option.startswith("modbus_stop_bits_"):
-            option = option[len("modbus_stop_bits_") :]
-        try:
-            stop_bits = int(option)
-        except (TypeError, ValueError) as exc:
-            raise ValueError("invalid_stop_bits") from exc
-    if stop_bits not in (1, 2):
-        raise ValueError("invalid_stop_bits")
-    return stop_bits
+    return _normalize_stop_bits_impl(value)
 
 
 def _denormalize_option(prefix: str, value: Any | None) -> Any | None:
     """Convert a normalized option back to its translation key."""
-    if value is None:
-        return None
-    if isinstance(value, str) and value.startswith(f"{DOMAIN}."):
-        return value
-    return f"{DOMAIN}.{prefix}{value}"
+    return _denormalize_option_impl(prefix, value)
 
 
 def _looks_like_hostname(value: str) -> bool:
     """Basic hostname validation for environments without network helpers."""
-    if not value:
-        return False
-    if any(char.isspace() for char in value):
-        return False
-    if value.replace(".", "").isdigit():
-        return False
-    if value.startswith("-") or value.endswith("-"):
-        return False
-    return "." in value
+    return _looks_like_hostname_impl(value)
 
 
 async def _run_with_retry(
@@ -211,141 +183,42 @@ async def _run_with_retry(
     Retries are attempted for connection and Modbus related exceptions. The
     final exception is raised if all attempts fail.
     """
-    for attempt in range(1, retries + 1):
-        try:
-            result = func()
-            if inspect.isawaitable(result):
-                return await result
-            return result
-        except asyncio.CancelledError:
-            raise
-        except ModbusIOException as exc:
-            if _is_request_cancelled_error(exc):
-                raise TimeoutError("Modbus request cancelled") from exc
-            if attempt >= retries:
-                raise
-            delay = backoff * 2 ** (attempt - 1)
-            if delay:
-                await asyncio.sleep(delay)
-        except (*TIMEOUT_EXCEPTIONS, ConnectionException, ModbusException, OSError):
-            if attempt >= retries:
-                raise
-            delay = backoff * 2 ** (attempt - 1)
-            if delay:
-                await asyncio.sleep(delay)
-
-    raise RuntimeError("Retry wrapper failed without raising")
+    return await _run_with_retry_impl(func, retries=retries, backoff=backoff)
 
 
 async def _call_with_optional_timeout(func: Callable[[], Any], timeout: float) -> Any:
     """Call ``func`` and apply timeout only to awaitable results."""
-
-    result = func()
-    if inspect.isawaitable(result):
-        return await asyncio.wait_for(result, timeout=timeout)
-    return result
+    return await _call_with_optional_timeout_impl(func, timeout)
 
 
 def _caps_to_dict(obj: Any) -> dict[str, Any]:
     """Return a JSON-serializable dict from a capabilities object."""
-    if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
-        data = dict(obj.as_dict()) if hasattr(obj, "as_dict") else dataclasses.asdict(obj)
-    elif hasattr(obj, "as_dict"):
-        data = obj.as_dict()
-    elif isinstance(obj, dict):
-        data = dict(obj)
-    else:
-        data = {k: v for k, v in getattr(obj, "__dict__", {}).items()}
-
-    for key, value in list(data.items()):
-        if isinstance(value, set):
-            data[key] = sorted(value)
-    return data
+    return _caps_to_dict_impl(obj)
 
 
 def _normalize_connection_type(data: dict[str, Any]) -> str:
     """Normalize connection_type in data dict and return the canonical type string."""
-    connection_type = data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-    if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU, CONNECTION_TYPE_RTU):
-        raise VOL_INVALID("invalid_transport", path=[CONF_CONNECTION_TYPE])
-    if connection_type == CONNECTION_TYPE_TCP_RTU:
-        data[CONF_CONNECTION_TYPE] = CONNECTION_TYPE_TCP
-        data[CONF_CONNECTION_MODE] = CONNECTION_MODE_TCP_RTU
-        return str(CONNECTION_TYPE_TCP)
-    if connection_type == CONNECTION_TYPE_TCP:
-        data[CONF_CONNECTION_TYPE] = CONNECTION_TYPE_TCP
-        data.pop(CONF_CONNECTION_MODE, None)
-        return str(CONNECTION_TYPE_TCP)
-    data[CONF_CONNECTION_TYPE] = CONNECTION_TYPE_RTU
-    data.pop(CONF_CONNECTION_MODE, None)
-    return str(CONNECTION_TYPE_RTU)
+    return _normalize_connection_type_impl(data)
 
 
 def _validate_slave_id(data: dict[str, Any]) -> int:
     """Validate and normalise slave_id in data. Returns the integer value."""
-    try:
-        slave_id = int(data[CONF_SLAVE_ID])
-    except (KeyError, TypeError, ValueError) as exc:
-        raise VOL_INVALID("invalid_slave", path=[CONF_SLAVE_ID]) from exc
-    if slave_id < 0:
-        raise VOL_INVALID("invalid_slave_low", path=[CONF_SLAVE_ID])
-    if slave_id > 247:
-        raise VOL_INVALID("invalid_slave_high", path=[CONF_SLAVE_ID])
-    data[CONF_SLAVE_ID] = slave_id
-    return slave_id
+    return _validate_slave_id_impl(data)
 
 
 def _validate_tcp_config(data: dict[str, Any]) -> tuple[str, int]:
     """Validate and normalise TCP fields in data. Returns (host, port)."""
-    host = str(data.get(CONF_HOST, "") or "").strip()
-    if not host:
-        raise VOL_INVALID("missing_host", path=[CONF_HOST])
-    port_raw = data.get(CONF_PORT, DEFAULT_PORT)
-    try:
-        port = int(port_raw)
-    except (TypeError, ValueError) as exc:
-        raise VOL_INVALID("invalid_port", path=[CONF_PORT]) from exc
-    if not 1 <= port <= 65535:
-        raise VOL_INVALID("invalid_port", path=[CONF_PORT])
-    try:
-        ipaddress.ip_address(host)
-    except ValueError:
-        if not _looks_like_hostname(host):
-            raise VOL_INVALID("invalid_host", path=[CONF_HOST]) from None
-        if not is_host_valid(host):
-            raise VOL_INVALID("invalid_host", path=[CONF_HOST]) from None
-    data[CONF_HOST] = host
-    data[CONF_PORT] = port
-    data.pop(CONF_SERIAL_PORT, None)
-    data.pop(CONF_BAUD_RATE, None)
-    data.pop(CONF_PARITY, None)
-    data.pop(CONF_STOP_BITS, None)
-    return host, port
+    return _validate_tcp_config_impl(data, looks_like_hostname=_looks_like_hostname)
 
 
 def _validate_rtu_config(data: dict[str, Any]) -> None:
     """Validate and normalise RTU serial fields in data."""
-    serial_port = str(data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT) or "").strip()
-    if not serial_port:
-        raise VOL_INVALID("invalid_serial_port", path=[CONF_SERIAL_PORT])
-    data[CONF_SERIAL_PORT] = serial_port
-    try:
-        baud_rate = _normalize_baud_rate(data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE))
-    except ValueError as err:
-        raise VOL_INVALID("invalid_baud_rate", path=[CONF_BAUD_RATE]) from err
-    data[CONF_BAUD_RATE] = baud_rate
-    try:
-        parity = _normalize_parity(data.get(CONF_PARITY, DEFAULT_PARITY))
-    except ValueError as err:
-        raise VOL_INVALID("invalid_parity", path=[CONF_PARITY]) from err
-    data[CONF_PARITY] = parity
-    try:
-        stop_bits = _normalize_stop_bits(data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS))
-    except ValueError as err:
-        raise VOL_INVALID("invalid_stop_bits", path=[CONF_STOP_BITS]) from err
-    data[CONF_STOP_BITS] = stop_bits
-    data.pop(CONF_HOST, None)
-    data.pop(CONF_PORT, None)
+    _validate_rtu_config_impl(
+        data,
+        normalize_baud_rate=_normalize_baud_rate,
+        normalize_parity=_normalize_parity,
+        normalize_stop_bits=_normalize_stop_bits,
+    )
 
 
 def _process_scan_capabilities(
@@ -353,30 +226,12 @@ def _process_scan_capabilities(
     capabilities_cls: type,
 ) -> dict[str, Any]:
     """Extract and validate capabilities from a scan result dict."""
-    caps_obj = scan_result.get("capabilities")
-    if caps_obj is None:
-        raise CannotConnect("invalid_capabilities")
-    if dataclasses.is_dataclass(caps_obj):
-        try:
-            caps_dict = _caps_to_dict(caps_obj)
-        except (TypeError, ValueError, AttributeError) as err:
-            _LOGGER.error("Capabilities missing required fields: %s", err)
-            raise CannotConnect("invalid_capabilities") from err
-        if isinstance(caps_obj, capabilities_cls):
-            required_fields = {
-                field.name
-                for field in dataclasses.fields(capabilities_cls)
-                if not field.name.startswith("_")
-            }
-            missing = [f for f in required_fields if f not in caps_dict]
-            if missing:
-                _LOGGER.error("Capabilities missing required fields: %s", set(missing))
-                raise CannotConnect("invalid_capabilities")
-    elif isinstance(caps_obj, dict):
-        caps_dict = _caps_to_dict(caps_obj)
-    else:
-        raise CannotConnect("invalid_capabilities")
-    return caps_dict
+    return _process_scan_capabilities_impl(
+        scan_result,
+        capabilities_cls=capabilities_cls,
+        caps_to_dict=_caps_to_dict,
+        logger=_LOGGER,
+    )
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
@@ -466,7 +321,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         raise CannotConnect("io_error") from exc
     except TIMEOUT_EXCEPTIONS as exc:
         _LOGGER.warning("Timeout during device validation: %s", exc)
-        if "modbus request cancelled" not in str(exc).lower():
+        if _should_log_timeout_traceback_impl(exc):
             _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("timeout") from exc
     except ModbusException as exc:
@@ -480,17 +335,15 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
         raise CannotConnect("missing_method") from exc
     except OSError as exc:
-        if isinstance(exc, socket.gaierror):
+        reason = _classify_os_error_impl(exc)
+        if reason == "dns_failure":
             _LOGGER.error("DNS resolution failed: %s", exc)
-            _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-            raise CannotConnect("dns_failure") from exc
-        if isinstance(exc, ConnectionRefusedError):
+        elif reason == "connection_refused":
             _LOGGER.error("Connection refused: %s", exc)
-            _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-            raise CannotConnect("connection_refused") from exc
-        _LOGGER.error("Unexpected error during device validation: %s", exc)
+        else:
+            _LOGGER.error("Unexpected error during device validation: %s", exc)
         _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        raise CannotConnect("cannot_connect") from exc
+        raise CannotConnect(reason) from exc
     except CannotConnect:
         raise
     except (ValueError, TypeError, RuntimeError, ImportError) as exc:

@@ -392,8 +392,6 @@ class RegisterDef:
         return int(raw)
 
 
-# Backwards compatible alias used throughout the project/tests
-Register = RegisterDef
 
 # ---------------------------------------------------------------------------
 # Loading helpers
@@ -496,8 +494,7 @@ def _parse_registers(raw: Any) -> list[RegisterDef]:
 def _load_registers_from_file(path: Path, *, mtime: float, file_hash: str) -> list[RegisterDef]:
     """Load register definitions from ``path``.
 
-    ``mtime`` and ``file_hash`` are accepted for backwards compatibility with
-    tests that spy on cache behaviour.  They do not influence the parsing
+    ``mtime`` and ``file_hash`` are accepted for tests that spy on cache behaviour.  They do not influence the parsing
     directly; caching is handled in ``load_registers`` using these values.
     """
 
@@ -714,7 +711,6 @@ def group_registers(
 __all__ = [
     "_REGISTERS_PATH",
     "ReadPlan",
-    "Register",
     "RegisterDef",
     "async_compute_file_hash",
     "async_get_all_registers",

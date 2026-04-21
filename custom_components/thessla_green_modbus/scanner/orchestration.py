@@ -284,7 +284,10 @@ async def scan_device(scanner: Any) -> dict[str, Any]:
     """Open the Modbus connection, perform a scan and close the client."""
     scan_method = scanner.scan
     base_scan = getattr(type(scanner), "scan", None)
-    if getattr(scan_method, "__func__", None) is not base_scan:
+    if (
+        getattr(scan_method, "__func__", None) is not base_scan
+        or getattr(base_scan, "__module__", "") != "custom_components.thessla_green_modbus.scanner.core"
+    ):
         try:
             scan_result: Any = scan_method()
             if inspect.isawaitable(scan_result):
@@ -308,7 +311,7 @@ async def scan_device(scanner: Any) -> dict[str, Any]:
                 }
             if isinstance(scan_result, dict):
                 return scan_result
-            raise TypeError("Overridden scan() must return dict or (ScannerDeviceInfo, DeviceCapabilities)")
+            raise TypeError("scan() must return a dict")
         finally:
             await scanner.close()
 

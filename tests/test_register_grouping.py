@@ -1,7 +1,9 @@
 from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 from custom_components.thessla_green_modbus.modbus_helpers import group_reads
 from custom_components.thessla_green_modbus.registers.loader import (
-    Register,
+    RegisterDef as Register,
+)
+from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
     plan_group_reads,
 )

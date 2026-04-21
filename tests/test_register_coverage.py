@@ -3,10 +3,9 @@ from __future__ import annotations
 import importlib
 import json
 import re
-import sys
-import types
 from pathlib import Path
 
+from tests.platform_stubs import install_common_ha_stubs
 from custom_components.thessla_green_modbus.utils import _to_snake_case
 
 INTENTIONAL_OMISSIONS = {
@@ -33,39 +32,7 @@ INTENTIONAL_OMISSIONS = {
 }
 
 # Minimal Home Assistant stubs required to import entity mappings
-ha_const = types.ModuleType("homeassistant.const")
-ha_const.PERCENTAGE = "%"
-ha_const.UnitOfTemperature = types.SimpleNamespace(CELSIUS="°C")
-ha_const.UnitOfVolumeFlowRate = types.SimpleNamespace(CUBIC_METERS_PER_HOUR="m³/h")
-ha_const.UnitOfElectricPotential = types.SimpleNamespace(VOLT="V")
-ha_const.UnitOfTime = types.SimpleNamespace(HOURS="h", DAYS="d", SECONDS="s")
-sys.modules.setdefault("homeassistant.const", ha_const)
-
-sensor_mod = types.ModuleType("homeassistant.components.sensor")
-sensor_mod.SensorDeviceClass = types.SimpleNamespace(
-    TEMPERATURE="temperature",
-    VOLTAGE="voltage",
-    POWER="power",
-    ENERGY="energy",
-    EFFICIENCY="efficiency",
-)
-sensor_mod.SensorStateClass = types.SimpleNamespace(
-    MEASUREMENT="measurement", TOTAL_INCREASING="total_increasing"
-)
-sys.modules.setdefault("homeassistant.components.sensor", sensor_mod)
-
-binary_mod = types.ModuleType("homeassistant.components.binary_sensor")
-binary_mod.BinarySensorDeviceClass = types.SimpleNamespace(
-    RUNNING="running",
-    OPENING="opening",
-    POWER="power",
-    HEAT="heat",
-    CONNECTIVITY="connectivity",
-    PROBLEM="problem",
-    SAFETY="safety",
-    MOISTURE="moisture",
-)
-sys.modules.setdefault("homeassistant.components.binary_sensor", binary_mod)
+install_common_ha_stubs()
 
 
 def test_all_registers_covered() -> None:

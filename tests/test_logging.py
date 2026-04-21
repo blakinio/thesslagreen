@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 import asyncio
 import logging
+import tempfile
 
 import pytest
 from custom_components.thessla_green_modbus.modbus_helpers import _call_modbus
@@ -95,8 +96,8 @@ async def test_read_retries_logged(monkeypatch, caplog):
                     },
                 )()
 
-        hass = core.HomeAssistant()
-        coord = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 1, 1, "name", scan_interval=1)
+        hass = core.HomeAssistant(tempfile.mkdtemp())
+        coord = ThesslaGreenModbusCoordinator.from_params(hass, "host", 1, 1, "name", scan_interval=1)
         coord.client = DummyClient()
         coord.retry = 2
         coord.available_registers["input_registers"] = {"reg0", "reg1"}
@@ -206,8 +207,8 @@ async def test_write_retries_logged(monkeypatch, caplog):
             lambda name: Def(),
         )
 
-        hass = core.HomeAssistant()
-        coord = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 1, 1, "name", scan_interval=1)
+        hass = core.HomeAssistant(tempfile.mkdtemp())
+        coord = ThesslaGreenModbusCoordinator.from_params(hass, "host", 1, 1, "name", scan_interval=1)
         coord.client = DummyClient()
         coord.retry = 2
         monkeypatch.setattr(coord, "_ensure_connection", lambda: asyncio.sleep(0))

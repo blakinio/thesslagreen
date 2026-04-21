@@ -1,101 +1,13 @@
 """Tests for ThesslaGreenText entity."""
 
 import asyncio
-import sys
-import types
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
+from tests.platform_stubs import install_text_stubs
 
-# ---------------------------------------------------------------------------
-# Minimal Home Assistant stubs (same pattern used by other platform tests)
-# ---------------------------------------------------------------------------
-
-const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
-const.PERCENTAGE = "%"
-
-text_mod = types.ModuleType("homeassistant.components.text")
-
-
-class TextEntity:  # pragma: no cover - simple stub
-    _attr_native_max: int = 100
-
-
-text_mod.TextEntity = TextEntity
-sys.modules["homeassistant.components.text"] = text_mod
-
-entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
-
-
-class AddEntitiesCallback:  # pragma: no cover - simple stub
-    pass
-
-
-entity_platform.AddEntitiesCallback = AddEntitiesCallback
-sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
-
-helpers = sys.modules.setdefault("homeassistant.helpers", types.ModuleType("homeassistant.helpers"))
-if not hasattr(helpers, "__path__"):
-    helpers.__path__ = []
-entity_helper = types.ModuleType("homeassistant.helpers.entity")
-script_helper = types.ModuleType("homeassistant.helpers.script")
-helpers.entity = entity_helper
-helpers.script = script_helper
-sys.modules["homeassistant.helpers.script"] = script_helper
-script_helper._schedule_stop_scripts_after_shutdown = lambda *args, **kwargs: None
-
-
-class EntityCategory:  # pragma: no cover - simple stub
-    CONFIG = "config"
-
-
-entity_helper.EntityCategory = EntityCategory
-sys.modules["homeassistant.helpers.entity"] = entity_helper
-
-coordinator_module = types.ModuleType("custom_components.thessla_green_modbus.coordinator")
-
-
-class ThesslaGreenModbusCoordinator:  # pragma: no cover - simple stub
-    def __init__(self, *args, **kwargs):
-        self.available_registers = {"holding_registers": set()}
-        self.capabilities = SimpleNamespace()
-        self.client = None
-        self.slave_id = kwargs.get("slave_id", 0)
-
-    def get_register_map(self, register_type: str) -> dict:
-        return {}
-
-    async def async_request_refresh(self):
-        return None
-
-    def get_device_info(self):
-        return {}
-
-    async def async_write_register(self, *args, **kwargs):
-        return True
-
-
-coordinator_module.ThesslaGreenModbusCoordinator = ThesslaGreenModbusCoordinator
-sys.modules.setdefault("custom_components.thessla_green_modbus.coordinator", coordinator_module)
-
-helpers_uc = sys.modules.setdefault(
-    "homeassistant.helpers.update_coordinator",
-    types.ModuleType("homeassistant.helpers.update_coordinator"),
-)
-
-
-class CoordinatorEntity:  # pragma: no cover - simple stub
-    def __init__(self, coordinator=None):
-        self.coordinator = coordinator
-
-    @classmethod
-    def __class_getitem__(cls, item):  # pragma: no cover
-        return cls
-
-
-helpers_uc.CoordinatorEntity = CoordinatorEntity
+install_text_stubs()
 
 # ---------------------------------------------------------------------------
 # Imports under test

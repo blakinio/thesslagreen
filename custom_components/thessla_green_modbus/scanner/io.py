@@ -49,7 +49,7 @@ async def _maybe_retry_yield(backoff: float, attempt: int, retry: int) -> None:
     await asyncio.sleep(0)
 
 
-async def _call_modbus_compat_fn(
+async def _call_modbus_with_fallback_fn(
     call_modbus: Callable[..., Any],
     func: Any,
     slave_id: int,
@@ -101,7 +101,7 @@ async def _sleep_retry_backoff_fn(
         await _maybe_retry_yield(backoff=backoff, attempt=attempt, retry=retry)
 
 
-async def _call_modbus_compat(
+async def _call_modbus_with_fallback(
     scanner: ThesslaGreenDeviceScanner,
     func: Any,
     slave_id: int,
@@ -118,7 +118,7 @@ async def _call_modbus_compat(
     """Call `_call_modbus` with rich kwargs, fallback to minimal mock signatures."""
     scanner_module = sys.modules.get(scanner.__class__.__module__)
     call_modbus = getattr(scanner_module, "_call_modbus", _call_modbus)
-    return await _call_modbus_compat_fn(
+    return await _call_modbus_with_fallback_fn(
         call_modbus,
         func,
         slave_id,
@@ -243,7 +243,7 @@ async def read_input(
             if transport is not None:
                 response = await transport.read_input_registers(scanner.slave_id, address, count=count)
             else:
-                response = await _call_modbus_compat(
+                response = await _call_modbus_with_fallback(
                     scanner,
                     client.read_input_registers,
                     scanner.slave_id,
@@ -383,7 +383,7 @@ async def read_holding(
             if transport is not None:
                 response = await transport.read_holding_registers(scanner.slave_id, address, count=count)
             else:
-                response = await _call_modbus_compat(
+                response = await _call_modbus_with_fallback(
                     scanner,
                     client.read_holding_registers,
                     scanner.slave_id,
@@ -517,7 +517,7 @@ async def read_bit_registers(
 
     for attempt in range(1, scanner.retry + 1):
         try:
-            response: Any = await _call_modbus_compat(
+            response: Any = await _call_modbus_with_fallback(
                 scanner,
                 getattr(client, method_name),
                 scanner.slave_id,

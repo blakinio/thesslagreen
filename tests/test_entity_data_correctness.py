@@ -6,125 +6,22 @@ right attributes — things that test_all_entity_creation.py does not check.
 
 from __future__ import annotations
 
-import sys
-import types
 from typing import Any
 
 import pytest
+from tests.platform_stubs import (
+    install_binary_sensor_stubs,
+    install_number_stubs,
+    install_select_stubs,
+)
 
 # ---------------------------------------------------------------------------
-# HA component stubs not provided by conftest
+# HA component stubs
 # ---------------------------------------------------------------------------
 
-def _ensure_attr(mod, name, value):
-    if not hasattr(mod, name):
-        setattr(mod, name, value)
-
-
-# binary_sensor: BinarySensorEntity missing from conftest
-_bs_mod = sys.modules.setdefault(
-    "homeassistant.components.binary_sensor",
-    types.ModuleType("homeassistant.components.binary_sensor"),
-)
-
-
-class _BinarySensorEntity:  # pragma: no cover - stub
-    pass
-
-
-_ensure_attr(_bs_mod, "BinarySensorEntity", _BinarySensorEntity)
-
-
-# number
-_num_mod = sys.modules.setdefault(
-    "homeassistant.components.number",
-    types.ModuleType("homeassistant.components.number"),
-)
-
-
-class _NumberEntity:  # pragma: no cover - stub
-    pass
-
-
-class _NumberMode:  # pragma: no cover - stub
-    BOX = "box"
-    SLIDER = "slider"
-
-
-_ensure_attr(_num_mod, "NumberEntity", _NumberEntity)
-_ensure_attr(_num_mod, "NumberMode", _NumberMode)
-
-
-# select
-_sel_mod = sys.modules.setdefault(
-    "homeassistant.components.select",
-    types.ModuleType("homeassistant.components.select"),
-)
-
-
-class _SelectEntity:  # pragma: no cover - stub
-    pass
-
-
-_ensure_attr(_sel_mod, "SelectEntity", _SelectEntity)
-
-
-# EntityCategory
-_he_mod = sys.modules.setdefault(
-    "homeassistant.helpers.entity",
-    types.ModuleType("homeassistant.helpers.entity"),
-)
-
-
-class _EntityCategory:  # pragma: no cover - stub
-    CONFIG = "config"
-    DIAGNOSTIC = "diagnostic"
-
-
-_ensure_attr(_he_mod, "EntityCategory", _EntityCategory)
-
-
-# UnitOfTime.MINUTES — conftest defines UnitOfTime without MINUTES
-_ha_const = sys.modules.get("homeassistant.const")
-if _ha_const is not None:
-    # UnitOfTemperature — required by number.py and entity_mappings.py
-    _unit_temp = getattr(_ha_const, "UnitOfTemperature", None)
-    if _unit_temp is None:
-        class _UnitOfTemperature:  # pragma: no cover - stub
-            CELSIUS = "°C"
-        _ha_const.UnitOfTemperature = _UnitOfTemperature
-
-    # UnitOfTime — number.py requires MINUTES
-    _unit_time = getattr(_ha_const, "UnitOfTime", None)
-    if _unit_time is None:
-        class _UnitOfTime:  # pragma: no cover - stub
-            MINUTES = "min"
-            HOURS = "h"
-            DAYS = "d"
-            SECONDS = "s"
-        _ha_const.UnitOfTime = _UnitOfTime
-    else:
-        for _attr, _val in [("MINUTES", "min"), ("HOURS", "h"), ("DAYS", "d"), ("SECONDS", "s")]:
-            if not hasattr(_unit_time, _attr):
-                setattr(_unit_time, _attr, _val)
-
-    _ensure_attr(_ha_const, "PERCENTAGE", "%")
-
-    # UnitOfVolumeFlowRate
-    _unit_vol = getattr(_ha_const, "UnitOfVolumeFlowRate", None)
-    if _unit_vol is None:
-        class _UnitOfVolumeFlowRate:  # pragma: no cover - stub
-            CUBIC_METERS_PER_HOUR = "m³/h"
-        _ha_const.UnitOfVolumeFlowRate = _UnitOfVolumeFlowRate
-    else:
-        _ensure_attr(_unit_vol, "CUBIC_METERS_PER_HOUR", "m³/h")
-
-    # UnitOfElectricPotential — entity_mappings.py imports this
-    _unit_volt = getattr(_ha_const, "UnitOfElectricPotential", None)
-    if _unit_volt is None:
-        class _UnitOfElectricPotential:  # pragma: no cover - stub
-            VOLT = "V"
-        _ha_const.UnitOfElectricPotential = _UnitOfElectricPotential
+install_binary_sensor_stubs()
+install_number_stubs()
+install_select_stubs()
 
 # ---------------------------------------------------------------------------
 # Imports (after stubs are in place)

@@ -43,19 +43,6 @@ async def test_platform_setup_cancellation(caplog):
         patch(
             "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
         ) as mock_coordinator_class,
-        patch(
-            "custom_components.thessla_green_modbus.er.async_get",
-            return_value=MagicMock(),
-        ),
-        patch(
-            "custom_components.thessla_green_modbus.er.async_entries_for_config_entry",
-            return_value=[],
-            create=True,
-        ),
-        patch(
-            "custom_components.thessla_green_modbus._async_migrate_unique_ids",
-            AsyncMock(),
-        ),
         caplog.at_level(logging.DEBUG),
     ):
         mock_coordinator = MagicMock()

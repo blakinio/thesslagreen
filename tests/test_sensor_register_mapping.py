@@ -1,67 +1,9 @@
 """Validate SENSOR_DEFINITIONS register mapping."""
 
-import sys
-import types
-
 import pytest
+from tests.platform_stubs import install_common_ha_stubs
 
-# ---------------------------------------------------------------------------
-# Minimal Home Assistant stubs
-# ---------------------------------------------------------------------------
-
-const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
-const.PERCENTAGE = "%"
-
-
-class UnitOfTemperature:  # pragma: no cover - enum stub
-    CELSIUS = "°C"
-
-
-class UnitOfVolumeFlowRate:  # pragma: no cover - enum stub
-    CUBIC_METERS_PER_HOUR = "m³/h"
-
-
-class UnitOfElectricPotential:  # pragma: no cover - enum stub
-    VOLT = "V"
-
-
-const.UnitOfTemperature = UnitOfTemperature
-const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
-const.UnitOfElectricPotential = UnitOfElectricPotential
-
-sensor_mod = types.ModuleType("homeassistant.components.sensor")
-
-
-class SensorEntity:  # pragma: no cover - simple stub
-    pass
-
-
-class SensorDeviceClass:  # pragma: no cover - enum stub
-    TEMPERATURE = "temperature"
-    VOLTAGE = "voltage"
-    POWER = "power"
-    ENERGY = "energy"
-
-
-class SensorStateClass:  # pragma: no cover - enum stub
-    MEASUREMENT = "measurement"
-    TOTAL_INCREASING = "total_increasing"
-
-
-sensor_mod.SensorEntity = SensorEntity
-sensor_mod.SensorDeviceClass = SensorDeviceClass
-sensor_mod.SensorStateClass = SensorStateClass
-sys.modules["homeassistant.components.sensor"] = sensor_mod
-
-entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
-
-
-class AddEntitiesCallback:  # pragma: no cover - simple stub
-    pass
-
-
-entity_platform.AddEntitiesCallback = AddEntitiesCallback
-sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
+install_common_ha_stubs()
 
 # ---------------------------------------------------------------------------
 # Actual test

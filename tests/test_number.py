@@ -1,143 +1,13 @@
 """Tests for ThesslaGreenNumber entity."""
 
 import asyncio
-import sys
-import types
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
-from custom_components.thessla_green_modbus.registers.loader import (
-    get_register_definition,
-    get_registers_by_function,
-)
+from tests.platform_stubs import install_number_stubs
 
-HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
-
-# ---------------------------------------------------------------------------
-# Minimal Home Assistant stubs
-# ---------------------------------------------------------------------------
-
-const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
-
-
-# Units and constants
-class UnitOfTemperature:  # pragma: no cover - simple stub
-    CELSIUS = "°C"
-
-
-class UnitOfTime:  # pragma: no cover - simple stub
-    MINUTES = "min"
-    HOURS = "h"
-    DAYS = "d"
-    SECONDS = "s"
-
-
-class UnitOfVolumeFlowRate:  # pragma: no cover - simple stub
-    CUBIC_METERS_PER_HOUR = "m³/h"
-
-
-const.UnitOfTemperature = UnitOfTemperature
-const.UnitOfTime = UnitOfTime
-const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
-const.PERCENTAGE = "%"
-
-number_mod = types.ModuleType("homeassistant.components.number")
-
-
-class NumberEntity:  # pragma: no cover - simple stub
-    pass
-
-
-class NumberMode:  # pragma: no cover - simple stub
-    SLIDER = "slider"
-    BOX = "box"
-
-
-number_mod.NumberEntity = NumberEntity
-number_mod.NumberMode = NumberMode
-sys.modules["homeassistant.components.number"] = number_mod
-
-entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
-
-
-class AddEntitiesCallback:  # pragma: no cover - simple stub
-    pass
-
-
-entity_platform.AddEntitiesCallback = AddEntitiesCallback
-sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
-
-helpers = sys.modules.setdefault("homeassistant.helpers", types.ModuleType("homeassistant.helpers"))
-if not hasattr(helpers, "__path__"):
-    helpers.__path__ = []  # mark as package
-entity_helper = types.ModuleType("homeassistant.helpers.entity")
-script_helper = types.ModuleType("homeassistant.helpers.script")
-helpers.entity = entity_helper
-helpers.script = script_helper
-sys.modules["homeassistant.helpers.script"] = script_helper
-script_helper._schedule_stop_scripts_after_shutdown = lambda *args, **kwargs: None
-
-
-class EntityCategory:  # pragma: no cover - simple stub
-    CONFIG = "config"
-
-
-entity_helper.EntityCategory = EntityCategory
-sys.modules["homeassistant.helpers.entity"] = entity_helper
-
-coordinator_module = types.ModuleType("custom_components.thessla_green_modbus.coordinator")
-
-
-class ThesslaGreenModbusCoordinator:  # pragma: no cover - simple stub
-    def __init__(self, *args, **kwargs):
-        self.available_registers = {"holding_registers": set()}
-        self.capabilities = SimpleNamespace(basic_control=False)
-        self.client = None
-        self.slave_id = args[3] if len(args) > 3 else kwargs.get("slave_id", 0)
-        self._register_maps = {"holding_registers": HOLDING_REGISTERS}
-
-    def get_register_map(self, register_type: str) -> dict[str, int]:
-        return self._register_maps.get(register_type, {})
-
-    async def _ensure_connection(self):
-        return None
-
-    async def async_request_refresh(self):
-        return None
-
-    def get_device_info(self):
-        return {}
-
-    async def async_write_register(self, *args, **kwargs):
-        register, value = args[0], args[1]
-        address = self._register_maps["holding_registers"][register]
-        definition = get_register_definition(register)
-        raw = definition.encode(value)
-        await self.client.write_register(address, raw, slave=self.slave_id)
-        return True
-
-
-coordinator_module.ThesslaGreenModbusCoordinator = ThesslaGreenModbusCoordinator
-sys.modules.setdefault("custom_components.thessla_green_modbus.coordinator", coordinator_module)
-
-helpers_uc = sys.modules.setdefault(
-    "homeassistant.helpers.update_coordinator",
-    types.ModuleType("homeassistant.helpers.update_coordinator"),
-)
-
-
-class CoordinatorEntity:  # pragma: no cover - simple stub
-    def __init__(self, coordinator=None):
-        self.coordinator = coordinator
-
-    @classmethod
-    def __class_getitem__(cls, item):  # pragma: no cover - allow subscripting
-        return cls
-
-
-helpers_uc.CoordinatorEntity = CoordinatorEntity
+install_number_stubs()
 
 # ---------------------------------------------------------------------------
 # Actual tests
@@ -356,7 +226,11 @@ async def test_force_full_register_list_adds_missing_number(mock_coordinator, mo
 
 def _make_number(mock_coordinator, register_name):
     """Helper: inject a fake register and return a ThesslaGreenNumber instance."""
-    mock_coordinator._register_maps["holding_registers"][register_name] = 9990
+    current_map = dict(mock_coordinator.get_register_map("holding_registers"))
+    current_map[register_name] = 9990
+    mock_coordinator.get_register_map = lambda register_type: (
+        current_map if register_type == "holding_registers" else {}
+    )
     return ThesslaGreenNumber(mock_coordinator, register_name, {})
 
 

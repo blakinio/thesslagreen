@@ -1,12 +1,11 @@
 import ast
 import json
 import re
-import sys
-import types
 from importlib import resources
 from pathlib import Path
 
 import yaml
+from tests.platform_stubs import install_sensor_platform_stubs
 
 ROOT = Path(__file__).resolve().parent.parent / "custom_components" / "thessla_green_modbus"
 
@@ -55,64 +54,7 @@ def _load_keys(file: Path, var_name: str) -> list[str]:
 
 
 # Import sensor module to obtain translation keys
-const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
-const.PERCENTAGE = "%"
-const.STATE_UNAVAILABLE = "unavailable"
-
-
-class UnitOfTemperature:  # pragma: no cover - enum stub
-    CELSIUS = "°C"
-
-
-class UnitOfVolumeFlowRate:  # pragma: no cover - enum stub
-    CUBIC_METERS_PER_HOUR = "m³/h"
-
-
-class UnitOfElectricPotential:  # pragma: no cover - enum stub
-    VOLT = "V"
-
-
-const.UnitOfTemperature = UnitOfTemperature
-const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
-const.UnitOfElectricPotential = UnitOfElectricPotential
-
-network_mod = types.ModuleType("homeassistant.util.network")
-network_mod.is_host_valid = lambda host: True
-sys.modules["homeassistant.util.network"] = network_mod
-
-sensor_mod = types.ModuleType("homeassistant.components.sensor")
-
-
-class SensorEntity:  # pragma: no cover - simple stub
-    pass
-
-
-class SensorDeviceClass:  # pragma: no cover - enum stub
-    TEMPERATURE = "temperature"
-    VOLTAGE = "voltage"
-    POWER = "power"
-    ENERGY = "energy"
-
-
-class SensorStateClass:  # pragma: no cover - enum stub
-    MEASUREMENT = "measurement"
-    TOTAL_INCREASING = "total_increasing"
-
-
-sensor_mod.SensorEntity = SensorEntity
-sensor_mod.SensorDeviceClass = SensorDeviceClass
-sensor_mod.SensorStateClass = SensorStateClass
-sys.modules["homeassistant.components.sensor"] = sensor_mod
-
-entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
-
-
-class AddEntitiesCallback:  # pragma: no cover - simple stub
-    pass
-
-
-entity_platform.AddEntitiesCallback = AddEntitiesCallback
-sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
+install_sensor_platform_stubs()
 
 SENSOR_KEYS = [*_load_runtime_translation_keys("SENSOR_ENTITY_MAPPINGS"), "error_codes"]
 BINARY_KEYS = _load_runtime_translation_keys("BINARY_SENSOR_ENTITY_MAPPINGS")

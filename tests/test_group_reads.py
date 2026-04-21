@@ -35,7 +35,7 @@ def test_group_reads_respects_max_block_size(size):
 
 
 def test_plan_group_reads_merges_consecutive_addresses(monkeypatch, loader_mod):
-    _Register = loader_mod.Register
+    _Register = loader_mod.RegisterDef
     _ReadPlan = loader_mod.ReadPlan
     _plan_group_reads = loader_mod.plan_group_reads
     regs = [_Register("input", addr, f"r{addr}", "r") for addr in [0, 1, 2, 3, 10, 11, 12]]
@@ -47,7 +47,7 @@ def test_plan_group_reads_merges_consecutive_addresses(monkeypatch, loader_mod):
 
 
 def test_plan_group_reads_respects_max_block_size(monkeypatch, loader_mod):
-    _Register = loader_mod.Register
+    _Register = loader_mod.RegisterDef
     _ReadPlan = loader_mod.ReadPlan
     _plan_group_reads = loader_mod.plan_group_reads
     regs = [_Register("input", addr, f"r{addr}", "r") for addr in range(22)]
@@ -63,7 +63,7 @@ def test_plan_group_reads_respects_max_block_size(monkeypatch, loader_mod):
 
 @pytest.mark.parametrize("size", [1, 4, MAX_BATCH_REGISTERS, 32])
 def test_plan_group_reads_varied_block_sizes(monkeypatch, size, loader_mod):
-    _Register = loader_mod.Register
+    _Register = loader_mod.RegisterDef
     _ReadPlan = loader_mod.ReadPlan
     _plan_group_reads = loader_mod.plan_group_reads
     regs = [_Register("input", addr, f"r{addr}", "r") for addr in range(10)]

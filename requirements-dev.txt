@@ -6,6 +6,8 @@ pytest-asyncio>=1.2.0
 voluptuous>=0.13.1
 # Keep this range in sync with known-good HA plugin behavior on Python 3.13.
 pytest-homeassistant-custom-component>=0.13.309,<0.13.317
+aiodhcpwatcher>=1.1.0
+aiodiscover>=2.6.1
 PyYAML>=6.0
 types-PyYAML>=6.0.12
 pydantic>=2.0,<3
@@ -23,4 +25,3 @@ pre-commit>=3.7.0
 # Documentation
 sphinx>=4.0.0
 sphinx-rtd-theme>=1.0.0
-

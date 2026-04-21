@@ -48,7 +48,7 @@ async def test_rtu_transport_initializes_serial_client(monkeypatch):
 @pytest.mark.asyncio
 async def test_coordinator_uses_rtu_transport_for_read_write():
     hass = MagicMock()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
         hass=hass,
         host="localhost",
         port=502,

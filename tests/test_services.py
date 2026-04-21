@@ -7,7 +7,6 @@ from unittest.mock import ANY, AsyncMock
 from unittest.mock import call as call_obj
 
 import pytest
-
 from custom_components.thessla_green_modbus import services as services_module
 from custom_components.thessla_green_modbus.services import AIR_QUALITY_REGISTER_MAP
 

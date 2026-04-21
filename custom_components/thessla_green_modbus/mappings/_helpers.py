@@ -8,7 +8,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .._compat import PERCENTAGE
+from homeassistant.const import PERCENTAGE
+
 from ..registers.loader import get_all_registers
 from ..utils import _to_snake_case
 

@@ -72,7 +72,7 @@ def process_register_value(register_name: str, value: int) -> Any:
 
 
 def create_consecutive_groups(registers: dict[str, int]) -> list[tuple[int, int, dict[str, int]]]:
-    """Legacy helper returning grouped address ranges with key maps."""
+    """Return grouped address ranges with key maps."""
     ordered = sorted(registers.items(), key=lambda item: item[1])
     if not ordered:
         return []

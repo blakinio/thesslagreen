@@ -1,113 +1,13 @@
 """Tests for ThesslaGreenSelect entity."""
 
 import asyncio
-import sys
-import types
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-# ---------------------------------------------------------------------------
-# Minimal Home Assistant stubs
-# ---------------------------------------------------------------------------
+from tests.platform_stubs import install_select_stubs
 
-const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
-const.PERCENTAGE = "%"
-
-
-class UnitOfElectricPotential:  # pragma: no cover - enum stub
-    VOLT = "V"
-
-
-class UnitOfTemperature:  # pragma: no cover - enum stub
-    CELSIUS = "°C"
-
-
-class UnitOfTime:  # pragma: no cover - enum stub
-    SECONDS = "s"
-    MINUTES = "min"
-    HOURS = "h"
-    DAYS = "d"
-
-
-class UnitOfVolumeFlowRate:  # pragma: no cover - enum stub
-    CUBIC_METERS_PER_HOUR = "m³/h"
-
-
-const.UnitOfElectricPotential = UnitOfElectricPotential
-const.UnitOfTemperature = UnitOfTemperature
-const.UnitOfTime = UnitOfTime
-const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
-
-select_mod = types.ModuleType("homeassistant.components.select")
-
-
-class SelectEntity:  # pragma: no cover - simple stub
-    pass
-
-
-select_mod.SelectEntity = SelectEntity
-sys.modules["homeassistant.components.select"] = select_mod
-
-entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
-
-
-class AddEntitiesCallback:  # pragma: no cover - simple stub
-    pass
-
-
-entity_platform.AddEntitiesCallback = AddEntitiesCallback
-sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
-
-helpers_uc = sys.modules.setdefault(
-    "homeassistant.helpers.update_coordinator",
-    types.ModuleType("homeassistant.helpers.update_coordinator"),
-)
-
-
-class DataUpdateCoordinator:  # pragma: no cover - simple stub
-    def __init__(self, *args, **kwargs):
-        pass
-
-    @classmethod
-    def __class_getitem__(cls, item):  # pragma: no cover - allow subscripting
-        return cls
-
-
-helpers_uc.DataUpdateCoordinator = DataUpdateCoordinator
-
-binary_sensor_mod = types.ModuleType("homeassistant.components.binary_sensor")
-
-
-class _BinarySensorDeviceClass:  # pragma: no cover - enum stub
-    def __getattr__(self, name):  # pragma: no cover - allow any attribute
-        return name.lower()
-
-
-BinarySensorDeviceClass = _BinarySensorDeviceClass()
-
-
-binary_sensor_mod.BinarySensorDeviceClass = BinarySensorDeviceClass
-sys.modules["homeassistant.components.binary_sensor"] = binary_sensor_mod
-
-sensor_mod = types.ModuleType("homeassistant.components.sensor")
-
-
-class SensorDeviceClass:  # pragma: no cover - enum stub
-    TEMPERATURE = "temperature"
-    VOLTAGE = "voltage"
-    POWER = "power"
-    ENERGY = "energy"
-
-
-class SensorStateClass:  # pragma: no cover - enum stub
-    MEASUREMENT = "measurement"
-    TOTAL_INCREASING = "total_increasing"
-
-
-sensor_mod.SensorDeviceClass = SensorDeviceClass
-sensor_mod.SensorStateClass = SensorStateClass
-sys.modules["homeassistant.components.sensor"] = sensor_mod
+install_select_stubs()
 
 # ---------------------------------------------------------------------------
 # Actual tests

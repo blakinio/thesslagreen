@@ -1,5 +1,4 @@
 """Tests for entity_mappings.py helper functions."""
-import logging
 
 from custom_components.thessla_green_modbus import mappings as em
 from custom_components.thessla_green_modbus.mappings import _infer_icon
@@ -74,22 +73,9 @@ def test_infer_icon_fallback_unknown_unit():
 # ---------------------------------------------------------------------------
 
 
-def test_map_legacy_entity_id_no_dot_returns_unchanged():
-    """No '.' in entity_id → returned immediately (line 154)."""
-    result = em.map_legacy_entity_id("no_dot_entity")
-    assert result == "no_dot_entity"
-
-
-def test_map_legacy_entity_id_suffix_warning(monkeypatch, caplog):
-    """Legacy suffix 'predkosc' triggers warning and redirect (lines 179-184)."""
-    monkeypatch.setattr(em, "_alias_warning_logged", False)
-    with caplog.at_level(
-        logging.WARNING,
-        logger="custom_components.thessla_green_modbus.mappings",
-    ):
-        result = em.map_legacy_entity_id("number.device_predkosc")
-    assert "fan" in result
-    assert "Legacy entity ID" in caplog.text
+def test_legacy_entity_id_mapper_removed() -> None:
+    """Legacy entity-id mapper has been removed from public mapping API."""
+    assert not hasattr(em, "map_legacy_entity_id")
 
 
 # ---------------------------------------------------------------------------

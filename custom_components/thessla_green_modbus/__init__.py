@@ -38,6 +38,9 @@ from ._setup import (
     async_setup_mappings as _async_setup_mappings,
 )
 from ._setup import (
+    async_migrate_entity_unique_ids as _async_migrate_entity_unique_ids,
+)
+from ._setup import (
     async_setup_platforms as _async_setup_platforms,
 )
 from ._setup import (
@@ -82,6 +85,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.runtime_data = coordinator
 
     await _async_setup_mappings(hass)
+    await _async_migrate_entity_unique_ids(hass, entry, coordinator)
     await _async_setup_platforms(hass, entry, PLATFORM_DOMAINS)
 
     if len(hass.config_entries.async_entries(DOMAIN)) == 1:
@@ -107,10 +111,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = cast(bool, await hass.config_entries.async_unload_platforms(entry, platforms))
 
     if unload_ok:
-        # Shutdown coordinator (runtime_data may not be set if setup failed early)
-        coordinator = getattr(entry, "runtime_data", None)
-        if coordinator is not None:
-            await coordinator.async_shutdown()
+        if hasattr(entry, "runtime_data") and entry.runtime_data is not None:
+            await entry.runtime_data.async_shutdown()
 
         # Unload services when last entry is removed
         if not hass.config_entries.async_entries(DOMAIN):
@@ -126,8 +128,8 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Update options."""
     _LOGGER.debug("Updating options for ThesslaGreen Modbus integration")
 
-    coordinator = getattr(entry, "runtime_data", None)
-    if coordinator:
+    coordinator = entry.runtime_data
+    if coordinator is not None:
         new_interval = int(entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
         coordinator.scan_interval = new_interval
         try:

@@ -15,7 +15,7 @@ from .modbus_exceptions import ModbusIOException
 
 _LOGGER = logging.getLogger(__name__)
 
-# Cache which keyword ("slave" or "unit") a given function accepts
+# Cache which keyword variant a given function accepts
 _KWARG_CACHE: weakref.WeakKeyDictionary[Callable[..., Awaitable[Any]], str | None] = (
     weakref.WeakKeyDictionary()
 )
@@ -124,7 +124,7 @@ async def async_maybe_await_close(obj: Any | None) -> None:
 
 
 async def async_close_client(client: Any | None) -> None:
-    """Backward-compatible wrapper for safe Modbus client close."""
+    """Wrapper for safe Modbus client close."""
 
     await async_maybe_await_close(client)
 
@@ -237,10 +237,10 @@ async def _call_modbus(
     apply_backoff: bool = True,
     **kwargs: Any,
 ) -> Any:
-    """Invoke a Modbus function handling ``slave``/``unit`` compatibility.
+    """Invoke a Modbus function handling Modbus client keyword variants.
 
     The function signature is inspected to determine whether the wrapped
-    callable expects a ``slave`` or ``unit`` keyword argument.  If neither is
+    callable expects a ``device_id`` or ``slave`` keyword argument.  If neither is
     present the function is called without either keyword.  The chosen keyword
     (or lack thereof) is cached per callable for subsequent invocations.
     """
@@ -284,7 +284,7 @@ async def _call_modbus(
         else:
             # Default to "slave" when signature introspection failed — matches
             # pymodbus 3.x convention. Pass no kwarg when signature is available
-            # but neither device_id/slave/unit is recognized.
+            # but neither device_id/slave is recognized.
             kwarg = "slave" if signature is None else ""
         _KWARG_CACHE[func] = kwarg
 

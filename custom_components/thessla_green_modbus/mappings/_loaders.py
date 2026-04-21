@@ -6,7 +6,9 @@ import re
 import sys
 from typing import Any
 
-from .._compat import BinarySensorDeviceClass, EntityCategory
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.helpers.entity import EntityCategory
+
 from ..const import (
     SPECIAL_FUNCTION_MAP,
     coil_registers,
