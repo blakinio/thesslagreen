@@ -1,17 +1,8 @@
-import sys
-import types
 from unittest.mock import MagicMock
 
-const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
-const.PERCENTAGE = "%"
-const.STATE_UNAVAILABLE = "unavailable"
+from tests.platform_stubs import install_common_ha_stubs
 
-
-class UnitOfVolumeFlowRate:  # pragma: no cover - enum stub
-    CUBIC_METERS_PER_HOUR = "m³/h"
-
-
-const.UnitOfVolumeFlowRate = UnitOfVolumeFlowRate
+install_common_ha_stubs()
 
 from custom_components.thessla_green_modbus.const import (
     AIRFLOW_UNIT_M3H,

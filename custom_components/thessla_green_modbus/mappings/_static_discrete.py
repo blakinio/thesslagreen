@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .._compat import (
-    BinarySensorDeviceClass,
-)
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
 SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "mode": {

@@ -16,7 +16,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 
-
 # Setup logging for tests
 logging.basicConfig(level=logging.DEBUG)
 _LOGGER = logging.getLogger(__name__)
@@ -219,7 +218,7 @@ class TestThesslaGreenModbusCoordinator:
         from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 
         hass = MagicMock()
-        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+        coordinator = ThesslaGreenModbusCoordinator.from_params(
             hass=hass,
             host="192.168.1.100",
             port=502,
@@ -332,6 +331,10 @@ class TestThesslaGreenModbusCoordinator:
 
     def test_register_grouping(self, coordinator_data):
         """Test register grouping algorithm."""
+        from custom_components.thessla_green_modbus._coordinator_register_processing import (
+            create_consecutive_groups,
+        )
+
         registers = {
             "reg1": 16,
             "reg2": 17,
@@ -340,7 +343,7 @@ class TestThesslaGreenModbusCoordinator:
             "reg5": 33,
         }
 
-        groups = coordinator_data._create_consecutive_groups(registers)
+        groups = create_consecutive_groups(registers)
 
         # Should create 2 groups
         assert len(groups) == 2
@@ -737,24 +740,14 @@ class TestPerformanceOptimizations:
     @pytest.mark.asyncio
     async def test_register_grouping_performance(self):
         """Test that register grouping reduces Modbus calls."""
-        from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-
-        # Create coordinator with many registers
-        hass = MagicMock()
-        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
-            hass=hass,
-            host="192.168.1.100",
-            port=502,
-            slave_id=10,
-            scan_interval=30,
-            timeout=10,
-            retry=3,
+        from custom_components.thessla_green_modbus._coordinator_register_processing import (
+            create_consecutive_groups,
         )
 
         # Simulate many sequential registers
         test_registers = {f"reg_{i}": 4096 + i for i in range(50)}
 
-        groups = coordinator._create_consecutive_groups(test_registers)
+        groups = create_consecutive_groups(test_registers)
 
         # Should group into fewer batches than individual registers
         assert len(groups) < len(test_registers)
@@ -770,28 +763,33 @@ class TestPerformanceOptimizations:
 
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
-        # Mock successful scan
-        with patch("pymodbus.client.ModbusTcpClient") as mock_client_class:
-            mock_client = MagicMock()
-            mock_client.connect.return_value = True
-            mock_response = MagicMock()
-            mock_response.isError.return_value = False
-            mock_response.registers = [4, 85, 0]
-            mock_response.bits = [True, False]
-            mock_client.read_input_registers.return_value = mock_response
-            mock_client.read_holding_registers.return_value = mock_response
-            mock_client.read_coils.return_value = mock_response
-            mock_client.read_discrete_inputs.return_value = mock_response
-            mock_client_class.return_value = mock_client
+        # Mock successful scan using current async transport orchestration path.
+        fake_transport = MagicMock()
+        fake_transport.ensure_connected = AsyncMock()
+        fake_transport.close = AsyncMock()
+        fake_transport.read_input_registers = AsyncMock(return_value=MagicMock())
 
+        fake_result = {
+            "scan_stats": {
+                "total_attempts": 1,
+                "successful_reads": 1,
+                "scan_duration": 0.01,
+            }
+        }
+
+        with (
+            patch.object(scanner, "_build_auto_tcp_attempts", return_value=[("tcp", fake_transport, 1.0)]),
+            patch.object(scanner, "scan", AsyncMock(return_value=fake_result)),
+            patch.object(scanner, "close", AsyncMock()),
+        ):
             result = await scanner.scan_device()
 
-            assert "scan_stats" in result
-            stats = result["scan_stats"]
-            assert "total_attempts" in stats
-            assert "successful_reads" in stats
-            assert "scan_duration" in stats
-            assert stats["scan_duration"] > 0
+        assert "scan_stats" in result
+        stats = result["scan_stats"]
+        assert "total_attempts" in stats
+        assert "successful_reads" in stats
+        assert "scan_duration" in stats
+        assert stats["scan_duration"] > 0
 
 
 if __name__ == "__main__":

@@ -3,8 +3,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
+import types
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -15,6 +17,8 @@ if ROOT not in sys.path:
 
 try:
     from homeassistant.core import HomeAssistant
+    from homeassistant.helpers import device_registry as dr
+    from homeassistant.components import climate as ha_climate
     from pytest_homeassistant_custom_component.common import MockConfigEntry
 
     _HA_AVAILABLE = True
@@ -24,6 +28,35 @@ except ImportError:
     MockConfigEntry = MagicMock  # type: ignore[misc,assignment]
 
 from custom_components.thessla_green_modbus.const import DOMAIN
+
+try:
+    asyncio.get_event_loop()
+except RuntimeError:
+    # pytest-asyncio 1.x can start with no current loop in MainThread.
+    # Some HA plugin fixtures still call get_event_loop() during setup.
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
+if _HA_AVAILABLE:
+    if not hasattr(dr, "DeviceRegistryStore"):
+        dr.DeviceRegistryStore = object  # type: ignore[attr-defined]
+    if not hasattr(ha_climate, "PRESET_ECO"):
+        ha_climate.PRESET_ECO = "eco"  # type: ignore[attr-defined]
+
+
+@pytest.fixture(autouse=True)
+def ensure_ha_compat_symbols():
+    """Re-add HA compat symbols when tests stub out HA modules."""
+    dr_module = sys.modules.get("homeassistant.helpers.device_registry")
+    if dr_module is None:
+        dr_module = types.ModuleType("homeassistant.helpers.device_registry")
+        sys.modules["homeassistant.helpers.device_registry"] = dr_module
+    if not hasattr(dr_module, "DeviceRegistryStore"):
+        dr_module.DeviceRegistryStore = object  # type: ignore[attr-defined]
+
+    climate_module = sys.modules.get("homeassistant.components.climate")
+    if climate_module is not None and not hasattr(climate_module, "PRESET_ECO"):
+        climate_module.PRESET_ECO = "eco"  # type: ignore[attr-defined]
+    yield
 
 
 def _fake_modbus_response(*, registers=None, bits=None):
@@ -78,6 +111,18 @@ def mock_config_entry():
     }
     entry.runtime_data = MagicMock()
     return entry
+
+
+@pytest.fixture(autouse=True)
+def enable_event_loop_debug():
+    """Compatibility override for HA plugin fixture on Python 3.13."""
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    loop.set_debug(True)
+    yield
 
 
 @pytest.fixture

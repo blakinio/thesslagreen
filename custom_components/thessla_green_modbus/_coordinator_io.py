@@ -7,7 +7,8 @@ import logging
 from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Any, cast
 
-from ._compat import UpdateFailed
+from homeassistant.helpers.update_coordinator import UpdateFailed
+
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from .modbus_helpers import _call_modbus, chunk_register_range
 
@@ -52,7 +53,7 @@ async def handle_update_error(
 
     _LOGGER.log(log_level, "%s: %s", message, exc)
     full_message = f"{message}: {exc}"
-    if use_helper and callable(getattr(coordinator, "_resolve_update_failure", None)):
+    if use_helper and hasattr(coordinator, "_resolve_update_failure"):
         return coordinator._resolve_update_failure(exc, default_message=full_message)
     return UpdateFailed(full_message)
 

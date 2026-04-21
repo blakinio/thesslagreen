@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import importlib
+import importlib  # imported for tests patching scanner.core.importlib
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict as _dataclasses_asdict
@@ -68,6 +68,8 @@ from . import firmware as scanner_firmware
 from . import io as _scanner_io_impl
 from . import io as scanner_domain_io
 from . import orchestration as scanner_orchestration
+from . import register_map_cache as _register_map_cache
+from . import register_map_facade as _register_map_facade
 from . import registers as scanner_registers
 from . import setup as scanner_setup
 
@@ -76,14 +78,32 @@ asdict = _dataclasses_asdict
 _LOGGER = logging.getLogger(__name__)
 REGISTER_DEFINITIONS = _register_maps.REGISTER_DEFINITIONS
 SAFE_REGISTERS = _SAFE_REGISTERS
+__all__ = [
+    "REGISTER_HASH",
+    "DeviceCapabilities",
+    "ThesslaGreenDeviceScanner",
+    "_async_build_register_maps",
+    "_async_ensure_register_maps",
+    "_build_register_maps",
+    "_build_register_maps_from",
+    "_ensure_register_maps",
+    "async_ensure_register_maps",
+    "is_request_cancelled_error",
+]
 
-try:
-    _pymodbus: Any = importlib.import_module("pymodbus")
-    _pymodbus_client: Any = importlib.import_module("pymodbus.client")
-    if not hasattr(_pymodbus, "client"):
-        _pymodbus.client = _pymodbus_client  # pragma: no cover - defensive
-except (ImportError, AttributeError):  # pragma: no cover
-    pass
+def _attach_pymodbus_client_module() -> None:
+    """Ensure `pymodbus.client` is importable and attached to `pymodbus`."""
+    try:
+        pymodbus: Any = importlib.import_module("pymodbus")
+        pymodbus_client: Any = importlib.import_module("pymodbus.client")
+        if not hasattr(pymodbus, "client"):
+            pymodbus.client = pymodbus_client  # pragma: no cover - defensive
+    except (ImportError, AttributeError):  # pragma: no cover
+        return
+
+
+_attach_pymodbus_client_module()
+
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper only
     from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType
@@ -91,9 +111,9 @@ else:
     AsyncModbusSerialClientType = Any
 
 
-def _ensure_pymodbus_client_module() -> None:
+def ensure_pymodbus_client_module() -> None:
     """Ensure `pymodbus.client` is importable and attached to `pymodbus`."""
-    _scanner_io_impl.ensure_pymodbus_client_module()
+    _attach_pymodbus_client_module()
 
 
 # Register definition caches - populated lazily
@@ -109,7 +129,7 @@ async def _maybe_retry_yield(backoff: float, attempt: int, retry: int) -> None:
     await _scanner_io_impl._maybe_retry_yield(backoff=backoff, attempt=attempt, retry=retry)
 
 
-async def _call_modbus_compat(
+async def _call_modbus_with_fallback(
     func: Any,
     slave_id: int,
     address: int,
@@ -123,7 +143,7 @@ async def _call_modbus_compat(
     apply_backoff: bool = True,
 ) -> Any:
     """Call `_call_modbus` with rich kwargs, fallback to minimal mock signatures."""
-    return await _scanner_io_impl._call_modbus_compat_fn(
+    return await _scanner_io_impl._call_modbus_with_fallback_fn(
         _call_modbus,
         func,
         slave_id,
@@ -153,46 +173,44 @@ async def _sleep_retry_backoff(
     )
 
 
-# Register-map compatibility wrappers kept in scanner_core for existing tests/imports.
-REGISTER_HASH = _register_maps.REGISTER_HASH
+# Register-map wrappers re-exported from scanner core.
+REGISTER_HASH = _register_map_cache.REGISTER_HASH
 
 
 def _sync_register_hash_from_maps() -> None:
     """Synchronize locally re-exported register hash from scanner_register_maps."""
     global REGISTER_HASH
-    REGISTER_HASH = _register_maps.REGISTER_HASH
+    REGISTER_HASH = _register_map_cache.sync_register_hash_from_maps()
 
 
 def _build_register_maps_from(regs: list[Any], register_hash: str) -> None:
     """Populate register lookup maps from provided register definitions."""
-    _register_maps._build_register_maps_from(regs, register_hash)
-    _sync_register_hash_from_maps()
+    global REGISTER_HASH
+    REGISTER_HASH = _register_map_facade.build_register_maps_from(regs, register_hash)
 
 
 def _build_register_maps() -> None:
     """Populate register lookup maps from current register definitions."""
-    _register_maps._build_register_maps()
-    _sync_register_hash_from_maps()
+    global REGISTER_HASH
+    REGISTER_HASH = _register_map_facade.build_register_maps()
 
 
 async def _async_build_register_maps(hass: Any | None) -> None:
     """Populate register lookup maps from current definitions asynchronously."""
-    await _register_maps._async_build_register_maps(hass)
-    _sync_register_hash_from_maps()
+    global REGISTER_HASH
+    REGISTER_HASH = await _register_map_facade.async_build_register_maps(hass)
 
 
 def _ensure_register_maps() -> None:
     """Ensure register lookup maps are populated."""
-    _register_maps.REGISTER_HASH = REGISTER_HASH
-    _register_maps._ensure_register_maps()
-    _sync_register_hash_from_maps()
+    global REGISTER_HASH
+    REGISTER_HASH = _register_map_facade.ensure_register_maps(REGISTER_HASH)
 
 
 async def _async_ensure_register_maps(hass: Any | None) -> None:
     """Ensure register lookup maps are populated without blocking the event loop."""
-    _register_maps.REGISTER_HASH = REGISTER_HASH
-    await _register_maps._async_ensure_register_maps(hass)
-    _sync_register_hash_from_maps()
+    global REGISTER_HASH
+    REGISTER_HASH = await _register_map_facade.async_ensure_register_maps(REGISTER_HASH, hass)
 
 
 async def async_ensure_register_maps(hass: Any | None = None) -> None:
@@ -458,7 +476,7 @@ class ThesslaGreenDeviceScanner:
         hass: Any | None = None,
     ) -> ThesslaGreenDeviceScanner:
         """Factory to create an initialized scanner instance."""
-        _ensure_pymodbus_client_module()
+        ensure_pymodbus_client_module()
         await async_ensure_register_maps(hass)
         self = cls(
             host,
@@ -602,8 +620,7 @@ class ThesslaGreenDeviceScanner:
     ) -> list[tuple[int, int]]:
         """Group consecutive register addresses for efficient batch reads.
 
-        ``max_gap`` is retained for backward compatibility with older callers
-        even though the helper no longer uses it directly.  The implementation
+        The grouping implementation delegates to the shared ``group_reads`` helper.
         delegates grouping to the shared ``group_reads`` helper so that the
         scanner benefits from the same optimisation logic used elsewhere in the
         project.  Any registers that have previously been marked as missing are
@@ -614,7 +631,7 @@ class ThesslaGreenDeviceScanner:
         if not addresses:
             return []
 
-        # ``max_gap`` is unused but kept for API compatibility
+        # ``max_gap`` parameter is currently unused
         _ = max_gap
 
         if max_batch is None:
@@ -624,8 +641,7 @@ class ThesslaGreenDeviceScanner:
             return [(addr, 1) for addr in sorted(set(addresses))]
 
         # First, compute contiguous blocks using the generic ``group_reads``
-        # helper.  ``max_gap`` is kept for API compatibility but is not
-        # required when using ``group_reads`` which already splits on gaps.
+        # helper and splits on gaps automatically.
         groups = _group_reads(addresses, max_block_size=max_batch, boundaries=boundaries)
 
         if not self._known_missing_addresses:

@@ -1,20 +1,14 @@
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import homeassistant.const as ha_const
 from custom_components.thessla_green_modbus import async_setup_entry
 from custom_components.thessla_green_modbus.const import CONF_FORCE_FULL_REGISTER_LIST, DOMAIN
 from homeassistant.const import CONF_HOST, CONF_PORT
+from tests.platform_stubs import install_binary_sensor_stubs
 
-binary_sensor_mod = sys.modules.setdefault(
-    "homeassistant.components.binary_sensor", type(ha_const)("binary_sensor")
-)
-if not hasattr(binary_sensor_mod, "BinarySensorEntity"):
+install_binary_sensor_stubs()
 
-    class BinarySensorEntity:  # pragma: no cover - simple stub
-        pass
-
-    binary_sensor_mod.BinarySensorEntity = BinarySensorEntity
+from homeassistant import const as ha_const
 
 ha_const.STATE_UNAVAILABLE = "unavailable"
 
@@ -152,14 +146,6 @@ def test_force_full_register_list_integration():
                 "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
                 FakeCoordinator,
             ),
-            patch(
-                "custom_components.thessla_green_modbus._async_cleanup_legacy_fan_entity",
-                AsyncMock(),
-            ),
-            patch(
-                "custom_components.thessla_green_modbus._async_migrate_unique_ids",
-                AsyncMock(),
-            ),
             patch.dict(sensor.SENSOR_DEFINITIONS, SENSOR_MAP, clear=True),
             patch.dict(binary_sensor.BINARY_SENSOR_DEFINITIONS, BINARY_MAP, clear=True),
             patch.dict(
@@ -201,14 +187,6 @@ def test_force_full_register_list_integration():
             patch(
                 "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
                 FakeCoordinator,
-            ),
-            patch(
-                "custom_components.thessla_green_modbus._async_cleanup_legacy_fan_entity",
-                AsyncMock(),
-            ),
-            patch(
-                "custom_components.thessla_green_modbus._async_migrate_unique_ids",
-                AsyncMock(),
             ),
             patch.dict(sensor.SENSOR_DEFINITIONS, SENSOR_MAP, clear=True),
             patch.dict(binary_sensor.BINARY_SENSOR_DEFINITIONS, BINARY_MAP, clear=True),

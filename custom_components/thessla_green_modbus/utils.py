@@ -171,7 +171,7 @@ def resolve_connection_settings(
     connection_mode: str | None,
     port: int | None,
 ) -> tuple[str, str | None]:
-    """Resolve connection type/mode with legacy handling and defaults."""
+    """Resolve connection type/mode with fallback handling and defaults."""
 
     from .const import (
         CONNECTION_MODE_AUTO,

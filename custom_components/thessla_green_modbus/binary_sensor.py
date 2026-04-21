@@ -44,7 +44,7 @@ async def async_setup_entry(
     coordinator: ThesslaGreenModbusCoordinator = config_entry.runtime_data
 
     entities = []
-    skipped_legacy_problem = 0
+    skipped_stale_problem = 0
 
     # Create binary sensors for discovered registers, or all known registers
     # when ``force_full_register_list`` is enabled.
@@ -53,10 +53,10 @@ async def async_setup_entry(
         register_name = sensor_def.get("register", key)
         if LEGACY_PROBLEM_KEY_PATTERN.fullmatch(register_name):
             _LOGGER.debug(
-                "Skipping stale legacy binary sensor key '%s' during entity creation",
+                "Skipping stale binary sensor key '%s' during entity creation",
                 register_name,
             )
-            skipped_legacy_problem += 1
+            skipped_stale_problem += 1
             continue
 
         if reason := capability_block_reason(register_name, coordinator.capabilities):
@@ -96,10 +96,10 @@ async def async_setup_entry(
         _LOGGER.debug(
             "Created %d binary sensor entities for %s", len(entities), coordinator.device_name
         )
-        if skipped_legacy_problem:
+        if skipped_stale_problem:
             _LOGGER.info(
-                "Skipped %d stale legacy problem_* binary sensor keys during setup",
-                skipped_legacy_problem,
+                "Skipped %d stale problem_* binary sensor keys during setup",
+                skipped_stale_problem,
             )
     else:
         _LOGGER.warning("No binary sensor entities created - no compatible registers found")
@@ -157,7 +157,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         per-bit key (e.g. ``e_196_e_199_e196``), while the parent's ``_key``
         is the shared register name (``e_196_e_199``).  Returning the
         translation_key here gives each bit entity a distinct entity_id without
-        changing the unique_id format (backward compatible).
+        changing the unique_id format.
         """
         tk = self._attr_translation_key
         if tk and tk != self._key:

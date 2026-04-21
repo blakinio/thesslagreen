@@ -1,56 +1,17 @@
 import copy
 import json
 import logging
-import sys
 from datetime import UTC, datetime
-from pathlib import Path
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
-# Stub registers module to avoid heavy imports during diagnostics import
-original_registers = sys.modules.get("custom_components.thessla_green_modbus.registers")
-registers_module = ModuleType("custom_components.thessla_green_modbus.registers")
-registers_module.__path__ = []  # type: ignore[attr-defined]
-loader_module = ModuleType("custom_components.thessla_green_modbus.registers.loader")
-loader_module.get_all_registers = lambda: []
-loader_module.registers_sha256 = lambda *args, **kwargs: "hash"
-loader_module.get_registers_by_function = lambda *args, **kwargs: []
-loader_module.plan_group_reads = lambda *args, **kwargs: []
-loader_module._REGISTERS_PATH = Path("dummy")
-registers_module.loader = loader_module
-registers_module.get_all_registers = loader_module.get_all_registers
-registers_module.registers_sha256 = loader_module.registers_sha256
-registers_module.get_registers_by_function = loader_module.get_registers_by_function
-registers_module.plan_group_reads = loader_module.plan_group_reads
-registers_module._REGISTERS_PATH = loader_module._REGISTERS_PATH
-sys.modules["custom_components.thessla_green_modbus.registers"] = registers_module
-sys.modules["custom_components.thessla_green_modbus.registers.loader"] = loader_module
-sys.modules.setdefault("voluptuous", ModuleType("voluptuous"))
-sys.modules.setdefault("homeassistant.util", ModuleType("homeassistant.util"))
-sys.modules.setdefault("homeassistant.util.network", ModuleType("homeassistant.util.network"))
-original_config_flow = sys.modules.get("custom_components.thessla_green_modbus.config_flow")
-config_flow_stub = ModuleType("custom_components.thessla_green_modbus.config_flow")
-config_flow_stub.CannotConnect = type("CannotConnect", (), {})
-sys.modules["custom_components.thessla_green_modbus.config_flow"] = config_flow_stub
 
 from custom_components.thessla_green_modbus.diagnostics import (
     _redact_sensitive_data,
     async_get_config_entry_diagnostics,
 )
 from custom_components.thessla_green_modbus.scanner.core import DeviceCapabilities
-
-# Restore real registers module for subsequent tests
-if original_registers is not None:
-    sys.modules["custom_components.thessla_green_modbus.registers"] = original_registers
-else:  # pragma: no cover - defensive
-    sys.modules.pop("custom_components.thessla_green_modbus.registers", None)
-sys.modules.pop("custom_components.thessla_green_modbus.registers.loader", None)
-if original_config_flow is not None:
-    sys.modules["custom_components.thessla_green_modbus.config_flow"] = original_config_flow
-else:  # pragma: no cover - defensive
-    sys.modules.pop("custom_components.thessla_green_modbus.config_flow", None)
 
 DOMAIN = "thessla_green_modbus"
 
@@ -208,7 +169,8 @@ async def test_additional_diagnostic_fields():
         "connection_errors": 2,
         "timeout_errors": 1,
     }
-    assert result["total_registers_json"] == 0
+    assert isinstance(result["total_registers_json"], int)
+    assert result["total_registers_json"] >= 0
     assert result["effective_batch"] == coord.effective_batch
     assert result["deep_scan"] is True
     assert result["force_full_register_list"] is False
@@ -267,7 +229,8 @@ async def test_unknown_registers_in_diagnostics():
 
     assert result["unknown_registers"] == scan_result["unknown_registers"]
     assert result["failed_addresses"] == scan_result["failed_addresses"]
-    assert result["registers_hash"] == "hash"
+    assert isinstance(result["registers_hash"], str)
+    assert len(result["registers_hash"]) > 0
     assert result["capabilities"] == {"fan": True}
 
 

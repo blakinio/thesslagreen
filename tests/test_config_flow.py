@@ -4,7 +4,6 @@
 import asyncio
 import logging
 import socket
-import sys
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -12,16 +11,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 import voluptuous as vol
 from homeassistant.const import CONF_HOST, CONF_PORT
+from tests.platform_stubs import install_network_validation_stub
 
-# Stub network validation module — config_flow uses is_host_valid at import time
-network_module = SimpleNamespace(
-    is_host_valid=lambda host: bool(host)
-    and " " not in host
-    and not host.replace(".", "").isdigit()
-    and "." in host,
-)
-sys.modules.setdefault("homeassistant.util", SimpleNamespace(network=network_module))
-sys.modules.setdefault("homeassistant.util.network", network_module)
+# Stub network validation module — config_flow uses is_host_valid at import time.
+install_network_validation_stub()
 
 from custom_components.thessla_green_modbus.config_flow import (
     CannotConnect,
@@ -384,7 +377,6 @@ async def test_form_user_success():
     assert data[CONF_HOST] == DEFAULT_USER_INPUT[CONF_HOST]
     assert data[CONF_PORT] == DEFAULT_USER_INPUT[CONF_PORT]
     assert data["slave_id"] == DEFAULT_USER_INPUT[CONF_SLAVE_ID]
-    assert data["unit"] == DEFAULT_USER_INPUT[CONF_SLAVE_ID]
     assert data[CONF_NAME] == DEFAULT_USER_INPUT[CONF_NAME]
     assert isinstance(data["capabilities"], dict)
     assert data["capabilities"]["expansion_module"] is True

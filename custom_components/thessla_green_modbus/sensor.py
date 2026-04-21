@@ -12,12 +12,12 @@ from typing import Any, cast
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import translation
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from ._compat import PERCENTAGE
 from .capability_rules import capability_block_reason
 from .const import (
     AIRFLOW_RATE_REGISTERS,
@@ -130,9 +130,13 @@ async def async_setup_entry(
         elif is_temp:
             temp_skipped += 1
 
-    translations = await translation.async_get_translations(
-        hass, hass.config.language, f"component.{DOMAIN}"
-    )
+    try:
+        translations = await translation.async_get_translations(
+            hass, hass.config.language, f"component.{DOMAIN}"
+        )
+    except (KeyError, RuntimeError, AttributeError):
+        _LOGGER.debug("Translations unavailable during sensor setup; using empty mapping")
+        translations = {}
     entities.append(ThesslaGreenErrorCodesSensor(coordinator, translations))
     error_registers = [
         key
@@ -193,7 +197,13 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         self._attr_device_class = sensor_definition.get("device_class")
         self._attr_state_class = sensor_definition.get("state_class")
         _ec = sensor_definition.get("entity_category")
-        self._attr_entity_category = EntityCategory(_ec) if _ec else None
+        if _ec:
+            try:
+                self._attr_entity_category = EntityCategory(_ec)
+            except (TypeError, ValueError):
+                self._attr_entity_category = _ec
+        else:
+            self._attr_entity_category = None
         if "suggested_display_precision" in sensor_definition:
             self._attr_suggested_display_precision = sensor_definition[
                 "suggested_display_precision"
@@ -269,7 +279,8 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
     def _get_airflow_unit(self) -> str:
         """Return airflow unit option."""
-        options = getattr(getattr(self.coordinator, "entry", None), "options", {})
+        entry = self.coordinator.entry
+        options = entry.options if entry is not None else {}
         return str(options.get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT))
 
     def _use_percentage(self) -> bool:

@@ -3,7 +3,6 @@
 import logging
 
 
-
 def test_async_setup_removed():
     """async_setup is no longer exported — coordinator lives in entry.runtime_data."""
     import custom_components.thessla_green_modbus as mod

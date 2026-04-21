@@ -1,204 +1,18 @@
 import asyncio
-import importlib.util
 import logging
-import sys
-import types
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-from custom_components.thessla_green_modbus.modbus_exceptions import (
-    ConnectionException,
-    ModbusException,
-    ModbusIOException,
-)
+from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
-
-# Stub minimal Home Assistant and pymodbus modules before importing the coordinator
-ha = types.ModuleType("homeassistant")
-const = types.ModuleType("homeassistant.const")
-core = types.ModuleType("homeassistant.core")
-helpers_pkg = types.ModuleType("homeassistant.helpers")
-helpers_uc = types.ModuleType("homeassistant.helpers.update_coordinator")
-helpers_dr = types.ModuleType("homeassistant.helpers.device_registry")
-helpers_script = types.ModuleType("homeassistant.helpers.script")
-exceptions = types.ModuleType("homeassistant.exceptions")
-config_entries = types.ModuleType("homeassistant.config_entries")
-pymodbus = types.ModuleType("pymodbus")
-pymodbus_client = types.ModuleType("pymodbus.client")
-pymodbus_exceptions = types.ModuleType("pymodbus.exceptions")
-pymodbus_pdu = types.ModuleType("pymodbus.pdu")
-vol = types.ModuleType("voluptuous")
-cc_services = types.ModuleType("custom_components.thessla_green_modbus.services")
-util = types.ModuleType("homeassistant.util")
-util_logging = types.ModuleType("homeassistant.util.logging")
-
-const.CONF_HOST = "host"
-const.CONF_NAME = "name"
-const.CONF_PORT = "port"
-
-
-class Platform(str):
-    def __new__(cls, value):
-        return str.__new__(cls, value)
-
-
-const.Platform = Platform
-
-
-# Stubs for coordinator requirements
-class DataUpdateCoordinator:
-    def __init__(self, hass, logger, name=None, update_interval=None):
-        self.hass = hass
-        self.logger = logger
-        self.name = name
-        self.update_interval = update_interval
-
-    async def async_request_refresh(self):
-        pass
-
-    async def async_shutdown(self):  # pragma: no cover - stub
-        pass
-
-    # Allow subscripting like DataUpdateCoordinator[dict[str, Any]]
-    def __class_getitem__(cls, _):  # pragma: no cover - simple stub
-        return cls
-
-
-helpers_uc.DataUpdateCoordinator = DataUpdateCoordinator
-
-
-class UpdateFailed(Exception):
-    pass
-
-
-helpers_uc.UpdateFailed = UpdateFailed
-helpers_pkg.update_coordinator = helpers_uc
-helpers_pkg.device_registry = helpers_dr
-helpers_pkg.script = helpers_script
-
-
-class DeviceInfo:
-    pass
-
-
-helpers_dr.DeviceInfo = DeviceInfo
-
-
-class HomeAssistant:
-    pass
-
-
-core.HomeAssistant = HomeAssistant
-
-
-class ServiceCall:
-    pass
-
-
-core.ServiceCall = ServiceCall
-
-
-class ConfigEntryNotReady(Exception):
-    pass
-
-
-exceptions.ConfigEntryNotReady = ConfigEntryNotReady
-
-
-class ConfigEntry:
-    pass
-
-
-config_entries.ConfigEntry = ConfigEntry
-
-
-class AsyncModbusTcpClient:
-    async def close(self):
-        pass
-
-
-class ModbusTcpClient:
-    pass
-
-
-pymodbus_client.AsyncModbusTcpClient = AsyncModbusTcpClient
-pymodbus_client.ModbusTcpClient = ModbusTcpClient
-
-
-class ExceptionResponse:
-    pass
-
-
-pymodbus_pdu.ExceptionResponse = ExceptionResponse
-
-if "homeassistant" not in sys.modules:
-    try:
-        homeassistant_spec = importlib.util.find_spec("homeassistant")
-    except ValueError:
-        homeassistant_spec = None
-    if homeassistant_spec is None:
-        sys.modules.update(
-            {
-                "homeassistant": ha,
-                "homeassistant.const": const,
-                "homeassistant.core": core,
-                "homeassistant.helpers": helpers_pkg,
-                "homeassistant.helpers.update_coordinator": helpers_uc,
-                "homeassistant.helpers.device_registry": helpers_dr,
-                "homeassistant.helpers.script": helpers_script,
-                "homeassistant.exceptions": exceptions,
-                "homeassistant.config_entries": config_entries,
-                "homeassistant.util": util,
-                "homeassistant.util.logging": util_logging,
-                "pymodbus": pymodbus,
-                "pymodbus.client": pymodbus_client,
-                "pymodbus.exceptions": pymodbus_exceptions,
-                "pymodbus.pdu": pymodbus_pdu,
-                "voluptuous": vol,
-                "custom_components.thessla_green_modbus.services": cc_services,
-            }
-        )
-
-pymodbus_exceptions.ModbusException = ModbusException
-pymodbus_exceptions.ConnectionException = ConnectionException
-pymodbus_exceptions.ModbusIOException = ModbusIOException
-
-
-def log_exception(*_args, **_kwargs):  # pragma: no cover - simple stub
-    return None
-
-
-util_logging.log_exception = log_exception
-util.logging = util_logging
-ha.util = util
-
-
-def _schedule_stop_scripts_after_shutdown(*_args, **_kwargs):  # pragma: no cover
-    return None
-
-
-helpers_script._schedule_stop_scripts_after_shutdown = _schedule_stop_scripts_after_shutdown
-
-
-async def async_setup_services(hass):
-    pass
-
-
-async def async_unload_services(hass):
-    pass
-
-
-cc_services.async_setup_services = async_setup_services
-cc_services.async_unload_services = async_unload_services
-
 
 def test_async_setup_closes_scanner():
     """Ensure scanner is closed after async_setup."""
 
     async def run_test():
         hass = MagicMock()
-        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+        coordinator = ThesslaGreenModbusCoordinator.from_params(
             hass=hass,
             host="localhost",
             port=502,
@@ -231,8 +45,6 @@ def test_async_setup_closes_scanner():
         assert result is True
         scanner.close.assert_awaited_once()
 
-    import asyncio
-
     asyncio.run(run_test())
 
 
@@ -241,7 +53,7 @@ def test_async_setup_cancel_mid_scan(caplog):
 
     async def run_test(caplog):
         hass = MagicMock()
-        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+        coordinator = ThesslaGreenModbusCoordinator.from_params(
             hass=hass,
             host="localhost",
             port=502,
@@ -284,7 +96,7 @@ def test_disconnect_closes_client():
 
     async def run_test():
         hass = MagicMock()
-        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+        coordinator = ThesslaGreenModbusCoordinator.from_params(
             hass=hass,
             host="localhost",
             port=502,
@@ -313,7 +125,7 @@ def test_disconnect_closes_client_sync():
 
     async def run_test():
         hass = MagicMock()
-        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+        coordinator = ThesslaGreenModbusCoordinator.from_params(
             hass=hass,
             host="localhost",
             port=502,

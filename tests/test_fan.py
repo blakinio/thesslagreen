@@ -1,62 +1,13 @@
 """Tests for ThesslaGreenFan entity."""
 
 import asyncio
-import sys
-import types
 from unittest.mock import AsyncMock
 
 import pytest
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
+from tests.platform_stubs import install_fan_stubs
 
-# ---------------------------------------------------------------------------
-# Minimal Home Assistant stubs
-# ---------------------------------------------------------------------------
-
-const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
-
-fan_mod = types.ModuleType("homeassistant.components.fan")
-
-
-class FanEntity:  # pragma: no cover - simple stub
-    @property
-    def speed_count(self):
-        return getattr(self, "_attr_speed_count", None)
-
-
-class FanEntityFeature:  # pragma: no cover - simple stub
-    SET_SPEED = 1
-
-
-fan_mod.FanEntity = FanEntity
-fan_mod.FanEntityFeature = FanEntityFeature
-sys.modules["homeassistant.components.fan"] = fan_mod
-
-entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
-
-
-class AddEntitiesCallback:  # pragma: no cover - simple stub
-    pass
-
-
-entity_platform.AddEntitiesCallback = AddEntitiesCallback
-sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
-
-helpers_uc = sys.modules.setdefault(
-    "homeassistant.helpers.update_coordinator",
-    types.ModuleType("homeassistant.helpers.update_coordinator"),
-)
-
-
-class CoordinatorEntity:  # pragma: no cover - simple stub
-    def __init__(self, coordinator=None):
-        self.coordinator = coordinator
-
-    @classmethod
-    def __class_getitem__(cls, item):  # pragma: no cover - allow subscripting
-        return cls
-
-
-helpers_uc.CoordinatorEntity = CoordinatorEntity
+install_fan_stubs()
 
 # ---------------------------------------------------------------------------
 # Actual tests

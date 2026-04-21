@@ -121,15 +121,11 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         self._attr_target_temperature_step = TEMPERATURE_STEP_C
 
         # HVAC modes — FAN_ONLY (manual) requires the `mode` holding register
-        _holding_map = coordinator.get_register_map("holding_registers")
-        if "mode" in _holding_map:
-            self._attr_hvac_modes = [
-                HVACMode.OFF,
-                HVACMode.AUTO,
-                HVACMode.FAN_ONLY,
-            ]
-        else:
-            self._attr_hvac_modes = [HVACMode.OFF, HVACMode.AUTO]
+        self._attr_hvac_modes = [
+            HVACMode.OFF,
+            HVACMode.AUTO,
+            HVACMode.FAN_ONLY,
+        ]
 
         # Fan modes are computed dynamically via the fan_modes property
 
@@ -156,7 +152,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         for key in (
             "comfort_temperature",
             "required_temperature",
-            "required_temperature_legacy",
             "required_temp",
         ):
             value = data.get(key)
@@ -272,36 +267,37 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
         return attrs
 
-    async def _write_register_compat(
+    async def _write_register(
         self, register: str, value: Any, *, refresh: bool = False
     ) -> Any:
-        """Write register with optional offset kwarg for non-native coordinators."""
+        """Write register and gracefully handle coordinators with differing signatures."""
 
-        if isinstance(self.coordinator, ThesslaGreenModbusCoordinator):
+        try:
+            return await self.coordinator.async_write_register(
+                register,
+                value,
+                refresh=refresh,
+                offset=0,
+            )
+        except TypeError:
             return await self.coordinator.async_write_register(register, value, refresh=refresh)
-        return await self.coordinator.async_write_register(
-            register,
-            value,
-            refresh=refresh,
-            offset=0,
-        )
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set HVAC mode."""
         _LOGGER.debug("Setting HVAC mode to %s", hvac_mode)
 
         if hvac_mode == HVACMode.OFF:
-            success = await self._write_register_compat("on_off_panel_mode", 0, refresh=False)
+            success = await self._write_register("on_off_panel_mode", 0, refresh=False)
         else:
             # Turn on device first and capture result
-            power_on_success = await self._write_register_compat(
+            power_on_success = await self._write_register(
                 "on_off_panel_mode", 1, refresh=False
             )
 
             # Retry once if power on failed
             if not power_on_success:
                 _LOGGER.warning("Power-on failed when setting HVAC mode to %s, retrying", hvac_mode)
-                power_on_success = await self._write_register_compat(
+                power_on_success = await self._write_register(
                     "on_off_panel_mode", 1, refresh=False
                 )
 
@@ -309,12 +305,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
                 _LOGGER.error("Failed to enable device before setting HVAC mode to %s", hvac_mode)
                 return
 
-            # Set mode (only when the `mode` register is available on this device)
+            # Set mode
             device_mode = HVAC_MODE_REVERSE_MAP.get(hvac_mode, 0)
-            if "mode" in self.coordinator.get_register_map("holding_registers"):
-                success = await self._write_register_compat("mode", device_mode, refresh=False)
-            else:
-                success = True
+            success = await self._write_register("mode", device_mode, refresh=False)
 
         if success:
             await self.coordinator.async_request_refresh()
@@ -347,7 +340,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             )
 
         if success:
-            success = await self._write_register_compat(
+            success = await self._write_register(
                 "required_temperature", temperature, refresh=False
             )
 
@@ -366,7 +359,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             # Set manual airflow rate
             min_pct, max_pct = self._percentage_limits()
             airflow = max(min_pct, min(max_pct, airflow))
-            success = await self._write_register_compat(
+            success = await self._write_register(
                 "air_flow_rate_manual", airflow, refresh=False
             )
 
@@ -388,9 +381,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             # Set specific special mode
             special_mode_value = SPECIAL_FUNCTION_MAP.get(preset_mode, 0)
 
-        success = await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
+        success = await self._write_register("on_off_panel_mode", 1, refresh=False)
         if success:
-            success = await self._write_register_compat(
+            success = await self._write_register(
                 "special_mode", special_mode_value, refresh=False
             )
 
@@ -402,7 +395,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     async def async_turn_on(self) -> None:
         """Turn the climate entity on."""
         _LOGGER.debug("Turning on climate entity")
-        success = await self._write_register_compat("on_off_panel_mode", 1, refresh=False)
+        success = await self._write_register("on_off_panel_mode", 1, refresh=False)
 
         if success:
             await self.coordinator.async_request_refresh()
@@ -412,7 +405,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     async def async_turn_off(self) -> None:
         """Turn the climate entity off."""
         _LOGGER.debug("Turning off climate entity")
-        success = await self._write_register_compat("on_off_panel_mode", 0, refresh=False)
+        success = await self._write_register("on_off_panel_mode", 0, refresh=False)
 
         if success:
             await self.coordinator.async_request_refresh()

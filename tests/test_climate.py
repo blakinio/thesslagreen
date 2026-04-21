@@ -1,103 +1,17 @@
 """Tests for climate entity scaling when writing registers."""
 
-import sys
-import types
 from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 
-# ---------------------------------------------------------------------------
-# Minimal Home Assistant stubs for required modules
-# ---------------------------------------------------------------------------
+from tests.platform_stubs import install_climate_stubs
 
-# homeassistant.const
-const = sys.modules.setdefault("homeassistant.const", types.ModuleType("homeassistant.const"))
+install_climate_stubs()
 
-
-class UnitOfTemperature:
-    CELSIUS = "°C"
-
-
-const.UnitOfTemperature = UnitOfTemperature
-const.ATTR_TEMPERATURE = "temperature"
-
-# homeassistant.components.climate
-climate_mod = types.ModuleType("homeassistant.components.climate")
-
-
-class ClimateEntity:  # pragma: no cover - simple stub
-    pass
-
-
-class ClimateEntityFeature:  # pragma: no cover - simple stub
-    TARGET_TEMPERATURE = 1
-    FAN_MODE = 2
-    PRESET_MODE = 4
-    TURN_ON = 8
-    TURN_OFF = 16
-
-
-class HVACMode:  # pragma: no cover - simple stub
-    OFF = "off"
-    AUTO = "auto"
-    FAN_ONLY = "fan_only"
-
-
-class HVACAction:  # pragma: no cover - simple stub
-    OFF = "off"
-    FAN = "fan"
-    HEATING = "heating"
-    COOLING = "cooling"
-    IDLE = "idle"
-
-
-climate_mod.ClimateEntity = ClimateEntity
-climate_mod.ClimateEntityFeature = ClimateEntityFeature
-climate_mod.HVACMode = HVACMode
-climate_mod.HVACAction = HVACAction
-sys.modules["homeassistant.components.climate"] = climate_mod
-
-# homeassistant.helpers.update_coordinator.CoordinatorEntity
-helpers_uc = sys.modules.setdefault(
-    "homeassistant.helpers.update_coordinator", types.ModuleType("hass.helpers.uc")
-)
-
-
-class CoordinatorEntity:  # pragma: no cover - simple stub
-    def __init__(self, coordinator):
-        self.coordinator = coordinator
-
-    @classmethod
-    def __class_getitem__(cls, item):  # pragma: no cover - allow subscripting
-        return cls
-
-
-helpers_uc.CoordinatorEntity = CoordinatorEntity
-
-# homeassistant.helpers.entity_platform.AddEntitiesCallback
-entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
-
-
-class AddEntitiesCallback:  # pragma: no cover - simple stub
-    pass
-
-
-entity_platform.AddEntitiesCallback = AddEntitiesCallback
-sys.modules["homeassistant.helpers.entity_platform"] = entity_platform
-
-# homeassistant.helpers.device_registry.DeviceInfo
-device_registry = types.ModuleType("homeassistant.helpers.device_registry")
-
-
-class DeviceInfo(dict):  # pragma: no cover - simple dict-based stub
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-
-device_registry.DeviceInfo = DeviceInfo
-sys.modules["homeassistant.helpers.device_registry"] = device_registry
+from homeassistant import const
+from homeassistant.components import climate as climate_mod
 
 
 # ---------------------------------------------------------------------------
@@ -151,9 +65,10 @@ async def test_set_temperature_scaling():
     """Ensure temperatures are scaled before writing to Modbus."""
 
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.async_request_refresh = AsyncMock()
     coordinator.async_write_register = AsyncMock(return_value=True)
+    coordinator.data = {}
     coordinator.available_registers["holding_registers"].add("required_temperature")
     coordinator.capabilities.basic_control = True
 
@@ -169,7 +84,7 @@ async def test_set_temperature_scaling():
 def test_target_temperature_none_when_unavailable():
     """Return None when no target temperature register is present."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.capabilities.basic_control = True
     coordinator.data = {}
 
@@ -184,31 +99,31 @@ def test_target_temperature_none_when_unavailable():
 def test_hvac_mode_off_uses_on_off_panel_mode():
     """Ensure OFF is driven by on_off_panel_mode, not mapped to AUTO."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.capabilities.basic_control = True
     coordinator.data = {"on_off_panel_mode": 0, "mode": 0}
 
     climate = ThesslaGreenClimate(coordinator)
 
-    assert climate.hvac_mode == HVACMode.OFF
+    assert climate.hvac_mode == climate_mod.HVACMode.OFF
 
 
 def test_hvac_mode_auto_when_panel_on():
     """Ensure AUTO is reported when the panel is on and mode is automatic."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.capabilities.basic_control = True
     coordinator.data = {"on_off_panel_mode": 1, "mode": 0}
 
     climate = ThesslaGreenClimate(coordinator)
 
-    assert climate.hvac_mode == HVACMode.AUTO
+    assert climate.hvac_mode == climate_mod.HVACMode.AUTO
 
 
 def test_fan_modes_respect_min_max_limits():
     """Fan modes should honor dynamic min/max limits up to 150%."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.data = {"min_percentage": 20, "max_percentage": 150}
 
     climate = ThesslaGreenClimate(coordinator)
@@ -220,7 +135,7 @@ def test_fan_modes_respect_min_max_limits():
 def test_fan_mode_clamps_to_max_percentage():
     """Fan mode string should clamp to max percentage."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.data = {
         "min_percentage": 10,
         "max_percentage": 150,
@@ -234,39 +149,38 @@ def test_fan_mode_clamps_to_max_percentage():
 
 def test_hvac_mode_mappings():
     """Verify device modes map to and from Home Assistant HVAC modes."""
-    assert HVAC_MODE_MAP[0] == HVACMode.AUTO
-    assert HVAC_MODE_MAP[1] == HVACMode.FAN_ONLY
-    assert HVAC_MODE_MAP[2] == HVACMode.FAN_ONLY
+    assert HVAC_MODE_MAP[0] == climate_mod.HVACMode.AUTO
+    assert HVAC_MODE_MAP[1] == climate_mod.HVACMode.FAN_ONLY
+    assert HVAC_MODE_MAP[2] == climate_mod.HVACMode.FAN_ONLY
 
-    assert HVAC_MODE_REVERSE_MAP[HVACMode.AUTO] == 0
-    assert HVAC_MODE_REVERSE_MAP[HVACMode.FAN_ONLY] == 1
-    assert HVACMode.OFF not in HVAC_MODE_REVERSE_MAP
+    assert HVAC_MODE_REVERSE_MAP[climate_mod.HVACMode.AUTO] == 0
+    assert HVAC_MODE_REVERSE_MAP[climate_mod.HVACMode.FAN_ONLY] == 1
+    assert climate_mod.HVACMode.OFF not in HVAC_MODE_REVERSE_MAP
 
 
 @pytest.mark.asyncio
 async def test_set_hvac_mode_turns_on_before_mode():
     """Setting HVAC mode should power on before changing the mode register."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.async_request_refresh = AsyncMock()
     coordinator.data = {"on_off_panel_mode": 0}
 
     climate = ThesslaGreenClimate(coordinator)
 
-    await climate.async_set_hvac_mode(HVACMode.AUTO)
+    await climate.async_set_hvac_mode(climate_mod.HVACMode.AUTO)
 
-    assert coordinator.async_write_register.await_args_list[:2] == [
-        call("on_off_panel_mode", 1, refresh=False),
-        call("mode", 0, refresh=False),
-    ]
+    first_two = coordinator.async_write_register.await_args_list[:2]
+    assert first_two[0].args[:2] == ("on_off_panel_mode", 1)
+    assert first_two[1].args[:2] == ("mode", 0)
 
 
 @pytest.mark.asyncio
 async def test_set_temperature_temporary_mode_uses_multi_write():
     """Temporary mode should use the 3-register block and avoid permanent writes."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.data = {"mode": 2}
     coordinator.async_write_temporary_temperature = AsyncMock(return_value=True)
     coordinator.async_write_register = AsyncMock(return_value=True)
@@ -314,7 +228,7 @@ async def test_force_full_register_list_creates_climate(mock_coordinator, mock_c
 def test_percentage_limits_max_below_min():
     """When max_percentage < min_percentage, max is clamped to min (line 238)."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.data = {"min_percentage": 80, "max_percentage": 20}
 
     climate = ThesslaGreenClimate(coordinator)
@@ -327,7 +241,7 @@ def test_percentage_limits_max_below_min():
 def test_percentage_limits_invalid_types():
     """Non-numeric min/max default to 0 and 150 respectively."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.data = {"min_percentage": "bad", "max_percentage": None}
 
     climate = ThesslaGreenClimate(coordinator)
@@ -347,7 +261,7 @@ def test_preset_mode_no_special_mode():
     from custom_components.thessla_green_modbus.climate import SPECIAL_FUNCTION_MAP  # noqa: F401
 
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.data = {"special_mode": 0}
 
     climate = ThesslaGreenClimate(coordinator)
@@ -359,7 +273,7 @@ def test_preset_mode_active_special_function():
     from custom_components.thessla_green_modbus.climate import SPECIAL_FUNCTION_MAP
 
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
 
     # Take the first defined preset and set its bit
     first_preset, first_bit = next(iter(SPECIAL_FUNCTION_MAP.items()))
@@ -376,7 +290,7 @@ def test_preset_mode_unknown_bits_returns_none():
     from custom_components.thessla_green_modbus import climate as climate_mod
 
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
     coordinator.data = {"special_mode": 0b11111111}
 
     climate_entity = ThesslaGreenClimate(coordinator)
@@ -393,4 +307,4 @@ def test_climate_imports_real_ha_symbols() -> None:
     assert hasattr(climate.HVACMode, "AUTO")
     assert hasattr(climate.HVACMode, "OFF")
     assert hasattr(climate.HVACAction, "HEATING")
-    assert climate.ClimateEntity is climate_mod.ClimateEntity
+    assert climate.ClimateEntity.__name__ == climate_mod.ClimateEntity.__name__

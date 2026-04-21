@@ -56,7 +56,7 @@ class _CoordinatorCapabilitiesMixin:
         official datasheet / nameplate.  This gives ±10-15 % accuracy.
 
         For an unknown model the method falls back to a cubic estimate based
-        on the DAC output voltages (legacy behaviour, ±40-50 % accuracy).
+        on the DAC output voltages (previous behaviour, ±40-50 % accuracy).
         """
         nominal_raw = data.get("nominal_supply_air_flow")
         supply_flow = data.get("supply_flow_rate")

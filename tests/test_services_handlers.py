@@ -918,7 +918,7 @@ def test_get_coordinator_returns_none_no_registry():
 
 
 # ---------------------------------------------------------------------------
-# _extract_legacy_entity_ids — line 121 (no entity_id key)
+# _extract_entity_ids — line 121 (no entity_id key)
 # ---------------------------------------------------------------------------
 
 
@@ -929,7 +929,7 @@ async def test_service_no_entity_id_is_noop(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "refresh_device_data", coord, monkeypatch)
 
-    # Pass a call with no entity_id — _extract_legacy_entity_ids returns set()
+    # Pass a call with no entity_id — _extract_entity_ids returns set()
     call = _make_call({})
     await handler(call)
 

@@ -97,11 +97,12 @@ class BaseModbusTransport(ABC):
 
         return self._is_connected()
 
-    async def _execute(self, func: Any) -> Any:
+    async def _execute(self, func: Any, *, ensure_connection: bool = False) -> Any:
         """Execute a transport operation with shared error handling."""
 
         try:
-            await self.ensure_connected()
+            if ensure_connection:
+                await self.ensure_connected()
             response = await func()
             self.offline_state = False
             return response
@@ -166,7 +167,7 @@ class BaseModbusTransport(ABC):
                 **kwargs,
             )
 
-        return await self._execute(_invoke)
+        return await self._execute(_invoke, ensure_connection=True)
 
     async def ensure_connected(self) -> None:
         """Ensure the underlying transport is connected."""
@@ -790,7 +791,7 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
             registers = [int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)]
             return RawModbusResponse(registers)
 
-        return await self._execute(_invoke)
+        return await self._execute(_invoke, ensure_connection=True)
 
     async def read_holding_registers(
         self,
@@ -810,7 +811,7 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
             registers = [int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)]
             return RawModbusResponse(registers)
 
-        return await self._execute(_invoke)
+        return await self._execute(_invoke, ensure_connection=True)
 
     async def write_register(
         self,
@@ -833,7 +834,7 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
                 raise ModbusIOException("Write response does not match request")
             return RawModbusWriteResponse()
 
-        return await self._execute(_invoke)
+        return await self._execute(_invoke, ensure_connection=True)
 
     async def write_registers(
         self,
@@ -856,4 +857,4 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
                 raise ModbusIOException("Write response does not match request")
             return RawModbusWriteResponse()
 
-        return await self._execute(_invoke)
+        return await self._execute(_invoke, ensure_connection=True)

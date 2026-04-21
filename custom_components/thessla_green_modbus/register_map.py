@@ -3,11 +3,9 @@
 The integration historically read addresses directly from the JSON register
 schema. This module centralises that information in a Python data structure so
 it can be validated and annotated with context from the manufacturer's Modbus
-specification. The layout follows the register map published for AirPack Home
-/ Compact (series 4) controllers in the "Modbus register map" PDF (rev. 2023-10
-available from Thessla Green support). Addresses and access types are verified
-against that document and the bundled JSON to keep runtime validation in sync
-with the upstream specification.
+register specification. Addresses and access types are verified against the
+bundled JSON and the maintained register map metadata to keep runtime
+validation in sync with upstream firmware behavior.
 """
 
 from __future__ import annotations

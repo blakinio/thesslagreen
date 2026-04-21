@@ -2,23 +2,16 @@
 
 
 import json
-import sys
-import types
 from pathlib import Path
 
 import pytest
+from tests.platform_stubs import install_integration_package_stub
 
 # Stub the integration package to avoid executing its heavy __init__
-pkg = types.ModuleType("custom_components.thessla_green_modbus")
-pkg.__path__ = [
-    str(Path(__file__).resolve().parents[1] / "custom_components" / "thessla_green_modbus")
-]
-sys.modules.setdefault("custom_components.thessla_green_modbus", pkg)
-
-# Provide a minimal const module required by modbus_helpers
-const_module = types.ModuleType("custom_components.thessla_green_modbus.const")
-const_module.MAX_BATCH_REGISTERS = 16
-sys.modules.setdefault("custom_components.thessla_green_modbus.const", const_module)
+install_integration_package_stub(
+    Path(__file__).resolve().parents[1] / "custom_components" / "thessla_green_modbus",
+    max_batch_registers=16,
+)
 
 from custom_components.thessla_green_modbus.registers.loader import (
     _REGISTERS_PATH,
@@ -595,4 +588,3 @@ async def test_async_get_registers_by_function_filters(tmp_path: Path) -> None:
     assert all(r.function == 3 for r in regs)
     assert any(r.name == "hold_reg" for r in regs)
     assert not any(r.name == "inp_reg" for r in regs)
-

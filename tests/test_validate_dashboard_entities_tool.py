@@ -21,6 +21,10 @@ views:
     valid, legacy, unknown, suspicious = validate_dashboard(dashboard)
 
     assert "switch.rekuperator_lock_flag" in valid
-    assert ("switch.rekuperator_lock", "switch.rekuperator_lock_flag") in legacy
-    assert unknown == ["number.rekuperator_12", "switch.rekuperator_not_existing"]
+    assert legacy == []
+    assert unknown == [
+        "number.rekuperator_12",
+        "switch.rekuperator_lock",
+        "switch.rekuperator_not_existing",
+    ]
     assert suspicious == ["number.rekuperator_12"]

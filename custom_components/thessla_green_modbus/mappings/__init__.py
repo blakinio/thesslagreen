@@ -6,8 +6,8 @@ this module. This keeps the mapping definitions in sync with the register
 specification while still allowing manual tweaks (for example to change
 icons or alter the entity domain).
 
-The module also provides helpers for handling legacy entity IDs that
-were renamed in newer versions of the integration.
+The module also provides helper utilities for deriving entity metadata
+from register definitions and manual overrides.
 """
 
 from __future__ import annotations
@@ -49,31 +49,22 @@ from ._static_discrete import (
 )
 from ._static_numbers import NUMBER_ENTITY_MAPPINGS, NUMBER_OVERRIDES
 from ._static_sensors import SENSOR_ENTITY_MAPPINGS
-from .legacy import (
-    LEGACY_ENTITY_ID_ALIASES,
-)
 from .special_modes import SPECIAL_MODE_ICONS
 
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = [
     "BINARY_SENSOR_ENTITY_MAPPINGS",
-    # entity mappings
     "ENTITY_MAPPINGS",
-    # legacy
-    "LEGACY_ENTITY_ID_ALIASES",
     "NUMBER_ENTITY_MAPPINGS",
     "NUMBER_OVERRIDES",
     "SELECT_ENTITY_MAPPINGS",
     "SENSOR_ENTITY_MAPPINGS",
-    # special modes
     "SPECIAL_MODE_ICONS",
     "SWITCH_ENTITY_MAPPINGS",
     "TEXT_ENTITY_MAPPINGS",
     "TIME_ENTITY_MAPPINGS",
-    # helpers
     "_REGISTER_INFO_CACHE",
-    # loaders
     "_build_entity_mappings",
     "_extend_entity_mappings_from_registers",
     "_get_register_info",
@@ -83,9 +74,7 @@ __all__ = [
     "_load_translation_keys",
     "_number_translation_keys",
     "_parse_states",
-    # setup
     "async_setup_entity_mappings",
-    # const register accessors (re-exported so tests can monkeypatch via this module)
     "coil_registers",
     "discrete_input_registers",
     "get_all_registers",
@@ -122,6 +111,5 @@ async def async_setup_entity_mappings(hass: HomeAssistant | None = None) -> None
         await hass.async_add_executor_job(_run_build_entity_mappings)
     else:
         _run_build_entity_mappings()
-
 
 _run_build_entity_mappings()

@@ -173,16 +173,16 @@ class RegisterDefinition(BaseModel):
             else:
                 raise ValueError("access must be one of 'R', 'RW', 'W'")
 
-        # Normalise address_dec (decimal-only per manufacturer PDF)
+        # Normalise address_dec (decimal-only in manufacturer register specification)
         addr_dec = data.get("address_dec")
         if addr_dec is not None:
             if isinstance(addr_dec, str):
                 if not re.fullmatch(r"[0-9]+", addr_dec):
                     _LOGGER.error(
-                        "Register address must be DEC per PDF: %s",
+                        "Register address must be decimal: %s",
                         addr_dec,
                     )
-                    raise ValueError("Register address must be DEC per PDF")
+                    raise ValueError("Register address must be decimal")
                 addr_dec = int(addr_dec)
             elif not isinstance(addr_dec, int) or isinstance(addr_dec, bool):
                 raise ValueError("address_dec must be int or str")
@@ -435,12 +435,7 @@ if hasattr(pydantic, "RootModel"):
 
         @property
         def registers(self) -> list[RegisterDefinition]:
-            root_val = getattr(self, "root", None)
-            if root_val is not None:
-                return cast(list[RegisterDefinition], root_val)
-            return cast(
-                list[RegisterDefinition], self.__root__
-            )
+            return cast(list[RegisterDefinition], self.root)
 
         if hasattr(pydantic, "model_validator"):
 

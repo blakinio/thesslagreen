@@ -6,7 +6,7 @@ from typing import Any
 
 NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     # Temperature setpoints — multiplier=0.5, so physical = raw × 0.5 (°C)
-    # PDF raw range 20–90 → physical 10–45 °C, step 0.5 °C
+    # Raw range 20–90 → physical 10–45 °C, step 0.5 °C
     "supply_air_temperature_manual": {
         "icon": "mdi:thermometer-plus",
         "min": 10,
@@ -25,9 +25,9 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
         "max": 45,
         "step": 0.5,
     },
-    # PDF raw 10–40 → physical 5–20 °C
+    # Raw 10–40 → physical 5–20 °C
     "min_bypass_temperature": {"icon": "mdi:thermometer-low", "min": 5, "max": 20, "step": 0.5},
-    # PDF raw 30–60 → physical 15–30 °C
+    # Raw 30–60 → physical 15–30 °C
     "air_temperature_summer_free_heating": {
         "icon": "mdi:thermometer",
         "min": 15,
@@ -40,11 +40,11 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
         "max": 30,
         "step": 0.5,
     },
-    # PDF raw 0–20 → physical 0–10 °C
+    # Raw 0–20 → physical 0–10 °C
     "min_gwc_air_temperature": {"icon": "mdi:thermometer-low", "min": 0, "max": 10, "step": 0.5},
-    # PDF raw 30–80 → physical 15–40 °C
+    # Raw 30–80 → physical 15–40 °C
     "max_gwc_air_temperature": {"icon": "mdi:thermometer-high", "min": 15, "max": 40, "step": 0.5},
-    # PDF raw 0–10 → physical 0–5 °C
+    # Raw 0–10 → physical 0–5 °C
     "delta_t_gwc": {"icon": "mdi:thermometer-lines", "min": 0, "max": 5, "step": 0.5},
     # Air flow intensity setpoints (%), multiplier=1
     "air_flow_rate_manual": {"icon": "mdi:fan", "min": 10, "max": 100, "step": 1},

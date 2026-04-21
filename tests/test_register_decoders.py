@@ -3,7 +3,9 @@ import struct
 
 import pytest
 from custom_components.thessla_green_modbus.registers.loader import (
-    Register,
+    RegisterDef as Register,
+)
+from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner

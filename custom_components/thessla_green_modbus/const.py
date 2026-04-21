@@ -20,7 +20,7 @@ if TYPE_CHECKING:  # pragma: no cover
 # ``modbus_helpers`` but this has been resolved, allowing the import to
 # appear before this constant.
 # AirPack4 firmware limit: max 16 registers per FC03/FC04 request
-# (per ProtokolModbusRTU_AirPack4.pdf — device-specific constraint,
+# (per vendor register protocol documentation — device-specific constraint,
 # lower than the Modbus spec maximum of 125).
 MAX_REGISTERS_PER_REQUEST = 16
 MAX_REGS_PER_REQUEST = MAX_REGISTERS_PER_REQUEST
@@ -79,7 +79,7 @@ UNKNOWN_MODEL = "Unknown"
 
 # Connection defaults
 DEFAULT_NAME = "ThesslaGreen"
-DEFAULT_PORT = 502  # Standard Modbus TCP port; legacy versions used 8899
+DEFAULT_PORT = 502  # Standard Modbus TCP port
 DEFAULT_SLAVE_ID = 10
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_TIMEOUT = 10
@@ -300,7 +300,7 @@ def migrate_unique_id(
     port: int,
     slave_id: int,
 ) -> str:
-    """Migrate a legacy unique_id to the current format."""
+    """Migrate a historical unique_id to the current format."""
 
     uid = unique_id.replace(":", "-")
     prefix = device_unique_id_prefix(serial_number, host, port)
@@ -399,8 +399,7 @@ def migrate_unique_id(
 # Aggregated entity mappings for all platforms.  Additional platforms can be
 # added here in the future.
 # ============================================================================
-# Complete register mapping from MODBUS_USER_AirPack_Home_08.2021.01 PDF
-# https://thesslagreen.com/wp-content/uploads/MODBUS_USER_AirPack_Home_08.2021.01.pdf
+# Complete register mapping aligned with bundled register metadata.
 # ============================================================================
 
 
@@ -423,7 +422,7 @@ async def async_setup_options(hass: HomeAssistant | None = None) -> None:
 
     When ``hass`` is provided, file I/O is offloaded to the executor.
     If Home Assistant utilities are unavailable, the lists are populated
-    synchronously for compatibility with tests.
+    synchronously when running in tests.
     """
 
     global SPECIAL_MODE_OPTIONS, DAYS_OF_WEEK, PERIODS, BYPASS_MODES, GWC_MODES

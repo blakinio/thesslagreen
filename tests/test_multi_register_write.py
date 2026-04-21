@@ -12,7 +12,7 @@ from custom_components.thessla_green_modbus.registers import (
 @pytest.mark.asyncio
 async def test_async_write_registers_calls_modbus():
     hass = MagicMock()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
         hass=hass,
         host="localhost",
         port=502,
@@ -34,7 +34,7 @@ async def test_async_write_registers_calls_modbus():
 @pytest.mark.asyncio
 async def test_async_write_registers_chunks_oversize():
     hass = MagicMock()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
         hass=hass,
         host="localhost",
         port=502,
@@ -57,7 +57,7 @@ async def test_async_write_registers_chunks_oversize():
 @pytest.mark.asyncio
 async def test_async_write_registers_passes_attempt():
     hass = MagicMock()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
         hass=hass,
         host="localhost",
         port=502,
@@ -85,7 +85,7 @@ async def test_async_write_registers_passes_attempt():
 async def test_async_write_registers_single_request_override():
     """Temporary writes should bypass chunking to keep 3-register atomicity."""
     hass = MagicMock()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
         hass=hass,
         host="localhost",
         port=502,
@@ -117,7 +117,7 @@ async def test_async_write_registers_single_request_override():
 @pytest.mark.asyncio
 async def test_async_write_temporary_airflow_uses_three_registers(monkeypatch):
     hass = MagicMock()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
         hass=hass,
         host="localhost",
         port=502,
@@ -146,7 +146,7 @@ async def test_async_write_temporary_airflow_uses_three_registers(monkeypatch):
 @pytest.mark.asyncio
 async def test_async_write_temporary_temperature_uses_three_registers(monkeypatch):
     hass = MagicMock()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
         hass=hass,
         host="localhost",
         port=502,
@@ -175,7 +175,7 @@ async def test_async_write_temporary_temperature_uses_three_registers(monkeypatc
 @pytest.mark.asyncio
 async def test_async_write_temporary_airflow_writes_three_registers(monkeypatch):
     hass = MagicMock()
-    coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
         hass=hass,
         host="localhost",
         port=502,

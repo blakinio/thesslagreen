@@ -4,49 +4,15 @@
 import asyncio
 import sys
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
 
 import pytest
 import voluptuous as vol
+from tests.platform_stubs import install_network_validation_stub, install_registers_stub
 
-# Stub loader module to avoid heavy imports during tests
-_loader_stub = SimpleNamespace(
-    plan_group_reads=lambda *args, **kwargs: [],
-    get_registers_by_function=lambda *args, **kwargs: [],
-    get_all_registers=lambda *args, **kwargs: [],
-    registers_sha256=lambda *args, **kwargs: "",
-    load_registers=lambda *args, **kwargs: [],
-    _REGISTERS_PATH=Path("dummy"),
-)
-sys.modules.setdefault(
-    "custom_components.thessla_green_modbus.registers.loader",
-    _loader_stub,
-)
-_network_module = SimpleNamespace(
-    is_host_valid=lambda host: bool(host)
-    and " " not in host
-    and not host.replace(".", "").isdigit()
-    and "." in host,
-)
-sys.modules.setdefault("homeassistant.util", SimpleNamespace(network=_network_module))
-sys.modules.setdefault("homeassistant.util.network", _network_module)
-
-_registers_module = ModuleType("custom_components.thessla_green_modbus.registers")
-_registers_module.__path__ = []  # type: ignore[attr-defined]
-_registers_module.get_registers_by_function = lambda *args, **kwargs: []  # type: ignore[attr-defined]
-_registers_module.get_all_registers = lambda *args, **kwargs: []  # type: ignore[attr-defined]
-_registers_module.registers_sha256 = lambda *args, **kwargs: ""  # type: ignore[attr-defined]
-_registers_module.plan_group_reads = lambda *args, **kwargs: []  # type: ignore[attr-defined]
-sys.modules.setdefault("custom_components.thessla_green_modbus.registers", _registers_module)
-_loader_module = ModuleType("custom_components.thessla_green_modbus.registers.loader")
-_loader_module.get_registers_by_function = lambda *args, **kwargs: []  # type: ignore[attr-defined]
-_loader_module.load_registers = lambda *args, **kwargs: []  # type: ignore[attr-defined]
-_loader_module.get_all_registers = lambda *args, **kwargs: []  # type: ignore[attr-defined]
-_loader_module.registers_sha256 = lambda *args, **kwargs: ""  # type: ignore[attr-defined]
-_loader_module._REGISTERS_PATH = Path("dummy")  # type: ignore[attr-defined]
-sys.modules.setdefault(
-    "custom_components.thessla_green_modbus.registers.loader", _loader_module
-)
+install_network_validation_stub()
+_original_registers = sys.modules.get("custom_components.thessla_green_modbus.registers")
+_original_loader = sys.modules.get("custom_components.thessla_green_modbus.registers.loader")
+install_registers_stub(Path("dummy"))
 
 from custom_components.thessla_green_modbus.config_flow import (
     ConfigFlow,
@@ -56,6 +22,15 @@ from custom_components.thessla_green_modbus.config_flow import (
     _run_with_retry,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
+
+if _original_registers is not None:
+    sys.modules["custom_components.thessla_green_modbus.registers"] = _original_registers
+else:  # pragma: no cover - defensive cleanup
+    sys.modules.pop("custom_components.thessla_green_modbus.registers", None)
+if _original_loader is not None:
+    sys.modules["custom_components.thessla_green_modbus.registers.loader"] = _original_loader
+else:  # pragma: no cover - defensive cleanup
+    sys.modules.pop("custom_components.thessla_green_modbus.registers.loader", None)
 
 # ---------------------------------------------------------------------------
 # _normalize_baud_rate

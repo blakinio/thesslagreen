@@ -45,7 +45,7 @@ async def validate_optimization_metrics():
         from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 
         hass = MagicMock()
-        coordinator = ThesslaGreenModbusCoordinator.from_legacy(
+        coordinator = ThesslaGreenModbusCoordinator.from_params(
             hass=hass,
             host="192.168.1.100",
             port=502,
