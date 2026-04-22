@@ -136,6 +136,124 @@ class _ModbusIOMixin:
         data.update(await self._read_discrete_inputs_optimized())
         return cast("_PostProcessProtocol", self)._post_process_data(data)
 
+    @staticmethod
+    def _is_illegal_data_address_response(response: Any) -> bool:
+        """Return True when response reports ILLEGAL DATA ADDRESS."""
+        return getattr(response, "exception_code", None) == ILLEGAL_DATA_ADDRESS
+
+    @staticmethod
+    def _is_transient_error_response(response: Any) -> bool:
+        """Return True when response looks transient and should be retried."""
+        exception_code = getattr(response, "exception_code", None)
+        return exception_code is None or exception_code != ILLEGAL_DATA_ADDRESS
+
+    async def _execute_read_call(
+        self,
+        read_method: Callable[..., Any],
+        start_address: int,
+        count: int,
+        attempt: int,
+    ) -> Any:
+        """Execute one read attempt with method fallback through `_call_modbus`."""
+        call_result = read_method(
+            self.slave_id,
+            start_address,
+            count=count,
+            attempt=attempt,
+        )
+        if call_result is None:
+            call_result = self._call_modbus(
+                read_method,
+                start_address,
+                count=count,
+                attempt=attempt,
+            )
+        return await call_result if inspect.isawaitable(call_result) else call_result
+
+    async def _disconnect_and_reconnect_for_retry(
+        self,
+        *,
+        register_type: str,
+        start_address: int,
+        attempt: int,
+    ) -> Exception | None:
+        """Reset connection before retry and reconnect transport if available."""
+        disconnect_cb = getattr(self, "_disconnect", None)
+        if callable(disconnect_cb):
+            await disconnect_cb()  # pragma: no cover
+
+        if self._transport is None:  # pragma: no cover
+            return None
+
+        try:
+            await self._ensure_connection()
+        except (
+            TimeoutError,
+            ModbusIOException,
+            ConnectionException,
+            OSError,
+        ) as reconnect:
+            _LOGGER.debug(
+                "Reconnect failed for %s registers at %s (attempt %s/%s): %s",
+                register_type,
+                start_address,
+                attempt + 1,
+                self.retry,
+                reconnect,
+            )
+            return reconnect
+        return None
+
+    def _log_read_retry(
+        self,
+        *,
+        register_type: str,
+        start_address: int,
+        attempt: int,
+        exc: Exception,
+        timeout: bool = False,
+    ) -> None:
+        """Log retry information for read failures."""
+        if timeout:
+            _LOGGER.warning(
+                "Timeout reading %s registers at %s (attempt %s/%s)",
+                register_type,
+                start_address,
+                attempt,
+                self.retry,
+            )
+        _LOGGER.debug(
+            "Retrying %s registers at %s (attempt %s/%s): %s",
+            register_type,
+            start_address,
+            attempt + 1,
+            self.retry,
+            exc,
+        )
+
+    def _raise_for_error_response(
+        self,
+        response: Any,
+        *,
+        register_type: str,
+        start_address: int,
+    ) -> None:
+        """Raise specific exception for Modbus error responses."""
+        if not response.isError():
+            return
+        if self._is_illegal_data_address_response(response):
+            raise _PermanentModbusError(
+                f"Illegal data address for {register_type} registers at {start_address}"
+            )
+        if self._is_transient_error_response(response):
+            raise ModbusIOException(
+                f"Transient error reading {register_type} registers at {start_address}"
+            )
+        raise ModbusException(
+            # pragma: no cover - impossible: not illegal and not transient implies illegal
+            f"Failed to read {register_type} registers at {start_address}"
+        )
+
     async def _read_with_retry(
         self,
         read_method: Callable[..., Any],
@@ -146,145 +264,73 @@ class _ModbusIOMixin:
     ) -> Any:
         """Read registers with retry/backoff on transient transport errors."""
 
-        def _is_illegal_data_address(response: Any) -> bool:
-            return getattr(response, "exception_code", None) == ILLEGAL_DATA_ADDRESS
-
-        def _is_transient_response(response: Any) -> bool:
-            exception_code = getattr(response, "exception_code", None)
-            return exception_code is None or exception_code != ILLEGAL_DATA_ADDRESS
-
         last_error: Exception | None = None
         for attempt in range(1, self.retry + 1):
             try:
-                call_result = read_method(
-                    self.slave_id,
+                response = await self._execute_read_call(
+                    read_method,
                     start_address,
-                    count=count,
-                    attempt=attempt,
+                    count,
+                    attempt,
                 )
-                if call_result is None:
-                    call_result = self._call_modbus(
-                        read_method,
-                        start_address,
-                        count=count,
-                        attempt=attempt,
-                    )
-                response = await call_result if inspect.isawaitable(call_result) else call_result
                 if response is None:
                     raise ModbusException(
                         f"Failed to read {register_type} registers at {start_address}"
                     )
-                if response.isError():
-                    if _is_illegal_data_address(response):
-                        raise _PermanentModbusError(
-                            f"Illegal data address for {register_type} registers at {start_address}"
-                        )
-                    if _is_transient_response(response):
-                        raise ModbusIOException(
-                            f"Transient error reading {register_type} registers at {start_address}"
-                        )
-                    raise ModbusException(
-                        # pragma: no cover - impossible: not illegal and not transient
-                        # implies illegal
-                        f"Failed to read {register_type} registers at {start_address}"
-                    )
+                self._raise_for_error_response(
+                    response,
+                    register_type=register_type,
+                    start_address=start_address,
+                )
                 return response
             except _PermanentModbusError:
                 raise
             except TimeoutError as exc:
                 last_error = exc
-                disconnect_cb = getattr(self, "_disconnect", None)
-                if self._transport is not None and callable(disconnect_cb):
-                    await disconnect_cb()  # pragma: no cover
-                elif isinstance(exc, ConnectionException) and callable(
-                    disconnect_cb
-                ):  # pragma: no cover
-                    await disconnect_cb()
                 if attempt >= self.retry:
                     raise  # pragma: no cover
-                _LOGGER.warning(
-                    "Timeout reading %s registers at %s (attempt %s/%s)",
-                    register_type,
-                    start_address,
-                    attempt,
-                    self.retry,
+                reconnect_error = await self._disconnect_and_reconnect_for_retry(
+                    register_type=register_type,
+                    start_address=start_address,
+                    attempt=attempt,
                 )
-                if self._transport is not None:  # pragma: no cover
-                    try:
-                        await self._ensure_connection()
-                    except (
-                        TimeoutError,
-                        ModbusIOException,
-                        ConnectionException,
-                        OSError,
-                    ) as reconnect:
-                        last_error = reconnect
-                        _LOGGER.debug(
-                            "Reconnect failed for %s registers at %s (attempt %s/%s): %s",
-                            register_type,
-                            start_address,
-                            attempt + 1,
-                            self.retry,
-                            reconnect,
-                        )
-                        continue
-                _LOGGER.debug(
-                    "Retrying %s registers at %s (attempt %s/%s): %s",
-                    register_type,
-                    start_address,
-                    attempt + 1,
-                    self.retry,
-                    exc,
+                if reconnect_error is not None:
+                    last_error = reconnect_error
+                    continue
+                self._log_read_retry(
+                    register_type=register_type,
+                    start_address=start_address,
+                    attempt=attempt,
+                    exc=exc,
+                    timeout=True,
                 )
             except (ModbusIOException, ConnectionException, OSError) as exc:
                 last_error = exc
-                disconnect_cb = getattr(self, "_disconnect", None)
-                if self._transport is not None and callable(disconnect_cb):
-                    await disconnect_cb()  # pragma: no cover
-                elif isinstance(exc, ConnectionException) and callable(
-                    disconnect_cb
-                ):  # pragma: no cover
-                    await disconnect_cb()
                 if attempt >= self.retry:
                     raise
-                if self._transport is not None:  # pragma: no cover
-                    try:
-                        await self._ensure_connection()
-                    except (
-                        TimeoutError,
-                        ModbusIOException,
-                        ConnectionException,
-                        OSError,
-                    ) as reconnect:
-                        last_error = reconnect
-                        _LOGGER.debug(
-                            "Reconnect failed for %s registers at %s (attempt %s/%s): %s",
-                            register_type,
-                            start_address,
-                            attempt + 1,
-                            self.retry,
-                            reconnect,
-                        )
-                        continue
-                _LOGGER.debug(
-                    "Retrying %s registers at %s (attempt %s/%s): %s",
-                    register_type,
-                    start_address,
-                    attempt + 1,
-                    self.retry,
-                    exc,
+                reconnect_error = await self._disconnect_and_reconnect_for_retry(
+                    register_type=register_type,
+                    start_address=start_address,
+                    attempt=attempt,
+                )
+                if reconnect_error is not None:
+                    last_error = reconnect_error
+                    continue
+                self._log_read_retry(
+                    register_type=register_type,
+                    start_address=start_address,
+                    attempt=attempt,
+                    exc=exc,
                 )
             except ModbusException as exc:
                 last_error = exc
                 if attempt >= self.retry:
                     raise
-                _LOGGER.debug(
-                    "Retrying %s registers at %s (attempt %s/%s): %s",
-                    register_type,
-                    start_address,
-                    attempt + 1,
-                    self.retry,
-                    exc,
+                self._log_read_retry(
+                    register_type=register_type,
+                    start_address=start_address,
+                    attempt=attempt,
+                    exc=exc,
                 )
                 continue
         if last_error is not None:  # pragma: no cover

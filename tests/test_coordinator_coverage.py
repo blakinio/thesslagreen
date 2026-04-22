@@ -986,7 +986,7 @@ def test_process_register_value_schedule_hh_mm():
     mock_def.is_temperature.return_value = False
     mock_def.enum = None
     mock_def.decode.return_value = "06:30"
-    with patch.dict(rp.REGISTER_DEFS, {"schedule_on_1": mock_def}, clear=False):
+    with patch.object(rp, "get_register_definitions", return_value={"schedule_on_1": mock_def}):
         result = coord._process_register_value("schedule_on_1", 390)
     assert result == "06:30"
 
@@ -1140,7 +1140,7 @@ def test_process_register_value_decoded_equals_sensor_unavailable():
     mock_def.is_temperature.return_value = False
     mock_def.enum = None
     mock_def.decode.return_value = SENSOR_UNAVAILABLE  # decoded == SENSOR_UNAVAILABLE
-    with patch.dict(rp.REGISTER_DEFS, {"mode": mock_def}, clear=False):
+    with patch.object(rp, "get_register_definitions", return_value={"mode": mock_def}):
         result = coord._process_register_value("mode", 1)
     assert result == SENSOR_UNAVAILABLE
 
@@ -1153,7 +1153,7 @@ def test_process_register_value_schedule_hh_mm_invalid():
     mock_def.is_temperature.return_value = False
     mock_def.enum = None
     mock_def.decode.return_value = "ab:cd"  # valid format but int() will fail
-    with patch.dict(rp.REGISTER_DEFS, {"schedule_on_1": mock_def}, clear=False):
+    with patch.object(rp, "get_register_definitions", return_value={"schedule_on_1": mock_def}):
         result = coord._process_register_value("schedule_on_1", 999)
     assert result == "ab:cd"  # returned unchanged after ValueError
 

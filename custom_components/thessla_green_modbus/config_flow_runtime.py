@@ -7,15 +7,23 @@ import inspect
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from .error_policy import (
+    ErrorKind,
+    classify_exception,
+    next_backoff,
+    should_retry,
+)
+from .error_policy import (
+    is_request_cancelled_error as _is_request_cancelled_error_impl,
+)
+from .modbus_exceptions import ModbusIOException
 
 TIMEOUT_EXCEPTIONS = (TimeoutError, asyncio.TimeoutError)
 
 
 def is_request_cancelled_error(exc: ModbusIOException) -> bool:
-    """Return True when a modbus IO error indicates a cancelled request."""
-    message = str(exc).lower()
-    return "request cancelled" in message or "cancelled" in message
+    """Compatibility wrapper for config_flow imports/tests."""
+    return _is_request_cancelled_error_impl(exc)
 
 
 async def run_with_retry(
@@ -31,21 +39,16 @@ async def run_with_retry(
             if inspect.isawaitable(result):
                 return await result
             return result
-        except asyncio.CancelledError:
-            raise
-        except ModbusIOException as exc:
-            if is_request_cancelled_error(exc):
+        except BaseException as exc:
+            kind = classify_exception(exc)
+            if kind is ErrorKind.CANCELLED:
+                raise
+            if isinstance(exc, ModbusIOException) and kind is ErrorKind.TIMEOUT:
                 raise TimeoutError("Modbus request cancelled") from exc
-            if attempt >= retries:
+            if not should_retry(kind, attempt, retries):
                 raise
-            delay = backoff * 2 ** (attempt - 1)
-            if delay:
-                await asyncio.sleep(delay)
-        except (*TIMEOUT_EXCEPTIONS, ConnectionException, ModbusException, OSError):
-            if attempt >= retries:
-                raise
-            delay = backoff * 2 ** (attempt - 1)
-            if delay:
+            delay = next_backoff(attempt=attempt, base=backoff)
+            if delay > 0:
                 await asyncio.sleep(delay)
 
     raise RuntimeError("Retry wrapper failed without raising")
@@ -57,4 +60,3 @@ async def call_with_optional_timeout(func: Callable[[], Any], timeout: float) ->
     if inspect.isawaitable(result):
         return await asyncio.wait_for(result, timeout=timeout)
     return result
-

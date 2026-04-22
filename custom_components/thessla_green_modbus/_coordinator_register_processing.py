@@ -6,10 +6,9 @@ import logging
 from typing import Any
 
 from .const import SENSOR_UNAVAILABLE, SENSOR_UNAVAILABLE_REGISTERS
-from .registers.loader import RegisterDef, get_all_registers
+from .register_defs_cache import get_register_definitions
 
 _LOGGER = logging.getLogger(__name__.rsplit('.', maxsplit=1)[0])
-REGISTER_DEFS: dict[str, RegisterDef] = {register.name: register for register in get_all_registers()}
 
 
 def find_register_name(reverse_maps: dict[str, dict[int, str]], register_type: str, address: int) -> str | None:
@@ -25,7 +24,7 @@ def process_register_value(register_name: str, value: int) -> Any:
         _LOGGER.warning("Register %s out of range for DAC: %s", register_name, value)
         return None
     try:
-        definition = REGISTER_DEFS[register_name]
+        definition = get_register_definitions()[register_name]
     except KeyError:
         _LOGGER.error("Unknown register name: %s", register_name)
         return False

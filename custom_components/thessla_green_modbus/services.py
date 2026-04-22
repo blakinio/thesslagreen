@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -107,6 +108,61 @@ _DAY_TO_DEVICE_KEY = {
 }
 
 
+@dataclass(frozen=True, slots=True)
+class ServiceRegistrationGroup:
+    """Describe one service registration function and its managed services."""
+
+    register: Callable[[HomeAssistant, ServiceHandlerDeps], None]
+    service_names: tuple[str, ...]
+
+
+SERVICE_REGISTRATION_GROUPS: tuple[ServiceRegistrationGroup, ...] = (
+    ServiceRegistrationGroup(
+        register=register_mode_services,
+        service_names=("set_special_mode", "set_mode", "set_special_function"),
+    ),
+    ServiceRegistrationGroup(
+        register=register_schedule_services,
+        service_names=("set_airflow_schedule", "set_intensity"),
+    ),
+    ServiceRegistrationGroup(
+        register=register_parameter_services,
+        service_names=(
+            "set_bypass_parameters",
+            "set_gwc_parameters",
+            "set_air_quality_thresholds",
+            "set_temperature_curve",
+        ),
+    ),
+    ServiceRegistrationGroup(
+        register=register_maintenance_services,
+        service_names=(
+            "reset_filters",
+            "reset_settings",
+            "start_pressure_test",
+            "set_modbus_parameters",
+            "set_device_name",
+            "sync_time",
+        ),
+    ),
+    ServiceRegistrationGroup(
+        register=register_data_services,
+        service_names=(
+            "refresh_device_data",
+            "get_unknown_registers",
+            "scan_all_registers",
+            "set_debug_logging",
+        ),
+    ),
+)
+
+REGISTERED_SERVICE_NAMES: tuple[str, ...] = tuple(
+    service
+    for group in SERVICE_REGISTRATION_GROUPS
+    for service in group.service_names
+)
+
+
 def _extract_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
     """Return entity IDs from a service call."""
     return _extract_entity_ids_impl(hass, call, extractor=async_extract_entity_ids)
@@ -172,39 +228,14 @@ def _handler_deps() -> ServiceHandlerDeps:
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up services for ThesslaGreen Modbus integration."""
     deps = _handler_deps()
-    register_mode_services(hass, deps)
-    register_schedule_services(hass, deps)
-    register_parameter_services(hass, deps)
-    register_maintenance_services(hass, deps)
-    register_data_services(hass, deps)
+    for group in SERVICE_REGISTRATION_GROUPS:
+        group.register(hass, deps)
     _LOGGER.info("ThesslaGreen Modbus services registered successfully")
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
     """Unload services for ThesslaGreen Modbus integration."""
-    services = [
-        "set_special_mode",
-        "set_mode",
-        "set_intensity",
-        "set_special_function",
-        "set_airflow_schedule",
-        "set_bypass_parameters",
-        "set_gwc_parameters",
-        "set_air_quality_thresholds",
-        "set_temperature_curve",
-        "reset_filters",
-        "reset_settings",
-        "start_pressure_test",
-        "set_modbus_parameters",
-        "set_device_name",
-        "sync_time",
-        "refresh_device_data",
-        "get_unknown_registers",
-        "scan_all_registers",
-        "set_debug_logging",
-    ]
-
-    for service in services:
+    for service in REGISTERED_SERVICE_NAMES:
         hass.services.async_remove(DOMAIN, service)
 
     _LOGGER.info("ThesslaGreen Modbus services unloaded")

@@ -92,6 +92,15 @@ Kontrybucja: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Python 3.13 is required** (matches Home Assistant 2026.1+).
 
+Lekki smoke-check (bez pełnego środowiska Home Assistant):
+
+```bash
+pip install -r requirements-test-min.txt
+python tools/validate_registers.py
+```
+
+To sprawdzenie jest również uruchamiane przez `pre-commit` (hook `validate-registers`).
+
 ```bash
 pyenv install 3.13 && pyenv local 3.13   # lub: asdf install python 3.13.0
 pip install -r requirements-dev.txt

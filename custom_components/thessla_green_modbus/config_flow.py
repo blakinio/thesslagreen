@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import dataclasses
 import inspect
 import logging
 import traceback
@@ -16,10 +15,13 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import translation
 from voluptuous import Invalid as VOL_INVALID
 
+from .config_flow_confirm import (
+    build_confirmation_placeholders as _build_confirmation_placeholders,
+)
+from .config_flow_entry import build_unique_id as _build_unique_id_impl
+from .config_flow_entry import prepare_entry_payload as _prepare_entry_payload_impl
 from .config_flow_errors import classify_os_error as _classify_os_error_impl
 from .config_flow_errors import (
     should_log_timeout_traceback as _should_log_timeout_traceback_impl,
@@ -30,6 +32,16 @@ from .config_flow_options import normalize_baud_rate as _normalize_baud_rate_imp
 from .config_flow_options import normalize_parity as _normalize_parity_impl
 from .config_flow_options import normalize_stop_bits as _normalize_stop_bits_impl
 from .config_flow_options import strip_translation_prefix as _strip_translation_prefix_impl
+from .config_flow_options_form import (
+    build_options_defaults as _build_options_defaults,
+)
+from .config_flow_options_form import (
+    build_options_description_placeholders as _build_options_description_placeholders,
+)
+from .config_flow_options_form import build_options_schema as _build_options_schema
+from .config_flow_options_form import (
+    build_transport_description as _build_transport_description,
+)
 from .config_flow_payloads import caps_to_dict as _caps_to_dict_impl
 from .config_flow_payloads import normalize_connection_type as _normalize_connection_type_impl
 from .config_flow_runtime import TIMEOUT_EXCEPTIONS
@@ -40,67 +52,39 @@ from .config_flow_runtime import (
     is_request_cancelled_error as _is_request_cancelled_error_impl,
 )
 from .config_flow_runtime import run_with_retry as _run_with_retry_impl
+from .config_flow_schema import build_connection_schema as _build_connection_schema_impl
 from .config_flow_validation import process_scan_capabilities as _process_scan_capabilities_impl
 from .config_flow_validation import validate_rtu_config as _validate_rtu_config_impl
 from .config_flow_validation import validate_slave_id as _validate_slave_id_impl
 from .config_flow_validation import validate_tcp_config as _validate_tcp_config_impl
 from .const import (
-    AIRFLOW_UNIT_M3H,
-    AIRFLOW_UNIT_PERCENTAGE,
-    CONF_AIRFLOW_UNIT,
     CONF_BAUD_RATE,
     CONF_CONNECTION_MODE,
-    CONF_CONNECTION_TYPE,
     CONF_DEEP_SCAN,
-    CONF_ENABLE_DEVICE_SCAN,
-    CONF_FORCE_FULL_REGISTER_LIST,
-    CONF_LOG_LEVEL,
     CONF_MAX_REGISTERS_PER_REQUEST,
     CONF_PARITY,
-    CONF_RETRY,
-    CONF_SAFE_SCAN,
-    CONF_SCAN_INTERVAL,
-    CONF_SCAN_UART_SETTINGS,
     CONF_SERIAL_PORT,
-    CONF_SKIP_MISSING_REGISTERS,
     CONF_SLAVE_ID,
     CONF_STOP_BITS,
     CONF_TIMEOUT,
-    CONNECTION_MODE_AUTO,
-    CONNECTION_MODE_TCP,
-    CONNECTION_MODE_TCP_RTU,
-    CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
-    CONNECTION_TYPE_TCP_RTU,
-    DEFAULT_AIRFLOW_UNIT,
-    DEFAULT_BAUD_RATE,
-    DEFAULT_CONNECTION_TYPE,
     DEFAULT_DEEP_SCAN,
-    DEFAULT_ENABLE_DEVICE_SCAN,
-    DEFAULT_LOG_LEVEL,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PARITY,
     DEFAULT_PORT,
     DEFAULT_RETRY,
-    DEFAULT_SAFE_SCAN,
-    DEFAULT_SCAN_INTERVAL,
-    DEFAULT_SCAN_UART_SETTINGS,
-    DEFAULT_SERIAL_PORT,
-    DEFAULT_SKIP_MISSING_REGISTERS,
     DEFAULT_SLAVE_ID,
     DEFAULT_STOP_BITS,
     DEFAULT_TIMEOUT,
     DOMAIN,
     MAX_BATCH_REGISTERS,
-    MIN_SCAN_INTERVAL,
     MODBUS_BAUD_RATES,
     MODBUS_PARITY,
     MODBUS_STOP_BITS,
 )
 from .errors import CannotConnect, InvalidAuth, is_invalid_auth_error
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from .utils import resolve_connection_settings
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -409,156 +393,18 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
 
     def _build_connection_schema(self, defaults: dict[str, Any]) -> vol.Schema:
         """Return schema for connection details with provided defaults."""
-        current_values = defaults or {}
-
-        def _option_default(prefix: str, options: list[Any], value: Any, fallback: Any) -> Any:
-            target = value if value not in (None, "") else fallback
-            candidate = _denormalize_option(prefix, target)
-            if options and candidate in options:
-                return candidate
-            if options:
-                return options[0]
-            return target
-
-        connection_default = current_values.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-        host_default = current_values.get(CONF_HOST, self._discovered_host or "")
-        port_default = current_values.get(CONF_PORT, DEFAULT_PORT)
-        slave_default = current_values.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)
-        connection_mode_default = current_values.get(CONF_CONNECTION_MODE)
-
-        normalized_type, resolved_mode = resolve_connection_settings(
-            connection_default, connection_mode_default, port_default
+        return _build_connection_schema_impl(
+            defaults,
+            discovered_host=self._discovered_host,
+            modbus_baud_rates=MODBUS_BAUD_RATES,
+            modbus_parity=MODBUS_PARITY,
+            modbus_stop_bits=MODBUS_STOP_BITS,
         )
-        if normalized_type == CONNECTION_TYPE_TCP and resolved_mode == CONNECTION_MODE_TCP_RTU:
-            connection_default = CONNECTION_TYPE_TCP_RTU
-        else:
-            connection_default = normalized_type
-
-        serial_port_default = current_values.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT)
-
-        baud_default = _option_default(
-            "modbus_baud_rate_",
-            MODBUS_BAUD_RATES,
-            current_values.get(CONF_BAUD_RATE),
-            DEFAULT_BAUD_RATE,
-        )
-        parity_default = _option_default(
-            "modbus_parity_",
-            MODBUS_PARITY,
-            current_values.get(CONF_PARITY),
-            DEFAULT_PARITY,
-        )
-        stop_bits_default = _option_default(
-            "modbus_stop_bits_",
-            MODBUS_STOP_BITS,
-            current_values.get(CONF_STOP_BITS),
-            DEFAULT_STOP_BITS,
-        )
-
-        if not MODBUS_BAUD_RATES:
-            try:
-                baud_default = int(baud_default)
-            except (TypeError, ValueError):
-                baud_default = DEFAULT_BAUD_RATE
-        if not MODBUS_PARITY:
-            parity_default = str(parity_default)
-        if not MODBUS_STOP_BITS:
-            stop_bits_default = str(stop_bits_default)
-
-        baud_validator: Any = (
-            vol.In(MODBUS_BAUD_RATES)
-            if MODBUS_BAUD_RATES
-            else vol.All(vol.Coerce(int), vol.Range(min=1200, max=230400))
-        )
-        parity_validator: Any = (
-            vol.In(MODBUS_PARITY) if MODBUS_PARITY else vol.In(["none", "even", "odd"])
-        )
-        stop_bits_validator: Any = (
-            vol.In(MODBUS_STOP_BITS) if MODBUS_STOP_BITS else vol.In(["1", "2"])
-        )
-
-        data_schema: dict[Any, Any] = {
-            vol.Required(
-                CONF_CONNECTION_TYPE,
-                default=connection_default,
-                description={
-                    "selector": {
-                        "select": {
-                            "options": [
-                                {
-                                    "value": CONNECTION_TYPE_TCP,
-                                    "label": f"{DOMAIN}.connection_type_tcp",
-                                },
-                                {
-                                    "value": CONNECTION_TYPE_TCP_RTU,
-                                    "label": f"{DOMAIN}.connection_type_tcp_rtu",
-                                },
-                                {
-                                    "value": CONNECTION_TYPE_RTU,
-                                    "label": f"{DOMAIN}.connection_type_rtu",
-                                },
-                            ]
-                        }
-                    }
-                },
-            ): vol.In({CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU, CONNECTION_TYPE_RTU}),
-            vol.Required(CONF_SLAVE_ID, default=slave_default): vol.All(
-                vol.Coerce(int), vol.Range(min=0, max=247)
-            ),
-            vol.Optional(CONF_NAME, default=current_values.get(CONF_NAME, DEFAULT_NAME)): str,
-            vol.Optional(
-                CONF_DEEP_SCAN,
-                default=current_values.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
-                description={"advanced": True},
-            ): bool,
-            vol.Optional(
-                CONF_MAX_REGISTERS_PER_REQUEST,
-                default=current_values.get(
-                    CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
-                ),
-                description={
-                    "selector": {"number": {"min": 1, "max": MAX_BATCH_REGISTERS, "step": 1}}
-                },
-            ): int,
-        }
-
-        if connection_default in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU):
-            data_schema.update(
-                {
-                    vol.Required(CONF_HOST, default=host_default): str,
-                    vol.Required(CONF_PORT, default=port_default): vol.All(
-                        vol.Coerce(int), vol.Range(min=1, max=65535)
-                    ),
-                }
-            )
-        else:
-            data_schema.update(
-                {
-                    vol.Required(CONF_SERIAL_PORT, default=serial_port_default): str,
-                    vol.Required(CONF_BAUD_RATE, default=baud_default): baud_validator,
-                    vol.Required(CONF_PARITY, default=parity_default): parity_validator,
-                    vol.Required(CONF_STOP_BITS, default=stop_bits_default): stop_bits_validator,
-                }
-            )
-
-        return vol.Schema(data_schema)
 
     @staticmethod
     def _build_unique_id(data: dict[str, Any]) -> str:
         """Generate a unique identifier for the config entry."""
-        connection_type = data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-        slave_id = data.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)
-
-        if connection_type == CONNECTION_TYPE_RTU:
-            serial_port = str(data.get(CONF_SERIAL_PORT, ""))
-            identifier = serial_port or "serial"
-            sanitized = identifier.replace(":", "-").replace("/", "_")
-            return f"{connection_type}:{sanitized}:{slave_id}"
-
-        host = str(data.get(CONF_HOST, ""))
-        port = data.get(CONF_PORT, DEFAULT_PORT)
-        unique_host = host.replace(":", "-") if host else ""
-        return f"{unique_host}:{port}:{slave_id}"
+        return _build_unique_id_impl(data)
 
     async def async_step_confirm(
         self, user_input: dict[str, Any] | None = None
@@ -582,158 +428,18 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
 
     def _prepare_entry_payload(self, cap_cls: Any) -> tuple[dict[str, Any], dict[str, Any]]:
         """Return data and options payloads for the config entry."""
-        caps_obj = self._scan_result.get("capabilities")
-        if dataclasses.is_dataclass(caps_obj) or isinstance(caps_obj, cap_cls):
-            caps_dict = _caps_to_dict(caps_obj)
-        elif isinstance(caps_obj, dict):
-            try:
-                caps_dict = _caps_to_dict(cap_cls(**caps_obj))
-            except (TypeError, ValueError):
-                caps_dict = _caps_to_dict(cap_cls())
-        else:
-            caps_dict = _caps_to_dict(cap_cls())
-
-        connection_type = self._data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-        connection_mode = self._data.get(CONF_CONNECTION_MODE)
-        normalized_type, resolved_mode = resolve_connection_settings(
-            connection_type, connection_mode, self._data.get(CONF_PORT, DEFAULT_PORT)
-        )
-
-        entry_data: dict[str, Any] = {
-            CONF_CONNECTION_TYPE: normalized_type,
-            CONF_SLAVE_ID: self._data[CONF_SLAVE_ID],
-            CONF_NAME: self._data.get(CONF_NAME, DEFAULT_NAME),
-            "capabilities": caps_dict,
-        }
-
-        if normalized_type == CONNECTION_TYPE_TCP:
-            entry_data[CONF_HOST] = self._data.get(CONF_HOST, "")
-            entry_data[CONF_PORT] = self._data.get(CONF_PORT, DEFAULT_PORT)
-            entry_data[CONF_CONNECTION_MODE] = resolved_mode
-        else:
-            entry_data[CONF_SERIAL_PORT] = self._data.get(CONF_SERIAL_PORT, "")
-            entry_data[CONF_BAUD_RATE] = self._data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE)
-            entry_data[CONF_PARITY] = self._data.get(CONF_PARITY, DEFAULT_PARITY)
-            entry_data[CONF_STOP_BITS] = self._data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS)
-            if CONF_HOST in self._data:
-                entry_data[CONF_HOST] = self._data.get(CONF_HOST, "")
-            if CONF_PORT in self._data:
-                entry_data[CONF_PORT] = self._data.get(CONF_PORT, DEFAULT_PORT)
-
-        options = {
-            CONF_DEEP_SCAN: self._data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
-            CONF_MAX_REGISTERS_PER_REQUEST: self._data.get(
-                CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
-            ),
-            CONF_ENABLE_DEVICE_SCAN: self._data.get(
-                CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN
-            ),
-            CONF_LOG_LEVEL: DEFAULT_LOG_LEVEL,
-        }
-
-        return entry_data, options
+        return _prepare_entry_payload_impl(self._data, self._scan_result, cap_cls)
 
     async def _async_show_confirmation(self, cap_cls: Any, step_id: str) -> ConfigFlowResult:
         """Render confirmation step with device details."""
-        device_name = self._device_info.get("device_name", "Unknown")
-        firmware_version = self._device_info.get("firmware", "Unknown")
-        serial_number = self._device_info.get("serial_number", "Unknown")
-
-        available_registers = self._scan_result.get("available_registers", {})
-        caps_obj = self._scan_result.get("capabilities")
-        if dataclasses.is_dataclass(caps_obj) or isinstance(caps_obj, cap_cls):
-            try:
-                caps_data = cap_cls(**_caps_to_dict(caps_obj))
-            except (TypeError, ValueError):
-                caps_data = cap_cls()
-        elif isinstance(caps_obj, dict):
-            try:
-                caps_data = cap_cls(**caps_obj)
-            except TypeError:
-                caps_data = cap_cls()
-        else:
-            caps_data = cap_cls()
-
-        register_count = self._scan_result.get(
-            "register_count",
-            sum(len(regs) for regs in available_registers.values()),
+        description_placeholders = await _build_confirmation_placeholders(
+            hass=self.hass,
+            data=self._data,
+            device_info=self._device_info,
+            scan_result=self._scan_result,
+            cap_cls=cap_cls,
+            caps_to_dict=_caps_to_dict,
         )
-
-        capabilities_list = [
-            field.name.replace("_", " ").title()
-            for field in dataclasses.fields(cap_cls)
-            if field.type in (bool, "bool") and getattr(caps_data, field.name)
-        ]
-
-        scan_success_rate = "100%" if register_count > 0 else "0%"
-
-        language = getattr(getattr(self.hass, "config", None), "language", "en")
-        translations: dict[str, str] = {}
-        try:
-            translations = await translation.async_get_translations(
-                self.hass, language, "component", [DOMAIN]
-            )
-        except (OSError, ValueError, HomeAssistantError) as err:
-            _LOGGER.debug("Translation load failed: %s", err)
-        except (TypeError, AttributeError, RuntimeError) as err:
-            _LOGGER.exception("Unexpected error loading translations: %s", err)
-
-        key = "auto_detected_note_success" if register_count > 0 else "auto_detected_note_limited"
-        auto_detected_note = translations.get(
-            f"component.{DOMAIN}.{key}",
-            "Auto-detection successful!"
-            if register_count > 0
-            else "Limited auto-detection - some registers may be missing.",
-        )
-
-        connection_type = self._data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-        connection_mode = self._data.get(CONF_CONNECTION_MODE)
-        normalized_type, resolved_mode = resolve_connection_settings(
-            connection_type, connection_mode, self._data.get(CONF_PORT, DEFAULT_PORT)
-        )
-
-        if normalized_type == CONNECTION_TYPE_RTU:
-            connection_label = self._data.get(CONF_SERIAL_PORT, "Unknown") or "Unknown"
-            host_value = self._data.get(CONF_HOST, "-")
-            port_value = str(self._data.get(CONF_PORT, DEFAULT_PORT))
-            transport_label = translations.get(
-                f"component.{DOMAIN}.connection_type_rtu_label", "Modbus RTU"
-            )
-        elif resolved_mode == CONNECTION_MODE_TCP_RTU:
-            host_value = self._data.get(CONF_HOST, "Unknown")
-            port_value = str(self._data.get(CONF_PORT, DEFAULT_PORT))
-            connection_label = f"{host_value}:{port_value}"
-            transport_label = translations.get(
-                f"component.{DOMAIN}.connection_type_tcp_rtu_label", "Modbus TCP RTU"
-            )
-        else:
-            host_value = self._data.get(CONF_HOST, "Unknown")
-            port_value = str(self._data.get(CONF_PORT, DEFAULT_PORT))
-            connection_label = f"{host_value}:{port_value}"
-            transport_label = translations.get(
-                f"component.{DOMAIN}.connection_mode_auto_label", "Modbus TCP (Auto)"
-            )
-            if resolved_mode == CONNECTION_MODE_TCP:
-                transport_label = translations.get(
-                    f"component.{DOMAIN}.connection_type_tcp_label", "Modbus TCP"
-                )
-
-        description_placeholders = {
-            "host": host_value,
-            "port": port_value,
-            "endpoint": connection_label,
-            "transport": (resolved_mode or normalized_type).upper(),
-            "transport_label": transport_label,
-            "slave_id": str(self._data[CONF_SLAVE_ID]),
-            "device_name": device_name,
-            "firmware_version": firmware_version,
-            "serial_number": serial_number,
-            "register_count": str(register_count),
-            "scan_success_rate": scan_success_rate,
-            "capabilities_count": str(len(capabilities_list)),
-            "capabilities_list": ", ".join(capabilities_list) if capabilities_list else "None",
-            "auto_detected_note": auto_detected_note,
-        }
 
         return self.async_show_form(
             step_id=step_id,
@@ -950,100 +656,9 @@ class OptionsFlow(config_entries.OptionsFlow):
 
         entry_data = getattr(self.config_entry, "data", {}) or {}
         entry_options = getattr(self.config_entry, "options", {}) or {}
-
-        current_scan_interval = entry_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-        current_timeout = entry_options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
-        current_retry = entry_options.get(CONF_RETRY, DEFAULT_RETRY)
-        force_full = entry_options.get(CONF_FORCE_FULL_REGISTER_LIST, False)
-        current_scan_uart = entry_options.get(CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS)
-        current_skip_missing = entry_options.get(
-            CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
-        )
-        current_enable_scan = entry_options.get(CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN)
-        current_airflow_unit = entry_options.get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT)
-        current_deep_scan = entry_options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)
-        current_max_registers_per_request = entry_options.get(
-            CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
-        )
-        current_safe_scan = entry_options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN)
-        current_log_level = entry_options.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL)
-
-        transport = entry_data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-        connection_mode = entry_options.get(
-            CONF_CONNECTION_MODE, entry_data.get(CONF_CONNECTION_MODE)
-        )
-        normalized_type, resolved_mode = resolve_connection_settings(
-            transport, connection_mode, entry_data.get(CONF_PORT, DEFAULT_PORT)
-        )
-
-        if normalized_type == CONNECTION_TYPE_RTU:
-            transport_label = "Modbus RTU"
-            serial_port = entry_data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT)
-            baud = entry_data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE)
-            parity = entry_data.get(CONF_PARITY, DEFAULT_PARITY)
-            stop_bits = entry_data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS)
-            transport_details = (
-                " ("
-                f"port: {serial_port or 'n/a'}, baud: {baud}, parity: {parity}, "
-                f"stop bits: {stop_bits})"
-            )
-        elif resolved_mode == CONNECTION_MODE_TCP_RTU:
-            transport_label = "Modbus TCP RTU"
-            transport_details = ""
-        else:
-            transport_label = "Modbus TCP"
-            if resolved_mode == CONNECTION_MODE_AUTO:
-                transport_label = "Modbus TCP (Auto)"
-            transport_details = ""
-
-        data_schema = vol.Schema(
-            {
-                vol.Optional(CONF_SCAN_INTERVAL, default=current_scan_interval): vol.All(
-                    vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL, max=300)
-                ),
-                vol.Optional(CONF_TIMEOUT, default=current_timeout): vol.All(
-                    vol.Coerce(int), vol.Range(min=5, max=60)
-                ),
-                vol.Optional(CONF_RETRY, default=current_retry): vol.All(
-                    vol.Coerce(int), vol.Range(min=1, max=5)
-                ),
-                vol.Optional(CONF_FORCE_FULL_REGISTER_LIST, default=force_full): bool,
-                vol.Optional(CONF_ENABLE_DEVICE_SCAN, default=current_enable_scan): bool,
-                vol.Optional(
-                    CONF_LOG_LEVEL,
-                    default=current_log_level,
-                    description={
-                        "selector": {
-                            "select": {
-                                "options": [
-                                    {"value": level, "label": f"{DOMAIN}.log_level_{level}"}
-                                    for level in ("debug", "info", "warning", "error")
-                                ]
-                            }
-                        }
-                    },
-                ): vol.In({"debug", "info", "warning", "error"}),
-                vol.Optional(CONF_SCAN_UART_SETTINGS, default=current_scan_uart): bool,
-                vol.Optional(CONF_SKIP_MISSING_REGISTERS, default=current_skip_missing): bool,
-                vol.Optional(
-                    CONF_SAFE_SCAN, default=current_safe_scan, description={"advanced": True}
-                ): bool,
-                vol.Optional(CONF_AIRFLOW_UNIT, default=current_airflow_unit): vol.In(
-                    [AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE]
-                ),
-                vol.Optional(
-                    CONF_DEEP_SCAN, default=current_deep_scan, description={"advanced": True}
-                ): bool,
-                vol.Optional(
-                    CONF_MAX_REGISTERS_PER_REQUEST,
-                    default=current_max_registers_per_request,
-                    description={
-                        "advanced": True,
-                        "selector": {"number": {"min": 1, "max": MAX_BATCH_REGISTERS, "step": 1}},
-                    },
-                ): int,
-            }
-        )
+        values = _build_options_defaults(entry_data, entry_options)
+        transport_label, transport_details = _build_transport_description(values)
+        data_schema = _build_options_schema(values)
 
         # IMPORTANT: do NOT expose CONF_CONNECTION_MODE here (prevents duplicate GUI fields)
 
@@ -1051,20 +666,9 @@ class OptionsFlow(config_entries.OptionsFlow):
             step_id="init",
             data_schema=data_schema,
             errors=errors,
-            description_placeholders={
-                "current_scan_interval": str(current_scan_interval),
-                "current_timeout": str(current_timeout),
-                "current_retry": str(current_retry),
-                "force_full_enabled": "Yes" if force_full else "No",
-                "scan_uart_enabled": "Yes" if current_scan_uart else "No",
-                "skip_missing_enabled": "Yes" if current_skip_missing else "No",
-                "device_scan_enabled": "Yes" if current_enable_scan else "No",
-                "current_airflow_unit": current_airflow_unit,
-                "deep_scan_enabled": "Yes" if current_deep_scan else "No",
-                "current_max_registers_per_request": str(current_max_registers_per_request),
-                "safe_scan_enabled": "Yes" if current_safe_scan else "No",
-                "current_log_level": current_log_level,
-                "transport_label": transport_label,
-                "transport_details": transport_details,
-            },
+            description_placeholders=_build_options_description_placeholders(
+                values,
+                transport_label=transport_label,
+                transport_details=transport_details,
+            ),
         )

@@ -225,6 +225,115 @@ def _calculate_backoff_delay(
     return float(max(delay, 0.0))
 
 
+def _normalize_positional_and_keyword_args(
+    signature: inspect.Signature | None,
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> tuple[list[Any], dict[str, inspect.Parameter]]:
+    """Move positional values targeting keyword-only params into ``kwargs``."""
+    params = signature.parameters if signature is not None else {}
+    positional: list[Any] = []
+    if signature is None:
+        return list(args), params
+
+    param_iter = iter(params.values())
+    for arg in args:
+        try:
+            param = next(param_iter)
+        except StopIteration:
+            positional.append(arg)
+            continue
+
+        if param.kind is inspect.Parameter.KEYWORD_ONLY:
+            kwargs[param.name] = arg
+        else:
+            positional.append(arg)
+    return positional, params
+
+
+def _resolve_slave_kwarg(
+    func: Callable[..., Awaitable[Any]],
+    params: dict[str, inspect.Parameter],
+    signature: inspect.Signature | None,
+) -> str:
+    """Return cached keyword variant supported by Modbus client callable."""
+    kwarg = _KWARG_CACHE.get(func)
+    if kwarg is not None:
+        return kwarg
+
+    if "device_id" in params and params["device_id"].kind is not inspect.Parameter.POSITIONAL_ONLY:
+        kwarg = "device_id"
+    elif "slave" in params and params["slave"].kind is not inspect.Parameter.POSITIONAL_ONLY:
+        kwarg = "slave"
+    elif "unit" in params and params["unit"].kind is not inspect.Parameter.POSITIONAL_ONLY:
+        kwarg = "unit"
+    else:
+        kwarg = "slave" if signature is None else ""
+
+    _KWARG_CACHE[func] = kwarg
+    return kwarg
+
+
+async def _invoke_with_slave_kwarg(
+    func: Callable[..., Awaitable[Any]],
+    positional: list[Any],
+    kwargs: dict[str, Any],
+    kwarg: str,
+    slave_id: int,
+) -> Any:
+    """Invoke wrapped callable using detected slave keyword convention."""
+    if kwarg == "device_id":
+        return await async_maybe_await(func(*positional, device_id=slave_id, **kwargs))
+    if kwarg == "slave":
+        return await async_maybe_await(func(*positional, slave=slave_id, **kwargs))
+    if kwarg == "unit":
+        return await async_maybe_await(func(*positional, unit=slave_id, **kwargs))
+    return await async_maybe_await(func(*positional, **kwargs))
+
+
+def _log_modbus_request(
+    *,
+    func_name: str,
+    slave_id: int,
+    positional: list[Any],
+    kwargs: dict[str, Any],
+) -> None:
+    """Emit request diagnostics at debug level."""
+    request_frame = _build_request_frame(func_name, slave_id, positional, kwargs)
+    if request_frame:
+        _LOGGER.debug("Modbus request: %s", _mask_frame(request_frame))
+        return
+    if _LOGGER.isEnabledFor(logging.DEBUG):
+        _LOGGER.debug(
+            "Sending %s to slave %s: args=%s kwargs=%s", func_name, slave_id, positional, kwargs
+        )
+
+
+def _log_modbus_response(func_name: str, response: Any) -> None:
+    """Emit response diagnostics at debug level."""
+    if _LOGGER.isEnabledFor(logging.DEBUG):
+        try:
+            encoded = response.encode() if hasattr(response, "encode") else b""
+        except (AttributeError, ValueError, TypeError, UnicodeError) as err:
+            _LOGGER.debug("Failed to encode Modbus response: %s", err)
+            encoded = b""
+        except (OSError, RuntimeError) as err:  # pragma: no cover - unexpected
+            _LOGGER.exception("Unexpected error encoding Modbus response: %s", err)
+            encoded = b""
+        if encoded:
+            _LOGGER.debug("Modbus response: %s", _mask_frame(encoded))
+        else:
+            _LOGGER.debug("Received from %s: %s", func_name, response)
+        return
+
+    try:
+        encoded = response.encode() if hasattr(response, "encode") else b""
+    except (AttributeError, OSError, RuntimeError, TypeError, ValueError):
+        encoded = b""
+    if encoded:
+        _LOGGER.debug("Modbus response: %s", _mask_frame(encoded))
+
+
 async def _call_modbus(
     func: Callable[..., Awaitable[Any]],
     slave_id: int,
@@ -248,45 +357,8 @@ async def _call_modbus(
     # Fetch and cache the function signature
     signature = _get_signature(func)
 
-    # Map positional arguments to keyword-only parameters so that any values
-    # intended for keyword-only parameters (e.g. ``count``) are moved into
-    # ``kwargs``.
-    params = signature.parameters if signature is not None else {}
-    positional: list[Any] = []
-    if signature is not None:
-        param_iter = iter(params.values())
-        for arg in args:
-            try:
-                param = next(param_iter)
-            except StopIteration:
-                positional.append(arg)
-                continue
-
-            if param.kind is inspect.Parameter.KEYWORD_ONLY:
-                kwargs[param.name] = arg
-            else:
-                positional.append(arg)
-    else:
-        positional = list(args)
-
-    kwarg = _KWARG_CACHE.get(func)
-    if kwarg is None:
-        # Determine which keyword the function accepts
-        if (
-            "device_id" in params
-            and params["device_id"].kind is not inspect.Parameter.POSITIONAL_ONLY
-        ):
-            kwarg = "device_id"
-        elif "slave" in params and params["slave"].kind is not inspect.Parameter.POSITIONAL_ONLY:
-            kwarg = "slave"
-        elif "unit" in params and params["unit"].kind is not inspect.Parameter.POSITIONAL_ONLY:
-            kwarg = "unit"
-        else:
-            # Default to "slave" when signature introspection failed — matches
-            # pymodbus 3.x convention. Pass no kwarg when signature is available
-            # but neither device_id/slave is recognized.
-            kwarg = "slave" if signature is None else ""
-        _KWARG_CACHE[func] = kwarg
+    positional, params = _normalize_positional_and_keyword_args(signature, args, kwargs)
+    kwarg = _resolve_slave_kwarg(func, params, signature)
 
     func_name = getattr(func, "__name__", repr(func))
     batch_size = kwargs.get("count") or len(kwargs.get("values", [])) or 1
@@ -320,27 +392,15 @@ async def _call_modbus(
         max_attempts,
     )
 
-    if _LOGGER.isEnabledFor(logging.DEBUG):
-        request_frame = _build_request_frame(func_name, slave_id, positional, kwargs)
-        if request_frame:
-            _LOGGER.debug("Modbus request: %s", _mask_frame(request_frame))
-        else:
-            _LOGGER.debug(
-                "Sending %s to slave %s: args=%s kwargs=%s", func_name, slave_id, positional, kwargs
-            )
-    else:
-        request_frame = _build_request_frame(func_name, slave_id, positional, kwargs)
-        if request_frame:
-            _LOGGER.debug("Modbus request: %s", _mask_frame(request_frame))
+    _log_modbus_request(
+        func_name=func_name,
+        slave_id=slave_id,
+        positional=positional,
+        kwargs=kwargs,
+    )
 
     async def _invoke() -> Any:
-        if kwarg == "device_id":
-            return await async_maybe_await(func(*positional, device_id=slave_id, **kwargs))
-        if kwarg == "slave":
-            return await async_maybe_await(func(*positional, slave=slave_id, **kwargs))
-        if kwarg == "unit":
-            return await async_maybe_await(func(*positional, unit=slave_id, **kwargs))
-        return await async_maybe_await(func(*positional, **kwargs))
+        return await _invoke_with_slave_kwarg(func, positional, kwargs, kwarg, slave_id)
 
     try:
         if timeout is not None and _should_apply_external_timeout(func):
@@ -367,26 +427,7 @@ async def _call_modbus(
             _LOGGER.debug("Call to %s failed on attempt %s/%s", func_name, attempt, max_attempts)
         raise
 
-    if _LOGGER.isEnabledFor(logging.DEBUG):
-        try:
-            encoded = response.encode() if hasattr(response, "encode") else b""
-        except (AttributeError, ValueError, TypeError, UnicodeError) as err:
-            _LOGGER.debug("Failed to encode Modbus response: %s", err)
-            encoded = b""
-        except (OSError, RuntimeError) as err:  # pragma: no cover - unexpected
-            _LOGGER.exception("Unexpected error encoding Modbus response: %s", err)
-            encoded = b""
-        if encoded:
-            _LOGGER.debug("Modbus response: %s", _mask_frame(encoded))
-        else:
-            _LOGGER.debug("Received from %s: %s", func_name, response)
-    else:
-        try:
-            encoded = response.encode() if hasattr(response, "encode") else b""
-        except (AttributeError, OSError, RuntimeError, TypeError, ValueError):
-            encoded = b""
-        if encoded:
-            _LOGGER.debug("Modbus response: %s", _mask_frame(encoded))
+    _log_modbus_response(func_name, response)
     return response
 
 

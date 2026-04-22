@@ -188,3 +188,22 @@ Po wdrożeniu planu:
 - spójniejsze zachowanie na błędach transportu,
 - szybszy onboarding i krótszy czas dostarczenia poprawek.
 
+## 9) Status realizacji zaleceń (aktualizacja)
+
+Wdrożone elementy z priorytetu P1:
+
+1. **Wspólna polityka błędów/retry/backoff**
+   - Dodano współdzieloną warstwę `error_policy` używaną przez runtime config flow i transport Modbus.
+2. **Refaktor „long methods first”**
+   - Rozbito `_call_modbus` na mniejsze funkcje pomocnicze (normalizacja argumentów, wybór kwarg `slave/device_id/unit`, logowanie request/response, wywołanie).
+3. **Single source of truth dla usług**
+   - Rejestracja i unload usług działają na wspólnej specyfikacji grup usług.
+4. **Lazy loading definicji rejestrów**
+   - Definicje rejestrów są ładowane przez cache (`lru_cache`) na żądanie, zamiast przy imporcie.
+
+Weryfikacja:
+- testy jednostkowe dla zmodyfikowanych ścieżek (`modbus_helpers`, `modbus_transport`, `config_flow_helpers`, `services`, `coordinator_coverage`) przechodzą,
+- lint (`ruff`) przechodzi dla zmienionych plików.
+
+Elementy P2 wdrożone częściowo:
+- dodano kontrakty `Protocol` dla warstwy usług/skanera (`ScannerFactory`, `ScannerProtocol` i typy callable zależności), co upraszcza mocking i stabilizuje interfejsy.
