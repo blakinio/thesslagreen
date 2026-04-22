@@ -11,6 +11,7 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.service import async_extract_entity_ids
 from homeassistant.util import dt as dt_util
 
+from . import services_schema as _services_schema
 from .const import DOMAIN, SPECIAL_FUNCTION_MAP
 from .scanner import ThesslaGreenDeviceScanner
 from .services_handlers import (
@@ -25,10 +26,9 @@ from .services_helpers import clamp_airflow_rate as _clamp_airflow_rate_impl
 from .services_helpers import normalize_option as _normalize_option_impl
 from .services_helpers import write_register as _write_register_impl
 from .services_schema import (
-    SET_AIRFLOW_SCHEDULE_SCHEMA,
-    SET_LOG_LEVEL_SCHEMA,
-    SET_SPECIAL_MODE_SCHEMA,
     validate_bypass_temperature_range as _validate_bypass_temperature_range_impl,
+)
+from .services_schema import (
     validate_gwc_temperature_range as _validate_gwc_temperature_range_impl,
 )
 from .services_targets import (
@@ -43,6 +43,11 @@ if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+# Re-export schema constants for compatibility with tests/tooling.
+SET_SPECIAL_MODE_SCHEMA = _services_schema.SET_SPECIAL_MODE_SCHEMA
+SET_AIRFLOW_SCHEDULE_SCHEMA = _services_schema.SET_AIRFLOW_SCHEDULE_SCHEMA
+SET_LOG_LEVEL_SCHEMA = _services_schema.SET_LOG_LEVEL_SCHEMA
 
 
 class _LogLevelManager:

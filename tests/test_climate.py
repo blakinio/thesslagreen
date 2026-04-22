@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, call
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -10,14 +10,9 @@ from tests.platform_stubs import install_climate_stubs
 
 install_climate_stubs()
 
-from homeassistant import const
-from homeassistant.components import climate as climate_mod
-
-
 # ---------------------------------------------------------------------------
 # Actual imports after stubbing
 # ---------------------------------------------------------------------------
-
 from custom_components.thessla_green_modbus.climate import (
     HVAC_MODE_MAP,
     HVAC_MODE_REVERSE_MAP,
@@ -30,6 +25,8 @@ from custom_components.thessla_green_modbus.coordinator import (
 from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
+from homeassistant import const
+from homeassistant.components import climate as climate_mod
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 from custom_components.thessla_green_modbus.const import DOMAIN

@@ -1133,8 +1133,8 @@ async def test_async_write_registers_too_many_for_single_request():
 
 def test_process_register_value_decoded_equals_sensor_unavailable():
     """When decode() returns SENSOR_UNAVAILABLE, the function returns SENSOR_UNAVAILABLE (lines 1831-1838)."""
-    from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
     from custom_components.thessla_green_modbus import _coordinator_register_processing as rp
+    from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
     coord = _make_coordinator()
     mock_def = MagicMock()
     mock_def.is_temperature.return_value = False

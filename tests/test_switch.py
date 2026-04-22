@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
+
 from tests.platform_stubs import install_switch_stubs
 
 install_switch_stubs()

@@ -142,9 +142,11 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
     async def sync_time(call: ServiceCall) -> None:
         from datetime import datetime as _dt
 
+        def _to_bcd(value: int) -> int:
+            return ((value // 10) << 4) | (value % 10)
+
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
             now = _dt.now()
-            _to_bcd = lambda val: ((val // 10) << 4) | (val % 10)
             reg_yymm = (_to_bcd(now.year % 100) << 8) | _to_bcd(now.month)
             reg_ddtt = (_to_bcd(now.day) << 8) | _to_bcd(now.weekday())
             reg_ggmm = (_to_bcd(now.hour) << 8) | _to_bcd(now.minute)

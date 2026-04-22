@@ -9,9 +9,9 @@ from .services_handlers_schedule import register_schedule_services
 
 __all__ = [
     "ServiceHandlerDeps",
-    "register_mode_services",
-    "register_schedule_services",
-    "register_parameter_services",
-    "register_maintenance_services",
     "register_data_services",
+    "register_maintenance_services",
+    "register_mode_services",
+    "register_parameter_services",
+    "register_schedule_services",
 ]

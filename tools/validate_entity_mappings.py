@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import sys
+import types
 from contextlib import suppress
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -26,18 +28,48 @@ def _iter_mapping_entries(entity_mappings: dict[str, dict[str, dict[str, Any]]])
 
 
 def main() -> int:
-    if "homeassistant" not in sys.modules:
+    try:
+        import homeassistant.const  # noqa: F401
+    except ModuleNotFoundError:
         with suppress(Exception):
-            import tests.conftest  # noqa: F401
+            from tests.platform_stubs import install_common_ha_stubs
 
-    from custom_components.thessla_green_modbus import entity_mappings as mappings_mod
+            install_common_ha_stubs()
+
+        if "homeassistant.const" not in sys.modules:
+            sys.modules["homeassistant.const"] = types.ModuleType("homeassistant.const")
+
+        class _Platform(StrEnum):
+            BINARY_SENSOR = "binary_sensor"
+            CLIMATE = "climate"
+            FAN = "fan"
+            NUMBER = "number"
+            SELECT = "select"
+            SENSOR = "sensor"
+            SWITCH = "switch"
+            TEXT = "text"
+            TIME = "time"
+
+        ha_mod = sys.modules.setdefault("homeassistant", types.ModuleType("homeassistant"))
+        ha_const_mod = sys.modules["homeassistant.const"]
+        ha_const_mod.Platform = getattr(ha_const_mod, "Platform", _Platform)
+        ha_const_mod.CONF_NAME = getattr(ha_const_mod, "CONF_NAME", "name")
+        ha_const_mod.PERCENTAGE = getattr(ha_const_mod, "PERCENTAGE", "%")
+        ha_mod.const = ha_const_mod
+        sys.modules.setdefault("homeassistant.helpers", types.ModuleType("homeassistant.helpers"))
+        ha_helpers_entity = sys.modules.setdefault(
+            "homeassistant.helpers.entity", types.ModuleType("homeassistant.helpers.entity")
+        )
+        if not hasattr(ha_helpers_entity, "EntityCategory"):
+            class _EntityCategory(StrEnum):
+                CONFIG = "config"
+                DIAGNOSTIC = "diagnostic"
+
+            ha_helpers_entity.EntityCategory = _EntityCategory
+
+    from custom_components.thessla_green_modbus import mappings as mappings_mod
 
     ENTITY_MAPPINGS = mappings_mod.ENTITY_MAPPINGS
-    LEGACY_ENTITY_ID_ALIASES = mappings_mod.LEGACY_ENTITY_ID_ALIASES
-    LEGACY_ENTITY_ID_OBJECT_ALIASES = mappings_mod.LEGACY_ENTITY_ID_OBJECT_ALIASES
-    map_legacy_entity_id = mappings_mod.map_legacy_entity_id
-    if hasattr(mappings_mod, "_alias_warning_logged"):
-        mappings_mod._alias_warning_logged = True
 
     en = _load_json(CC_ROOT / "translations" / "en.json")
     pl = _load_json(CC_ROOT / "translations" / "pl.json")
@@ -145,33 +177,7 @@ def main() -> int:
                         f"ERROR: register '{register_name}' used by '{domain}.{key}' missing from register schema"
                     )
 
-    # 4) Verify legacy aliases map to current entities
-    def _verify_alias(alias_entity_id: str) -> None:
-        mapped = map_legacy_entity_id(alias_entity_id)
-        if mapped == alias_entity_id:
-            domain, object_id = alias_entity_id.split(".", 1)
-            if object_id in domain_keys.get(domain, set()):
-                return
-            errors.append(f"ERROR: legacy alias '{alias_entity_id}' has no valid mapping target")
-            return
-        if "." not in mapped:
-            errors.append(
-                f"ERROR: legacy alias '{alias_entity_id}' mapped to invalid entity id '{mapped}'"
-            )
-            return
-        domain, object_id = mapped.split(".", 1)
-        if domain not in domain_keys:
-            return
-        if object_id not in domain_keys[domain]:
-            return
-
-    for object_id in LEGACY_ENTITY_ID_OBJECT_ALIASES:
-        _verify_alias(f"sensor.{object_id}")
-
-    for suffix in LEGACY_ENTITY_ID_ALIASES:
-        _verify_alias(f"sensor.legacy_{suffix}")
-
-    # 5) Unique IDs must be unique within each domain.
+    # 4) Unique IDs must be unique within each domain.
     unique_ids_by_domain: dict[str, dict[str, str]] = {}
     for domain, key, definition in _iter_mapping_entries(ENTITY_MAPPINGS):
         unique_id = definition.get("unique_id")

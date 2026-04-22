@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
 from tests.platform_stubs import (
     install_binary_sensor_stubs,
     install_number_stubs,

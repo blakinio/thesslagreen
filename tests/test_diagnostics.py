@@ -6,7 +6,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from custom_components.thessla_green_modbus.diagnostics import (
     _redact_sensitive_data,
     async_get_config_entry_diagnostics,

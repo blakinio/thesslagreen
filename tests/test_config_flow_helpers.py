@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 import voluptuous as vol
+
 from tests.platform_stubs import install_network_validation_stub, install_registers_stub
 
 install_network_validation_stub()

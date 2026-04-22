@@ -16,9 +16,9 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 try:
+    from homeassistant.components import climate as ha_climate
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers import device_registry as dr
-    from homeassistant.components import climate as ha_climate
     from pytest_homeassistant_custom_component.common import MockConfigEntry
 
     _HA_AVAILABLE = True

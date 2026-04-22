@@ -14,9 +14,12 @@ if _sys.version_info < (3, 13):  # noqa: UP036
 import logging
 from datetime import timedelta
 from functools import partial
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from homeassistant.const import CONF_NAME
+try:
+    from homeassistant.const import CONF_NAME
+except ModuleNotFoundError:  # pragma: no cover - allows local tooling without HA installed
+    CONF_NAME = "name"
 
 if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.config_entries import ConfigEntry
@@ -24,28 +27,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from .coordinator import ThesslaGreenModbusCoordinator
 
-from ._migrations import async_migrate_entry as _async_migrate_entry
-from ._setup import (
-    _apply_log_level as _setup_apply_log_level,
-)
-from ._setup import (
-    _get_platforms as _setup_get_platforms,
-)
-from ._setup import (
-    async_create_coordinator as _async_create_coordinator,
-)
-from ._setup import (
-    async_setup_mappings as _async_setup_mappings,
-)
-from ._setup import (
-    async_migrate_entity_unique_ids as _async_migrate_entity_unique_ids,
-)
-from ._setup import (
-    async_setup_platforms as _async_setup_platforms,
-)
-from ._setup import (
-    async_start_coordinator as _async_start_coordinator,
-)
 from .const import (
     CONF_LOG_LEVEL,
     CONF_SAFE_SCAN,
@@ -64,8 +45,16 @@ if TYPE_CHECKING:  # pragma: no cover
     ThesslaGreenConfigEntry = ConfigEntry[ThesslaGreenModbusCoordinator]
 
 
-_get_platforms = partial(_setup_get_platforms, PLATFORM_DOMAINS)
-_apply_log_level = _setup_apply_log_level
+def _get_platforms() -> list[Any]:
+    from ._setup import _get_platforms as _setup_get_platforms
+
+    return partial(_setup_get_platforms, PLATFORM_DOMAINS)()
+
+
+def _apply_log_level(log_level: str) -> None:
+    level = getattr(logging, log_level.upper(), logging.INFO)
+    base_logger = logging.getLogger(__package__ or DOMAIN)
+    base_logger.setLevel(level)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -78,15 +67,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "Setting up ThesslaGreen Modbus integration for %s",
         getattr(entry, "title", entry.data.get(CONF_NAME, DEFAULT_NAME)),
     )
+    from ._setup import (
+        async_create_coordinator,
+        async_migrate_entity_unique_ids,
+        async_setup_mappings,
+        async_setup_platforms,
+        async_start_coordinator,
+    )
 
-    coordinator = await _async_create_coordinator(hass, entry)
-    if not await _async_start_coordinator(hass, entry, coordinator):
+    coordinator = await async_create_coordinator(hass, entry)
+    if not await async_start_coordinator(hass, entry, coordinator):
         return False
     entry.runtime_data = coordinator
 
-    await _async_setup_mappings(hass)
-    await _async_migrate_entity_unique_ids(hass, entry, coordinator)
-    await _async_setup_platforms(hass, entry, PLATFORM_DOMAINS)
+    await async_setup_mappings(hass)
+    await async_migrate_entity_unique_ids(hass, entry, coordinator)
+    await async_setup_platforms(hass, entry, PLATFORM_DOMAINS)
 
     if len(hass.config_entries.async_entries(DOMAIN)) == 1:
         from .services import async_setup_services
@@ -160,4 +156,6 @@ async def async_migrate_entry(
     hass: HomeAssistant, config_entry: ConfigEntry
 ) -> bool:
     """Migrate old entry."""
+    from ._migrations import async_migrate_entry as _async_migrate_entry
+
     return await _async_migrate_entry(hass, config_entry)

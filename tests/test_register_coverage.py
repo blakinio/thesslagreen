@@ -5,8 +5,9 @@ import json
 import re
 from pathlib import Path
 
-from tests.platform_stubs import install_common_ha_stubs
 from custom_components.thessla_green_modbus.utils import _to_snake_case
+
+from tests.platform_stubs import install_common_ha_stubs
 
 INTENTIONAL_OMISSIONS = {
     "serial_number_2",

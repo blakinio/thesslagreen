@@ -8,7 +8,11 @@ from typing import Any
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from .services_handler_deps import ServiceHandlerDeps
-from .services_schema import REFRESH_DEVICE_DATA_SCHEMA, SCAN_ALL_REGISTERS_SCHEMA, SET_LOG_LEVEL_SCHEMA
+from .services_schema import (
+    REFRESH_DEVICE_DATA_SCHEMA,
+    SCAN_ALL_REGISTERS_SCHEMA,
+    SET_LOG_LEVEL_SCHEMA,
+)
 
 
 def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:

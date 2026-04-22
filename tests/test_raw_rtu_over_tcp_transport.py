@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
 from custom_components.thessla_green_modbus.modbus_transport import (
     RawRtuOverTcpTransport,
     _crc16,
@@ -71,3 +72,49 @@ async def test_raw_rtu_over_tcp_reads_registers(monkeypatch):
 
     assert response.registers == [0x002A, 0x002B]
     assert bytes(writer.buffer).hex() == "0a0300100002c4b5"
+
+
+@pytest.mark.asyncio
+async def test_raw_rtu_over_tcp_rejects_mismatched_byte_count(monkeypatch):
+    reader = asyncio.StreamReader()
+    reader.feed_data(bytes.fromhex("0a0302002a9c5a"))
+    reader.feed_eof()
+    writer = DummyWriter()
+
+    async def open_connection(_host: str, _port: int):
+        return reader, writer
+
+    monkeypatch.setattr(asyncio, "open_connection", open_connection)
+
+    transport = RawRtuOverTcpTransport(
+        host="127.0.0.1",
+        port=502,
+        max_retries=1,
+        base_backoff=0.0,
+        max_backoff=0.0,
+        timeout=1.0,
+    )
+
+    with pytest.raises(ModbusIOException, match="Invalid byte count"):
+        await transport.read_holding_registers(0x0A, 0x0010, count=2)
+
+
+@pytest.mark.asyncio
+async def test_raw_rtu_over_tcp_rejects_invalid_quantity_before_send():
+    transport = RawRtuOverTcpTransport(
+        host="127.0.0.1",
+        port=502,
+        max_retries=1,
+        base_backoff=0.0,
+        max_backoff=0.0,
+        timeout=1.0,
+    )
+
+    with pytest.raises(ModbusIOException, match="Invalid read count=0"):
+        await transport.read_holding_registers(0x0A, 0x0010, count=0)
+
+    with pytest.raises(ModbusIOException, match="Invalid write quantity=124"):
+        await transport.write_registers(0x0A, 0x0010, values=[1] * 124)
+
+    with pytest.raises(ModbusIOException, match="Invalid slave_id=0"):
+        await transport.write_register(0, 0x0010, value=1)

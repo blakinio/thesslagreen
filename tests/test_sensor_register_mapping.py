@@ -1,6 +1,7 @@
 """Validate SENSOR_DEFINITIONS register mapping."""
 
 import pytest
+
 from tests.platform_stubs import install_common_ha_stubs
 
 install_common_ha_stubs()

@@ -20,6 +20,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from tests.platform_stubs import (
     install_binary_sensor_stubs,
     install_fan_stubs,
