@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import socket
 
+from .error_policy import should_log_timeout_traceback as _should_log_timeout_traceback_impl
+
 
 def classify_os_error(exc: OSError) -> str:
     """Classify network-related OS errors to config-flow reason keys."""
@@ -16,4 +18,4 @@ def classify_os_error(exc: OSError) -> str:
 
 def should_log_timeout_traceback(exc: BaseException) -> bool:
     """Return whether timeout traceback should be logged for this error."""
-    return "modbus request cancelled" not in str(exc).lower()
+    return _should_log_timeout_traceback_impl(exc)

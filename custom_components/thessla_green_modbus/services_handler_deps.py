@@ -4,7 +4,16 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+
+from .protocols import (
+    ClampAirflowRate,
+    CreateLogLevelManager,
+    DateTimeNow,
+    IterTargetCoordinators,
+    NormalizeOption,
+    ScannerFactory,
+    WriteRegister,
+)
 
 
 @dataclass(slots=True)
@@ -16,10 +25,10 @@ class ServiceHandlerDeps:
     special_function_map: dict[str, int]
     day_to_device_key: dict[str, str]
     air_quality_register_map: dict[str, str]
-    iter_target_coordinators: Any
-    normalize_option: Any
-    clamp_airflow_rate: Any
-    write_register: Any
-    create_log_level_manager: Any
-    dt_now: Any
-    scanner_create: Any
+    iter_target_coordinators: IterTargetCoordinators
+    normalize_option: NormalizeOption
+    clamp_airflow_rate: ClampAirflowRate
+    write_register: WriteRegister
+    create_log_level_manager: CreateLogLevelManager
+    dt_now: DateTimeNow
+    scanner_create: ScannerFactory

@@ -7,7 +7,6 @@ import inspect
 import logging
 import re
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, cast
 
@@ -58,7 +57,6 @@ from .const import (
     UNKNOWN_MODEL,
     input_registers,
 )
-from .coordinator_config import coordinator_config_from_entry as _config_from_entry_impl
 from .coordinator_config import normalize_scan_interval as _normalize_scan_interval_impl
 from .coordinator_diagnostics import (
     device_name as _device_name_impl,
@@ -75,6 +73,7 @@ from .coordinator_diagnostics import (
 from .coordinator_diagnostics import (
     status_overview as _status_overview_impl,
 )
+from .coordinator_models import CoordinatorConfig
 from .coordinator_runtime import normalize_backoff as _normalize_backoff_impl
 from .coordinator_runtime import parse_backoff_jitter as _parse_backoff_jitter_impl
 from .coordinator_state import (
@@ -91,7 +90,8 @@ from .modbus_transport import (
     RtuModbusTransport,
     TcpModbusTransport,
 )
-from .registers.loader import RegisterDef, get_all_registers
+from .register_defs_cache import get_register_definitions
+from .registers.loader import RegisterDef
 from .scanner import (
     DeviceCapabilities,
     ThesslaGreenDeviceScanner,
@@ -118,48 +118,11 @@ def _utcnow() -> datetime:
 
 _ORIGINAL_ASYNC_MODBUS_TCP_CLIENT = AsyncModbusTcpClient
 
-REGISTER_DEFS = {r.name: r for r in get_all_registers()}
-
-
 def get_register_definition(name: str) -> RegisterDef:
-    return REGISTER_DEFS[name]
+    return get_register_definitions()[name]
 
 
 _LOGGER = logging.getLogger(__name__)
-
-
-@dataclass(slots=True)
-class CoordinatorConfig:
-    """Normalized coordinator configuration payload."""
-
-    host: str
-    port: int
-    slave_id: int
-    name: str = DEFAULT_NAME
-    scan_interval: timedelta | int = DEFAULT_SCAN_INTERVAL
-    timeout: int = 10
-    retry: int = 3
-    backoff: float = DEFAULT_BACKOFF
-    backoff_jitter: float | tuple[float, float] | None = DEFAULT_BACKOFF_JITTER
-    force_full_register_list: bool = False
-    scan_uart_settings: bool = DEFAULT_SCAN_UART_SETTINGS
-    deep_scan: bool = False
-    safe_scan: bool = False
-    max_registers_per_request: int = DEFAULT_MAX_REGISTERS_PER_REQUEST
-    skip_missing_registers: bool = False
-    connection_type: str = DEFAULT_CONNECTION_TYPE
-    connection_mode: str | None = None
-    serial_port: str = DEFAULT_SERIAL_PORT
-    baud_rate: int = DEFAULT_BAUD_RATE
-    parity: str = DEFAULT_PARITY
-    stop_bits: int = DEFAULT_STOP_BITS
-
-    @classmethod
-    def from_entry(cls, entry: ConfigEntry) -> CoordinatorConfig:
-        """Build coordinator config from a Home Assistant config entry."""
-        return _config_from_entry_impl(entry, cls)
-
-
 
 class ThesslaGreenModbusCoordinator(
     _ModbusIOMixin,

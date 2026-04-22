@@ -19,9 +19,9 @@ else:  # pragma: no cover
     SERIAL_IMPORT_ERROR = None
 
 from .const import CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU
+from .error_policy import next_backoff, to_log_message
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from .modbus_helpers import (
-    _calculate_backoff_delay,
     _call_modbus,
     async_maybe_await_close,
     get_rtu_framer,
@@ -130,7 +130,7 @@ class BaseModbusTransport(ABC):
                 _LOGGER.debug("Reset connection failed during CancelledError handling: %s", exc)
             raise
         except ModbusException as exc:
-            _LOGGER.error("Permanent Modbus error: %s", exc)
+            _LOGGER.error("Permanent Modbus error: %s", to_log_message(exc))
             self.offline_state = True
             raise
         except (
@@ -139,7 +139,7 @@ class BaseModbusTransport(ABC):
             TypeError,
             ValueError,
         ) as exc:  # pragma: no cover - unexpected
-            _LOGGER.error("Unexpected transport error: %s", exc)
+            _LOGGER.error("Unexpected transport error: %s", to_log_message(exc))
             self.offline_state = True
             raise
 
@@ -217,10 +217,7 @@ class BaseModbusTransport(ABC):
 
     async def _apply_backoff(self, attempt: int) -> None:
         """Sleep for the calculated backoff duration respecting the maximum."""
-
-        delay = _calculate_backoff_delay(base=self.base_backoff, attempt=attempt + 1, jitter=None)
-        if self.max_backoff:
-            delay = min(delay, self.max_backoff)
+        delay = next_backoff(attempt=attempt + 1, base=self.base_backoff, max_backoff=self.max_backoff)
         if delay > 0:
             await asyncio.sleep(delay)
 

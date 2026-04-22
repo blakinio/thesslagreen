@@ -1,0 +1,8 @@
+# Minimal dependencies for lightweight validation checks (without full Home Assistant stack).
+# Useful for running tooling such as:
+#   python tools/validate_registers.py
+#   python tools/validate_entity_mappings.py
+
+pydantic>=2.0,<3
+PyYAML>=6.0
+voluptuous>=0.13.1

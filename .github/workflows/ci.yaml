@@ -47,6 +47,9 @@ jobs:
       - name: Compare registers with vendor reference
         run: python tools/compare_registers_with_reference.py
 
+      - name: Maintainability gate
+        run: python tools/check_maintainability.py
+
       - name: Black
         run: black --check .
 
