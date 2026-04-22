@@ -9,7 +9,7 @@ fails basic validation, the affected addresses are now recorded and exposed in t
 diagnostics. This makes it easier to troubleshoot missing features or firmware
 incompatibilities.
 
-Only addresses defined in [entity_mappings.py](../custom_components/thessla_green_modbus/entity_mappings.py)
+Only addresses defined in [mappings/__init__.py](../custom_components/thessla_green_modbus/mappings/__init__.py)
 are exposed as entities by default. The list covers all supported sensors and controls.
 
 Enabling the **force_full_register_list** option creates entities for every discovered
@@ -45,22 +45,16 @@ unikać tworzenia zbędnych encji, ich nazwy należy umieścić w stałej
 testy będą weryfikować, że wszystkie pozostałe rejestry są odpowiednio
 obsługiwane przez integrację.
 
-## Walidacja rejestrów z dokumentacją PDF
+## Walidacja rejestrów (repo-only)
 
-Definicje rejestrów są okresowo porównywane z oficjalną dokumentacją
-producenta. Skrypt `tools/validate_register_pdf.py` parsuje plik
-[MODBUS_USER_AirPack_Home_08.2021.01.pdf](https://thesslagreen.com/wp-content/uploads/MODBUS_USER_AirPack_Home_08.2021.01.pdf) i zwraca listę rejestrów wraz z
-informacjami o dostępie, jednostkach i skalowaniu. Dane te są używane w teście
-`tests/test_register_loader_validation.py::test_registers_match_pdf`, który
-sprawdza, czy każdy adres z PDF został odwzorowany w pliku JSON oraz czy
-podstawowe atrybuty są zgodne.
+Jedynym źródłem prawdy dla mapowania rejestrów jest plik
+`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
+oraz testy/guardy znajdujące się w repozytorium.
 
-Aby ręcznie uruchomić walidację:
+Zalecane komendy walidacyjne:
 
 ```bash
-python tools/validate_register_pdf.py  # opcjonalny podgląd danych
-pytest tests/test_register_loader_validation.py::test_registers_match_pdf
+python tools/validate_registers.py
+python tools/validate_entity_mappings.py
+pytest -q tests/test_register_loader.py tests/test_register_coverage.py
 ```
-
-Jeżeli test zgłasza brakujące rejestry lub rozbieżności w atrybutach,
-należy zaktualizować plik JSON przed wysłaniem zmian.

@@ -7,6 +7,7 @@ from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbu
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
+
 def test_async_setup_closes_scanner():
     """Ensure scanner is closed after async_setup."""
 

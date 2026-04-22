@@ -67,6 +67,11 @@ def install_common_ha_stubs() -> None:
 
     helpers_uc.DataUpdateCoordinator = DataUpdateCoordinator
     helpers_uc.CoordinatorEntity = CoordinatorEntity
+    if not hasattr(helpers_uc, "UpdateFailed"):
+        class UpdateFailed(Exception):  # pragma: no cover
+            pass
+
+        helpers_uc.UpdateFailed = UpdateFailed
 
     binary_sensor_mod = types.ModuleType("homeassistant.components.binary_sensor")
 
@@ -94,6 +99,7 @@ def install_common_ha_stubs() -> None:
         POWER = "power"
         ENERGY = "energy"
         EFFICIENCY = "efficiency"
+        VOLUME_FLOW_RATE = "volume_flow_rate"
 
     class SensorStateClass:  # pragma: no cover
         MEASUREMENT = "measurement"

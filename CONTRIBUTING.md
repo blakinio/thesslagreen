@@ -26,7 +26,7 @@ This project adheres to a simple code of conduct:
 ### Prerequisites
 
 - Python 3.12+
-- Home Assistant 2025.7.1+ (managed outside `requirements.txt`)
+- Home Assistant 2026.1.0+ (managed outside `requirements.txt`)
 - Git
 - A ThesslaGreen AirPack device (for testing)
 
@@ -75,26 +75,26 @@ cd thessla_green_modbus
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install dependencies (Home Assistant core excluded)
+# Install dependencies used by local checks
 pip install -r requirements.txt -r requirements-dev.txt
 
 # Install pre-commit hooks (run again after pulling new changes)
 pre-commit install
 ```
 
-> **Note:** The `homeassistant` package is not included in `requirements.txt`; ensure your environment provides a compatible Home Assistant version as declared in `custom_components/thessla_green_modbus/manifest.json`.
+> **Note:** Some tests and tools import Home Assistant modules. Install `requirements-dev.txt` and, if needed, run only the stable suite (`python tests/run_tests.py --suite stable`) which provides stubs for local validation.
 
 ### 3. Verify Setup
 
 ```bash
-# Run unit tests
-python -m pytest tests/ -v
-
 # Verify module syntax
-python tools/py_compile_all.py
+python -m compileall -q custom_components/thessla_green_modbus tests tools
 
-# Check code quality
-pre-commit run --all-files
+# Lint
+ruff check custom_components tests tools
+
+# Run recommended local gate
+python tests/run_tests.py --suite stable
 ```
 
 ### Updating register maps
@@ -160,7 +160,7 @@ custom_components/thessla_green_modbus/
 ├── config_flow.py           # Configuration UI
 ├── const.py                 # Constants and register definitions
 ├── coordinator.py           # Data coordinator (optimized)
-├── scanner_core.py          # Device capability scanner
+├── scanner/                 # Device capability scanner modules
 ├── climate.py               # Climate entity (enhanced)
 ├── sensor.py                # Sensor entities
 ├── binary_sensor.py         # Binary sensor entities (enhanced)
@@ -189,22 +189,17 @@ Commit the updated JSON file.
 
 ```bash
 # Run all tests
-python -m pytest tests/ -v
+pytest -q
 
-# Run specific test file
-python -m pytest tests/test_coordinator.py -v
-
-# Run with coverage
-python -m pytest tests/ --cov=custom_components.thessla_green_modbus
+# Run focused suite
+python tests/run_tests.py --suite stable
 
 # Validate register file
-python -m pytest tests/test_register_loader.py -v
+pytest -q tests/test_register_loader.py
 
-# Validate translation files
-python -m json.tool custom_components/thessla_green_modbus/translations/*.json
-
-# Run optimization validation
-python run_optimization_tests.py
+# Validate mapping/register consistency tools
+python tools/validate_registers.py
+python tools/validate_entity_mappings.py
 ```
 
 ### Writing Tests
@@ -294,9 +289,9 @@ vulture custom_components/thessla_green_modbus --min-confidence=80
 
 2. **Run all checks:**
    ```bash
-   python tools/py_compile_all.py
-   pre-commit run --all-files
-   python -m pytest tests/
+   python -m compileall -q custom_components/thessla_green_modbus tests tools
+   ruff check custom_components tests tools
+   python tests/run_tests.py --suite stable
    ```
 
 3. **Commit your changes:**

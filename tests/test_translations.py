@@ -5,6 +5,7 @@ from importlib import resources
 from pathlib import Path
 
 import yaml
+
 from tests.platform_stubs import install_sensor_platform_stubs
 
 ROOT = Path(__file__).resolve().parent.parent / "custom_components" / "thessla_green_modbus"

@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 import pytest
+
 from tests.platform_stubs import install_integration_package_stub
 
 # Stub the integration package to avoid executing its heavy __init__

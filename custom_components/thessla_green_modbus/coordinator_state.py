@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -88,10 +89,8 @@ def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> 
     coordinator.device_info = {}
     coordinator.capabilities = DeviceCapabilities()
     if entry and isinstance(entry.data.get("capabilities"), dict):
-        try:
+        with suppress(TypeError, ValueError):
             coordinator.capabilities = DeviceCapabilities(**entry.data["capabilities"])
-        except (TypeError, ValueError):
-            pass
 
     coordinator.available_registers = {
         "input_registers": set(),

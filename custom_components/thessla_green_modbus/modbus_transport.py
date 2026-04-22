@@ -28,6 +28,10 @@ from .modbus_helpers import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_MIN_SLAVE_ID = 1
+_MAX_SLAVE_ID = 247
+_MAX_READ_REGISTERS = 125
+_MAX_WRITE_REGISTERS = 123
 
 
 def _crc16(data: bytes) -> int:
@@ -702,6 +706,27 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         return _append_crc(payload)
 
     @staticmethod
+    def _validate_slave_id(slave_id: int) -> None:
+        if not (_MIN_SLAVE_ID <= slave_id <= _MAX_SLAVE_ID):
+            raise ModbusIOException(
+                f"Invalid slave_id={slave_id}; expected {_MIN_SLAVE_ID}-{_MAX_SLAVE_ID}"
+            )
+
+    @staticmethod
+    def _validate_read_count(count: int) -> None:
+        if not (1 <= count <= _MAX_READ_REGISTERS):
+            raise ModbusIOException(
+                f"Invalid read count={count}; expected 1-{_MAX_READ_REGISTERS}"
+            )
+
+    @staticmethod
+    def _validate_write_count(qty: int) -> None:
+        if not (1 <= qty <= _MAX_WRITE_REGISTERS):
+            raise ModbusIOException(
+                f"Invalid write quantity={qty}; expected 1-{_MAX_WRITE_REGISTERS}"
+            )
+
+    @staticmethod
     def _build_write_single_frame(slave_id: int, address: int, value: int) -> bytes:
         payload = bytes(
             [
@@ -782,11 +807,14 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         attempt: int = 1,
     ) -> Any:
         _ = attempt
+        self._validate_slave_id(slave_id)
+        self._validate_read_count(count)
 
         async def _invoke() -> RawModbusResponse:
             frame = self._build_read_frame(slave_id, 4, address, count)
             data = await self._send_frame(frame, slave_id, 4)
-            if len(data) % 2:
+            expected_bytes = count * 2
+            if len(data) != expected_bytes:
                 raise ModbusIOException("Invalid byte count in RTU response")
             registers = [int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)]
             return RawModbusResponse(registers)
@@ -802,11 +830,14 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         attempt: int = 1,
     ) -> Any:
         _ = attempt
+        self._validate_slave_id(slave_id)
+        self._validate_read_count(count)
 
         async def _invoke() -> RawModbusResponse:
             frame = self._build_read_frame(slave_id, 3, address, count)
             data = await self._send_frame(frame, slave_id, 3)
-            if len(data) % 2:
+            expected_bytes = count * 2
+            if len(data) != expected_bytes:
                 raise ModbusIOException("Invalid byte count in RTU response")
             registers = [int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)]
             return RawModbusResponse(registers)
@@ -822,6 +853,7 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         attempt: int = 1,
     ) -> Any:
         _ = attempt
+        self._validate_slave_id(slave_id)
 
         async def _invoke() -> RawModbusWriteResponse:
             frame = self._build_write_single_frame(slave_id, address, value)
@@ -845,6 +877,8 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         attempt: int = 1,
     ) -> Any:
         _ = attempt
+        self._validate_slave_id(slave_id)
+        self._validate_write_count(len(values))
 
         async def _invoke() -> RawModbusWriteResponse:
             frame = self._build_write_multiple_frame(slave_id, address, values)

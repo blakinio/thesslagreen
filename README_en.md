@@ -38,7 +38,7 @@ The integration works as a **hub** in Home Assistant.
 - **Update schedule:** 30 s by default, configurable 10–300 s; avoid going below 15 s to prevent device overload.
 - **Register coverage:** full support for Holding/Input/Coils/Discrete Input registers per vendor documentation.
 - **Request batching:** reads are grouped into blocks (max 16 registers; 16 by default) to minimize network traffic.
-- **Protocol limit:** max 16 registers per request (per the PDF).
+- **Protocol limit:** max 16 registers per request (integration transport safety limit).
 - **Fan/airflow range:** 0–150% (min/max read from the device).
 - **Temperature values:** 32768 means invalid data and is mapped to `unknown`.
 - **Limitations:** multiple simultaneous Modbus TCP connections to one controller may cause timeouts; keep only one active connection (Home Assistant).
@@ -110,7 +110,7 @@ cp -r thesslagreen/custom_components/thessla_green_modbus custom_components/
 > 🔎 The scanner probes many registers, including configuration blocks or
 > multi-register values that do not map directly to Home Assistant entities.
 > By default the integration only exposes addresses defined in
-> [`entity_mappings.py`](custom_components/thessla_green_modbus/entity_mappings.py).
+> [`mappings/__init__.py`](custom_components/thessla_green_modbus/mappings/__init__.py).
 > Enabling the **Full register list** option (`force_full_register_list`)
 > creates entities for every discovered register, but some may contain
 > partial values or internal configuration. Use this option with care.
@@ -118,7 +118,7 @@ cp -r thesslagreen/custom_components/thessla_green_modbus custom_components/
 
 ### Auto-scan process
 During setup the `ThesslaGreenDeviceScanner` module from
-`custom_components/thessla_green_modbus/scanner_core.py` invokes
+`custom_components/thessla_green_modbus/scanner/core.py` invokes
 `scan_device()`. This method opens a Modbus connection, scans available
 registers and device capabilities, then closes the client. The results
 populate `available_registers`, from which the coordinator creates only
