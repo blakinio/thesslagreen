@@ -22,6 +22,7 @@ def test_air_quality_register_map():
 def test_get_coordinator_from_entity_id_multiple_devices():
     """Ensure coordinator lookup maps entities to correct coordinators via runtime_data."""
     from unittest.mock import MagicMock
+
     hass = MagicMock()
     coord1 = object()
     coord2 = object()

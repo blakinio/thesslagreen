@@ -267,9 +267,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
         return attrs
 
-    async def _write_register(
-        self, register: str, value: Any, *, refresh: bool = False
-    ) -> Any:
+    async def _write_register(self, register: str, value: Any, *, refresh: bool = False) -> Any:
         """Write register and gracefully handle coordinators with differing signatures."""
 
         try:
@@ -290,16 +288,12 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             success = await self._write_register("on_off_panel_mode", 0, refresh=False)
         else:
             # Turn on device first and capture result
-            power_on_success = await self._write_register(
-                "on_off_panel_mode", 1, refresh=False
-            )
+            power_on_success = await self._write_register("on_off_panel_mode", 1, refresh=False)
 
             # Retry once if power on failed
             if not power_on_success:
                 _LOGGER.warning("Power-on failed when setting HVAC mode to %s, retrying", hvac_mode)
-                power_on_success = await self._write_register(
-                    "on_off_panel_mode", 1, refresh=False
-                )
+                power_on_success = await self._write_register("on_off_panel_mode", 1, refresh=False)
 
             if not power_on_success:
                 _LOGGER.error("Failed to enable device before setting HVAC mode to %s", hvac_mode)
@@ -340,9 +334,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             )
 
         if success:
-            success = await self._write_register(
-                "required_temperature", temperature, refresh=False
-            )
+            success = await self._write_register("required_temperature", temperature, refresh=False)
 
         if success:
             await self.coordinator.async_request_refresh()
@@ -359,9 +351,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             # Set manual airflow rate
             min_pct, max_pct = self._percentage_limits()
             airflow = max(min_pct, min(max_pct, airflow))
-            success = await self._write_register(
-                "air_flow_rate_manual", airflow, refresh=False
-            )
+            success = await self._write_register("air_flow_rate_manual", airflow, refresh=False)
 
             if success:
                 await self.coordinator.async_request_refresh()
@@ -383,9 +373,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
         success = await self._write_register("on_off_panel_mode", 1, refresh=False)
         if success:
-            success = await self._write_register(
-                "special_mode", special_mode_value, refresh=False
-            )
+            success = await self._write_register("special_mode", special_mode_value, refresh=False)
 
         if success:
             await self.coordinator.async_request_refresh()

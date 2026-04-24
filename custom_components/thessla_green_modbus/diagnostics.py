@@ -25,9 +25,7 @@ from .registers.loader import _REGISTERS_PATH, get_all_registers, registers_sha2
 _LOGGER = logging.getLogger(__name__)
 
 
-async def _run_executor_job(
-    hass: HomeAssistant, func: Callable[..., Any], *args: Any
-) -> Any:
+async def _run_executor_job(hass: HomeAssistant, func: Callable[..., Any], *args: Any) -> Any:
     """Run a callable using HA executor when available, fallback inline in tests."""
 
     if hasattr(hass, "async_add_executor_job"):

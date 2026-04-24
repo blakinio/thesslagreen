@@ -131,9 +131,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         # Unit of measurement
         if "unit" in self.entity_config:
             unit = self.entity_config["unit"]
-            self._attr_native_unit_of_measurement = UNIT_MAPPINGS.get(
-                unit, unit
-            )
+            self._attr_native_unit_of_measurement = UNIT_MAPPINGS.get(unit, unit)
 
         # Min/max values
         self._attr_native_min_value = self.entity_config.get("min", 0)

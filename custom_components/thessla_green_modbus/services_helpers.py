@@ -51,7 +51,7 @@ def validate_gwc_temperature_range(data: dict[str, Any]) -> dict[str, Any]:
     if tmin is not None and tmax is not None and tmin >= tmax:
         invalid_exc = getattr(vol, "Invalid", ValueError)
         raise invalid_exc(
-            f"min_air_temperature ({tmin}) must be strictly less than " f"max_air_temperature ({tmax})"
+            f"min_air_temperature ({tmin}) must be strictly less than max_air_temperature ({tmax})"
         )
     return data
 

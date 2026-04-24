@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, cast
 from pymodbus.client import AsyncModbusTcpClient
 
 from .. import modbus_helpers as _mh
+from ..error_contract import classify_error, log_retry_attempt
 from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from ..modbus_helpers import _call_modbus, chunk_register_range
 
@@ -27,6 +28,27 @@ def is_request_cancelled_error(exc: Exception) -> bool:
     """Return True when an exception indicates a cancelled Modbus request."""
     message = str(exc).lower()
     return "request cancelled outside pymodbus" in message or "cancelled" in message
+
+
+def log_scanner_retry(
+    *,
+    operation: str,
+    attempt: int,
+    max_attempts: int,
+    exc: BaseException,
+    backoff: float,
+) -> None:
+    """Emit standardized scanner retry log entry."""
+
+    log_retry_attempt(
+        logger=_LOGGER,
+        layer="scanner",
+        operation=operation,
+        attempt=attempt,
+        max_attempts=max_attempts,
+        exc=exc,
+        backoff=backoff,
+    )
 
 
 def ensure_pymodbus_client_module() -> None:
@@ -176,26 +198,67 @@ def resolve_transport_and_client(
 
 def track_input_failure(scanner: ThesslaGreenDeviceScanner, count: int, address: int) -> None:
     """Increment the failure counter for an input register (single-reg reads)."""
-    if count != 1:
-        return
-    failures = scanner._input_failures.get(address, 0) + 1
-    scanner._input_failures[address] = failures
-    if failures >= scanner.retry and address not in scanner._failed_input:
-        scanner._failed_input.add(address)
-        scanner.failed_addresses["modbus_exceptions"]["input_registers"].add(address)
-        _LOGGER.warning("Device does not expose register %d", address)
+    _track_register_failure(
+        scanner=scanner,
+        count=count,
+        address=address,
+        failures_attr="_input_failures",
+        failed_attr="_failed_input",
+        failed_bucket="input_registers",
+    )
 
 
 def track_holding_failure(scanner: ThesslaGreenDeviceScanner, count: int, address: int) -> None:
     """Increment the failure counter for a holding register (single-reg reads)."""
+    _track_register_failure(
+        scanner=scanner,
+        count=count,
+        address=address,
+        failures_attr="_holding_failures",
+        failed_attr="_failed_holding",
+        failed_bucket="holding_registers",
+    )
+
+
+def _track_register_failure(
+    *,
+    scanner: ThesslaGreenDeviceScanner,
+    count: int,
+    address: int,
+    failures_attr: str,
+    failed_attr: str,
+    failed_bucket: str,
+) -> None:
+    """Increment per-register failure counters and mark unsupported addresses."""
     if count != 1:
         return
-    failures = scanner._holding_failures.get(address, 0) + 1
-    scanner._holding_failures[address] = failures
-    if failures >= scanner.retry and address not in scanner._failed_holding:
-        scanner._failed_holding.add(address)
-        scanner.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
+
+    failures_map = cast(dict[int, int], getattr(scanner, failures_attr))
+    failed_registers = cast(set[int], getattr(scanner, failed_attr))
+
+    failures = failures_map.get(address, 0) + 1
+    failures_map[address] = failures
+
+    if failures >= scanner.retry and address not in failed_registers:
+        failed_registers.add(address)
+        scanner.failed_addresses["modbus_exceptions"][failed_bucket].add(address)
         _LOGGER.warning("Device does not expose register %d", address)
+
+
+def _expand_cached_failed_range(
+    *, start: int, end: int, failed_registers: set[int]
+) -> tuple[int, int] | None:
+    """Return contiguous cached-failure range overlapping ``start``-``end``."""
+    failed_in_range = [reg for reg in range(start, end + 1) if reg in failed_registers]
+    if not failed_in_range:
+        return None
+
+    range_start = range_end = failed_in_range[0]
+    while range_start - 1 in failed_registers:
+        range_start -= 1
+    while range_end + 1 in failed_registers:
+        range_end += 1
+    return range_start, range_end
 
 
 async def read_input(
@@ -218,13 +281,15 @@ async def read_input(
                     range(start, end + 1)
                 )
                 return None
-    if not skip_cache and any(reg in scanner._failed_input for reg in range(start, end + 1)):
-        first = next(reg for reg in range(start, end + 1) if reg in scanner._failed_input)
-        skip_start = skip_end = first
-        while skip_start - 1 in scanner._failed_input:
-            skip_start -= 1
-        while skip_end + 1 in scanner._failed_input:
-            skip_end += 1
+    cached_failed_range = (
+        None
+        if skip_cache
+        else _expand_cached_failed_range(
+            start=start, end=end, failed_registers=scanner._failed_input
+        )
+    )
+    if cached_failed_range is not None:
+        skip_start, skip_end = cached_failed_range
         if (skip_start, skip_end) not in scanner._input_skip_log_ranges:
             _LOGGER.debug("Skipping cached failed input registers %d-%d", skip_start, skip_end)
             scanner._input_skip_log_ranges.add((skip_start, skip_end))
@@ -241,7 +306,9 @@ async def read_input(
         attempted_reads = attempt
         try:
             if transport is not None:
-                response = await transport.read_input_registers(scanner.slave_id, address, count=count)
+                response = await transport.read_input_registers(
+                    scanner.slave_id, address, count=count
+                )
             else:
                 response = await _call_modbus_with_fallback(
                     scanner,
@@ -259,7 +326,7 @@ async def read_input(
                 if response.isError():
                     code = getattr(response, "exception_code", None)
                     _LOGGER.warning(
-                        "Exception code %s while reading holding registers %d-%d",
+                        "Exception code %s while reading input registers %d-%d",
                         code,
                         start,
                         end,
@@ -276,16 +343,45 @@ async def read_input(
                 _LOGGER.debug("Read input registers %d-%d: %s", start, end, registers)
                 return registers
         except ModbusIOException as exc:
-            if is_request_cancelled_error(exc):
+            contract = classify_error(exc)
+            log_scanner_retry(
+                operation=f"read_input:{start}-{end}",
+                attempt=attempt,
+                max_attempts=scanner.retry,
+                exc=exc,
+                backoff=scanner.backoff,
+            )
+            if contract.reason == "cancelled" or is_request_cancelled_error(exc):
                 aborted_transiently = True
                 break
             track_input_failure(scanner, count, address)
-        except TimeoutError:
+        except TimeoutError as exc:
+            log_scanner_retry(
+                operation=f"read_input:{start}-{end}",
+                attempt=attempt,
+                max_attempts=scanner.retry,
+                exc=exc,
+                backoff=scanner.backoff,
+            )
             aborted_transiently = True
             break
-        except OSError:
+        except OSError as exc:
+            log_scanner_retry(
+                operation=f"read_input:{start}-{end}",
+                attempt=attempt,
+                max_attempts=scanner.retry,
+                exc=exc,
+                backoff=scanner.backoff,
+            )
             break
-        except (ModbusException, ConnectionException):
+        except (ModbusException, ConnectionException) as exc:
+            log_scanner_retry(
+                operation=f"read_input:{start}-{end}",
+                attempt=attempt,
+                max_attempts=scanner.retry,
+                exc=exc,
+                backoff=scanner.backoff,
+            )
             track_input_failure(scanner, count, address)
 
         await _sleep_retry_backoff(
@@ -306,7 +402,9 @@ async def read_input(
         return None
 
     scanner.failed_addresses["modbus_exceptions"]["input_registers"].update(range(start, end + 1))
-    _LOGGER.error("Failed to read input registers %d-%d after %d retries", start, end, scanner.retry)
+    _LOGGER.error(
+        "Failed to read input registers %d-%d after %d retries", start, end, scanner.retry
+    )
     return None
 
 
@@ -364,9 +462,18 @@ async def read_holding(
                     range(start, end + 1)
                 )
                 return None
-        if address in scanner._failed_holding:
-            scanner.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
-            return None
+        cached_failed_range = _expand_cached_failed_range(
+            start=start,
+            end=end,
+            failed_registers=scanner._failed_holding,
+        )
+        if cached_failed_range is not None:
+            cached_start, cached_end = cached_failed_range
+            if cached_start <= start and end <= cached_end:
+                scanner.failed_addresses["modbus_exceptions"]["holding_registers"].update(
+                    range(cached_start, cached_end + 1)
+                )
+                return None
 
     failures = scanner._holding_failures.get(address, 0)
     if failures >= scanner.retry:
@@ -381,7 +488,9 @@ async def read_holding(
         attempted_reads = attempt
         try:
             if transport is not None:
-                response = await transport.read_holding_registers(scanner.slave_id, address, count=count)
+                response = await transport.read_holding_registers(
+                    scanner.slave_id, address, count=count
+                )
             else:
                 response = await _call_modbus_with_fallback(
                     scanner,
@@ -412,14 +521,13 @@ async def read_holding(
                         )
                         return None
                     if count == 1:
-                        failures = scanner._holding_failures.get(address, 0) + 1
-                        scanner._holding_failures[address] = failures
-                        if failures >= scanner.retry:
+                        track_holding_failure(scanner, count, address)
+                        if address in scanner._failed_holding:
                             scanner._failed_holding.update(range(start, end + 1))
                             scanner._mark_holding_unsupported(start, end, code or 0)
-                            scanner.failed_addresses["modbus_exceptions"]["holding_registers"].update(
-                                range(start, end + 1)
-                            )
+                            scanner.failed_addresses["modbus_exceptions"][
+                                "holding_registers"
+                            ].update(range(start, end + 1))
                             return None
                     continue
                 if skip_cache and count == 1:
@@ -478,10 +586,14 @@ async def read_holding(
             attempted_reads,
             scanner.retry,
         )
-        _LOGGER.error("Failed to read holding registers %d-%d after %d retries", start, end, scanner.retry)
+        _LOGGER.error(
+            "Failed to read holding registers %d-%d after %d retries", start, end, scanner.retry
+        )
         return None
 
-    _LOGGER.error("Failed to read holding registers %d-%d after %d retries", start, end, scanner.retry)
+    _LOGGER.error(
+        "Failed to read holding registers %d-%d after %d retries", start, end, scanner.retry
+    )
     scanner.failed_addresses["modbus_exceptions"]["holding_registers"].update(range(start, end + 1))
     return None
 
@@ -546,7 +658,14 @@ async def read_bit_registers(
                     if transport_client is not None:
                         client = transport_client
                         scanner._client = transport_client
-                except (ModbusException, ConnectionException, ModbusIOException, TimeoutError, OSError, AttributeError):
+                except (
+                    ModbusException,
+                    ConnectionException,
+                    ModbusIOException,
+                    TimeoutError,
+                    OSError,
+                    AttributeError,
+                ):
                     pass
         except asyncio.CancelledError:
             raise
@@ -568,7 +687,9 @@ async def read_bit_registers(
             retry=scanner.retry,
         )
 
-    scanner.failed_addresses["modbus_exceptions"][failed_key].update(range(address, address + count))
+    scanner.failed_addresses["modbus_exceptions"][failed_key].update(
+        range(address, address + count)
+    )
     return None
 
 

@@ -295,7 +295,11 @@ def test_validate_register_value_known_register_bad_value_returns_none():
 
     # Find an int register
     int_entry = next(
-        (e for e in REGISTER_MAP.values() if e.data_type == "int" and e.entity_domain != "binary_sensor"),
+        (
+            e
+            for e in REGISTER_MAP.values()
+            if e.data_type == "int" and e.entity_domain != "binary_sensor"
+        ),
         None,
     )
     if int_entry is None:

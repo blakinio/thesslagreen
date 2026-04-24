@@ -8,10 +8,12 @@ from typing import Any
 from .const import SENSOR_UNAVAILABLE, SENSOR_UNAVAILABLE_REGISTERS
 from .register_defs_cache import get_register_definitions
 
-_LOGGER = logging.getLogger(__name__.rsplit('.', maxsplit=1)[0])
+_LOGGER = logging.getLogger(__name__.rsplit(".", maxsplit=1)[0])
 
 
-def find_register_name(reverse_maps: dict[str, dict[int, str]], register_type: str, address: int) -> str | None:
+def find_register_name(
+    reverse_maps: dict[str, dict[int, str]], register_type: str, address: int
+) -> str | None:
     """Find register name by address using pre-built reverse maps."""
     return reverse_maps.get(register_type, {}).get(address)
 

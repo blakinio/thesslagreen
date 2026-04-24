@@ -68,6 +68,7 @@ def install_common_ha_stubs() -> None:
     helpers_uc.DataUpdateCoordinator = DataUpdateCoordinator
     helpers_uc.CoordinatorEntity = CoordinatorEntity
     if not hasattr(helpers_uc, "UpdateFailed"):
+
         class UpdateFailed(Exception):  # pragma: no cover
             pass
 
@@ -279,7 +280,9 @@ def install_number_stubs() -> None:
     number_mod.NumberMode = NumberMode
     sys.modules["homeassistant.components.number"] = number_mod
 
-    helpers = sys.modules.setdefault("homeassistant.helpers", types.ModuleType("homeassistant.helpers"))
+    helpers = sys.modules.setdefault(
+        "homeassistant.helpers", types.ModuleType("homeassistant.helpers")
+    )
     if not hasattr(helpers, "__path__"):
         helpers.__path__ = []
     entity_helper = types.ModuleType("homeassistant.helpers.entity")
@@ -352,7 +355,9 @@ def install_text_stubs() -> None:
     text_mod.TextEntity = TextEntity
     sys.modules["homeassistant.components.text"] = text_mod
 
-    helpers = sys.modules.setdefault("homeassistant.helpers", types.ModuleType("homeassistant.helpers"))
+    helpers = sys.modules.setdefault(
+        "homeassistant.helpers", types.ModuleType("homeassistant.helpers")
+    )
     if not hasattr(helpers, "__path__"):
         helpers.__path__ = []
     entity_helper = types.ModuleType("homeassistant.helpers.entity")
@@ -459,7 +464,9 @@ def install_registers_stub(
         sys.modules["custom_components.thessla_green_modbus.registers.loader"] = loader_stub
     else:
         sys.modules.setdefault("custom_components.thessla_green_modbus.registers", registers_module)
-        sys.modules.setdefault("custom_components.thessla_green_modbus.registers.loader", loader_stub)
+        sys.modules.setdefault(
+            "custom_components.thessla_green_modbus.registers.loader", loader_stub
+        )
 
 
 def install_integration_package_stub(base_path: Path, max_batch_registers: int = 16) -> None:

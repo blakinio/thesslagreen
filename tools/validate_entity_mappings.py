@@ -61,6 +61,7 @@ def main() -> int:
             "homeassistant.helpers.entity", types.ModuleType("homeassistant.helpers.entity")
         )
         if not hasattr(ha_helpers_entity, "EntityCategory"):
+
             class _EntityCategory(StrEnum):
                 CONFIG = "config"
                 DIAGNOSTIC = "diagnostic"

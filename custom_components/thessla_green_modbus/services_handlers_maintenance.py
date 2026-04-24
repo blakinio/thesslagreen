@@ -21,10 +21,14 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
 
     async def reset_filters(call: ServiceCall) -> None:
         filter_type = deps.normalize_option(call.data["filter_type"])
-        filter_value = {"presostat": 1, "flat_filters": 2, "cleanpad": 3, "cleanpad_pure": 4}[filter_type]
+        filter_value = {"presostat": 1, "flat_filters": 2, "cleanpad": 3, "cleanpad_pure": 4}[
+            filter_type
+        ]
 
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
-            if not await deps.write_register(coordinator, "filter_change", filter_value, entity_id, "reset filters"):
+            if not await deps.write_register(
+                coordinator, "filter_change", filter_value, entity_id, "reset filters"
+            ):
                 deps.logger.error("Failed to reset filters for %s", entity_id)
                 continue
             await coordinator.async_request_refresh()
@@ -78,7 +82,17 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
         if stop_bits:
             stop_bits = deps.normalize_option(stop_bits)
 
-        baud_map = {"4800": 0, "9600": 1, "14400": 2, "19200": 3, "28800": 4, "38400": 5, "57600": 6, "76800": 7, "115200": 8}
+        baud_map = {
+            "4800": 0,
+            "9600": 1,
+            "14400": 2,
+            "19200": 3,
+            "28800": 4,
+            "38400": 5,
+            "57600": 6,
+            "76800": 7,
+            "115200": 8,
+        }
         parity_map = {"none": 0, "even": 1, "odd": 2}
         stop_map = {"1": 0, "2": 1}
 
@@ -86,19 +100,31 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
             port_prefix = "uart_0" if port == "air_b" else "uart_1"
             if baud_rate:
                 if not await deps.write_register(
-                    coordinator, f"{port_prefix}_baud", baud_map[baud_rate], entity_id, "set Modbus parameters"
+                    coordinator,
+                    f"{port_prefix}_baud",
+                    baud_map[baud_rate],
+                    entity_id,
+                    "set Modbus parameters",
                 ):
                     deps.logger.error("Failed to set baud rate for %s", entity_id)
                     continue
             if parity:
                 if not await deps.write_register(
-                    coordinator, f"{port_prefix}_parity", parity_map[parity], entity_id, "set Modbus parameters"
+                    coordinator,
+                    f"{port_prefix}_parity",
+                    parity_map[parity],
+                    entity_id,
+                    "set Modbus parameters",
                 ):
                     deps.logger.error("Failed to set parity for %s", entity_id)
                     continue
             if stop_bits:
                 if not await deps.write_register(
-                    coordinator, f"{port_prefix}_stop", stop_map[stop_bits], entity_id, "set Modbus parameters"
+                    coordinator,
+                    f"{port_prefix}_stop",
+                    stop_map[stop_bits],
+                    entity_id,
+                    "set Modbus parameters",
                 ):
                     deps.logger.error("Failed to set stop bits for %s", entity_id)
                     continue
@@ -110,7 +136,9 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
             if len(device_name) >= 16:
                 try:
-                    if not await coordinator.async_write_register("device_name", device_name, refresh=False):
+                    if not await coordinator.async_write_register(
+                        "device_name", device_name, refresh=False
+                    ):
                         deps.logger.error("Failed to set device name for %s", entity_id)
                         continue
                 except (ModbusException, ConnectionException) as err:
@@ -156,17 +184,27 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                     start_address=0, values=[reg_yymm, reg_ddtt, reg_ggmm, reg_sscc], refresh=False
                 )
                 if success:
-                    deps.logger.info("Synced device clock to %s for %s", now.strftime("%Y-%m-%d %H:%M:%S"), entity_id)
+                    deps.logger.info(
+                        "Synced device clock to %s for %s",
+                        now.strftime("%Y-%m-%d %H:%M:%S"),
+                        entity_id,
+                    )
                 else:
                     deps.logger.error("Failed to sync clock for %s", entity_id)
             except (ModbusException, ConnectionException) as err:
                 deps.logger.error("Failed to sync clock for %s: %s", entity_id, err)
 
     hass.services.async_register(deps.domain, "reset_filters", reset_filters, RESET_FILTERS_SCHEMA)
-    hass.services.async_register(deps.domain, "reset_settings", reset_settings, RESET_SETTINGS_SCHEMA)
-    hass.services.async_register(deps.domain, "start_pressure_test", start_pressure_test, START_PRESSURE_TEST_SCHEMA)
+    hass.services.async_register(
+        deps.domain, "reset_settings", reset_settings, RESET_SETTINGS_SCHEMA
+    )
+    hass.services.async_register(
+        deps.domain, "start_pressure_test", start_pressure_test, START_PRESSURE_TEST_SCHEMA
+    )
     hass.services.async_register(
         deps.domain, "set_modbus_parameters", set_modbus_parameters, SET_MODBUS_PARAMETERS_SCHEMA
     )
-    hass.services.async_register(deps.domain, "set_device_name", set_device_name, SET_DEVICE_NAME_SCHEMA)
+    hass.services.async_register(
+        deps.domain, "set_device_name", set_device_name, SET_DEVICE_NAME_SCHEMA
+    )
     hass.services.async_register(deps.domain, "sync_time", sync_time, SYNC_TIME_SCHEMA)

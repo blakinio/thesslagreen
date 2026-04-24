@@ -45,8 +45,6 @@ def test_redact_ipv6_zone():
     assert redacted["connection"]["host"] == ("fe80:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:0001")
 
 
-
-
 def test_detect_data_anomalies_mirrored_airflow_values():
     data = {
         "supply_air_flow": 4864,
@@ -73,6 +71,8 @@ def test_detect_data_anomalies_ignores_normal_values():
     from custom_components.thessla_green_modbus.diagnostics import _detect_data_anomalies
 
     assert _detect_data_anomalies(data) == []
+
+
 def test_original_diagnostics_unchanged():
     """Ensure the input diagnostics dict is not modified by redaction."""
     data = {
@@ -392,10 +392,13 @@ async def test_translation_failure_handled(caplog):
         config=SimpleNamespace(language="en"),
     )
 
-    with patch(
-        "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
-        AsyncMock(side_effect=Exception("boom")),
-    ), caplog.at_level(logging.DEBUG):
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
+            AsyncMock(side_effect=Exception("boom")),
+        ),
+        caplog.at_level(logging.DEBUG),
+    ):
         result = await async_get_config_entry_diagnostics(hass, entry)
 
     assert result["active_errors"] == {"e_fault": "e_fault"}

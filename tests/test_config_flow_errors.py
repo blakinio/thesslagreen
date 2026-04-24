@@ -27,7 +27,9 @@ def test_classify_os_error_fallback() -> None:
 
 def test_should_log_timeout_traceback_for_cancelled_message() -> None:
     """Cancelled timeout messages should not trigger traceback logging."""
-    assert config_flow_errors.should_log_timeout_traceback(TimeoutError("request cancelled")) is False
+    assert (
+        config_flow_errors.should_log_timeout_traceback(TimeoutError("request cancelled")) is False
+    )
 
 
 def test_should_log_timeout_traceback_for_regular_timeout() -> None:

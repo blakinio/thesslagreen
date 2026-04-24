@@ -41,7 +41,6 @@ def test_async_setup_creates_all_sensors(mock_coordinator, mock_config_entry):
         hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
         mock_config_entry.runtime_data = mock_coordinator
 
-
         available = {
             "input_registers": set(),
             "holding_registers": set(),
@@ -73,7 +72,6 @@ def test_sensors_have_native_units(mock_coordinator, mock_config_entry):
         hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
         mock_config_entry.runtime_data = mock_coordinator
 
-
         available = {
             "input_registers": set(),
             "holding_registers": set(),
@@ -90,9 +88,7 @@ def test_sensors_have_native_units(mock_coordinator, mock_config_entry):
             if getattr(entity, "_register_name", None) == "error_codes":
                 continue
             expected = SENSOR_DEFINITIONS[entity._register_name].get("unit")
-            assert (
-                getattr(entity, "_attr_native_unit_of_measurement", None) == expected
-            )  # nosec B101
+            assert getattr(entity, "_attr_native_unit_of_measurement", None) == expected  # nosec B101
 
     asyncio.run(run_test())
 
@@ -128,7 +124,6 @@ async def test_force_full_register_list_adds_missing_entities(mock_coordinator, 
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_config_entry.runtime_data = mock_coordinator
-
 
     # Simulate no registers discovered
     mock_coordinator.available_registers = {
@@ -225,7 +220,6 @@ def test_time_sensor_formats_value(mock_coordinator):
     assert sensor.native_value == "08:05"
 
 
-
 def test_time_sensor_with_empty_slot_is_available(mock_coordinator):
     """Schedule sensors should stay available when slot is unset (None)."""
 
@@ -296,7 +290,6 @@ def test_select_and_sensor_share_register(mock_coordinator, mock_config_entry):
         hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
         mock_config_entry.runtime_data = mock_coordinator
 
-
         mock_coordinator.available_registers = {
             "input_registers": set(),
             "holding_registers": {"mode"},
@@ -309,9 +302,7 @@ def test_select_and_sensor_share_register(mock_coordinator, mock_config_entry):
         await select_async_setup_entry(hass, mock_config_entry, add_select)
 
         # mode must NOT be a sensor anymore
-        sensor_names = [
-            getattr(ent, "_register_name", "") for ent in add_sensor.call_args[0][0]
-        ]
+        sensor_names = [getattr(ent, "_register_name", "") for ent in add_sensor.call_args[0][0]]
         assert "mode" not in sensor_names, "mode should not be a sensor entity"
         # mode MUST still be a select entity
         assert any(ent._register_name == "mode" for ent in add_select.call_args[0][0])

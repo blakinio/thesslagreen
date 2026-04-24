@@ -62,9 +62,9 @@ async def test_async_registers_sha256_uses_executor_for_stat(tmp_path):
     assert isinstance(result, str) and len(result) == 64
 
     stat_calls = [
-        call for call in hass.calls
-        if getattr(call[0], "__name__", "") == "stat"
-        and not isinstance(call[0], functools.partial)
+        call
+        for call in hass.calls
+        if getattr(call[0], "__name__", "") == "stat" and not isinstance(call[0], functools.partial)
     ]
     assert len(stat_calls) == 1, (
         f"Expected exactly one executor call for path.stat, got: {hass.calls}"

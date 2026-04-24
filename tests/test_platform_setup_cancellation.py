@@ -17,6 +17,7 @@ async def test_platform_setup_cancellation(caplog):
     """Cancellation during platform setup is logged without errors."""
     hass = MagicMock()
     hass.data = {}
+
     def _executor(func, *args):
         if func is import_module and args[:1] == (".coordinator",):
             return func(*args)

@@ -44,7 +44,9 @@ def _get_register_info(name: str) -> dict[str, Any] | None:
     # Prefer the cache stored on the parent module so monkeypatch works.
     _parent = sys.modules.get(__package__)
     cache: dict[str, Any] | None = (
-        getattr(_parent, "_REGISTER_INFO_CACHE", None) if _parent is not None else _REGISTER_INFO_CACHE
+        getattr(_parent, "_REGISTER_INFO_CACHE", None)
+        if _parent is not None
+        else _REGISTER_INFO_CACHE
     )
 
     if cache is None:

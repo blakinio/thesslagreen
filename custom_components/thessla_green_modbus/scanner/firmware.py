@@ -45,7 +45,9 @@ async def scan_firmware_info(
     if None in (major, minor, patch):
         fallback_results: dict[str, int] = {}
         for name in ("version_major", "version_minor", "version_patch"):
-            current = major if name == "version_major" else minor if name == "version_minor" else patch
+            current = (
+                major if name == "version_major" else minor if name == "version_minor" else patch
+            )
             if current is not None:
                 continue
             probe = None
@@ -114,7 +116,10 @@ async def scan_device_identity(
         _LOGGER.exception("Unexpected error parsing serial number: %s", err)
     try:
         start = HOLDING_REGISTERS["device_name"]
-        name_regs = await scanner._read_holding_block(start, REGISTER_DEFINITIONS["device_name"].length) or []
+        name_regs = (
+            await scanner._read_holding_block(start, REGISTER_DEFINITIONS["device_name"].length)
+            or []
+        )
         if name_regs:
             name_bytes = bytearray()
             for reg in name_regs:

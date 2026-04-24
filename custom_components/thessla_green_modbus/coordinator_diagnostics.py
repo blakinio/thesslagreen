@@ -38,7 +38,10 @@ def performance_stats(coordinator: Any) -> dict[str, Any]:
         "failed_reads": coordinator.statistics["failed_reads"],
         "success_rate": (
             coordinator.statistics["successful_reads"]
-            / max(1, coordinator.statistics["successful_reads"] + coordinator.statistics["failed_reads"])
+            / max(
+                1,
+                coordinator.statistics["successful_reads"] + coordinator.statistics["failed_reads"],
+            )
         )
         * 100,
         "avg_response_time": coordinator.statistics["average_response_time"],
@@ -71,7 +74,9 @@ def get_diagnostic_data(coordinator: Any) -> dict[str, Any]:
         statistics["last_successful_update"] = statistics["last_successful_update"].isoformat()
     total_registers = sum(len(v) for v in coordinator.available_registers.values())
     total_registers_json = len(get_all_registers())
-    registers_discovered = {key: len(value) for key, value in coordinator.available_registers.items()}
+    registers_discovered = {
+        key: len(value) for key, value in coordinator.available_registers.items()
+    }
     error_stats = {
         "connection_errors": statistics.get("connection_errors", 0),
         "timeout_errors": statistics.get("timeout_errors", 0),
@@ -125,7 +130,9 @@ def get_device_info(coordinator: Any) -> dict[str, Any]:
     if (not model or model == UNKNOWN_MODEL) and coordinator.entry is not None:
         model = cast(
             str | None,
-            coordinator.entry.options.get("model") if hasattr(coordinator.entry, "options") else None,
+            coordinator.entry.options.get("model")
+            if hasattr(coordinator.entry, "options")
+            else None,
         ) or cast(
             str | None,
             coordinator.entry.data.get("model") if hasattr(coordinator.entry, "data") else None,
@@ -142,7 +149,12 @@ def get_device_info(coordinator: Any) -> dict[str, Any]:
                 raise AttributeError(item) from exc
 
     return _CompatDeviceInfo(
-        identifiers={(DOMAIN, f"{coordinator.config.host}:{coordinator.config.port}:{coordinator.config.slave_id}")},
+        identifiers={
+            (
+                DOMAIN,
+                f"{coordinator.config.host}:{coordinator.config.port}:{coordinator.config.slave_id}",
+            )
+        },
         name=device_name(coordinator),
         manufacturer=MANUFACTURER,
         model=model,
