@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from ..const import HOLDING_BATCH_BOUNDARIES, KNOWN_MISSING_REGISTERS
 from ..scanner_helpers import UART_OPTIONAL_REGS
@@ -17,7 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def scan_register_batch(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     reg_type: str,
     addr_to_names: dict[int, set[str]],
     addresses: list[int],
@@ -72,7 +72,7 @@ async def scan_register_batch(
 
 
 async def scan_named_input(
-    scanner: ThesslaGreenDeviceScanner, input_registers: dict[int, str]
+    scanner: Any, input_registers: dict[int, str]
 ) -> None:
     """Scan FC04 input registers in batches."""
     known_missing = getattr(scanner, "_known_missing_registers", KNOWN_MISSING_REGISTERS)
@@ -86,19 +86,20 @@ async def scan_named_input(
 
     async def _read(start: int, count: int, *, skip_cache: bool = False) -> list[int] | None:
         try:
-            return (
+            return cast(
+                list[int] | None,
                 await scanner._read_input(scanner._client, start, count, skip_cache=skip_cache)
                 if scanner._client is not None
                 else await scanner._read_input(start, count, skip_cache=skip_cache)
             )
         except TypeError:
-            return await scanner._read_input(start, count, skip_cache=skip_cache)
+            return cast(list[int] | None, await scanner._read_input(start, count, skip_cache=skip_cache))
 
     await scan_register_batch(scanner, "input_registers", addr_to_names, addresses, _read)
 
 
 async def scan_named_holding(
-    scanner: ThesslaGreenDeviceScanner, holding_registers: dict[int, str]
+    scanner: Any, holding_registers: dict[int, str]
 ) -> None:
     """Scan FC03 holding registers in batches, handling multi-word registers."""
     known_missing = getattr(scanner, "_known_missing_registers", KNOWN_MISSING_REGISTERS)
@@ -122,13 +123,17 @@ async def scan_named_holding(
 
     async def _read(start: int, count: int, *, skip_cache: bool = False) -> list[int] | None:
         try:
-            return (
+            return cast(
+                list[int] | None,
                 await scanner._read_holding(scanner._client, start, count, skip_cache=skip_cache)
                 if scanner._client is not None
                 else await scanner._read_holding(start, count, skip_cache=skip_cache)
             )
         except TypeError:
-            return await scanner._read_holding(start, count, skip_cache=skip_cache)
+            return cast(
+                list[int] | None,
+                await scanner._read_holding(start, count, skip_cache=skip_cache),
+            )
 
     await scan_register_batch(
         scanner,
@@ -148,7 +153,7 @@ async def scan_named_holding(
 
 
 async def scan_named_coil(
-    scanner: ThesslaGreenDeviceScanner, coil_registers: dict[int, str]
+    scanner: Any, coil_registers: dict[int, str]
 ) -> None:
     """Scan FC01 coil registers in batches."""
     known_missing = getattr(scanner, "_known_missing_registers", KNOWN_MISSING_REGISTERS)
@@ -188,7 +193,7 @@ async def scan_named_coil(
 
 
 async def scan_named_discrete(
-    scanner: ThesslaGreenDeviceScanner, discrete_registers: dict[int, str]
+    scanner: Any, discrete_registers: dict[int, str]
 ) -> None:
     """Scan FC02 discrete input registers in batches."""
     known_missing = getattr(scanner, "_known_missing_registers", KNOWN_MISSING_REGISTERS)
@@ -228,7 +233,7 @@ async def scan_named_discrete(
 
 
 async def run_named_scan(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     input_registers: dict[int, str],
     holding_registers: dict[int, str],
     coil_registers: dict[int, str],
@@ -242,7 +247,7 @@ async def run_named_scan(
 
 
 def compute_scan_blocks(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     input_registers: dict[int, str],
     holding_registers: dict[int, str],
     coil_registers: dict[int, str],
@@ -295,7 +300,7 @@ def compute_scan_blocks(
 
 
 def collect_missing_registers(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     input_registers: dict[int, str],
     holding_registers: dict[int, str],
     coil_registers: dict[int, str],
@@ -322,7 +327,7 @@ def collect_missing_registers(
 
 
 async def load_registers(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     async_get_all_registers_cb: Callable[[Any | None], Awaitable[list[Any]]],
 ) -> tuple[
     dict[int, dict[int, str]],
@@ -340,7 +345,7 @@ async def load_registers(
     return register_map, register_ranges
 
 
-def log_skipped_ranges(scanner: ThesslaGreenDeviceScanner) -> None:
+def log_skipped_ranges(scanner: Any) -> None:
     """Log summary of ranges skipped due to Modbus exceptions."""
     if scanner._unsupported_input_ranges:
         ranges = ", ".join(

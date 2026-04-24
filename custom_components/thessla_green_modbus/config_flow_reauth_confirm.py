@@ -12,7 +12,7 @@ async def apply_reauth_update(
     reauth_entry_id: str | None,
     prepare_entry_payload: Callable[[type], tuple[dict[str, Any], dict[str, Any]]],
     capabilities_cls: type,
-    logger,
+    logger: Any,
 ) -> str:
     """Apply reauth updates and return abort reason."""
 

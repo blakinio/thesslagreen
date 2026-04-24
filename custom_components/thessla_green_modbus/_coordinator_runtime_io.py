@@ -49,4 +49,4 @@ async def read_all_register_data(coordinator: Any) -> dict[str, Any]:
     data.update(await coordinator._read_holding_registers_optimized())
     data.update(await coordinator._read_coil_registers_optimized())
     data.update(await coordinator._read_discrete_inputs_optimized())
-    return cast(Any, coordinator)._post_process_data(data)
+    return cast(dict[str, Any], cast(Any, coordinator)._post_process_data(data))

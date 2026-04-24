@@ -150,7 +150,6 @@ __all__ = [
 ]
 
 
-COORDINATOR_BASE = DataUpdateCoordinator[dict[str, Any]]
 dt_util = _dt_util
 
 
@@ -175,9 +174,13 @@ class ThesslaGreenModbusCoordinator(
     _ModbusIOMixin,
     _CoordinatorCapabilitiesMixin,
     _CoordinatorScheduleMixin,
-    COORDINATOR_BASE,
+    DataUpdateCoordinator[dict[str, Any]],
 ):
     """Optimized data coordinator for ThesslaGreen Modbus device."""
+
+    offline_state: bool
+    _reauth_scheduled: bool
+    _stop_listener: Callable[..., Any] | None
 
     def __init__(
         self,
@@ -397,7 +400,7 @@ class ThesslaGreenModbusCoordinator(
 
     def get_register_map(self, register_type: str) -> dict[str, int]:
         """Return the register map for the given register type."""
-        return self._register_maps.get(register_type, {})
+        return cast(dict[str, int], self._register_maps.get(register_type, {}))
 
     def _get_client_method(self, name: str) -> Callable[..., Any]:
         """Return a Modbus method from transport/client or a no-op placeholder."""

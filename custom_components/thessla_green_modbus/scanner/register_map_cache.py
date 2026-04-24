@@ -13,7 +13,7 @@ def sync_register_hash_from_maps() -> str:
     """Synchronize locally re-exported register hash from scanner_register_maps."""
     global REGISTER_HASH
     REGISTER_HASH = _register_maps.REGISTER_HASH
-    return REGISTER_HASH
+    return REGISTER_HASH or ""
 
 
 def build_register_maps_from(regs: list[Any], register_hash: str) -> None:

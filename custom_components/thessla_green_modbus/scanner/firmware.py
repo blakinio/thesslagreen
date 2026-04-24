@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ..scanner_register_maps import HOLDING_REGISTERS, INPUT_REGISTERS, REGISTER_DEFINITIONS
 
@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def scan_firmware_info(
-    scanner: ThesslaGreenDeviceScanner, info_regs: list[int], device: ScannerDeviceInfo
+    scanner: Any, info_regs: list[int], device: ScannerDeviceInfo
 ) -> None:
     """Parse firmware version from info_regs and update device."""
     major: int | None = None
@@ -102,7 +102,7 @@ async def scan_firmware_info(
 
 
 async def scan_device_identity(
-    scanner: ThesslaGreenDeviceScanner, info_regs: list[int], device: ScannerDeviceInfo
+    scanner: Any, info_regs: list[int], device: ScannerDeviceInfo
 ) -> None:
     """Parse serial number and device name from registers into device."""
     try:

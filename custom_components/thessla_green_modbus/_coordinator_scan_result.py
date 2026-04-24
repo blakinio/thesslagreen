@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 
@@ -13,8 +14,8 @@ def apply_scan_result(
     known_missing_registers: dict[str, set[str]],
     device_capabilities_cls: type,
     cannot_connect_exc: type[Exception],
-    now_fn,
-    logger,
+    now_fn: Callable[[], Any],
+    logger: Any,
     unknown_model: str,
 ) -> None:
     """Store and process a completed device scan result."""

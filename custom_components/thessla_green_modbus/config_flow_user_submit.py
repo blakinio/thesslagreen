@@ -22,7 +22,7 @@ async def process_user_submission(
     *,
     validate_input: Callable[[Any, dict[str, Any]], Awaitable[dict[str, Any]]],
     hass: Any,
-    logger,
+    logger: Any,
 ) -> tuple[dict[str, Any] | None, dict[str, str]]:
     """Validate and process the user-step form submission."""
 

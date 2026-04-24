@@ -59,7 +59,7 @@ def next_backoff(
     delay = max(0.0, float(base)) * (2 ** max(0, attempt - 1))
     if max_backoff is not None and max_backoff > 0:
         delay = min(delay, max_backoff)
-    return delay
+    return float(delay)
 
 
 def should_log_timeout_traceback(exc: BaseException) -> bool:

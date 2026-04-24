@@ -6,7 +6,7 @@ import importlib  # noqa: F401 - kept for tests patching scanner.core.importlib
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict as _dataclasses_asdict
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from .. import scanner_register_maps as _register_maps
 from ..const import (
@@ -209,6 +209,24 @@ class ThesslaGreenDeviceScanner(
 ):
     """Device scanner for ThesslaGreen AirPack Home - compatible with pymodbus 3.5.*+"""
 
+    available_registers: dict[str, set[str]]
+    failed_addresses: dict[str, dict[str, set[int]]]
+    capabilities: DeviceCapabilities
+    _registers: dict[int, dict[int, str]]
+    _register_ranges: dict[str, tuple[int | None, int | None]]
+    _names_by_address: dict[int, dict[int, set[str]]]
+    _holding_failures: dict[int, int]
+    _failed_holding: set[int]
+    _input_failures: dict[int, int]
+    _failed_input: set[int]
+    _input_skip_log_ranges: set[tuple[int, int]]
+    _unsupported_input_ranges: dict[tuple[int, int], int]
+    _unsupported_holding_ranges: dict[tuple[int, int], int]
+    _client: Any | None
+    _transport: Any | None
+    _reported_invalid: set[str]
+    _sensor_unavailable_checks: dict[str, Any]
+
     def __init__(
         self,
         host: str,
@@ -381,7 +399,9 @@ class ThesslaGreenDeviceScanner(
         hass: Any | None = None,
     ) -> ThesslaGreenDeviceScanner:
         """Factory to create an initialized scanner instance."""
-        return await scanner_setup.async_create_scanner_instance(
+        return cast(
+            ThesslaGreenDeviceScanner,
+            await scanner_setup.async_create_scanner_instance(
             cls,
             host=host,
             port=port,
@@ -406,6 +426,7 @@ class ThesslaGreenDeviceScanner(
             hass=hass,
             ensure_client_module_fn=ensure_pymodbus_client_module,
             async_ensure_register_maps_fn=async_ensure_register_maps,
+            ),
         )
 
     async def close(self) -> None:

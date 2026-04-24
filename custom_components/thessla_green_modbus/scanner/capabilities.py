@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from ..capability_rules import CAPABILITY_PATTERNS
 from ..const import SENSOR_UNAVAILABLE, SENSOR_UNAVAILABLE_REGISTERS
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-def is_valid_register_value(scanner: ThesslaGreenDeviceScanner, name: str, value: int) -> bool:
+def is_valid_register_value(scanner: Any, name: str, value: int) -> bool:
     """Validate a register value against known constraints."""
     if value == 65535:
         return False
@@ -46,7 +46,7 @@ def is_valid_register_value(scanner: ThesslaGreenDeviceScanner, name: str, value
     return True
 
 
-def analyze_capabilities(scanner: ThesslaGreenDeviceScanner) -> DeviceCapabilities:
+def analyze_capabilities(scanner: Any) -> DeviceCapabilities:
     """Derive device capabilities from discovered registers."""
     caps = scanner.capabilities.__class__()
     inputs = scanner.available_registers["input_registers"]
@@ -102,11 +102,11 @@ def analyze_capabilities(scanner: ThesslaGreenDeviceScanner) -> DeviceCapabiliti
         if any(pat in reg for reg in all_registers for pat in patterns):
             setattr(caps, attr, True)
 
-    return caps
+    return cast(DeviceCapabilities, caps)
 
 
 def filter_unsupported_addresses(
-    scanner: ThesslaGreenDeviceScanner, reg_type: str, addrs: set[int]
+    scanner: Any, reg_type: str, addrs: set[int]
 ) -> set[int]:
     """Return failed addresses not covered by unsupported spans."""
     if reg_type == "input_registers":
@@ -122,7 +122,7 @@ def filter_unsupported_addresses(
     return {addr for addr in addrs if not any(start <= addr <= end for start, end in ranges)}
 
 
-def mark_input_supported(scanner: ThesslaGreenDeviceScanner, address: int) -> None:
+def mark_input_supported(scanner: Any, address: int) -> None:
     """Remove address from cached unsupported input ranges after success."""
     scanner._failed_input.discard(address)
     for (start, end), code in list(scanner._unsupported_input_ranges.items()):
@@ -134,7 +134,7 @@ def mark_input_supported(scanner: ThesslaGreenDeviceScanner, address: int) -> No
                 scanner._unsupported_input_ranges[(address + 1, end)] = code
 
 
-def mark_holding_supported(scanner: ThesslaGreenDeviceScanner, address: int) -> None:
+def mark_holding_supported(scanner: Any, address: int) -> None:
     """Remove address from cached unsupported holding ranges after success."""
     scanner._failed_holding.discard(address)
     for (start, end), code in list(scanner._unsupported_holding_ranges.items()):
@@ -147,7 +147,7 @@ def mark_holding_supported(scanner: ThesslaGreenDeviceScanner, address: int) -> 
 
 
 def mark_holding_unsupported(
-    scanner: ThesslaGreenDeviceScanner, start: int, end: int, code: int
+    scanner: Any, start: int, end: int, code: int
 ) -> None:
     """Track unsupported holding register range without overlaps."""
     for (exist_start, exist_end), exist_code in list(scanner._unsupported_holding_ranges.items()):
@@ -162,7 +162,7 @@ def mark_holding_unsupported(
 
 
 def mark_input_unsupported(
-    scanner: ThesslaGreenDeviceScanner, start: int, end: int, code: int | None
+    scanner: Any, start: int, end: int, code: int | None
 ) -> None:
     """Cache unsupported input register range, merging overlaps."""
     for (old_start, old_end), _ in list(scanner._unsupported_input_ranges.items()):
@@ -175,7 +175,7 @@ def mark_input_unsupported(
     scanner._unsupported_input_ranges[(start, end)] = code or 0
 
 
-def log_invalid_value(scanner: ThesslaGreenDeviceScanner, name: str, raw: int) -> None:
+def log_invalid_value(scanner: Any, name: str, raw: int) -> None:
     """Log a register value that failed validation."""
     if name in scanner._reported_invalid:
         if not scanner.verbose_invalid_values:

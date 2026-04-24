@@ -37,7 +37,7 @@ async def validate_input_impl(
     is_request_cancelled_error: Callable[[ModbusIOException], bool],
     classify_os_error: Callable[[OSError], str],
     should_log_timeout_traceback: Callable[[BaseException], bool],
-    logger,
+    logger: Any,
     conf_name: str,
     conf_timeout: str,
     default_name: str,

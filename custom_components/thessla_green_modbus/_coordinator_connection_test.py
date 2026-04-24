@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Iterable
+from typing import Any
 
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from .modbus_transport import BaseModbusTransport
@@ -15,7 +16,7 @@ async def run_connection_test(
     slave_id: int,
     test_addresses: Iterable[int],
     is_cancelled_error: Callable[[Exception], bool],
-    logger,
+    logger: Any,
 ) -> None:
     """Execute initial modbus connection/read probe sequence."""
 

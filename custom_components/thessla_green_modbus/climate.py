@@ -267,7 +267,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
         return attrs
 
-    async def _write_register(self, register: str, value: Any, *, refresh: bool = False) -> Any:
+    async def _write_register(  # type: ignore[override]
+        self, register: str, value: Any, *, refresh: bool = False
+    ) -> Any:
         """Write register and gracefully handle coordinators with differing signatures."""
 
         try:

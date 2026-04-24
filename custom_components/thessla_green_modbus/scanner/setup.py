@@ -402,7 +402,7 @@ async def async_create_scanner_instance(
         registers_ready=True,
     )
     await scanner._async_setup()
-    scanner._read_holding = scanner_cls._read_holding.__get__(scanner, scanner_cls)  # type: ignore[method-assign]
-    scanner._read_coil = scanner_cls._read_coil.__get__(scanner, scanner_cls)  # type: ignore[method-assign]
-    scanner._read_discrete = scanner_cls._read_discrete.__get__(scanner, scanner_cls)  # type: ignore[method-assign]
+    scanner._read_holding = scanner_cls._read_holding.__get__(scanner, scanner_cls)
+    scanner._read_coil = scanner_cls._read_coil.__get__(scanner, scanner_cls)
+    scanner._read_discrete = scanner_cls._read_discrete.__get__(scanner, scanner_cls)
     return scanner

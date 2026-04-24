@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import timedelta
 
 from .const import CONNECTION_MODE_AUTO
 from .coordinator_models import CoordinatorConfig
@@ -11,8 +12,8 @@ from .coordinator_models import CoordinatorConfig
 def normalize_runtime_config(
     cfg: CoordinatorConfig,
     *,
-    normalize_scan_interval: Callable[[float], float],
-    resolve_connection_settings: Callable[[str, str, int], tuple[str, str]],
+    normalize_scan_interval: Callable[[timedelta | int], float],
+    resolve_connection_settings: Callable[[str | None, str | None, int | None], tuple[str, str | None]],
     normalize_serial_settings: Callable[[str, int, str, int], tuple[str, int, str, int]],
 ) -> tuple[CoordinatorConfig, str | None, float]:
     """Return normalized config and precomputed connection mode for runtime."""
@@ -37,7 +38,7 @@ def normalize_runtime_config(
         port=cfg.port,
         slave_id=cfg.slave_id,
         name=cfg.name,
-        scan_interval=interval_seconds,
+        scan_interval=cfg.scan_interval,
         timeout=cfg.timeout,
         retry=cfg.retry,
         backoff=cfg.backoff,

@@ -211,8 +211,8 @@ async def async_migrate_entity_unique_ids(
             old_unique_id,
             serial_number=serial_number,
             host=str(host),
-            port=int(port),
-            slave_id=int(slave_id),
+            port=int(port or 0),
+            slave_id=int(slave_id or 0),
         )
         if new_unique_id != old_unique_id:
             try:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
@@ -54,7 +54,10 @@ async def _get_translations(hass: HomeAssistant) -> dict[str, str]:
     """Load integration translations for the active language."""
     language = getattr(getattr(hass, "config", None), "language", "en")
     try:
-        return await translation.async_get_translations(hass, language, "component", [DOMAIN])
+        return cast(
+            dict[str, str],
+            await translation.async_get_translations(hass, language, "component", [DOMAIN]),
+        )
     except (OSError, ValueError, HomeAssistantError) as err:
         _LOGGER.debug("Translation load failed: %s", err)
     except (TypeError, AttributeError, RuntimeError) as err:

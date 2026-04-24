@@ -124,7 +124,7 @@ async def _sleep_retry_backoff_fn(
 
 
 async def _call_modbus_with_fallback(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     func: Any,
     slave_id: int,
     address: int,
@@ -171,7 +171,7 @@ async def _sleep_retry_backoff(
 
 
 def unpack_read_args(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
     address_or_count: int,
     count: int | None,
@@ -184,7 +184,7 @@ def unpack_read_args(
 
 
 def resolve_transport_and_client(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None,
 ) -> tuple[Any, Any]:
     """Return (transport, client) ready for reads. Raises if neither available."""
@@ -196,7 +196,7 @@ def resolve_transport_and_client(
     return transport, client
 
 
-def track_input_failure(scanner: ThesslaGreenDeviceScanner, count: int, address: int) -> None:
+def track_input_failure(scanner: Any, count: int, address: int) -> None:
     """Increment the failure counter for an input register (single-reg reads)."""
     _track_register_failure(
         scanner=scanner,
@@ -208,7 +208,7 @@ def track_input_failure(scanner: ThesslaGreenDeviceScanner, count: int, address:
     )
 
 
-def track_holding_failure(scanner: ThesslaGreenDeviceScanner, count: int, address: int) -> None:
+def track_holding_failure(scanner: Any, count: int, address: int) -> None:
     """Increment the failure counter for a holding register (single-reg reads)."""
     _track_register_failure(
         scanner=scanner,
@@ -222,7 +222,7 @@ def track_holding_failure(scanner: ThesslaGreenDeviceScanner, count: int, addres
 
 def _track_register_failure(
     *,
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     count: int,
     address: int,
     failures_attr: str,
@@ -262,7 +262,7 @@ def _expand_cached_failed_range(
 
 
 async def read_input(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
     address_or_count: int,
     count: int | None = None,
@@ -409,7 +409,7 @@ async def read_input(
 
 
 async def read_register_block(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     read_fn: Any,
     client_or_start: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
     start_or_count: int,
@@ -443,7 +443,7 @@ async def read_register_block(
 
 
 async def read_holding(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
     address_or_count: int,
     count: int | None = None,
@@ -599,7 +599,7 @@ async def read_holding(
 
 
 async def read_bit_registers(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     method_name: str,
     failed_key: str,
     type_name: str,
@@ -694,7 +694,7 @@ async def read_bit_registers(
 
 
 async def read_coil(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
     address_or_count: int,
     count: int | None = None,
@@ -712,7 +712,7 @@ async def read_coil(
 
 
 async def read_discrete(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
     address_or_count: int,
     count: int | None = None,

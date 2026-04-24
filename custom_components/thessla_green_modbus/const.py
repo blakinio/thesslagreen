@@ -9,10 +9,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 try:
-    from homeassistant.const import Platform
+    from homeassistant.const import Platform as _HAPlatform
 except ModuleNotFoundError:  # pragma: no cover - test/runtime fallback without HA
 
-    class Platform:
+    class _FallbackPlatform:
         BINARY_SENSOR = "binary_sensor"
         CLIMATE = "climate"
         FAN = "fan"
@@ -22,6 +22,10 @@ except ModuleNotFoundError:  # pragma: no cover - test/runtime fallback without 
         SWITCH = "switch"
         TEXT = "text"
         TIME = "time"
+
+    _HAPlatform = _FallbackPlatform
+
+Platform = _HAPlatform
 
 
 from .registers.loader import get_registers_by_function
@@ -241,7 +245,7 @@ KNOWN_MISSING_REGISTERS = {
 
 # Platforms supported by the integration
 # Diagnostics is handled separately and therefore not listed here
-PLATFORMS: list[Platform] = [
+PLATFORMS: list[Any] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.CLIMATE,

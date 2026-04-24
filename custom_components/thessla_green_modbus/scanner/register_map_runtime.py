@@ -10,7 +10,7 @@ from . import register_map_facade as _register_map_facade
 
 def initial_register_hash() -> str:
     """Return initial register hash value."""
-    return _register_map_cache.REGISTER_HASH
+    return _register_map_cache.REGISTER_HASH or ""
 
 
 def sync_register_hash_from_maps() -> str:

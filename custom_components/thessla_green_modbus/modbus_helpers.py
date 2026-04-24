@@ -231,7 +231,9 @@ def _normalize_positional_and_keyword_args(
     kwargs: dict[str, Any],
 ) -> tuple[list[Any], dict[str, inspect.Parameter]]:
     """Move positional values targeting keyword-only params into ``kwargs``."""
-    params = signature.parameters if signature is not None else {}
+    params: dict[str, inspect.Parameter] = (
+        dict(signature.parameters) if signature is not None else {}
+    )
     positional: list[Any] = []
     if signature is None:
         return list(args), params
