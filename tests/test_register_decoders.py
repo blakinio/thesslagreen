@@ -360,9 +360,7 @@ def test_register_uint64_encode_decode(uint64_register: Register, value: int) ->
 
 def test_decode_i16_negative():
     """raw >= 32768 is converted to signed negative (line 219)."""
-    reg = Register(
-        function=3, address=0, name="test_i16", access="rw", extra={"type": "i16"}
-    )
+    reg = Register(function=3, address=0, name="test_i16", access="rw", extra={"type": "i16"})
     assert reg.decode(65535) == -1
     assert reg.decode(32768) == -32768
 
@@ -398,9 +396,7 @@ def test_encode_bcd_time_list_hours_minutes():
 
 def test_encode_aatt_dict_airflow_pct_key():
     """AATT encode uses 'airflow_pct' key from dict (lines 337-338)."""
-    reg = Register(
-        function=3, address=0, name="setting_test", access="rw", extra={"aatt": True}
-    )
+    reg = Register(function=3, address=0, name="setting_test", access="rw", extra={"aatt": True})
     # airflow_pct=60, temp_c=20.0 → same encoding as the roundtrip decode test
     result = reg.encode({"airflow_pct": 60, "temp_c": 20.0})
     assert result == 15400
@@ -408,9 +404,7 @@ def test_encode_aatt_dict_airflow_pct_key():
 
 def test_encode_aatt_scalar_airflow_temp_zero():
     """AATT encode treats scalar as airflow with temp=0 (line 342)."""
-    reg = Register(
-        function=3, address=0, name="setting_test", access="rw", extra={"aatt": True}
-    )
+    reg = Register(function=3, address=0, name="setting_test", access="rw", extra={"aatt": True})
     result = reg.encode(60)
     # airflow=60, temp=0 → (60 << 8) | 0 = 15360
     assert result == (60 << 8)
@@ -473,6 +467,7 @@ def test_multi_register_encode_string_enum_not_found_raises():
 # Phase 6 — additional encode/decode edge cases
 # ---------------------------------------------------------------------------
 
+
 def test_multi_register_temp_sentinel_all_32768():
     """Multi-reg temperature register with all words=32768 returns None (line 152)."""
     reg = Register(function=3, address=0, name="inlet_temperature", access="ro", length=2)
@@ -509,7 +504,11 @@ def test_multi_register_decode_with_resolution():
 def test_multi_register_encode_non_string_invalid_raises():
     """Multi-reg encode raises when non-string value not in enum (lines 270-271)."""
     reg = Register(
-        function=3, address=0, name="r", access="rw", length=2,
+        function=3,
+        address=0,
+        name="r",
+        access="rw",
+        length=2,
         enum={0: "stopped", 1: "running"},
     )
     with pytest.raises(ValueError, match="Invalid enum value"):
@@ -553,7 +552,10 @@ def test_multi_register_encode_with_multiplier():
 def test_encode_bitmask_single_string():
     """Bitmask encode from a single string returns matching key (lines 316-319)."""
     reg = Register(
-        function=3, address=0, name="flags", access="rw",
+        function=3,
+        address=0,
+        name="flags",
+        access="rw",
         enum={1: "flag_a", 2: "flag_b"},
         extra={"bitmask": True},
     )
@@ -587,7 +589,10 @@ def test_group_registers_consecutive():
 def test_encode_bitmask_integer_fallback():
     """Bitmask encode with an integer falls back to int(value) (line 320)."""
     reg = Register(
-        function=3, address=0, name="flags", access="rw",
+        function=3,
+        address=0,
+        name="flags",
+        access="rw",
         enum={1: "flag_a", 2: "flag_b"},
         extra={"bitmask": True},
     )

@@ -67,6 +67,7 @@ def _make_hass(coordinator=None):
     hass.bus = SimpleNamespace(async_fire=MagicMock())
     if coordinator is not None:
         from custom_components.thessla_green_modbus.const import DOMAIN
+
         hass.data = {DOMAIN: {"entry1": coordinator}}
     return hass
 
@@ -148,9 +149,7 @@ async def test_log_level_manager_zero_duration():
     from custom_components.thessla_green_modbus.services import _LogLevelManager
 
     hass = SimpleNamespace()
-    with patch(
-        "custom_components.thessla_green_modbus.services.async_call_later"
-    ) as mock_later:
+    with patch("custom_components.thessla_green_modbus.services.async_call_later") as mock_later:
         mgr = _LogLevelManager(hass)
         mgr.set_level(logging.DEBUG, 0)
     mock_later.assert_not_called()
@@ -250,13 +249,15 @@ async def test_set_airflow_schedule_basic(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "day": "monday",
-        "period": 1,
-        "start_time": start,
-        "airflow_rate": 75,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "day": "monday",
+            "period": 1,
+            "start_time": start,
+            "airflow_rate": 75,
+        }
+    )
     await handler(call)
 
     coord.async_request_refresh.assert_awaited_once()
@@ -274,14 +275,16 @@ async def test_set_airflow_schedule_with_temperature(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "day": "friday",
-        "period": 2,
-        "start_time": start,
-        "airflow_rate": 50,
-        "temperature": 22.0,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "day": "friday",
+            "period": 2,
+            "start_time": start,
+            "airflow_rate": 50,
+            "temperature": 22.0,
+        }
+    )
     await handler(call)
 
     written = [c.args[0] for c in coord.async_write_register.call_args_list]
@@ -298,18 +301,19 @@ async def test_set_airflow_schedule_clamp_rate(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "day": "monday",
-        "period": 1,
-        "start_time": start,
-        "airflow_rate": 200,  # above max, should be clamped to 80
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "day": "monday",
+            "period": 1,
+            "start_time": start,
+            "airflow_rate": 200,  # above max, should be clamped to 80
+        }
+    )
     await handler(call)
 
     setting_calls = [
-        c for c in coord.async_write_register.call_args_list
-        if c.args[0] == "setting_summer_mon_1"
+        c for c in coord.async_write_register.call_args_list if c.args[0] == "setting_summer_mon_1"
     ]
     assert setting_calls
     assert setting_calls[0].args[1] == (80 << 8)
@@ -323,13 +327,15 @@ async def test_set_airflow_schedule_write_failure(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "day": "monday",
-        "period": 1,
-        "start_time": start,
-        "airflow_rate": 50,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "day": "monday",
+            "period": 1,
+            "start_time": start,
+            "airflow_rate": 50,
+        }
+    )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
@@ -360,11 +366,13 @@ async def test_set_bypass_parameters_with_temperature(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_bypass_parameters", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "mode": "open",
-        "min_outdoor_temperature": 15.0,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "mode": "open",
+            "min_outdoor_temperature": 15.0,
+        }
+    )
     await handler(call)
 
     written = [c.args[0] for c in coord.async_write_register.call_args_list]
@@ -410,12 +418,14 @@ async def test_set_gwc_parameters_with_temps(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_gwc_parameters", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "mode": "forced",
-        "min_air_temperature": 5.0,
-        "max_air_temperature": 35.0,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "mode": "forced",
+            "min_air_temperature": 5.0,
+            "max_air_temperature": 35.0,
+        }
+    )
     await handler(call)
 
     written = [c.args[0] for c in coord.async_write_register.call_args_list]
@@ -448,13 +458,15 @@ async def test_set_air_quality_thresholds_basic(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_air_quality_thresholds", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "co2_low": 600,
-        "co2_medium": 900,
-        "co2_high": 1200,
-        "humidity_target": 50,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "co2_low": 600,
+            "co2_medium": 900,
+            "co2_high": 1200,
+            "humidity_target": 50,
+        }
+    )
     await handler(call)
 
     written = {c.args[0]: c.args[1] for c in coord.async_write_register.call_args_list}
@@ -507,13 +519,15 @@ async def test_set_temperature_curve_with_supply_temps(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_temperature_curve", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "slope": 1.5,
-        "offset": 0.5,
-        "max_supply_temp": 60.0,
-        "min_supply_temp": 20.0,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "slope": 1.5,
+            "offset": 0.5,
+            "max_supply_temp": 60.0,
+            "min_supply_temp": 20.0,
+        }
+    )
     await handler(call)
 
     written = [c.args[0] for c in coord.async_write_register.call_args_list]
@@ -624,13 +638,17 @@ async def test_reset_settings_all(monkeypatch):
 async def test_start_pressure_test_basic(monkeypatch):
     """start_pressure_test writes day and time registers."""
     import datetime
+
     coord = _Coordinator()
     hass = _make_hass()
     handler = await _setup_and_get(hass, "start_pressure_test", coord, monkeypatch)
 
     fake_now = datetime.datetime(2024, 3, 11, 14, 30)  # Monday, 14:30
     from custom_components.thessla_green_modbus import services as svc_mod
-    monkeypatch.setattr(svc_mod, "dt_util", type("DT", (), {"now": staticmethod(lambda: fake_now)})())
+
+    monkeypatch.setattr(
+        svc_mod, "dt_util", type("DT", (), {"now": staticmethod(lambda: fake_now)})()
+    )
 
     call = _make_call({"entity_id": ["climate.dev"]})
     await handler(call)
@@ -645,13 +663,17 @@ async def test_start_pressure_test_basic(monkeypatch):
 async def test_start_pressure_test_write_failure(monkeypatch):
     """start_pressure_test aborts when day write fails."""
     import datetime
+
     coord = _Coordinator(write_result=False)
     hass = _make_hass()
     handler = await _setup_and_get(hass, "start_pressure_test", coord, monkeypatch)
 
     fake_now = datetime.datetime(2024, 3, 11, 14, 30)
     from custom_components.thessla_green_modbus import services as svc_mod
-    monkeypatch.setattr(svc_mod, "dt_util", type("DT", (), {"now": staticmethod(lambda: fake_now)})())
+
+    monkeypatch.setattr(
+        svc_mod, "dt_util", type("DT", (), {"now": staticmethod(lambda: fake_now)})()
+    )
 
     call = _make_call({"entity_id": ["climate.dev"]})
     await handler(call)
@@ -670,11 +692,13 @@ async def test_set_modbus_parameters_baud_rate(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_modbus_parameters", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "port": "air_b",
-        "baud_rate": "9600",
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "port": "air_b",
+            "baud_rate": "9600",
+        }
+    )
     await handler(call)
 
     written = {c.args[0]: c.args[1] for c in coord.async_write_register.call_args_list}
@@ -690,13 +714,15 @@ async def test_set_modbus_parameters_all_params(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_modbus_parameters", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "port": "air_a",
-        "baud_rate": "19200",
-        "parity": "even",
-        "stop_bits": "2",
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "port": "air_a",
+            "baud_rate": "19200",
+            "parity": "even",
+            "stop_bits": "2",
+        }
+    )
     await handler(call)
 
     written = {c.args[0]: c.args[1] for c in coord.async_write_register.call_args_list}
@@ -713,11 +739,13 @@ async def test_set_modbus_parameters_write_failure(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_modbus_parameters", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "port": "air_b",
-        "baud_rate": "9600",
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "port": "air_b",
+            "baud_rate": "9600",
+        }
+    )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
@@ -950,13 +978,15 @@ async def test_set_airflow_schedule_clamp_bad_min(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "day": "monday",
-        "period": 1,
-        "start_time": start,
-        "airflow_rate": 50,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "day": "monday",
+            "period": 1,
+            "start_time": start,
+            "airflow_rate": 50,
+        }
+    )
     await handler(call)  # should not raise
     coord.async_request_refresh.assert_awaited_once()
 
@@ -970,13 +1000,15 @@ async def test_set_airflow_schedule_clamp_bad_max(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "day": "tuesday",
-        "period": 1,
-        "start_time": start,
-        "airflow_rate": 80,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "day": "tuesday",
+            "period": 1,
+            "start_time": start,
+            "airflow_rate": 80,
+        }
+    )
     await handler(call)  # should not raise
     coord.async_request_refresh.assert_awaited_once()
 
@@ -990,18 +1022,19 @@ async def test_set_airflow_schedule_clamp_inverted_bounds(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "day": "wednesday",
-        "period": 1,
-        "start_time": start,
-        "airflow_rate": 10,  # below both, should clamp to 60 (min==max after fix)
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "day": "wednesday",
+            "period": 1,
+            "start_time": start,
+            "airflow_rate": 10,  # below both, should clamp to 60 (min==max after fix)
+        }
+    )
     await handler(call)
 
     setting_calls = [
-        c for c in coord.async_write_register.call_args_list
-        if c.args[0] == "setting_summer_wed_1"
+        c for c in coord.async_write_register.call_args_list if c.args[0] == "setting_summer_wed_1"
     ]
     assert setting_calls
     assert setting_calls[0].args[1] == (60 << 8)
@@ -1042,13 +1075,15 @@ async def test_set_airflow_schedule_setting_write_failure(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "day": "monday",
-        "period": 1,
-        "start_time": start,
-        "airflow_rate": 50,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "day": "monday",
+            "period": 1,
+            "start_time": start,
+            "airflow_rate": 50,
+        }
+    )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
@@ -1062,13 +1097,15 @@ async def test_set_airflow_schedule_start_write_failure(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "day": "monday",
-        "period": 2,
-        "start_time": start,
-        "airflow_rate": 50,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "day": "monday",
+            "period": 2,
+            "start_time": start,
+            "airflow_rate": 50,
+        }
+    )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
@@ -1082,14 +1119,16 @@ async def test_set_airflow_schedule_temp_write_failure(monkeypatch):
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
     start = SimpleNamespace(hour=8, minute=0)
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "day": "monday",
-        "period": 3,
-        "start_time": start,
-        "airflow_rate": 50,
-        "temperature": 22.0,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "day": "monday",
+            "period": 3,
+            "start_time": start,
+            "airflow_rate": 50,
+            "temperature": 22.0,
+        }
+    )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
@@ -1107,11 +1146,13 @@ async def test_set_bypass_parameters_min_temp_write_failure(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_bypass_parameters", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "mode": "auto",
-        "min_outdoor_temperature": 5.0,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "mode": "auto",
+            "min_outdoor_temperature": 5.0,
+        }
+    )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
@@ -1129,11 +1170,13 @@ async def test_set_gwc_parameters_min_temp_write_failure(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_gwc_parameters", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "mode": "auto",
-        "min_air_temperature": 5.0,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "mode": "auto",
+            "min_air_temperature": 5.0,
+        }
+    )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
@@ -1146,12 +1189,14 @@ async def test_set_gwc_parameters_max_temp_write_failure(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_gwc_parameters", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "mode": "auto",
-        "min_air_temperature": 5.0,
-        "max_air_temperature": 35.0,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "mode": "auto",
+            "min_air_temperature": 5.0,
+            "max_air_temperature": 35.0,
+        }
+    )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
@@ -1181,9 +1226,7 @@ def test_gwc_schema_rejects_min_ge_max():
     from custom_components.thessla_green_modbus.services import _validate_gwc_temperature_range
 
     with pytest.raises(Exception, match="strictly less than"):
-        _validate_gwc_temperature_range(
-            {"min_air_temperature": 20.0, "max_air_temperature": 20.0}
-        )
+        _validate_gwc_temperature_range({"min_air_temperature": 20.0, "max_air_temperature": 20.0})
 
 
 # ---------------------------------------------------------------------------
@@ -1198,11 +1241,13 @@ async def test_set_air_quality_thresholds_write_failure(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_air_quality_thresholds", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "co2_low": 600,
-        "co2_medium": 900,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "co2_low": 600,
+            "co2_medium": 900,
+        }
+    )
     await handler(call)
 
     coord.async_request_refresh.assert_not_awaited()
@@ -1236,12 +1281,14 @@ async def test_set_temperature_curve_max_supply_write_failure(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_temperature_curve", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "slope": 2.0,
-        "offset": 1.0,
-        "max_supply_temp": 60.0,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "slope": 2.0,
+            "offset": 1.0,
+            "max_supply_temp": 60.0,
+        }
+    )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
@@ -1254,13 +1301,15 @@ async def test_set_temperature_curve_min_supply_write_failure(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_temperature_curve", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "slope": 2.0,
-        "offset": 1.0,
-        "max_supply_temp": 60.0,
-        "min_supply_temp": 20.0,
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "slope": 2.0,
+            "offset": 1.0,
+            "max_supply_temp": 60.0,
+            "min_supply_temp": 20.0,
+        }
+    )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
@@ -1317,6 +1366,7 @@ async def test_reset_settings_all_first_write_failure(monkeypatch):
 async def test_start_pressure_test_time_write_failure(monkeypatch):
     """start_pressure_test aborts when pres_check_time write fails (2nd write)."""
     import datetime
+
     coord = _Coordinator()
     coord.async_write_register = AsyncMock(side_effect=[True, False])
     hass = _make_hass()
@@ -1324,6 +1374,7 @@ async def test_start_pressure_test_time_write_failure(monkeypatch):
 
     fake_now = datetime.datetime(2024, 3, 11, 14, 30)
     from custom_components.thessla_green_modbus import services as svc_mod
+
     monkeypatch.setattr(
         svc_mod, "dt_util", type("DT", (), {"now": staticmethod(lambda: fake_now)})()
     )
@@ -1346,12 +1397,14 @@ async def test_set_modbus_parameters_parity_write_failure(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_modbus_parameters", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "port": "air_b",
-        "baud_rate": "9600",
-        "parity": "even",
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "port": "air_b",
+            "baud_rate": "9600",
+            "parity": "even",
+        }
+    )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
@@ -1364,13 +1417,15 @@ async def test_set_modbus_parameters_stop_write_failure(monkeypatch):
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_modbus_parameters", coord, monkeypatch)
 
-    call = _make_call({
-        "entity_id": ["climate.dev"],
-        "port": "air_b",
-        "baud_rate": "9600",
-        "parity": "none",
-        "stop_bits": "2",
-    })
+    call = _make_call(
+        {
+            "entity_id": ["climate.dev"],
+            "port": "air_b",
+            "baud_rate": "9600",
+            "parity": "none",
+            "stop_bits": "2",
+        }
+    )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 

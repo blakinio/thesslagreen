@@ -241,8 +241,8 @@ def test_build_request_frame_read_coils():
     from custom_components.thessla_green_modbus.modbus_helpers import _build_request_frame
 
     frame = _build_request_frame("read_coils", 1, [100], {"count": 8})
-    assert frame[0] == 1   # slave_id
-    assert frame[1] == 1   # function code for read_coils
+    assert frame[0] == 1  # slave_id
+    assert frame[1] == 1  # function code for read_coils
     assert len(frame) == 6
 
 
@@ -250,14 +250,14 @@ def test_build_request_frame_read_discrete_inputs():
     from custom_components.thessla_green_modbus.modbus_helpers import _build_request_frame
 
     frame = _build_request_frame("read_discrete_inputs", 1, [200], {"count": 4})
-    assert frame[1] == 2   # function code
+    assert frame[1] == 2  # function code
 
 
 def test_build_request_frame_write_register():
     from custom_components.thessla_green_modbus.modbus_helpers import _build_request_frame
 
     frame = _build_request_frame("write_register", 1, [100], {"value": 42})
-    assert frame[1] == 6   # function code for write single
+    assert frame[1] == 6  # function code for write single
     assert len(frame) == 6
 
 
@@ -273,7 +273,7 @@ def test_build_request_frame_write_coil_true():
     from custom_components.thessla_green_modbus.modbus_helpers import _build_request_frame
 
     frame = _build_request_frame("write_coil", 1, [50], {"value": True})
-    assert frame[1] == 5   # function code for write coil
+    assert frame[1] == 5  # function code for write coil
     assert frame[4] == 0xFF  # 65280 = 0xFF00 → high byte
 
 
@@ -643,6 +643,7 @@ from custom_components.thessla_green_modbus import modbus_helpers as _mh
 @pytest.mark.asyncio
 async def test_call_modbus_backoff_delay_sleep():
     """delay > 0 on attempt >= 2 triggers the backoff sleep path (lines 295-299)."""
+
     async def simple_func(**kwargs):
         return "done"
 
@@ -653,6 +654,7 @@ async def test_call_modbus_backoff_delay_sleep():
 @pytest.mark.asyncio
 async def test_call_modbus_backoff_cancelled_during_sleep():
     """CancelledError during backoff sleep is re-raised (lines 300-304)."""
+
     async def simple_func(**kwargs):
         return "done"
 
@@ -668,6 +670,7 @@ async def test_call_modbus_backoff_cancelled_during_sleep():
 @pytest.mark.asyncio
 async def test_call_modbus_logs_request_frame_at_debug(caplog):
     """With DEBUG logger, non-None request frame is logged (line 318)."""
+
     async def read_coils(address, *, count=1, **kwargs):
         return "resp"
 
@@ -680,6 +683,7 @@ async def test_call_modbus_logs_request_frame_at_debug(caplog):
 @pytest.mark.asyncio
 async def test_call_modbus_response_encode_error_logged(caplog):
     """response.encode() raising ValueError is caught and logged (lines 360-362)."""
+
     class BadResponse:
         def encode(self):
             raise ValueError("broken encode")

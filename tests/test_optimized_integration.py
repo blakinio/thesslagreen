@@ -270,9 +270,7 @@ class TestThesslaGreenModbusCoordinator:
                 "_read_discrete_inputs_optimized",
                 AsyncMock(return_value={}),
             ),
-            patch.object(
-                coordinator_data, "_post_process_data", side_effect=lambda d: d
-            ),
+            patch.object(coordinator_data, "_post_process_data", side_effect=lambda d: d),
         ):
             result = await coordinator_data._async_update_data()
 
@@ -415,7 +413,10 @@ class TestThesslaGreenConfigFlow:
                 "custom_components.thessla_green_modbus.config_flow.validate_input",
                 return_value={
                     "title": "ThesslaGreen AirPack Test",
-                    "device_info": {"device_name": "ThesslaGreen AirPack Test", "firmware": "4.85.0"},
+                    "device_info": {
+                        "device_name": "ThesslaGreen AirPack Test",
+                        "firmware": "4.85.0",
+                    },
                     "scan_result": {},
                 },
             ),
@@ -425,7 +426,14 @@ class TestThesslaGreenConfigFlow:
             patch.object(
                 flow,
                 "async_step_confirm",
-                AsyncMock(return_value={"type": "create_entry", "title": "ThesslaGreen AirPack Test", "data": {}, "options": {}}),
+                AsyncMock(
+                    return_value={
+                        "type": "create_entry",
+                        "title": "ThesslaGreen AirPack Test",
+                        "data": {},
+                        "options": {},
+                    }
+                ),
             ),
         ):
             result = await flow.async_step_user(
@@ -530,11 +538,14 @@ class TestThesslaGreenDeviceScanner:
         )
         mock_transport.close = AsyncMock()
 
-        with patch.object(
-            scanner,
-            "_build_auto_tcp_attempts",
-            return_value=[("tcp", mock_transport, 5.0)],
-        ), pytest.raises(ConnectionException, match=r"(connect|transport failed)"):
+        with (
+            patch.object(
+                scanner,
+                "_build_auto_tcp_attempts",
+                return_value=[("tcp", mock_transport, 5.0)],
+            ),
+            pytest.raises(ConnectionException, match=r"(connect|transport failed)"),
+        ):
             await scanner.scan_device()
 
     def test_register_value_validation(self):
@@ -778,7 +789,9 @@ class TestPerformanceOptimizations:
         }
 
         with (
-            patch.object(scanner, "_build_auto_tcp_attempts", return_value=[("tcp", fake_transport, 1.0)]),
+            patch.object(
+                scanner, "_build_auto_tcp_attempts", return_value=[("tcp", fake_transport, 1.0)]
+            ),
             patch.object(scanner, "scan", AsyncMock(return_value=fake_result)),
             patch.object(scanner, "close", AsyncMock()),
         ):

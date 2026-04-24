@@ -124,6 +124,25 @@ async def test_read_holding_skips_after_failure():
     assert 168 in scanner._failed_holding
 
 
+async def test_read_holding_skips_cached_failed_range_for_multi_register_read():
+    """Cached failed holding registers skip overlapping multi-register requests."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
+    mock_client = AsyncMock()
+    scanner._failed_holding.update({170, 171, 172})
+
+    with patch(
+        "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+        AsyncMock(),
+    ) as call_mock:
+        result = await scanner._read_holding(mock_client, 170, 3)
+
+    assert result is None
+    call_mock.assert_not_called()
+    assert scanner.failed_addresses["modbus_exceptions"]["holding_registers"].issuperset(
+        {170, 171, 172}
+    )
+
+
 async def test_read_holding_exception_response(caplog):
     """Exception responses should include the exception code in logs."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
@@ -146,6 +165,30 @@ async def test_read_holding_exception_response(caplog):
     assert result is None
     assert call_mock.await_count == scanner.retry
     assert f"Exception code {error_response.exception_code}" in caplog.text
+
+
+async def test_read_input_exception_response_mentions_input_registers(caplog):
+    """Input exception responses should log the proper register type."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
+    mock_client = AsyncMock()
+
+    error_response = MagicMock()
+    error_response.isError.return_value = True
+    error_response.exception_code = 6
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            AsyncMock(return_value=error_response),
+        ) as call_mock,
+        patch("asyncio.sleep", AsyncMock()),
+        caplog.at_level(logging.DEBUG),
+    ):
+        result = await scanner._read_input(mock_client, 1, 1)
+
+    assert result is None
+    assert call_mock.await_count == 1
+    assert "while reading input registers 1-1" in caplog.text
 
 
 async def test_read_holding_timeout_logging(caplog):
@@ -1542,10 +1585,6 @@ async def test_scan_populates_device_name():
     assert result["device_info"]["device_name"] == device_name
 
 
-
-
-
-
 async def test_scan_populates_device_name_with_non_ascii_bytes() -> None:
     """Scanner should replace invalid ASCII bytes in device name instead of failing."""
     scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10)
@@ -1645,6 +1684,7 @@ async def test_scan_falls_back_to_single_input_reads_after_failed_batch():
 
     assert "outside_temperature" in result["available_registers"]["input_registers"]
     assert "supply_temperature" in result["available_registers"]["input_registers"]
+
 
 async def test_scan_reports_diagnostic_registers_on_error():
     """Diagnostic registers that failed Modbus probing are NOT force-added.

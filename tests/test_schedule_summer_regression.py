@@ -108,13 +108,9 @@ async def test_schedule_summer_batch_bug_falls_back_to_individual_reads(
     coordinator._read_holding_individually.assert_awaited_once()
 
     single_calls = [
-        call
-        for call in coordinator._read_with_retry.await_args_list
-        if call.args[2] == 1
+        call for call in coordinator._read_with_retry.await_args_list if call.args[2] == 1
     ]
-    assert [call.args[1] for call in single_calls] == [
-        SUMMER_BASE_ADDR + i for i in range(4)
-    ]
+    assert [call.args[1] for call in single_calls] == [SUMMER_BASE_ADDR + i for i in range(4)]
 
     assert data == dict(zip(SUMMER_NAMES, [101, 202, 303, 404], strict=True))
     assert not any(name.startswith("schedule_summer_") for name in coordinator._failed_registers)

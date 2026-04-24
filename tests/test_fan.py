@@ -88,8 +88,13 @@ def test_fan_is_on_false_when_panel_mode_off(mock_coordinator):
 
 def test_fan_is_on_none_when_no_flow_registers(mock_coordinator):
     """is_on returns None when no flow register is present in data (line 108)."""
-    for key in ["supply_air_flow", "supply_flow_rate", "supply_percentage",
-                "air_flow_rate_manual", "air_flow_rate_temporary_2"]:
+    for key in [
+        "supply_air_flow",
+        "supply_flow_rate",
+        "supply_percentage",
+        "air_flow_rate_manual",
+        "air_flow_rate_temporary_2",
+    ]:
         mock_coordinator.data.pop(key, None)
     fan = ThesslaGreenFan(mock_coordinator)
     assert fan.is_on is None  # nosec B101
@@ -97,8 +102,13 @@ def test_fan_is_on_none_when_no_flow_registers(mock_coordinator):
 
 def test_fan_percentage_none_when_no_flow_registers(mock_coordinator):
     """percentage returns None when no flow register is present (line 117)."""
-    for key in ["supply_air_flow", "supply_flow_rate", "supply_percentage",
-                "air_flow_rate_manual", "air_flow_rate_temporary_2"]:
+    for key in [
+        "supply_air_flow",
+        "supply_flow_rate",
+        "supply_percentage",
+        "air_flow_rate_manual",
+        "air_flow_rate_temporary_2",
+    ]:
         mock_coordinator.data.pop(key, None)
     fan = ThesslaGreenFan(mock_coordinator)
     assert fan.percentage is None  # nosec B101
@@ -106,8 +116,13 @@ def test_fan_percentage_none_when_no_flow_registers(mock_coordinator):
 
 def test_fan_get_current_flow_rate_none(mock_coordinator):
     """_get_current_flow_rate returns None when all flow registers absent (line 158)."""
-    for key in ["supply_air_flow", "supply_flow_rate", "supply_percentage",
-                "air_flow_rate_manual", "air_flow_rate_temporary_2"]:
+    for key in [
+        "supply_air_flow",
+        "supply_flow_rate",
+        "supply_percentage",
+        "air_flow_rate_manual",
+        "air_flow_rate_temporary_2",
+    ]:
         mock_coordinator.data.pop(key, None)
     fan = ThesslaGreenFan(mock_coordinator)
     assert fan._get_current_flow_rate() is None  # nosec B101

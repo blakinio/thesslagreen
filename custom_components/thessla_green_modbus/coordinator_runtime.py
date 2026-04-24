@@ -36,4 +36,3 @@ def parse_backoff_jitter(
     if result in (0, 0.0):
         result = 0.0
     return result
-

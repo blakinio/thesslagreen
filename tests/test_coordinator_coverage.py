@@ -58,6 +58,7 @@ def test_coordinator_init_bad_backoff_falls_back():
     """ValueError in float(backoff) is caught; self.backoff = DEFAULT_BACKOFF (lines 310-313)."""
     coord = _make_coordinator(backoff="not_a_float")
     from custom_components.thessla_green_modbus.const import DEFAULT_BACKOFF
+
     assert coord.backoff == DEFAULT_BACKOFF
 
 
@@ -65,6 +66,7 @@ def test_coordinator_init_bad_baud_rate_falls_back():
     """ValueError in int(baud_rate) is caught; self.baud_rate = DEFAULT_BAUD_RATE (lines 348-351)."""
     coord = _make_coordinator(baud_rate="not_an_int")
     from custom_components.thessla_green_modbus.const import DEFAULT_BAUD_RATE
+
     assert coord.baud_rate == DEFAULT_BAUD_RATE
 
 
@@ -220,9 +222,7 @@ async def test_test_connection_modbus_io_cancelled_skips():
 
     transport = MagicMock()
     transport.is_connected.return_value = True
-    transport.read_input_registers = AsyncMock(
-        side_effect=ModbusIOException("request cancelled")
-    )
+    transport.read_input_registers = AsyncMock(side_effect=ModbusIOException("request cancelled"))
     coord._transport = transport
 
     # Should not raise
@@ -257,9 +257,7 @@ async def test_test_connection_modbus_io_non_cancelled_raises():
 
     transport = MagicMock()
     transport.is_connected.return_value = True
-    transport.read_input_registers = AsyncMock(
-        side_effect=ModbusIOException("register error")
-    )
+    transport.read_input_registers = AsyncMock(side_effect=ModbusIOException("register error"))
     coord._transport = transport
 
     with pytest.raises(ModbusIOException):
@@ -625,12 +623,15 @@ def test_coordinator_init_super_type_error_fallback():
 
     with patch.object(ThesslaGreenModbusCoordinator.__bases__[0], "__init__", patched_init):
         with pytest.raises(TypeError, match="unexpected keyword argument"):
-            ThesslaGreenModbusCoordinator.from_params(hass=MagicMock(), host="localhost", port=502, slave_id=1)
+            ThesslaGreenModbusCoordinator.from_params(
+                hass=MagicMock(), host="localhost", port=502, slave_id=1
+            )
 
 
 def test_coordinator_init_entry_bad_max_registers_per_request():
     """TypeError/ValueError in entry.options max_registers → MAX_REGS_PER_REQUEST (lines 371-372)."""
     from custom_components.thessla_green_modbus.const import CONF_MAX_REGISTERS_PER_REQUEST
+
     entry = MagicMock()
     entry.entry_id = "test"
     entry.data = {}
@@ -640,6 +641,7 @@ def test_coordinator_init_entry_bad_max_registers_per_request():
         hass=hass, host="localhost", port=502, slave_id=1, entry=entry
     )
     from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
+
     assert coord.effective_batch == MAX_BATCH_REGISTERS
 
 
@@ -652,6 +654,7 @@ def test_coordinator_init_max_registers_less_than_1():
 def test_coordinator_init_entry_bad_capabilities():
     """Invalid capabilities dict in entry.data is caught (lines 397-399)."""
     from custom_components.thessla_green_modbus.coordinator import DeviceCapabilities
+
     entry = MagicMock()
     entry.entry_id = "test"
     entry.data = {"capabilities": {"_invalid_kwarg": "bad"}}
@@ -738,6 +741,7 @@ async def test_async_setup_scan_disabled_no_entry():
 async def test_async_setup_rtu_connection_type():
     """async_setup uses serial_port endpoint for RTU connection type (line 709)."""
     from custom_components.thessla_green_modbus.const import CONNECTION_TYPE_RTU
+
     coord = _make_coordinator(connection_type=CONNECTION_TYPE_RTU, serial_port="/dev/ttyUSB0")
     coord.enable_device_scan = False
     coord.force_full_register_list = False
@@ -834,9 +838,7 @@ async def test_test_connection_modbus_exception_raises():
 
     transport = MagicMock()
     transport.is_connected.return_value = True
-    transport.read_input_registers = AsyncMock(
-        side_effect=ModbusException("modbus error")
-    )
+    transport.read_input_registers = AsyncMock(side_effect=ModbusException("modbus error"))
     coord._transport = transport
 
     with pytest.raises(ModbusException):
@@ -856,21 +858,22 @@ def test_apply_scan_cache_normalise_exception():
         "_normalise_available_registers",
         side_effect=TypeError("bad"),
     ):
-        result = coord._apply_scan_cache(
-            {"available_registers": {"input_registers": ["mode"]}}
-        )
+        result = coord._apply_scan_cache({"available_registers": {"input_registers": ["mode"]}})
     assert result is False
 
 
 def test_apply_scan_cache_invalid_capabilities():
     """Invalid capabilities dict in cache is caught silently (lines 994-995)."""
     from custom_components.thessla_green_modbus.coordinator import DeviceCapabilities
+
     coord = _make_coordinator()
     with patch.object(DeviceCapabilities, "__init__", side_effect=TypeError("bad")):
-        result = coord._apply_scan_cache({
-            "available_registers": {"input_registers": ["mode"]},
-            "capabilities": {"bad_key": 1},
-        })
+        result = coord._apply_scan_cache(
+            {
+                "available_registers": {"input_registers": ["mode"]},
+                "capabilities": {"bad_key": 1},
+            }
+        )
     assert result is True  # overall still succeeds
 
 
@@ -894,6 +897,7 @@ def test_coordinator_init_jitter_else_none():
 def test_coordinator_init_jitter_else_default():
     """backoff_jitter={} hits else branch (not None/'') → jitter_value = DEFAULT_BACKOFF_JITTER."""
     from custom_components.thessla_green_modbus.const import DEFAULT_BACKOFF_JITTER
+
     coord = _make_coordinator(backoff_jitter={})
     assert coord.backoff_jitter == DEFAULT_BACKOFF_JITTER
 
@@ -941,6 +945,7 @@ async def test_read_with_retry_transient_error_raises_modbus_io():
 def test_process_register_value_sensor_unavailable_temperature():
     """SENSOR_UNAVAILABLE on a temperature register → returns None."""
     from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+
     coord = _make_coordinator()
     # Use a mock that correctly identifies this as a temperature register.
     mock_def = MagicMock()
@@ -961,6 +966,7 @@ def test_process_register_value_sensor_unavailable_non_temperature():
         SENSOR_UNAVAILABLE,
         SENSOR_UNAVAILABLE_REGISTERS,
     )
+
     coord = _make_coordinator()
     non_temp_reg = next((r for r in SENSOR_UNAVAILABLE_REGISTERS if "temperature" not in r), None)
     if non_temp_reg is None:
@@ -981,6 +987,7 @@ def test_process_register_value_sensor_unavailable_non_temperature():
 def test_process_register_value_schedule_hh_mm():
     """schedule_ register with HH:MM decoded → stored as HH:MM string (not minutes)."""
     from custom_components.thessla_green_modbus import _coordinator_register_processing as rp
+
     coord = _make_coordinator()
     mock_def = MagicMock()
     mock_def.is_temperature.return_value = False
@@ -1120,6 +1127,7 @@ async def test_async_write_registers_empty_values():
 async def test_async_write_registers_too_many_for_single_request():
     """Values exceeding MAX_REGS_PER_REQUEST with require_single_request=True → False."""
     from custom_components.thessla_green_modbus.const import MAX_REGS_PER_REQUEST
+
     coord = _make_coordinator()
     values = list(range(MAX_REGS_PER_REQUEST + 1))
     result = await coord.async_write_registers(100, values, require_single_request=True)
@@ -1135,6 +1143,7 @@ def test_process_register_value_decoded_equals_sensor_unavailable():
     """When decode() returns SENSOR_UNAVAILABLE, the function returns SENSOR_UNAVAILABLE (lines 1831-1838)."""
     from custom_components.thessla_green_modbus import _coordinator_register_processing as rp
     from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+
     coord = _make_coordinator()
     mock_def = MagicMock()
     mock_def.is_temperature.return_value = False
@@ -1148,6 +1157,7 @@ def test_process_register_value_decoded_equals_sensor_unavailable():
 def test_process_register_value_schedule_hh_mm_invalid():
     """schedule_ register with bad HH:MM → ValueError caught, decoded unchanged (lines 1850-1851)."""
     from custom_components.thessla_green_modbus import _coordinator_register_processing as rp
+
     coord = _make_coordinator()
     mock_def = MagicMock()
     mock_def.is_temperature.return_value = False
@@ -1295,6 +1305,7 @@ def test_get_device_info_model_from_entry():
     """get_device_info uses entry.options when device_info has no model (line 2539)."""
     coord = _make_coordinator()
     from unittest.mock import MagicMock
+
     entry = MagicMock()
     entry.options = {"model": "Thessla Air 350"}
     entry.data = {}
@@ -1453,6 +1464,7 @@ def test_build_tcp_transport_tcp_rtu_mode():
     """TCP_RTU mode returns RawRtuOverTcpTransport."""
     from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP_RTU
     from custom_components.thessla_green_modbus.modbus_transport import RawRtuOverTcpTransport
+
     coord = _make_coordinator()
     result = coord._build_tcp_transport(CONNECTION_MODE_TCP_RTU)
     assert isinstance(result, RawRtuOverTcpTransport)
@@ -1462,6 +1474,7 @@ def test_build_tcp_transport_tcp_mode():
     """TCP mode returns TcpModbusTransport."""
     from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP
     from custom_components.thessla_green_modbus.modbus_transport import TcpModbusTransport
+
     coord = _make_coordinator()
     result = coord._build_tcp_transport(CONNECTION_MODE_TCP)
     assert isinstance(result, TcpModbusTransport)
@@ -1598,9 +1611,7 @@ async def test_async_write_register_timeout_with_retry():
     transport.is_connected.return_value = True
     ok_resp = MagicMock()
     ok_resp.isError.return_value = False
-    transport.write_register = AsyncMock(
-        side_effect=[TimeoutError("write timeout"), ok_resp]
-    )
+    transport.write_register = AsyncMock(side_effect=[TimeoutError("write timeout"), ok_resp])
     coord._transport = transport
     coord._disconnect = AsyncMock()
     coord.async_request_refresh = AsyncMock()
@@ -1655,6 +1666,7 @@ async def test_async_write_registers_no_transport_no_client():
 async def test_async_write_registers_single_request_rtu_transport():
     """RTU transport single request (lines 2209-2215)."""
     from custom_components.thessla_green_modbus.const import CONNECTION_TYPE_RTU
+
     coord = _make_coordinator(connection_type=CONNECTION_TYPE_RTU)
     coord._ensure_connection = AsyncMock()
     ok_resp = MagicMock()
@@ -1859,9 +1871,7 @@ async def test_async_write_registers_modbus_exception_retry():
     client = MagicMock()
     ok_resp = MagicMock()
     ok_resp.isError.return_value = False
-    client.write_registers = AsyncMock(
-        side_effect=[ModbusException("write error"), ok_resp]
-    )
+    client.write_registers = AsyncMock(side_effect=[ModbusException("write error"), ok_resp])
     coord.client = client
     coord._disconnect = AsyncMock()
     coord.retry = 2
@@ -1879,9 +1889,7 @@ async def test_async_write_registers_timeout_with_transport():
     transport.is_connected.return_value = True
     ok_resp = MagicMock()
     ok_resp.isError.return_value = False
-    transport.write_registers = AsyncMock(
-        side_effect=[TimeoutError("timeout"), ok_resp]
-    )
+    transport.write_registers = AsyncMock(side_effect=[TimeoutError("timeout"), ok_resp])
     coord._transport = transport
     coord._disconnect = AsyncMock()
     coord.retry = 2
@@ -1899,9 +1907,7 @@ async def test_async_write_registers_timeout_continue():
     client = MagicMock()
     ok_resp = MagicMock()
     ok_resp.isError.return_value = False
-    client.write_registers = AsyncMock(
-        side_effect=[TimeoutError("timeout"), ok_resp]
-    )
+    client.write_registers = AsyncMock(side_effect=[TimeoutError("timeout"), ok_resp])
     coord.client = client
     coord._disconnect = AsyncMock()
     coord.retry = 2

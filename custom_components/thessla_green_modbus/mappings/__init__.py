@@ -112,4 +112,5 @@ async def async_setup_entity_mappings(hass: HomeAssistant | None = None) -> None
     else:
         _run_build_entity_mappings()
 
+
 _run_build_entity_mappings()

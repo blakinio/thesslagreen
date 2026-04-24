@@ -37,10 +37,13 @@ def test_async_setup_closes_scanner():
         }
         scanner.close = AsyncMock()
 
-        with patch(
-            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
-            AsyncMock(return_value=scanner),
-        ), patch.object(coordinator, "_test_connection", AsyncMock()):
+        with (
+            patch(
+                "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
+                AsyncMock(return_value=scanner),
+            ),
+            patch.object(coordinator, "_test_connection", AsyncMock()),
+        ):
             result = await coordinator.async_setup()
 
         assert result is True
@@ -74,10 +77,13 @@ def test_async_setup_cancel_mid_scan(caplog):
         scanner.scan_device.side_effect = scan_side_effect
         scanner.close = AsyncMock()
 
-        with patch(
-            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
-            AsyncMock(return_value=scanner),
-        ), patch.object(coordinator, "_test_connection", AsyncMock()):
+        with (
+            patch(
+                "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
+                AsyncMock(return_value=scanner),
+            ),
+            patch.object(coordinator, "_test_connection", AsyncMock()),
+        ):
             caplog.set_level(logging.DEBUG)
             setup_task = asyncio.create_task(coordinator.async_setup())
             await asyncio.sleep(0)

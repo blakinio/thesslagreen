@@ -69,7 +69,9 @@ async def run_full_scan(
                     scanner.failed_addresses["invalid_values"]["input_registers"].add(addr)
                     scanner._log_invalid_value(reg_name, value)
 
-    for start, count in _group_reads(range(holding_max + 1), max_block_size=scanner.effective_batch):
+    for start, count in _group_reads(
+        range(holding_max + 1), max_block_size=scanner.effective_batch
+    ):
         scanned_registers["holding_registers"] += count
         holding_data = (
             await scanner._read_holding(scanner._client, start, count, skip_cache=True)
@@ -125,7 +127,9 @@ async def run_full_scan(
             else:
                 unknown_registers["coil_registers"][addr] = value
 
-    for start, count in _group_reads(range(discrete_max + 1), max_block_size=scanner.effective_batch):
+    for start, count in _group_reads(
+        range(discrete_max + 1), max_block_size=scanner.effective_batch
+    ):
         scanned_registers["discrete_inputs"] += count
         discrete_data = (
             await scanner._read_discrete(scanner._client, start, count)
@@ -205,7 +209,9 @@ async def scan(scanner: Any) -> dict[str, Any]:
 
     caps = scanner._analyze_capabilities()
     scanner.capabilities = caps
-    device.capabilities = [key for key, val in caps.as_dict().items() if isinstance(val, bool) and val]
+    device.capabilities = [
+        key for key, val in caps.as_dict().items() if isinstance(val, bool) and val
+    ]
     _LOGGER.info("Detected %d capabilities", len(device.capabilities))
 
     scan_blocks = scanner._compute_scan_blocks(
@@ -244,11 +250,11 @@ async def scan(scanner: Any) -> dict[str, Any]:
                 f"{name}={addr}" for name, addr in sorted(regs.items(), key=lambda item: item[1])
             )
             details.append(f"{reg_type}: {formatted}")
-        _LOGGER.warning("The following registers were not found during scan: %s", "; ".join(details))
+        _LOGGER.warning(
+            "The following registers were not found during scan: %s", "; ".join(details)
+        )
 
-    available_registers = {
-        key: set(value) for key, value in scanner.available_registers.items()
-    }
+    available_registers = {key: set(value) for key, value in scanner.available_registers.items()}
     result = {
         "available_registers": available_registers,
         "device_info": device.as_dict(),
@@ -286,7 +292,8 @@ async def scan_device(scanner: Any) -> dict[str, Any]:
     base_scan = getattr(type(scanner), "scan", None)
     if (
         getattr(scan_method, "__func__", None) is not base_scan
-        or getattr(base_scan, "__module__", "") != "custom_components.thessla_green_modbus.scanner.core"
+        or getattr(base_scan, "__module__", "")
+        != "custom_components.thessla_green_modbus.scanner.core"
     ):
         try:
             scan_result: Any = scan_method()
@@ -299,7 +306,11 @@ async def scan_device(scanner: Any) -> dict[str, Any]:
                 and isinstance(scan_result[1], DeviceCapabilities)
             ):
                 device, caps = scan_result[0], scan_result[1]
-                unknown = scan_result[2] if len(scan_result) > 2 and isinstance(scan_result[2], dict) else {}
+                unknown = (
+                    scan_result[2]
+                    if len(scan_result) > 2 and isinstance(scan_result[2], dict)
+                    else {}
+                )
                 return {
                     "available_registers": {
                         k: sorted(v) for k, v in scanner.available_registers.items()
@@ -319,7 +330,9 @@ async def scan_device(scanner: Any) -> dict[str, Any]:
         if not scanner.serial_port:
             raise ConnectionException("Serial port not configured")
         parity = SERIAL_PARITY_MAP.get(scanner.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
-        stop_bits = SERIAL_STOP_BITS_MAP.get(scanner.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS])
+        stop_bits = SERIAL_STOP_BITS_MAP.get(
+            scanner.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
+        )
         rtu_transport_cls = getattr(scanner, "_rtu_transport_cls", RtuModbusTransport)
         scanner._transport = rtu_transport_cls(
             serial_port=scanner.serial_port,
@@ -353,7 +366,9 @@ async def scan_device(scanner: Any) -> dict[str, Any]:
                         ValueError,
                         AttributeError,
                     ) as exc:
-                        _LOGGER.debug("Protocol probe non-critical exception (protocol ok): %s", exc)
+                        _LOGGER.debug(
+                            "Protocol probe non-critical exception (protocol ok): %s", exc
+                        )
                 except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
                     last_error = exc
                     await transport.close()

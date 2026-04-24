@@ -212,6 +212,59 @@ async def test_read_input_registers_reconnect_on_error(coordinator):
 
 
 @pytest.mark.asyncio
+async def test_disconnect_retry_transportless_restores_client(coordinator):
+    """Transport-less retry restores client when disconnect clears it."""
+    client = MagicMock()
+    coordinator.client = client
+    coordinator._transport = None
+    coordinator._disconnect = _disconnect_clear_client(coordinator)
+    coordinator._ensure_connection = AsyncMock()
+
+    reconnect_error = await coordinator._disconnect_and_reconnect_for_retry(
+        register_type="input",
+        start_address=0,
+        attempt=1,
+    )
+
+    assert reconnect_error is None
+    assert coordinator.client is client
+    coordinator._ensure_connection.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_disconnect_retry_transportless_returns_disconnect_error(coordinator):
+    """Transport-less retry returns disconnect error and skips reconnect."""
+    client = MagicMock()
+    coordinator.client = client
+    coordinator._transport = None
+    coordinator._disconnect = _disconnect_raise_oserror()
+    coordinator._ensure_connection = AsyncMock()
+
+    reconnect_error = await coordinator._disconnect_and_reconnect_for_retry(
+        register_type="input",
+        start_address=0,
+        attempt=1,
+    )
+
+    assert isinstance(reconnect_error, OSError)
+    coordinator._ensure_connection.assert_not_awaited()
+
+
+def _disconnect_clear_client(coordinator):
+    async def _disconnect() -> None:
+        coordinator.client = None
+
+    return _disconnect
+
+
+def _disconnect_raise_oserror():
+    async def _disconnect() -> None:
+        raise OSError("disconnect failed")
+
+    return _disconnect
+
+
+@pytest.mark.asyncio
 async def test_async_write_multi_register_start(coordinator, monkeypatch):
     """Writing multi-register from start address succeeds."""
     coordinator.async_request_refresh = AsyncMock()
@@ -626,13 +679,17 @@ def test_process_register_value_dac_boundaries(coordinator, register_name, value
 def test_register_value_logging(coordinator, caplog):
     """Test debug and warning logging for register processing."""
 
-    with caplog.at_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.coordinator"):
+    with caplog.at_level(
+        logging.DEBUG, logger="custom_components.thessla_green_modbus.coordinator"
+    ):
         caplog.clear()
         coordinator._process_register_value("outside_temperature", 250)
         assert "raw=250" in caplog.text
         assert "value=25.0" in caplog.text
 
-    with caplog.at_level(logging.WARNING, logger="custom_components.thessla_green_modbus.coordinator"):
+    with caplog.at_level(
+        logging.WARNING, logger="custom_components.thessla_green_modbus.coordinator"
+    ):
         caplog.clear()
         coordinator._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
         assert not caplog.records
@@ -715,7 +772,7 @@ def test_calculate_power_model_aware(coordinator):
     """Flow-based calculation uses fan affinity law + standby power."""
     data = {
         "nominal_supply_air_flow": 420,
-        "supply_flow_rate": 420,   # 100% flow
+        "supply_flow_rate": 420,  # 100% flow
         "exhaust_flow_rate": 420,
         "dac_heater": 0.0,
     }
@@ -728,7 +785,7 @@ def test_calculate_power_partial_flow(coordinator):
     """Fan affinity law: at 50% flow power is (0.5)³ = 12.5% of max per fan."""
     data = {
         "nominal_supply_air_flow": 420,
-        "supply_flow_rate": 210,   # 50%
+        "supply_flow_rate": 210,  # 50%
         "exhaust_flow_rate": 210,
         "dac_heater": 0.0,
     }
@@ -743,7 +800,7 @@ def test_calculate_power_with_heater(coordinator):
         "nominal_supply_air_flow": 420,
         "supply_flow_rate": 420,
         "exhaust_flow_rate": 420,
-        "dac_heater": 5.0,   # 50%
+        "dac_heater": 5.0,  # 50%
     }
     power = coordinator.calculate_power_consumption(data)
     # fans=94 W, heater=1449×0.5=724.5 W, standby=10 W → 828.5 W
@@ -915,7 +972,6 @@ def test_apply_scan_cache_normalises_legacy_error_status_names(coordinator):
     assert "s28" not in coordinator.available_registers["holding_registers"]
 
 
-
 @pytest.mark.asyncio
 async def test_async_setup_invalid_capabilities(coordinator):
     """Invalid capabilities format should raise CannotConnect."""
@@ -932,10 +988,13 @@ async def test_async_setup_invalid_capabilities(coordinator):
         close=AsyncMock(),
     )
 
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
-        AsyncMock(return_value=scanner_instance),
-    ), pytest.raises(CannotConnect) as err:
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
+            AsyncMock(return_value=scanner_instance),
+        ),
+        pytest.raises(CannotConnect) as err,
+    ):
         await coordinator.async_setup()
 
     assert str(err.value) == "invalid_capabilities"
@@ -1067,8 +1126,6 @@ async def test_read_with_retry_skips_illegal_data_address():
 
     assert coordinator._call_modbus.await_count == 1
     coordinator._disconnect.assert_not_awaited()
-
-
 
 
 class TestParseBackoffJitter:

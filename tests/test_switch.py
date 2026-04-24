@@ -156,9 +156,7 @@ def test_switch_turn_off_exception_raises(mock_coordinator):
     """async_turn_off re-raises Modbus exceptions (lines 170-172)."""
     from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 
-    mock_coordinator.async_write_register = AsyncMock(
-        side_effect=ConnectionException("fail")
-    )
+    mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("fail"))
     switch_entity = ThesslaGreenSwitch(
         mock_coordinator,
         "bypass",
@@ -188,9 +186,13 @@ def test_switch_icon_fallback(hass, mock_config_entry, mock_coordinator):
     def async_add_entities(entities, update=False):  # pragma: no cover - test helper
         added.extend(entities)
 
-    with patch.dict(ENTITY_MAPPINGS["switch"], {"mock_switch_no_icon": config}), \
-         patch("custom_components.thessla_green_modbus.switch.coil_registers",
-               return_value={"mock_register": 42}):
+    with (
+        patch.dict(ENTITY_MAPPINGS["switch"], {"mock_switch_no_icon": config}),
+        patch(
+            "custom_components.thessla_green_modbus.switch.coil_registers",
+            return_value={"mock_register": 42},
+        ),
+    ):
         asyncio.run(switch.async_setup_entry(hass, mock_config_entry, async_add_entities))
 
     assert len(added) == 1

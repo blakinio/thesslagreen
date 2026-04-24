@@ -80,7 +80,15 @@ def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
         )
         manager.set_level(level_value, duration)
 
-    hass.services.async_register(deps.domain, "refresh_device_data", refresh_device_data, REFRESH_DEVICE_DATA_SCHEMA)
-    hass.services.async_register(deps.domain, "get_unknown_registers", get_unknown_registers, REFRESH_DEVICE_DATA_SCHEMA)
-    hass.services.async_register(deps.domain, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA)
-    hass.services.async_register(deps.domain, "set_debug_logging", set_debug_logging, SET_LOG_LEVEL_SCHEMA)
+    hass.services.async_register(
+        deps.domain, "refresh_device_data", refresh_device_data, REFRESH_DEVICE_DATA_SCHEMA
+    )
+    hass.services.async_register(
+        deps.domain, "get_unknown_registers", get_unknown_registers, REFRESH_DEVICE_DATA_SCHEMA
+    )
+    hass.services.async_register(
+        deps.domain, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA
+    )
+    hass.services.async_register(
+        deps.domain, "set_debug_logging", set_debug_logging, SET_LOG_LEVEL_SCHEMA
+    )

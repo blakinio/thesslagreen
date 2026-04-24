@@ -150,9 +150,7 @@ def test_text_set_value_modbus_error(mock_coordinator):
 
 def test_text_set_value_connection_error(mock_coordinator):
     """async_set_value swallows ConnectionException and does not refresh."""
-    mock_coordinator.async_write_register = AsyncMock(
-        side_effect=ConnectionException("conn fail")
-    )
+    mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("conn fail"))
     entity = ThesslaGreenText(
         mock_coordinator,
         "device_name",

@@ -71,9 +71,11 @@ def resolve_effective_batch(entry: ConfigEntry | None, max_registers_per_request
 
 def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> None:
     """Initialize mutable runtime state containers for a coordinator instance."""
-    coordinator.enable_device_scan = bool(
-        entry.options.get(CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN)
-    ) if entry is not None else DEFAULT_ENABLE_DEVICE_SCAN
+    coordinator.enable_device_scan = (
+        bool(entry.options.get(CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN))
+        if entry is not None
+        else DEFAULT_ENABLE_DEVICE_SCAN
+    )
 
     coordinator._reauth_scheduled = False
     coordinator.offline_state = False

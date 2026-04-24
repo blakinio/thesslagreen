@@ -15,7 +15,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
-REGISTER_FILE = ROOT / "custom_components" / "thessla_green_modbus" / "registers" / "thessla_green_registers_full.json"
+REGISTER_FILE = (
+    ROOT
+    / "custom_components"
+    / "thessla_green_modbus"
+    / "registers"
+    / "thessla_green_registers_full.json"
+)
 
 # ---------------------------------------------------------------------------
 # Polish → English translation table.
@@ -42,16 +48,13 @@ FULL_TRANSLATIONS: dict[str, str] = {
     "Dane kalibracyjne zegara czasu rzeczywistego": "Real-time clock calibration data",
     "Bieżący dzień tygodnia dla trybu automatycznego": "Current day of week for automatic mode",
     "Bieżący odcinek czasowy dla trybu automatycznego": "Current time slot for automatic mode",
-
     # ---- Firmware / version ----
     "Główna wersja oprogramowania": "Firmware major version",
     "Wersja poboczna oprogramowania": "Firmware minor version",
     "Wersja poprawki oprogramowania": "Firmware patch version",
     "Wersja oprogramowania modułu CF lub (od 4.75) TG-02": "CF module (or TG-02 from v4.75) firmware version",
-
     # ---- Serial number ----
     "Numer seryjny sterownika": "Controller serial number",
-
     # ---- Coil / relay output states ----
     "Stan wyjścia przekaźnika pompy obiegowej nagrzewnicy": "Duct water heater circulation pump relay output state",
     "Stan wyjścia siłownika przepustnicy bypass": "Bypass damper actuator output state",
@@ -61,7 +64,6 @@ FULL_TRANSLATIONS: dict[str, str] = {
     "Stan wyjścia przekaźnika potwierdzenia pracy (Expansion)": "Expansion module operation confirmation relay output state",
     "Stan wyjścia przekaźnika GWC": "GWC relay output state",
     "Stan wyjścia zasilającego przepustnicę okapu": "Hood damper power supply output state",
-
     # ---- Discrete input states ----
     "Stan wejścia zabezpieczenia termicznego elektrycznej nagrzewnicy kanałowej": "Duct electric heater thermal protection input state",
     "Komunikacja z modułem Expansion": "Expansion module communication state",
@@ -70,16 +72,15 @@ FULL_TRANSLATIONS: dict[str, str] = {
     "Stan wejścia dwustanowego czujnika jakości powietrza": "Binary air quality sensor input state",
     "Stan wejścia dwustanowego czujnika wilgotności": "Binary humidity sensor input state",
     "Stan wejścia włącznika funkcji WIETRZENIE": "Airing function switch input state",
-    "Stan wejścia przełącznika AirS w pozycji \"Wietrzenie\"": "AirS panel switch input state – Airing position",
-    "Stan wejścia przełącznika AirS w pozycji \"3 bieg\"": "AirS panel switch input state – Speed 3 position",
-    "Stan wejścia przełącznika AirS w pozycji \"2 bieg\"": "AirS panel switch input state – Speed 2 position",
-    "Stan wejścia przełącznika AirS w pozycji \"1 bieg\"": "AirS panel switch input state – Speed 1 position",
+    'Stan wejścia przełącznika AirS w pozycji "Wietrzenie"': "AirS panel switch input state – Airing position",
+    'Stan wejścia przełącznika AirS w pozycji "3 bieg"': "AirS panel switch input state – Speed 3 position",
+    'Stan wejścia przełącznika AirS w pozycji "2 bieg"': "AirS panel switch input state – Speed 2 position",
+    'Stan wejścia przełącznika AirS w pozycji "1 bieg"': "AirS panel switch input state – Speed 1 position",
     "Stan wejścia włącznika funkcji KOMINEK": "Fireplace function switch input state",
     "Stan wejścia sygnału alarmu pożarowego (P.POZ.)": "Fire alarm signal input state (F.FIRE.)",
     "Stan wejścia presostatu filtrów w rekuperatorze (DP1)": "AHU filter differential pressure switch input state (DP1)",
     "Stan wejścia zabezpieczenia termicznego nagrzewnicy systemu przeciwzamrożeniowego FPX": "FPX anti-freeze heater thermal protection input state",
     "Stan wejścia sygnału załączenia funkcji PUSTY DOM": "Empty house function activation signal input state",
-
     # ---- Temperatures ----
     "Temperatura powietrza zewnętrznego (TZ1)": "Outdoor air temperature (TZ1)",
     "Temperatura powietrza nawiewanego (TN1)": "Supply air temperature (TN1)",
@@ -98,7 +99,6 @@ FULL_TRANSLATIONS: dict[str, str] = {
     "Temperatura zadana trybu KOMFORT": "Comfort mode target temperature",
     "Zadana temperatura nawiewu - tryb MANUALNY": "Supply air temperature setpoint – manual mode",
     "Zadana temperatura nawiewu - tryb CHWILOWY": "Supply air temperature setpoint – temporary mode",
-
     # ---- Flow rates / ventilation intensity ----
     "Zadana intensywność wentylacji (nawiew)": "Ventilation intensity setpoint (supply)",
     "Zadana intensywność wentylacji (nawiew) dla bypass działającego w trybie 2 lub 3": "Ventilation intensity setpoint (supply) for bypass mode 2 or 3",
@@ -126,18 +126,15 @@ FULL_TRANSLATIONS: dict[str, str] = {
     "Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 3, 4, 5 (łazienka)": "Ventilation intensity for airing function – special function No. 3, 4, 5 (bathroom)",
     "Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 6 (usuwanie zanieczyszczeń)": "Ventilation intensity for airing function – special function No. 6 (pollutant removal)",
     "Intensywność wentylacji dla funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje)": "Ventilation intensity for airing function – special function No. 7, 8, 9 (rooms)",
-
     # ---- Fan speed coefficients ----
-    "Nastawa intensywności wentylacji - \"1 bieg\" - panel AirS": "Ventilation intensity setpoint – speed 1 – AirS panel",
-    "Nastawa intensywności wentylacji - \"2 bieg\" - panel AirS": "Ventilation intensity setpoint – speed 2 – AirS panel",
-    "Nastawa intensywności wentylacji - \"3 bieg\" - panel AirS": "Ventilation intensity setpoint – speed 3 – AirS panel",
-
+    'Nastawa intensywności wentylacji - "1 bieg" - panel AirS': "Ventilation intensity setpoint – speed 1 – AirS panel",
+    'Nastawa intensywności wentylacji - "2 bieg" - panel AirS': "Ventilation intensity setpoint – speed 2 – AirS panel",
+    'Nastawa intensywności wentylacji - "3 bieg" - panel AirS': "Ventilation intensity setpoint – speed 3 – AirS panel",
     # ---- PWM / DAC ----
     "Napięcie sterujące wentylatorem nawiewnym (PWM)": "Supply fan control voltage (PWM)",
     "Napięcie sterujące wentylatorem wywiewnym (PWM)": "Exhaust fan control voltage (PWM)",
     "Napięcie sterujące nagrzewnicą kanałową (PWM)": "Duct heater control voltage (PWM)",
     "Napięcie sterujące chłodnicą kanałową (PWM)": "Duct cooler control voltage (PWM)",
-
     # ---- Operating modes ----
     "Tryb pracy AirPack - równorzędny z 0x1130": "AirPack operating mode – equivalent to 0x1130",
     "Tryb pracy AirPack - równorzędny z 0x1133": "AirPack operating mode – equivalent to 0x1133",
@@ -148,13 +145,11 @@ FULL_TRANSLATIONS: dict[str, str] = {
     "Aktualny status trybu KOMFORT": "Current COMFORT mode status",
     "Tryb pracy / sposób realizacji funkcji bypass": "Bypass function operating mode / method",
     "Tryb działania systemu FPX": "FPX system operating mode",
-
     # ---- Bypass ----
     "Dezaktywacja działania bypass": "Bypass deactivation",
     "Aktualny status bypass": "Current bypass status",
     "Różnicowanie strumieni (wywiew < nawiew) dla bypass działającego w trybie 2": "Airflow differentiation (exhaust < supply) for bypass operating in mode 2",
     "Różnicowanie strumieni dla funkcji KOMINEK": "Airflow differentiation for fireplace function",
-
     # ---- GWC ----
     "Dezaktywacja działania GWC": "GWC deactivation",
     "Aktualny status działania GWC": "Current GWC operating status",
@@ -162,7 +157,6 @@ FULL_TRANSLATIONS: dict[str, str] = {
     "Czas trwania regeneracji złoża GWC dla regeneracji temperaturowej": "GWC bed regeneration duration for temperature-based regeneration",
     "Różnica temperatur warunkująca załączenie regeneracji temperaturowej złoża GWC": "Temperature differential required to activate GWC bed temperature regeneration",
     "Flaga informująca o aktywnym trybie regeneracji złoża GWC": "Flag indicating active GWC bed regeneration mode",
-
     # ---- Special functions / timing ----
     "Funkcje specjalne": "Special functions",
     "Czas działania funkcji KOMINEK": "Fireplace function operating time",
@@ -170,7 +164,6 @@ FULL_TRANSLATIONS: dict[str, str] = {
     "Czas działania funkcji WIETRZENIE - Funkcja specjalna nr: 7, 8, 9 (pokoje)": "Airing function operating time – special function No. 7, 8, 9 (rooms)",
     "Opóźnienie załączenia funkcji WIETRZENIE - Funkcja specjalna nr: 4 (łazienka)": "Airing function switch-on delay – special function No. 4 (bathroom)",
     "Opóźnienie wyłączenia funkcji WIETRZENIE - Funkcja specjalna nr: 4 (łazienka)": "Airing function switch-off delay – special function No. 4 (bathroom)",
-
     # ---- Filter / access / lock ----
     "Poziom dostępu": "Access level",
     "System kontroli filtrów / typ filtrów": "Filter control system / filter type",
@@ -180,7 +173,6 @@ FULL_TRANSLATIONS: dict[str, str] = {
     "Sygnalizacja konieczności wymiany filtrów w centrali wyposażonej w presostat": "AHU filter replacement required indication (unit with pressure switch)",
     "Sygnalizacja konieczności wprowadzenia klucza produktu centrali wentylacyjnej AirPack": "AirPack product key entry required indication",
     "Sygnalizacja konieczności wprowadzenia klucza produktu": "Product key entry required indication",
-
     # ---- Modbus UART settings ----
     "Nastawy komunikacji Modbus - port Air++ ID urządzenia": "Modbus communication settings – Air++ port device ID",
     "Nastawy komunikacji Modbus - port Air++ Szybkość transmisji": "Modbus communication settings – Air++ port baud rate",
@@ -190,7 +182,6 @@ FULL_TRANSLATIONS: dict[str, str] = {
     "Nastawy komunikacji Modbus - port Air-B Szybkość transmisji": "Modbus communication settings – Air-B port baud rate",
     "Nastawy komunikacji Modbus - port Air-B Parzystość": "Modbus communication settings – Air-B port parity",
     "Nastawy komunikacji Modbus - port Air-B Bity stopu": "Modbus communication settings – Air-B port stop bits",
-
     # ---- Reset / control ----
     "Reset ustawień trybów pracy": "Operating mode settings reset",
     "Reset ustawień użytkownika": "User settings reset",
@@ -198,10 +189,9 @@ FULL_TRANSLATIONS: dict[str, str] = {
     "Kod alarmu zatrzymującego pracę AirPack": "AirPack shutdown alarm code",
     "Centrala zatrzymana z panelu Air+ lub AirL+, Air++ lub AirMobile": "AHU stopped from Air+, AirL+, Air++ or AirMobile panel",
     "Centrala zatrzymana z panelu AirS": "AHU stopped from AirS panel",
-
     # ---- Alarms / errors / status flags ----
-    "Alarmy - Flaga informująca o wystąpieniu błędu - alarm \"S\"": "Alarms – error occurrence flag – \"S\" alarm",
-    "Alarmy - Flaga informująca o wystąpieniu ostrzeżenia - alarm \"E\"": "Alarms – warning occurrence flag – \"E\" alarm",
+    'Alarmy - Flaga informująca o wystąpieniu błędu - alarm "S"': 'Alarms – error occurrence flag – "S" alarm',
+    'Alarmy - Flaga informująca o wystąpieniu ostrzeżenia - alarm "E"': 'Alarms – warning occurrence flag – "E" alarm',
     "Flagi błędów E196-E199": "Error flags E196–E199",
     "Nie działa wentylator nawiewny": "Supply fan not operating",
     "Nie działa wentylator wywiewny": "Exhaust fan not operating",
@@ -232,17 +222,14 @@ FULL_TRANSLATIONS: dict[str, str] = {
     "Uszkodzony czujnik temperatury powietrza zewnętrznego oraz czujnik temperatury powietrza dla glikolowego GWC": "Outdoor air temperature sensor and glycol GWC temperature sensor damaged",
     "Uszkodzony czujnik temperatury powietrza na wlocie do wymiennika rekuperacyjnego przy temperaturze powietrza zewnętrznego stanowiącej warunki do zadziałania systemu FPX": "Temperature sensor at heat exchanger inlet damaged while outdoor temp conditions require FPX activation",
     "Uszkodzony czujnik temperatury powietrza w kanale nawiewnym za nagrzewnicą wodną": "Temperature sensor in supply duct after water heater damaged",
-
     # ---- FPX ----
     "Flaga uruchomienia systemu FPX": "FPX system activation flag",
     "Flaga wymuszenia / aktywacji trybu CHWILOWEGO - zmiana intensywności wentylacji": "Temporary mode force/activation flag – ventilation intensity change",
     "Flaga wymuszenia / aktywacji trybu CHWILOWEGO - zmiana wartości zadanej temperatury nawiewu": "Temporary mode force/activation flag – supply air temperature setpoint change",
-
     # ---- Constant Flow / misc ----
     "Status aktywności systemu Constant Flow": "Constant Flow system active status",
     "Status działania procedury HEWR": "HEWR procedure operating status",
     "Wybór języka panelu Air++": "Air++ panel language selection",
-
     # ---- Schedule – SUMMER (LATO) ----
     "LATO - Poniedziałek - 1": "SUMMER – Monday – slot 1",
     "LATO - Poniedziałek - 1 [AATT]": "SUMMER – Monday – slot 1 [intensity/temp]",
@@ -307,7 +294,6 @@ FULL_TRANSLATIONS: dict[str, str] = {
     "LATO - Niedziela - 4": "SUMMER – Sunday – slot 4",
     "LATO - Niedziela - 4 [AATT]": "SUMMER – Sunday – slot 4 [intensity/temp]",
     "LATO - Niedziela - Wietrzenie [GGMM]": "SUMMER – Sunday – airing time [HHmm]",
-
     # ---- Schedule – WINTER (ZIMA) ----
     "ZIMA - Poniedziałek - 1": "WINTER – Monday – slot 1",
     "ZIMA - Poniedziałek - 1 [AATT]": "WINTER – Monday – slot 1 [intensity/temp]",
@@ -419,7 +405,9 @@ def main() -> int:
         print("\nUnmatched descriptions (need manual translation):")
         for reg in registers:
             if reg.get("description_en", "").startswith("[TODO]"):
-                print(f"  [{reg['function']} addr={reg['address_dec']}] {reg['name']}: {reg['description']}")
+                print(
+                    f"  [{reg['function']} addr={reg['address_dec']}] {reg['name']}: {reg['description']}"
+                )
     return 0 if todo == 0 else 1
 
 

@@ -10,6 +10,7 @@ from typing import Any, ClassVar
 
 _LOGGER = logging.getLogger(__name__)
 
+
 def _utcnow() -> datetime:
     """Return timezone-aware UTC now."""
     return datetime.now(UTC)

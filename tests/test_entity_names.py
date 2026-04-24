@@ -44,6 +44,7 @@ PL = _load_json("translations/pl.json")
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _entity_names(trans: dict, platform: str) -> dict[str, str]:
     """Return {translation_key: name} for a platform from a translation dict."""
     return {
@@ -57,6 +58,7 @@ def _entity_names(trans: dict, platform: str) -> dict[str, str]:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def entity_mappings():
     from custom_components.thessla_green_modbus.mappings import (
@@ -68,6 +70,7 @@ def entity_mappings():
         TEXT_ENTITY_MAPPINGS,
         TIME_ENTITY_MAPPINGS,
     )
+
     # Deep-copy each mapping so that mutations by other test modules
     # (e.g. test_switch.py injects "bypass" into SWITCH_ENTITY_MAPPINGS
     # at import time) do not pollute the canonical set of entities we
@@ -112,6 +115,7 @@ def _iter_entities(entity_mappings):
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestEntityTranslationKeys:
     """Verify every entity's translation_key exists in all translation files."""
 
@@ -122,9 +126,8 @@ class TestEntityTranslationKeys:
             keys = set(STRINGS.get("entity", {}).get(platform, {}).keys())
             if tk not in keys:
                 missing.append(f"[{platform}] {key} → translation_key='{tk}'")
-        assert not missing, (
-            f"{len(missing)} encje bez klucza w strings.json:\n"
-            + "\n".join(f"  {m}" for m in missing)
+        assert not missing, f"{len(missing)} encje bez klucza w strings.json:\n" + "\n".join(
+            f"  {m}" for m in missing
         )
 
     def test_all_translation_keys_in_en_json(self, entity_mappings):
@@ -134,9 +137,8 @@ class TestEntityTranslationKeys:
             keys = set(EN.get("entity", {}).get(platform, {}).keys())
             if tk not in keys:
                 missing.append(f"[{platform}] {key} → translation_key='{tk}'")
-        assert not missing, (
-            f"{len(missing)} encje bez klucza w en.json:\n"
-            + "\n".join(f"  {m}" for m in missing)
+        assert not missing, f"{len(missing)} encje bez klucza w en.json:\n" + "\n".join(
+            f"  {m}" for m in missing
         )
 
     def test_all_translation_keys_in_pl_json(self, entity_mappings):
@@ -146,9 +148,8 @@ class TestEntityTranslationKeys:
             keys = set(PL.get("entity", {}).get(platform, {}).keys())
             if tk not in keys:
                 missing.append(f"[{platform}] {key} → translation_key='{tk}'")
-        assert not missing, (
-            f"{len(missing)} encje bez klucza w pl.json:\n"
-            + "\n".join(f"  {m}" for m in missing)
+        assert not missing, f"{len(missing)} encje bez klucza w pl.json:\n" + "\n".join(
+            f"  {m}" for m in missing
         )
 
 
@@ -163,9 +164,8 @@ class TestEntityNames:
             name = en_ents.get(tk, {}).get("name", "") if tk in en_ents else ""
             if not name:
                 missing.append(f"[{platform}] {key} (tk='{tk}'): pusta nazwa EN")
-        assert not missing, (
-            f"{len(missing)} encji z pustą nazwą EN:\n"
-            + "\n".join(f"  {m}" for m in missing)
+        assert not missing, f"{len(missing)} encji z pustą nazwą EN:\n" + "\n".join(
+            f"  {m}" for m in missing
         )
 
     def test_no_empty_names_in_pl(self, entity_mappings):
@@ -176,9 +176,8 @@ class TestEntityNames:
             name = pl_ents.get(tk, {}).get("name", "") if tk in pl_ents else ""
             if not name:
                 missing.append(f"[{platform}] {key} (tk='{tk}'): pusta nazwa PL")
-        assert not missing, (
-            f"{len(missing)} encji z pustą nazwą PL:\n"
-            + "\n".join(f"  {m}" for m in missing)
+        assert not missing, f"{len(missing)} encji z pustą nazwą PL:\n" + "\n".join(
+            f"  {m}" for m in missing
         )
 
     def test_no_names_with_underscores_in_en(self, entity_mappings):
@@ -193,9 +192,8 @@ class TestEntityNames:
             name = en_ents.get(tk, {}).get("name", "") if tk in en_ents else ""
             if "_" in name:
                 bad.append(f"[{platform}] {key}: nazwa='{name}' (zawiera podkreślenie)")
-        assert not bad, (
-            f"{len(bad)} encji z podkreśleniem w nazwie (surowy klucz?):\n"
-            + "\n".join(f"  {m}" for m in bad)
+        assert not bad, f"{len(bad)} encji z podkreśleniem w nazwie (surowy klucz?):\n" + "\n".join(
+            f"  {m}" for m in bad
         )
 
     def test_no_generic_fallback_names(self, entity_mappings):
@@ -205,6 +203,7 @@ class TestEntityNames:
         to using the device class + entity number.
         """
         import re
+
         generic_pattern = re.compile(
             r"^(problem|sensor|switch|select|number|binary sensor|text|time)\s+\d+$",
             re.IGNORECASE,
@@ -216,10 +215,7 @@ class TestEntityNames:
                 name = ents.get(tk, {}).get("name", "") if tk in ents else ""
                 if name and generic_pattern.match(name.strip()):
                     bad.append(f"[{lang}][{platform}] {key}: nazwa='{name}'")
-        assert not bad, (
-            f"{len(bad)} encji z generyczną nazwą:\n"
-            + "\n".join(f"  {m}" for m in bad)
-        )
+        assert not bad, f"{len(bad)} encji z generyczną nazwą:\n" + "\n".join(f"  {m}" for m in bad)
 
     def test_no_orphaned_sensor_translations(self, entity_mappings):
         """All sensor translation keys in en.json must be referenced by an entity.
@@ -262,9 +258,8 @@ class TestSelectStateTranslations:
             if diff:
                 missing.append(f"select.{key}: brak stanów PL: {sorted(diff)}")
 
-        assert not missing, (
-            f"{len(missing)} select bez pełnych tłumaczeń PL:\n"
-            + "\n".join(f"  {m}" for m in missing)
+        assert not missing, f"{len(missing)} select bez pełnych tłumaczeń PL:\n" + "\n".join(
+            f"  {m}" for m in missing
         )
 
     def test_binary_sensor_states_match_en_and_pl(self):
@@ -280,9 +275,8 @@ class TestSelectStateTranslations:
             if diff:
                 missing.append(f"binary_sensor.{key}: brak stanów PL: {sorted(diff)}")
 
-        assert not missing, (
-            f"{len(missing)} binary_sensor bez pełnych tłumaczeń PL:\n"
-            + "\n".join(f"  {m}" for m in missing)
+        assert not missing, f"{len(missing)} binary_sensor bez pełnych tłumaczeń PL:\n" + "\n".join(
+            f"  {m}" for m in missing
         )
 
     def test_sensor_states_match_en_and_pl(self):
@@ -298,7 +292,6 @@ class TestSelectStateTranslations:
             if diff:
                 missing.append(f"sensor.{key}: brak stanów PL: {sorted(diff)}")
 
-        assert not missing, (
-            f"{len(missing)} sensor bez pełnych tłumaczeń PL:\n"
-            + "\n".join(f"  {m}" for m in missing)
+        assert not missing, f"{len(missing)} sensor bez pełnych tłumaczeń PL:\n" + "\n".join(
+            f"  {m}" for m in missing
         )

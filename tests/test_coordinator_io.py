@@ -56,13 +56,16 @@ async def test_holding_happy_path_batch_full(coordinator: ThesslaGreenModbusCoor
 
 
 @pytest.mark.asyncio
-async def test_holding_partial_read_falls_back_for_tail(coordinator: ThesslaGreenModbusCoordinator) -> None:
+async def test_holding_partial_read_falls_back_for_tail(
+    coordinator: ThesslaGreenModbusCoordinator,
+) -> None:
     """Partial batch response: tail registers are retried individually, not marked failed."""
     coordinator._transport = SimpleNamespace(
         is_connected=lambda: True,
         read_holding_registers=AsyncMock(),
     )
     coordinator.client = None
+
     # Batch returns only 1 of 2 registers; individual read returns 99 for the tail.
     async def _fake_read(_read_method, address, count, **_kwargs):
         if count > 1:
@@ -134,7 +137,9 @@ async def test_holding_uses_transport_method_when_available(
     coordinator: ThesslaGreenModbusCoordinator,
 ) -> None:
     transport_read = AsyncMock()
-    coordinator._transport = SimpleNamespace(is_connected=lambda: True, read_holding_registers=transport_read)
+    coordinator._transport = SimpleNamespace(
+        is_connected=lambda: True, read_holding_registers=transport_read
+    )
     coordinator.client = None
     seen = {}
 

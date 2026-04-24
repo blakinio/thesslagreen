@@ -41,6 +41,7 @@ from custom_components.thessla_green_modbus.sensor import ThesslaGreenSensor
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_sensor(coordinator, name: str, address: int = 100) -> ThesslaGreenSensor:
     """Create a ThesslaGreenSensor using the live entity mapping for *name*."""
     defn = ENTITY_MAPPINGS["sensor"].get(name, {"translation_key": name})
@@ -72,6 +73,7 @@ def _make_select(coordinator, register_name: str) -> ThesslaGreenSelect:
 # Tests: ThesslaGreenSensor.native_value
 # ---------------------------------------------------------------------------
 
+
 class TestSensorNativeValue:
     """native_value reads coordinator.data and returns the right value."""
 
@@ -100,6 +102,7 @@ class TestSensorNativeValue:
 
     def test_returns_none_for_sensor_unavailable_sentinel(self, mock_coordinator):
         from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+
         mock_coordinator.data = {"outside_temperature": SENSOR_UNAVAILABLE}
         entity = _make_sensor(mock_coordinator, "outside_temperature")
         assert entity.native_value is None
@@ -109,16 +112,17 @@ class TestSensorNativeValue:
         entity = _make_sensor(mock_coordinator, "exhaust_temperature")
         assert entity.native_value == 18.2
 
-    @pytest.mark.parametrize("minutes,expected", [
-        (0, "00:00"),
-        (60, "01:00"),
-        (90, "01:30"),
-        (1439, "23:59"),
-        (120, "02:00"),
-    ])
-    def test_time_register_formats_minutes_as_hhmm(
-        self, mock_coordinator, minutes, expected
-    ):
+    @pytest.mark.parametrize(
+        "minutes,expected",
+        [
+            (0, "00:00"),
+            (60, "01:00"),
+            (90, "01:30"),
+            (1439, "23:59"),
+            (120, "02:00"),
+        ],
+    )
+    def test_time_register_formats_minutes_as_hhmm(self, mock_coordinator, minutes, expected):
         """schedule_* registers contain integer minutes → formatted as HH:MM."""
         mock_coordinator.data = {"schedule_summer_mon_1": minutes}
         entity = _make_sensor(mock_coordinator, "schedule_summer_mon_1", address=10)
@@ -135,34 +139,44 @@ class TestSensorNativeValue:
 # Tests: ThesslaGreenSensor — static attributes
 # ---------------------------------------------------------------------------
 
+
 class TestSensorAttributes:
     """_attr_device_class, _attr_state_class, _attr_native_unit_of_measurement."""
 
-    @pytest.mark.parametrize("register_name", [
-        "outside_temperature",
-        "supply_temperature",
-        "exhaust_temperature",
-    ])
+    @pytest.mark.parametrize(
+        "register_name",
+        [
+            "outside_temperature",
+            "supply_temperature",
+            "exhaust_temperature",
+        ],
+    )
     def test_temperature_sensor_device_class(self, mock_coordinator, register_name):
         entity = _make_sensor(mock_coordinator, register_name)
         defn = ENTITY_MAPPINGS["sensor"][register_name]
         assert entity._attr_device_class == defn["device_class"]
 
-    @pytest.mark.parametrize("register_name", [
-        "outside_temperature",
-        "supply_temperature",
-        "exhaust_temperature",
-    ])
+    @pytest.mark.parametrize(
+        "register_name",
+        [
+            "outside_temperature",
+            "supply_temperature",
+            "exhaust_temperature",
+        ],
+    )
     def test_temperature_sensor_unit(self, mock_coordinator, register_name):
         entity = _make_sensor(mock_coordinator, register_name)
         defn = ENTITY_MAPPINGS["sensor"][register_name]
         assert entity._attr_native_unit_of_measurement == defn["unit"]
 
-    @pytest.mark.parametrize("register_name", [
-        "outside_temperature",
-        "supply_temperature",
-        "exhaust_temperature",
-    ])
+    @pytest.mark.parametrize(
+        "register_name",
+        [
+            "outside_temperature",
+            "supply_temperature",
+            "exhaust_temperature",
+        ],
+    )
     def test_temperature_sensor_state_class(self, mock_coordinator, register_name):
         entity = _make_sensor(mock_coordinator, register_name)
         defn = ENTITY_MAPPINGS["sensor"][register_name]
@@ -173,21 +187,32 @@ class TestSensorAttributes:
         for name, defn in ENTITY_MAPPINGS["sensor"].items():
             assert "translation_key" in defn, f"Missing translation_key for sensor '{name}'"
 
-    @pytest.mark.parametrize("register_name,defn", [
-        (k, v) for k, v in ENTITY_MAPPINGS["sensor"].items()
-        if v.get("device_class") is not None and not k.endswith("_percentage")
-        and k not in ("supply_air_flow", "exhaust_air_flow", "supply_flow_rate", "exhaust_flow_rate")
-    ])
+    @pytest.mark.parametrize(
+        "register_name,defn",
+        [
+            (k, v)
+            for k, v in ENTITY_MAPPINGS["sensor"].items()
+            if v.get("device_class") is not None
+            and not k.endswith("_percentage")
+            and k
+            not in ("supply_air_flow", "exhaust_air_flow", "supply_flow_rate", "exhaust_flow_rate")
+        ],
+    )
     def test_sensor_device_class_matches_mapping(self, mock_coordinator, register_name, defn):
         entity = _make_sensor(mock_coordinator, register_name)
         assert entity._attr_device_class == defn["device_class"]
 
-    @pytest.mark.parametrize("register_name,defn", [
-        (k, v) for k, v in ENTITY_MAPPINGS["sensor"].items()
-        if v.get("unit") is not None
-        and "percentage" not in k  # percentage sensors may override unit
-        and k not in ("supply_air_flow", "exhaust_air_flow", "supply_flow_rate", "exhaust_flow_rate")
-    ])
+    @pytest.mark.parametrize(
+        "register_name,defn",
+        [
+            (k, v)
+            for k, v in ENTITY_MAPPINGS["sensor"].items()
+            if v.get("unit") is not None
+            and "percentage" not in k  # percentage sensors may override unit
+            and k
+            not in ("supply_air_flow", "exhaust_air_flow", "supply_flow_rate", "exhaust_flow_rate")
+        ],
+    )
     def test_sensor_unit_matches_mapping(self, mock_coordinator, register_name, defn):
         entity = _make_sensor(mock_coordinator, register_name)
         assert entity._attr_native_unit_of_measurement == defn["unit"]
@@ -197,12 +222,19 @@ class TestSensorAttributes:
 # Tests: ThesslaGreenBinarySensor.is_on
 # ---------------------------------------------------------------------------
 
+
 class TestBinarySensorIsOn:
     """is_on handles coil, discrete, holding/input with and without bit mask."""
 
-    @pytest.mark.parametrize("raw,expected", [
-        (True, True), (False, False), (1, True), (0, False),
-    ])
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            (True, True),
+            (False, False),
+            (1, True),
+            (0, False),
+        ],
+    )
     def test_coil_register_direct_bool(self, mock_coordinator, raw, expected):
         sensor_def = {
             "translation_key": "power_supply_fans",
@@ -210,14 +242,18 @@ class TestBinarySensorIsOn:
             "register_type": "coil_registers",
         }
         mock_coordinator.data = {"power_supply_fans": raw}
-        entity = ThesslaGreenBinarySensor(
-            mock_coordinator, "power_supply_fans", 4, sensor_def
-        )
+        entity = ThesslaGreenBinarySensor(mock_coordinator, "power_supply_fans", 4, sensor_def)
         assert entity.is_on == expected
 
-    @pytest.mark.parametrize("raw,expected", [
-        (True, True), (False, False), (1, True), (0, False),
-    ])
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            (True, True),
+            (False, False),
+            (1, True),
+            (0, False),
+        ],
+    )
     def test_discrete_input_direct_bool(self, mock_coordinator, raw, expected):
         sensor_def = {
             "translation_key": "expansion",
@@ -225,9 +261,7 @@ class TestBinarySensorIsOn:
             "register_type": "discrete_inputs",
         }
         mock_coordinator.data = {"expansion": raw}
-        entity = ThesslaGreenBinarySensor(
-            mock_coordinator, "expansion", 5, sensor_def
-        )
+        entity = ThesslaGreenBinarySensor(mock_coordinator, "expansion", 5, sensor_def)
         assert entity.is_on == expected
 
     def test_holding_register_with_bit_set(self, mock_coordinator):
@@ -282,9 +316,7 @@ class TestBinarySensorIsOn:
             "register_type": "coil_registers",
         }
         mock_coordinator.data = {}  # key absent
-        entity = ThesslaGreenBinarySensor(
-            mock_coordinator, "power_supply_fans", 4, sensor_def
-        )
+        entity = ThesslaGreenBinarySensor(mock_coordinator, "power_supply_fans", 4, sensor_def)
         assert entity.is_on is None
 
     def test_inverted_flag_flips_result(self, mock_coordinator):
@@ -315,6 +347,7 @@ class TestBinarySensorIsOn:
 # ---------------------------------------------------------------------------
 # Tests: ThesslaGreenNumber attributes and native_value
 # ---------------------------------------------------------------------------
+
 
 class TestNumberEntity:
     """min, max, step, native_value."""
@@ -397,10 +430,14 @@ class TestNumberEntity:
                 return
         pytest.skip("No temperature number register found")
 
-    @pytest.mark.parametrize("register_name,cfg", [
-        (k, v) for k, v in ENTITY_MAPPINGS["number"].items()
-        if v.get("min") is not None and v.get("max") is not None
-    ][:10])  # limit to 10 to keep test runs fast
+    @pytest.mark.parametrize(
+        "register_name,cfg",
+        [
+            (k, v)
+            for k, v in ENTITY_MAPPINGS["number"].items()
+            if v.get("min") is not None and v.get("max") is not None
+        ][:10],
+    )  # limit to 10 to keep test runs fast
     def test_explicit_min_max_applied(self, mock_coordinator, register_name, cfg):
         """When config has min/max, entity attributes match."""
         holding = mock_coordinator.get_register_map("holding_registers")
@@ -414,6 +451,7 @@ class TestNumberEntity:
 # ---------------------------------------------------------------------------
 # Tests: ThesslaGreenSelect — options and current_option
 # ---------------------------------------------------------------------------
+
 
 class TestSelectEntity:
     """options list and current_option mapping."""

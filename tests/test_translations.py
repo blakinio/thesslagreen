@@ -67,6 +67,7 @@ SELECT_KEYS = _load_runtime_keys("SELECT_ENTITY_MAPPINGS")
 TIME_KEYS: list[str] = []
 try:
     import importlib as _importlib
+
     _em = _importlib.import_module("custom_components.thessla_green_modbus.mappings")
     NUMBER_KEYS = list(_em.NUMBER_ENTITY_MAPPINGS.keys())
 except Exception:  # pragma: no cover - fallback to AST if import fails
@@ -205,18 +206,14 @@ def test_translation_keys_present():
         _assert_keys(trans, "binary_sensor", BINARY_KEYS)
         _assert_keys(trans, "switch", SWITCH_KEYS)
         _assert_keys(trans, "select", SELECT_KEYS)
-        assert NUMBER_KEYS, (
-            "NUMBER_KEYS jest puste — entity_mappings nie załadował mapowań number"
-        )
+        assert NUMBER_KEYS, "NUMBER_KEYS jest puste — entity_mappings nie załadował mapowań number"
         _assert_keys(trans, "number", NUMBER_KEYS)
         _assert_keys(trans, "time", TIME_KEYS)
         if "codes" in trans:
             _assert_code_keys(trans, CODE_KEYS)
         _assert_issue_keys(trans, ISSUE_KEYS)
         missing_services = [s for s in SERVICES if s not in trans["services"]]
-        assert (
-            not missing_services
-        ), f"Missing service translations: {missing_services}"  # nosec B101
+        assert not missing_services, f"Missing service translations: {missing_services}"  # nosec B101
         opts = trans["options"]["step"]["init"]
         missing_opts = [k for k in OPTION_KEYS if k not in opts["data"]]
         assert not missing_opts, f"Missing option translations: {missing_opts}"  # nosec B101
@@ -324,9 +321,9 @@ def test_register_names_match_translations() -> None:
                                         trans_key = v2.value
 
                             if reg_type in reg_names and name not in ignore:
-                                assert (
-                                    _to_snake(name) in reg_names[reg_type]
-                                ), f"Missing register definition for {name}"
+                                assert _to_snake(name) in reg_names[reg_type], (
+                                    f"Missing register definition for {name}"
+                                )
                             assert trans_key in EN["entity"][entity_type]
                             assert trans_key in PL["entity"][entity_type]
                             break

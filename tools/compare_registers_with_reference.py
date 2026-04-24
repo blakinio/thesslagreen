@@ -11,7 +11,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REF_PATH = ROOT / "airpack4_modbus.json"
 MAIN_PATH = (
-    ROOT / "custom_components" / "thessla_green_modbus" / "registers" / "thessla_green_registers_full.json"
+    ROOT
+    / "custom_components"
+    / "thessla_green_modbus"
+    / "registers"
+    / "thessla_green_registers_full.json"
 )
 
 KNOWN_EXTRA_PREFIXES = ("alarm", "error", "s_", "e_", "f_")
