@@ -156,4 +156,3 @@ SET_LOG_LEVEL_SCHEMA = vol.Schema(
         ),
     }
 )
-

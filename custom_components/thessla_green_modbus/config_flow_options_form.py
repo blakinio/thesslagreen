@@ -65,11 +65,15 @@ def build_options_defaults(
         CONF_TIMEOUT: entry_options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
         CONF_RETRY: entry_options.get(CONF_RETRY, DEFAULT_RETRY),
         CONF_FORCE_FULL_REGISTER_LIST: entry_options.get(CONF_FORCE_FULL_REGISTER_LIST, False),
-        CONF_SCAN_UART_SETTINGS: entry_options.get(CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS),
+        CONF_SCAN_UART_SETTINGS: entry_options.get(
+            CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS
+        ),
         CONF_SKIP_MISSING_REGISTERS: entry_options.get(
             CONF_SKIP_MISSING_REGISTERS, DEFAULT_SKIP_MISSING_REGISTERS
         ),
-        CONF_ENABLE_DEVICE_SCAN: entry_options.get(CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN),
+        CONF_ENABLE_DEVICE_SCAN: entry_options.get(
+            CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN
+        ),
         CONF_AIRFLOW_UNIT: entry_options.get(CONF_AIRFLOW_UNIT, DEFAULT_AIRFLOW_UNIT),
         CONF_DEEP_SCAN: entry_options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
         CONF_MAX_REGISTERS_PER_REQUEST: entry_options.get(
@@ -153,7 +157,9 @@ def build_options_schema(values: dict[str, Any]) -> vol.Schema:
             vol.Optional(
                 CONF_SKIP_MISSING_REGISTERS, default=values[CONF_SKIP_MISSING_REGISTERS]
             ): bool,
-            vol.Optional(CONF_SAFE_SCAN, default=values[CONF_SAFE_SCAN], description={"advanced": True}): bool,
+            vol.Optional(
+                CONF_SAFE_SCAN, default=values[CONF_SAFE_SCAN], description={"advanced": True}
+            ): bool,
             vol.Optional(CONF_AIRFLOW_UNIT, default=values[CONF_AIRFLOW_UNIT]): vol.In(
                 [AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE]
             ),

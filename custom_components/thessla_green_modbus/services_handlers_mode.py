@@ -25,7 +25,9 @@ def register_mode_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
 
             if duration > 0 and mode in ["boost", "fireplace", "hood", "party", "bathroom"]:
                 duration_register = f"{mode}_duration"
-                if duration_register in coordinator.available_registers.get("holding_registers", set()):
+                if duration_register in coordinator.available_registers.get(
+                    "holding_registers", set()
+                ):
                     if not await deps.write_register(
                         coordinator, duration_register, duration, entity_id, "set special mode"
                     ):
@@ -35,7 +37,9 @@ def register_mode_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
             await coordinator.async_request_refresh()
             deps.logger.info("Set special mode %s for %s", mode, entity_id)
 
-    hass.services.async_register(deps.domain, "set_special_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA)
+    hass.services.async_register(
+        deps.domain, "set_special_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA
+    )
     hass.services.async_register(deps.domain, "set_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA)
     hass.services.async_register(
         deps.domain, "set_special_function", set_special_mode, SET_SPECIAL_MODE_SCHEMA

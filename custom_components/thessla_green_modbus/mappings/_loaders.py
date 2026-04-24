@@ -215,8 +215,10 @@ def _load_discrete_mappings() -> tuple[
         if bits:
             unnamed_bit = False
             for idx, bit_def in enumerate(bits):
-                bit_name = bit_def.get("name") if isinstance(bit_def, dict) else (
-                    str(bit_def) if bit_def is not None else None
+                bit_name = (
+                    bit_def.get("name")
+                    if isinstance(bit_def, dict)
+                    else (str(bit_def) if bit_def is not None else None)
                 )
                 if bit_name:
                     key = f"{reg.name}_{_to_snake_case(bit_name)}"

@@ -51,7 +51,9 @@ if TYPE_CHECKING:
     from .coordinator import CoordinatorConfig
 
 
-def coordinator_config_from_entry(entry: ConfigEntry, cls: type[CoordinatorConfig]) -> CoordinatorConfig:
+def coordinator_config_from_entry(
+    entry: ConfigEntry, cls: type[CoordinatorConfig]
+) -> CoordinatorConfig:
     """Build coordinator config from a Home Assistant config entry."""
     data = entry.data
     options = entry.options
@@ -91,4 +93,3 @@ def normalize_scan_interval(scan_interval: timedelta | int) -> int:
     else:
         interval_seconds = int(scan_interval)
     return max(interval_seconds, MIN_SCAN_INTERVAL)
-

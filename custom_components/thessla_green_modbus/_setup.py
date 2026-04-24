@@ -50,6 +50,7 @@ def _get_platforms(platform_domains: list[str]) -> list[Any]:
     if _platform_cache is not None:
         return _platform_cache
     from homeassistant.const import Platform
+
     _platform_cache = [Platform(d) for d in platform_domains]
     return _platform_cache
 
@@ -71,7 +72,9 @@ async def async_create_coordinator(hass: HomeAssistant, entry: ConfigEntry) -> A
     if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
         connection_type = DEFAULT_CONNECTION_TYPE
     connection_mode = entry.options.get(CONF_CONNECTION_MODE, config.connection_mode)
-    connection_type, connection_mode = resolve_connection_settings(connection_type, connection_mode, config.port)
+    connection_type, connection_mode = resolve_connection_settings(
+        connection_type, connection_mode, config.port
+    )
     config.connection_type = connection_type
     config.connection_mode = connection_mode
 
@@ -208,8 +211,8 @@ async def async_migrate_entity_unique_ids(
             old_unique_id,
             serial_number=serial_number,
             host=str(host),
-            port=int(port),
-            slave_id=int(slave_id),
+            port=int(port or 0),
+            slave_id=int(slave_id or 0),
         )
         if new_unique_id != old_unique_id:
             try:
@@ -218,7 +221,9 @@ async def async_migrate_entity_unique_ids(
                     new_unique_id=new_unique_id,
                 )
             except (AttributeError, TypeError, ValueError):
-                _LOGGER.debug("Failed to migrate unique_id for entity %s", entity.entity_id, exc_info=True)
+                _LOGGER.debug(
+                    "Failed to migrate unique_id for entity %s", entity.entity_id, exc_info=True
+                )
 
 
 async def async_setup_platforms(

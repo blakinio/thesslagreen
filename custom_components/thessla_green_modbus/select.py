@@ -142,7 +142,7 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
             err_txt = str(err)
             for prefix in ("Modbus Error: [Connection] ", "Modbus Error: "):
                 if err_txt.startswith(prefix):
-                    err_txt = err_txt[len(prefix):]
+                    err_txt = err_txt[len(prefix) :]
                     break
             msg = f"Error setting {self._register_name} to {option}: {err_txt}"
             _LOGGER.error(msg)

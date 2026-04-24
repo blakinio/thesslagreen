@@ -167,10 +167,13 @@ async def test_tcp_connect_tcp_rtu_framer_none():
     """_connect raises ConnectionException when RTU framer is unavailable."""
     t = _make_tcp(connection_type=CONNECTION_TYPE_TCP_RTU)
 
-    with patch(
-        "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
-        return_value=None,
-    ), pytest.raises(ConnectionException, match="RTU framer"):
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
+            return_value=None,
+        ),
+        pytest.raises(ConnectionException, match="RTU framer"),
+    ):
         await t._connect()
 
 
@@ -184,10 +187,13 @@ async def test_tcp_connect_tcp_rtu_success():
     mock_client.connect = MagicMock(return_value=True)
     mock_client.connected = True
 
-    with patch(
-        "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
-        return_value=mock_framer,
-    ), patch.object(t, "_build_tcp_client", return_value=mock_client):
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
+            return_value=mock_framer,
+        ),
+        patch.object(t, "_build_tcp_client", return_value=mock_client),
+    ):
         await t._connect()
 
     assert t.offline_state is False
@@ -482,10 +488,13 @@ def _make_raw_tcp(**kwargs):
 async def test_raw_tcp_connect_timeout():
     """_connect raises TimeoutError on connection timeout."""
     t = _make_raw_tcp()
-    with patch(
-        "asyncio.open_connection",
-        side_effect=TimeoutError("connect timeout"),
-    ), pytest.raises(TimeoutError, match="Timed out connecting"):
+    with (
+        patch(
+            "asyncio.open_connection",
+            side_effect=TimeoutError("connect timeout"),
+        ),
+        pytest.raises(TimeoutError, match="Timed out connecting"),
+    ):
         await t._connect()
 
 
@@ -493,10 +502,13 @@ async def test_raw_tcp_connect_timeout():
 async def test_raw_tcp_connect_os_error():
     """_connect raises ConnectionException on OSError."""
     t = _make_raw_tcp()
-    with patch(
-        "asyncio.open_connection",
-        side_effect=OSError("refused"),
-    ), pytest.raises(ConnectionException, match="Could not connect"):
+    with (
+        patch(
+            "asyncio.open_connection",
+            side_effect=OSError("refused"),
+        ),
+        pytest.raises(ConnectionException, match="Could not connect"),
+    ):
         await t._connect()
 
 
@@ -845,10 +857,13 @@ async def test_tcp_connect_rtu_build_client_type_error():
     t = _make_tcp(connection_type=CONNECTION_TYPE_TCP_RTU)
     mock_framer = MagicMock()
 
-    with patch(
-        "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
-        return_value=mock_framer,
-    ), patch.object(t, "_build_tcp_client", side_effect=TypeError("framer not supported")):
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
+            return_value=mock_framer,
+        ),
+        patch.object(t, "_build_tcp_client", side_effect=TypeError("framer not supported")),
+    ):
         with pytest.raises(ConnectionException, match="not supported"):
             await t._connect()
 

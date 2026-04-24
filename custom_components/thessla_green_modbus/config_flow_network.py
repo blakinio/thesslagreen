@@ -14,4 +14,3 @@ def looks_like_hostname(value: str) -> bool:
     if value.startswith("-") or value.endswith("-"):
         return False
     return "." in value
-

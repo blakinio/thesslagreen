@@ -10,7 +10,11 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 REF_PATH = ROOT / "airpack4_modbus.json"
 MAIN_PATH = (
-    ROOT / "custom_components" / "thessla_green_modbus" / "registers" / "thessla_green_registers_full.json"
+    ROOT
+    / "custom_components"
+    / "thessla_green_modbus"
+    / "registers"
+    / "thessla_green_registers_full.json"
 )
 
 KNOWN_EXTRA_PREFIXES = ("alarm", "error", "s_", "e_", "f_")
@@ -58,7 +62,9 @@ def main_pairs() -> dict[tuple[int, int], dict]:
 
 def test_all_reference_registers_present(reference_pairs, main_pairs):
     missing = set(reference_pairs) - set(main_pairs)
-    assert not missing, f"Registers in vendor reference but missing from integration: {sorted(missing)}"
+    assert not missing, (
+        f"Registers in vendor reference but missing from integration: {sorted(missing)}"
+    )
 
 
 def test_extras_are_known(reference_pairs, main_pairs):

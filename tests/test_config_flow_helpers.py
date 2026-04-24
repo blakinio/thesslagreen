@@ -1,6 +1,5 @@
 """Tests for config_flow helper functions that don't require HA."""
 
-
 import asyncio
 import sys
 from pathlib import Path
@@ -275,6 +274,7 @@ async def test_build_connection_schema_empty_baud_rates_bad_baud_default():
 def test_vol_invalid_class():
     """VOL_INVALID should expose voluptuous.Invalid-like path/message behavior."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
+
     err = cf_mod.VOL_INVALID("test message", path=["field"])
     assert err.error_message == "test message"
     assert err.path == ["field"]
@@ -283,6 +283,7 @@ def test_vol_invalid_class():
 def test_vol_invalid_no_path():
     """VOL_INVALID without explicit path should keep empty path."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
+
     err = cf_mod.VOL_INVALID("error")
     assert err.path == []
 
@@ -296,6 +297,7 @@ def test_normalize_baud_rate_string_zero():
 def test_denormalize_option_none():
     """_denormalize_option with None returns None (line 249)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
+
     result = cf_mod._denormalize_option("prefix_", None)
     assert result is None
 
@@ -304,6 +306,7 @@ def test_denormalize_option_already_prefixed():
     """_denormalize_option with domain-prefixed value returns it unchanged (line 251)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
     from custom_components.thessla_green_modbus.const import DOMAIN
+
     val = f"{DOMAIN}.some_value"
     result = cf_mod._denormalize_option("prefix_", val)
     assert result == val
@@ -312,12 +315,14 @@ def test_denormalize_option_already_prefixed():
 def test_looks_like_hostname_empty():
     """_looks_like_hostname with empty string returns False (line 258)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
+
     assert cf_mod._looks_like_hostname("") is False
 
 
 def test_looks_like_hostname_starts_with_dash():
     """_looks_like_hostname with leading dash returns False (line 264)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
+
     assert cf_mod._looks_like_hostname("-invalid.host") is False
 
 
@@ -330,6 +335,7 @@ def test_strip_translation_prefix_with_domain_prefix():
     """Value with domain prefix gets stripped (line 189)."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
     from custom_components.thessla_green_modbus.const import DOMAIN
+
     result = cf_mod._strip_translation_prefix(f"{DOMAIN}.some_value")
     assert result == "some_value"
 
@@ -432,6 +438,7 @@ async def test_validate_input_tcp_rtu_normalization():
         await cf_mod.validate_input(None, data)
     # Data was normalized
     from custom_components.thessla_green_modbus.const import CONNECTION_TYPE_TCP
+
     assert data[CONF_CONNECTION_TYPE] == CONNECTION_TYPE_TCP
 
 
@@ -447,11 +454,14 @@ async def test_validate_input_invalid_slave_id_string():
     from homeassistant.const import CONF_HOST
 
     with pytest.raises(vol.Invalid):
-        await cf_mod.validate_input(None, {
-            CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
-            CONF_SLAVE_ID: "abc",
-            CONF_HOST: "192.168.1.1",
-        })
+        await cf_mod.validate_input(
+            None,
+            {
+                CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+                CONF_SLAVE_ID: "abc",
+                CONF_HOST: "192.168.1.1",
+            },
+        )
 
 
 @pytest.mark.asyncio
@@ -466,11 +476,14 @@ async def test_validate_input_slave_id_too_low():
     from homeassistant.const import CONF_HOST
 
     with pytest.raises(vol.Invalid):
-        await cf_mod.validate_input(None, {
-            CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
-            CONF_SLAVE_ID: -1,
-            CONF_HOST: "192.168.1.1",
-        })
+        await cf_mod.validate_input(
+            None,
+            {
+                CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+                CONF_SLAVE_ID: -1,
+                CONF_HOST: "192.168.1.1",
+            },
+        )
 
 
 @pytest.mark.asyncio
@@ -485,12 +498,15 @@ async def test_validate_input_invalid_port():
     from homeassistant.const import CONF_HOST, CONF_PORT
 
     with pytest.raises(vol.Invalid):
-        await cf_mod.validate_input(None, {
-            CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
-            CONF_SLAVE_ID: 1,
-            CONF_HOST: "192.168.1.1",
-            CONF_PORT: "bad_port",
-        })
+        await cf_mod.validate_input(
+            None,
+            {
+                CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+                CONF_SLAVE_ID: 1,
+                CONF_HOST: "192.168.1.1",
+                CONF_PORT: "bad_port",
+            },
+        )
 
 
 @pytest.mark.asyncio
@@ -505,12 +521,15 @@ async def test_validate_input_empty_host():
     from homeassistant.const import CONF_HOST, CONF_PORT
 
     with pytest.raises(vol.Invalid):
-        await cf_mod.validate_input(None, {
-            CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
-            CONF_SLAVE_ID: 1,
-            CONF_HOST: "",
-            CONF_PORT: 502,
-        })
+        await cf_mod.validate_input(
+            None,
+            {
+                CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+                CONF_SLAVE_ID: 1,
+                CONF_HOST: "",
+                CONF_PORT: 502,
+            },
+        )
 
 
 @pytest.mark.asyncio
@@ -526,12 +545,15 @@ async def test_validate_input_hostname_fails_looks_like():
 
     # "nodothost" has no dot → _looks_like_hostname returns False → raises
     with pytest.raises(vol.Invalid):
-        await cf_mod.validate_input(None, {
-            CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
-            CONF_SLAVE_ID: 1,
-            CONF_HOST: "nodothost",
-            CONF_PORT: 502,
-        })
+        await cf_mod.validate_input(
+            None,
+            {
+                CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+                CONF_SLAVE_ID: 1,
+                CONF_HOST: "nodothost",
+                CONF_PORT: 502,
+            },
+        )
 
 
 @pytest.mark.asyncio
@@ -547,12 +569,15 @@ async def test_validate_input_rtu_invalid_baud_rate():
     )
 
     with pytest.raises(vol.Invalid):
-        await cf_mod.validate_input(None, {
-            CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
-            CONF_SLAVE_ID: 1,
-            CONF_SERIAL_PORT: "/dev/ttyS0",
-            CONF_BAUD_RATE: 0,
-        })
+        await cf_mod.validate_input(
+            None,
+            {
+                CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
+                CONF_SLAVE_ID: 1,
+                CONF_SERIAL_PORT: "/dev/ttyS0",
+                CONF_BAUD_RATE: 0,
+            },
+        )
 
 
 @pytest.mark.asyncio
@@ -569,13 +594,16 @@ async def test_validate_input_rtu_invalid_parity():
     )
 
     with pytest.raises(vol.Invalid):
-        await cf_mod.validate_input(None, {
-            CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
-            CONF_SLAVE_ID: 1,
-            CONF_SERIAL_PORT: "/dev/ttyS0",
-            CONF_BAUD_RATE: 9600,
-            CONF_PARITY: "INVALID_PARITY",
-        })
+        await cf_mod.validate_input(
+            None,
+            {
+                CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
+                CONF_SLAVE_ID: 1,
+                CONF_SERIAL_PORT: "/dev/ttyS0",
+                CONF_BAUD_RATE: 9600,
+                CONF_PARITY: "INVALID_PARITY",
+            },
+        )
 
 
 @pytest.mark.asyncio
@@ -593,14 +621,17 @@ async def test_validate_input_rtu_invalid_stop_bits():
     )
 
     with pytest.raises(vol.Invalid):
-        await cf_mod.validate_input(None, {
-            CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
-            CONF_SLAVE_ID: 1,
-            CONF_SERIAL_PORT: "/dev/ttyS0",
-            CONF_BAUD_RATE: 9600,
-            CONF_PARITY: "none",
-            CONF_STOP_BITS: 3,
-        })
+        await cf_mod.validate_input(
+            None,
+            {
+                CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
+                CONF_SLAVE_ID: 1,
+                CONF_SERIAL_PORT: "/dev/ttyS0",
+                CONF_BAUD_RATE: 9600,
+                CONF_PARITY: "none",
+                CONF_STOP_BITS: 3,
+            },
+        )
 
 
 # ---------------------------------------------------------------------------

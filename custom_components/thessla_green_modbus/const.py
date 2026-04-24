@@ -8,7 +8,25 @@ from functools import cache, lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-from homeassistant.const import Platform
+try:
+    from homeassistant.const import Platform as _HAPlatform
+except ModuleNotFoundError:  # pragma: no cover - test/runtime fallback without HA
+
+    class _FallbackPlatform:
+        BINARY_SENSOR = "binary_sensor"
+        CLIMATE = "climate"
+        FAN = "fan"
+        NUMBER = "number"
+        SELECT = "select"
+        SENSOR = "sensor"
+        SWITCH = "switch"
+        TEXT = "text"
+        TIME = "time"
+
+    _HAPlatform = _FallbackPlatform
+
+Platform = _HAPlatform
+
 
 from .registers.loader import get_registers_by_function
 
@@ -227,7 +245,7 @@ KNOWN_MISSING_REGISTERS = {
 
 # Platforms supported by the integration
 # Diagnostics is handled separately and therefore not listed here
-PLATFORMS: list[Platform] = [
+PLATFORMS: list[Any] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.CLIMATE,
@@ -377,9 +395,7 @@ def migrate_unique_id(
             if matched_register_name:
                 address = _register_address(matched_register_name, matched_register_type)
                 if address is not None:
-                    bit_suffix = (
-                        f"_bit{matched_bit_index}" if matched_bit_index is not None else ""
-                    )
+                    bit_suffix = f"_bit{matched_bit_index}" if matched_bit_index is not None else ""
                     base_uid = f"{slave_id}_{resolved_key}_{address}{bit_suffix}"
             elif remainder == "fan":
                 base_uid = f"{slave_id}_fan_0"
@@ -487,6 +503,7 @@ def _get_options_init_lock() -> asyncio.Lock:
     if _OPTIONS_INIT_LOCK is None:
         _OPTIONS_INIT_LOCK = asyncio.Lock()
     return _OPTIONS_INIT_LOCK
+
 
 # Special function enum index mappings for services.
 # Values match the sequential enum indices in special_modes.json (0=none, 1=boost, ...).

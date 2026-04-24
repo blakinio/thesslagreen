@@ -194,7 +194,9 @@ def cleanup_automations(config_dir: Path) -> bool:
             content = f.read()
 
         # Check for references to old entities
-        problematic_refs = [pattern for pattern in OLD_ENTITY_PATTERNS if re.search(pattern, content)]
+        problematic_refs = [
+            pattern for pattern in OLD_ENTITY_PATTERNS if re.search(pattern, content)
+        ]
 
         if problematic_refs:
             _LOGGER.warning("Found %s references to old entities:", len(problematic_refs))
@@ -227,7 +229,11 @@ def cleanup_configuration_yaml(config_dir: Path) -> bool:
             content = f.read()
 
         # Look for problematic references
-        issues = [f"Reference to {pattern}" for pattern in OLD_ENTITY_PATTERNS if re.search(pattern, content)]
+        issues = [
+            f"Reference to {pattern}"
+            for pattern in OLD_ENTITY_PATTERNS
+            if re.search(pattern, content)
+        ]
 
         # Check for old integration configuration
         if "thessla_green_modbus:" in content:

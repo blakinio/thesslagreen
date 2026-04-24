@@ -157,9 +157,7 @@ SERVICE_REGISTRATION_GROUPS: tuple[ServiceRegistrationGroup, ...] = (
 )
 
 REGISTERED_SERVICE_NAMES: tuple[str, ...] = tuple(
-    service
-    for group in SERVICE_REGISTRATION_GROUPS
-    for service in group.service_names
+    service for group in SERVICE_REGISTRATION_GROUPS for service in group.service_names
 )
 
 

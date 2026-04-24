@@ -1,7 +1,6 @@
 # mypy: ignore-errors
 """Tests for BCD time decoding."""
 
-
 import pytest
 from custom_components.thessla_green_modbus.utils import decode_bcd_time
 

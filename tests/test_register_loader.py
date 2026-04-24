@@ -1,6 +1,5 @@
 """Tests for JSON register loader."""
 
-
 import json
 from pathlib import Path
 
@@ -120,8 +119,6 @@ def test_decode_multi_register_string() -> None:
     assert reg.decode(raw) == "ABCDE"
 
 
-
-
 def test_decode_multi_register_string_with_non_ascii_bytes() -> None:
     """String decode should tolerate non-ASCII bytes without raising."""
     reg = RegisterDef(
@@ -134,6 +131,7 @@ def test_decode_multi_register_string_with_non_ascii_bytes() -> None:
     )
     raw = [0x5445, 0xDF00]  # "TE" + 0xDF + NUL
     assert reg.decode(raw) == "TE�"
+
 
 def test_decode_multi_register_number_scaled_once() -> None:
     """Numeric multi-register values apply multiplier/resolution exactly once."""
@@ -522,17 +520,21 @@ def test_get_all_registers_sorted(tmp_path) -> None:
 # Phase 7 — remaining loader.py coverage gaps
 # ---------------------------------------------------------------------------
 
+
 def test_decode_multi_register_string_unicode_error_recovery() -> None:
     """Invalid UTF-8 bytes trigger error-recovery decode path (line 147)."""
     reg = RegisterDef(
-        function=3, address=0, name="label", access="ro",
-        length=2, extra={"type": "string", "encoding": "utf-8"},
+        function=3,
+        address=0,
+        name="label",
+        access="ro",
+        length=2,
+        extra={"type": "string", "encoding": "utf-8"},
     )
     # Bytes 0xFF, 0x10, 0xFE, 0x20 are invalid in strict UTF-8
     result = reg.decode([0xFF10, 0xFE20])
     assert isinstance(result, str)
     assert "\ufffd" in result  # U+FFFD replacement character
-
 
 
 async def test_async_registers_sha256_computes_and_caches(tmp_path: Path) -> None:
@@ -559,9 +561,12 @@ async def test_async_load_registers_populates_cache(tmp_path: Path) -> None:
         async_load_registers,
     )
 
-    _write(tmp_path / "regs.json", [
-        {"function": "03", "address_dec": 5, "name": "r1", "access": "R"},
-    ])
+    _write(
+        tmp_path / "regs.json",
+        [
+            {"function": "03", "address_dec": 5, "name": "r1", "access": "R"},
+        ],
+    )
     clear_cache()
 
     regs = await async_load_registers(None, tmp_path / "regs.json")
@@ -579,10 +584,13 @@ async def test_async_get_registers_by_function_filters(tmp_path: Path) -> None:
         async_get_registers_by_function,
     )
 
-    _write(tmp_path / "regs.json", [
-        {"function": "03", "address_dec": 0, "name": "hold_reg", "access": "R"},
-        {"function": "04", "address_dec": 0, "name": "inp_reg", "access": "R"},
-    ])
+    _write(
+        tmp_path / "regs.json",
+        [
+            {"function": "03", "address_dec": 0, "name": "hold_reg", "access": "R"},
+            {"function": "04", "address_dec": 0, "name": "inp_reg", "access": "R"},
+        ],
+    )
     clear_cache()
 
     regs = await async_get_registers_by_function(None, 3, tmp_path / "regs.json")

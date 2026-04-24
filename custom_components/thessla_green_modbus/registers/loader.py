@@ -147,58 +147,56 @@ class RegisterDef:
     # ------------------------------------------------------------------
     def decode(self, raw: int | Sequence[int]) -> Any:
         """Decode ``raw`` according to the register metadata."""
-        value: Any
         if self.length > 1:
-            if isinstance(raw, Sequence):
-                raw_list = list(raw)
-            else:
-                raw_list = [
-                    (raw >> (16 * (self.length - 1 - i))) & 65535 for i in range(self.length)
-                ]
-
-            if self._is_temperature() and all(v == 32768 for v in raw_list):
-                return None
-
-            # Multi-register strings are treated specially
-            if self.extra and self.extra.get("type") == "string":
-                encoding = self.extra.get("encoding", "ascii")
-                data = b"".join(w.to_bytes(2, "big") for w in raw_list)
-                clean = data.rstrip(b"\x00")
-                try:
-                    return clean.decode(encoding)
-                except UnicodeDecodeError:
-                    _LOGGER.debug(
-                        "Failed to decode register %s as %s; replacing invalid bytes",
-                        self.name,
-                        encoding,
-                    )
-                    return clean.decode(encoding, errors="replace")
-
-            endianness = self.extra.get("endianness", "big") if self.extra else "big"
-            words = raw_list if endianness == "big" else list(reversed(raw_list))
-            data = b"".join(w.to_bytes(2, "big") for w in words)
-
-            typ = self.extra.get("type") if self.extra else None
-            if typ in {"f32", "f64"}:
-                fmt = ">" if endianness == "big" else "<"
-                fmt += "f" if typ == "f32" else "d"
-                value = struct.unpack(fmt, data)[0]
-            elif typ in {"i32", "u32", "i64", "u64"}:
-                value = int.from_bytes(data, "big", signed=typ.startswith("i"))
-            else:
-                value = int.from_bytes(data, "big", signed=False)
-
-            if self.multiplier not in (None, 1):
-                value *= self.multiplier
-            if self.resolution not in (None, 1):
-                steps = round(value / self.resolution)
-                value = steps * self.resolution
-            return value
+            return self._decode_multi_register(raw)
 
         # Defensive: handle unexpected sequence for single-register values
         if isinstance(raw, Sequence):
             raw = raw[0]
+        return self._decode_single_register(raw)
 
+    def _decode_multi_register(self, raw: int | Sequence[int]) -> Any:
+        if isinstance(raw, Sequence):
+            raw_list = list(raw)
+        else:
+            raw_list = [(raw >> (16 * (self.length - 1 - i))) & 65535 for i in range(self.length)]
+
+        if self._is_temperature() and all(v == 32768 for v in raw_list):
+            return None
+
+        if self.extra and self.extra.get("type") == "string":
+            return self._decode_string_words(raw_list)
+
+        endianness = self.extra.get("endianness", "big") if self.extra else "big"
+        words = raw_list if endianness == "big" else list(reversed(raw_list))
+        data = b"".join(w.to_bytes(2, "big") for w in words)
+
+        typ = self.extra.get("type") if self.extra else None
+        if typ in {"f32", "f64"}:
+            fmt = ">" if endianness == "big" else "<"
+            fmt += "f" if typ == "f32" else "d"
+            value = struct.unpack(fmt, data)[0]
+        elif typ in {"i32", "u32", "i64", "u64"}:
+            value = int.from_bytes(data, "big", signed=typ.startswith("i"))
+        else:
+            value = int.from_bytes(data, "big", signed=False)
+        return self._apply_output_scaling(value)
+
+    def _decode_string_words(self, raw_list: list[int]) -> str:
+        encoding = self.extra.get("encoding", "ascii") if self.extra else "ascii"
+        data = b"".join(w.to_bytes(2, "big") for w in raw_list)
+        clean = data.rstrip(b"\x00")
+        try:
+            return clean.decode(encoding)
+        except UnicodeDecodeError:
+            _LOGGER.debug(
+                "Failed to decode register %s as %s; replacing invalid bytes",
+                self.name,
+                encoding,
+            )
+            return clean.decode(encoding, errors="replace")
+
+    def _decode_single_register(self, raw: int) -> Any:
         if self.name.startswith("dac_") and not (0 <= raw <= 4095):
             return None
 
@@ -243,75 +241,13 @@ class RegisterDef:
             # Propagate None so the coordinator stores None and the select
             # entity correctly reports the slot as unset ("unknown").
             return decode_bcd_time(raw)
-
-        if self.multiplier not in (None, 1):
-            value *= self.multiplier
-        if self.resolution not in (None, 1):
-            steps = round(value / self.resolution)
-            value = steps * self.resolution
-        return value
+        return self._apply_output_scaling(value)
 
     def encode(self, value: Any) -> int | list[int]:
         """Encode ``value`` into the raw register representation."""
 
         if self.length > 1:
-            if self.extra and self.extra.get("type") == "string":
-                encoding = self.extra.get("encoding", "ascii")
-                data = str(value).encode(encoding)
-                data = data.ljust(self.length * 2, b"\x00")
-                return [
-                    int.from_bytes(data[i : i + 2], "big") for i in range(0, self.length * 2, 2)
-                ]
-
-            endianness = "big"
-            if self.extra:
-                endianness = self.extra.get("endianness", "big")
-
-            raw_val: Any = value
-            if self.enum:
-                if isinstance(value, str):
-                    for k, v in self.enum.items():
-                        if v == value:
-                            raw_val = int(k)
-                            break
-                    else:
-                        raise ValueError(f"Invalid enum value {value!r} for {self.name}")
-                elif value not in self.enum and str(value) not in self.enum:
-                    raise ValueError(f"Invalid enum value {value!r} for {self.name}")
-
-            try:
-                num_val = Decimal(str(value))
-            except (InvalidOperation, TypeError, ValueError):
-                num_val = None
-            if num_val is not None:
-                if self.min is not None and num_val < Decimal(str(self.min)):
-                    raise ValueError(f"{value} is below minimum {self.min} for {self.name}")
-                if self.max is not None and num_val > Decimal(str(self.max)):
-                    raise ValueError(f"{value} is above maximum {self.max} for {self.name}")
-                scaled = Decimal(str(raw_val))
-                if self.resolution not in (None, 1):
-                    step = Decimal(str(self.resolution))
-                    scaled = (scaled / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
-                if self.multiplier not in (None, 1):
-                    mult = Decimal(str(self.multiplier))
-                    scaled = (scaled / mult).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-                raw_val = scaled
-
-            typ = self.extra.get("type") if self.extra else None
-            if typ == "f32":
-                data = struct.pack(">f" if endianness == "big" else "<f", float(raw_val))
-            elif typ == "f64":
-                data = struct.pack(">d" if endianness == "big" else "<d", float(raw_val))
-            elif typ in {"i32", "u32", "i64", "u64"}:
-                size = 4 if typ in {"i32", "u32"} else 8
-                data = int(raw_val).to_bytes(size, "big", signed=typ.startswith("i"))
-            else:
-                data = int(raw_val).to_bytes(self.length * 2, "big", signed=False)
-
-            words = [int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)]
-            if endianness == "little":
-                words = list(reversed(words))
-            return words
+            return self._encode_multi_register(value)
 
         if self.extra and self.extra.get("bitmask") and self.enum:
             raw_int = 0
@@ -391,6 +327,69 @@ class RegisterDef:
             return int(raw) & 65535
         return int(raw)
 
+    def _apply_output_scaling(self, value: Any) -> Any:
+        if self.multiplier not in (None, 1):
+            value *= self.multiplier
+        if self.resolution not in (None, 1):
+            steps = round(value / self.resolution)
+            value = steps * self.resolution
+        return value
+
+    def _encode_multi_register(self, value: Any) -> list[int]:
+        if self.extra and self.extra.get("type") == "string":
+            encoding = self.extra.get("encoding", "ascii")
+            data = str(value).encode(encoding)
+            data = data.ljust(self.length * 2, b"\x00")
+            return [int.from_bytes(data[i : i + 2], "big") for i in range(0, self.length * 2, 2)]
+
+        endianness = self.extra.get("endianness", "big") if self.extra else "big"
+
+        raw_val: Any = value
+        if self.enum:
+            if isinstance(value, str):
+                for k, v in self.enum.items():
+                    if v == value:
+                        raw_val = int(k)
+                        break
+                else:
+                    raise ValueError(f"Invalid enum value {value!r} for {self.name}")
+            elif value not in self.enum and str(value) not in self.enum:
+                raise ValueError(f"Invalid enum value {value!r} for {self.name}")
+
+        raw_val = self._coerce_scaled_input(value=value, raw_value=raw_val)
+        typ = self.extra.get("type") if self.extra else None
+        if typ == "f32":
+            data = struct.pack(">f" if endianness == "big" else "<f", float(raw_val))
+        elif typ == "f64":
+            data = struct.pack(">d" if endianness == "big" else "<d", float(raw_val))
+        elif typ in {"i32", "u32", "i64", "u64"}:
+            size = 4 if typ in {"i32", "u32"} else 8
+            data = int(raw_val).to_bytes(size, "big", signed=typ.startswith("i"))
+        else:
+            data = int(raw_val).to_bytes(self.length * 2, "big", signed=False)
+
+        words = [int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)]
+        if endianness == "little":
+            words = list(reversed(words))
+        return words
+
+    def _coerce_scaled_input(self, *, value: Any, raw_value: Any) -> Any:
+        try:
+            num_val = Decimal(str(value))
+        except (InvalidOperation, TypeError, ValueError):
+            return raw_value
+        if self.min is not None and num_val < Decimal(str(self.min)):
+            raise ValueError(f"{value} is below minimum {self.min} for {self.name}")
+        if self.max is not None and num_val > Decimal(str(self.max)):
+            raise ValueError(f"{value} is above maximum {self.max} for {self.name}")
+        scaled = Decimal(str(raw_value))
+        if self.resolution not in (None, 1):
+            step = Decimal(str(self.resolution))
+            scaled = (scaled / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
+        if self.multiplier not in (None, 1):
+            mult = Decimal(str(self.multiplier))
+            scaled = (scaled / mult).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        return scaled
 
 
 # ---------------------------------------------------------------------------
@@ -422,73 +421,82 @@ def _parse_registers(raw: Any) -> list[RegisterDef]:
 
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
 
-    registers: list[RegisterDef] = []
     if hasattr(RegisterList, "model_validate"):
         parsed_items = RegisterList.model_validate(items).registers
     else:  # pragma: no cover
         parsed_items = RegisterList.parse_obj(items).registers
 
-    for parsed in parsed_items:
-        function = _normalise_function(parsed.function)
-        raw_address = int(parsed.address_dec)
+    return [_register_from_parsed(parsed) for parsed in parsed_items]
 
-        # Keep register addresses exactly as provided in the JSON definition.
-        #
-        # Older revisions attempted to normalise some function groups into a
-        # compact, zero-based space (e.g. subtracting 1 for discrete inputs and
-        # 111 for selected holding registers). That remapping causes reads to
-        # target different addresses than the register list and can make valid
-        # device registers appear "missing" during capability scan.
-        address = raw_address
 
-        name = _normalise_name(parsed.name)
+def _normalise_enum_map(
+    name: str, enum_map: dict[int | str, Any] | None
+) -> dict[int | str, Any] | None:
+    if name == "special_mode":
+        return cast(dict[int | str, Any], _SPECIAL_MODES_ENUM)
+    if not enum_map:
+        return enum_map
+    if all(isinstance(k, int | float) or str(k).isdigit() for k in enum_map):
+        return cast(dict[int | str, Any], {int(k): v for k, v in enum_map.items()})
+    if all(
+        isinstance(v, int | float) or str(v).isdigit() for v in enum_map.values()
+    ):  # pragma: no cover
+        return cast(
+            dict[int | str, Any], {int(v): k for k, v in enum_map.items()}
+        )  # pragma: no cover
+    return enum_map
 
-        enum_map: dict[int | str, Any] | None = cast(dict[int | str, Any] | None, parsed.enum)
-        if name == "special_mode":
-            enum_map = cast(dict[int | str, Any], _SPECIAL_MODES_ENUM)
-        elif enum_map:
-            if all(isinstance(k, int | float) or str(k).isdigit() for k in enum_map):
-                enum_map = cast(dict[int | str, Any], {int(k): v for k, v in enum_map.items()})
-            elif all(
-                isinstance(v, int | float) or str(v).isdigit() for v in enum_map.values()
-            ):  # pragma: no cover
-                enum_map = cast(
-                    dict[int | str, Any], {int(v): k for k, v in enum_map.items()}
-                )  # pragma: no cover
 
-        # ``multiplier`` and ``resolution`` are optional in the JSON.  The
-        # dataclass defaults to ``1`` for both fields but passing ``None`` would
-        # override that default and propagate ``None`` through the rest of the
-        # code.  Coercing ``None`` to ``1`` here keeps the values consistent and
-        # avoids ``Optional`` types downstream.
-        multiplier = 1 if parsed.multiplier is None else float(parsed.multiplier)
-        resolution = 1 if parsed.resolution is None else float(parsed.resolution)
+def _coerce_scaling_fields(parsed: Any) -> tuple[float, float]:
+    """Return safe multiplier/resolution values for RegisterDef construction."""
 
-        registers.append(
-            RegisterDef(
-                function=function,
-                address=address,
-                name=name,
-                access=str(parsed.access),
-                description=parsed.description,
-                description_en=parsed.description_en,
-                unit=parsed.unit,
-                multiplier=multiplier,
-                resolution=resolution,
-                min=parsed.min,
-                max=parsed.max,
-                default=parsed.default,
-                enum=enum_map,
-                notes=parsed.notes,
-                information=parsed.information,
-                extra=parsed.extra,
-                length=int(parsed.length),
-                bcd=bool(parsed.bcd),
-                bits=parsed.bits,
-            )
-        )
+    # ``multiplier`` and ``resolution`` are optional in the JSON.  The
+    # dataclass defaults to ``1`` for both fields but passing ``None`` would
+    # override that default and propagate ``None`` through the rest of the
+    # code. Coercing ``None`` to ``1`` here keeps values consistent and avoids
+    # ``Optional`` downstream.
+    multiplier = 1 if parsed.multiplier is None else float(parsed.multiplier)
+    resolution = 1 if parsed.resolution is None else float(parsed.resolution)
+    return multiplier, resolution
 
-    return registers
+
+def _register_from_parsed(parsed: Any) -> RegisterDef:
+    """Build RegisterDef from parsed schema entry."""
+
+    function = _normalise_function(parsed.function)
+
+    # Keep register addresses exactly as provided in the JSON definition.
+    # Older revisions attempted to normalize into compact offset spaces,
+    # causing reads to target different addresses than the register map.
+    address = int(parsed.address_dec)
+    name = _normalise_name(parsed.name)
+    enum_map = _normalise_enum_map(
+        name,
+        cast(dict[int | str, Any] | None, parsed.enum),
+    )
+    multiplier, resolution = _coerce_scaling_fields(parsed)
+
+    return RegisterDef(
+        function=function,
+        address=address,
+        name=name,
+        access=str(parsed.access),
+        description=parsed.description,
+        description_en=parsed.description_en,
+        unit=parsed.unit,
+        multiplier=multiplier,
+        resolution=resolution,
+        min=parsed.min,
+        max=parsed.max,
+        default=parsed.default,
+        enum=enum_map,
+        notes=parsed.notes,
+        information=parsed.information,
+        extra=parsed.extra,
+        length=int(parsed.length),
+        bcd=bool(parsed.bcd),
+        bits=parsed.bits,
+    )
 
 
 def _load_registers_from_file(path: Path, *, mtime: float, file_hash: str) -> list[RegisterDef]:

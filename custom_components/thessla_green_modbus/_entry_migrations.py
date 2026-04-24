@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__.rsplit(".", maxsplit=1)[0])
 
+
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Migrate old entry.
 

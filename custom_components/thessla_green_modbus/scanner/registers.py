@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from ..const import HOLDING_BATCH_BOUNDARIES, KNOWN_MISSING_REGISTERS
 from ..scanner_helpers import UART_OPTIONAL_REGS
@@ -17,7 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def scan_register_batch(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     reg_type: str,
     addr_to_names: dict[int, set[str]],
     addresses: list[int],
@@ -33,7 +33,9 @@ async def scan_register_batch(
             data = None
 
         if data is None:
-            scanner.failed_addresses["modbus_exceptions"][reg_type].update(range(start, start + count))
+            scanner.failed_addresses["modbus_exceptions"][reg_type].update(
+                range(start, start + count)
+            )
             _LOGGER.debug(
                 "%s batch read %d-%d failed; probing individually",
                 reg_type,
@@ -69,41 +71,47 @@ async def scan_register_batch(
                     scanner._log_invalid_value(sorted(reg_names)[0], value)
 
 
-async def scan_named_input(scanner: ThesslaGreenDeviceScanner, input_registers: dict[int, str]) -> None:
+async def scan_named_input(
+    scanner: Any, input_registers: dict[int, str]
+) -> None:
     """Scan FC04 input registers in batches."""
+    known_missing = getattr(scanner, "_known_missing_registers", KNOWN_MISSING_REGISTERS)
     addr_to_names: dict[int, set[str]] = {}
     addresses: list[int] = []
     for addr, name in input_registers.items():
-        if name in KNOWN_MISSING_REGISTERS.get("input_registers", set()):
+        if name in known_missing.get("input_registers", set()):
             continue
         addr_to_names.setdefault(addr, set()).add(name)
         addresses.append(addr)
 
     async def _read(start: int, count: int, *, skip_cache: bool = False) -> list[int] | None:
         try:
-            return (
+            return cast(
+                list[int] | None,
                 await scanner._read_input(scanner._client, start, count, skip_cache=skip_cache)
                 if scanner._client is not None
                 else await scanner._read_input(start, count, skip_cache=skip_cache)
             )
         except TypeError:
-            return await scanner._read_input(start, count, skip_cache=skip_cache)
+            return cast(list[int] | None, await scanner._read_input(start, count, skip_cache=skip_cache))
 
     await scan_register_batch(scanner, "input_registers", addr_to_names, addresses, _read)
 
 
 async def scan_named_holding(
-    scanner: ThesslaGreenDeviceScanner, holding_registers: dict[int, str]
+    scanner: Any, holding_registers: dict[int, str]
 ) -> None:
     """Scan FC03 holding registers in batches, handling multi-word registers."""
+    known_missing = getattr(scanner, "_known_missing_registers", KNOWN_MISSING_REGISTERS)
+    multi_register_sizes = getattr(scanner, "_multi_register_sizes", MULTI_REGISTER_SIZES)
     holding_info: dict[int, tuple[set[str], int]] = {}
     holding_addresses: list[int] = []
     for addr, name in holding_registers.items():
         if not scanner.scan_uart_settings and addr in UART_OPTIONAL_REGS:
             continue
-        if name in KNOWN_MISSING_REGISTERS.get("holding_registers", set()):
+        if name in known_missing.get("holding_registers", set()):
             continue
-        size = MULTI_REGISTER_SIZES.get(name, 1)
+        size = multi_register_sizes.get(name, 1)
         if addr in holding_info:
             names, _ = holding_info[addr]
             names.add(name)
@@ -115,13 +123,17 @@ async def scan_named_holding(
 
     async def _read(start: int, count: int, *, skip_cache: bool = False) -> list[int] | None:
         try:
-            return (
+            return cast(
+                list[int] | None,
                 await scanner._read_holding(scanner._client, start, count, skip_cache=skip_cache)
                 if scanner._client is not None
                 else await scanner._read_holding(start, count, skip_cache=skip_cache)
             )
         except TypeError:
-            return await scanner._read_holding(start, count, skip_cache=skip_cache)
+            return cast(
+                list[int] | None,
+                await scanner._read_holding(start, count, skip_cache=skip_cache),
+            )
 
     await scan_register_batch(
         scanner,
@@ -134,16 +146,21 @@ async def scan_named_holding(
 
     failed_addrs = scanner.failed_addresses["modbus_exceptions"]["holding_registers"]
     for addr, name in holding_registers.items():
-        if (name.startswith(("e_", "s_")) or name in {"alarm", "error"}) and addr not in failed_addrs:
+        if (
+            name.startswith(("e_", "s_")) or name in {"alarm", "error"}
+        ) and addr not in failed_addrs:
             scanner.available_registers["holding_registers"].add(name)
 
 
-async def scan_named_coil(scanner: ThesslaGreenDeviceScanner, coil_registers: dict[int, str]) -> None:
+async def scan_named_coil(
+    scanner: Any, coil_registers: dict[int, str]
+) -> None:
     """Scan FC01 coil registers in batches."""
+    known_missing = getattr(scanner, "_known_missing_registers", KNOWN_MISSING_REGISTERS)
     addr_to_names: dict[int, set[str]] = {}
     addresses: list[int] = []
     for addr, name in coil_registers.items():
-        if name in KNOWN_MISSING_REGISTERS.get("coil_registers", set()):
+        if name in known_missing.get("coil_registers", set()):
             continue
         addr_to_names.setdefault(addr, set()).add(name)
         addresses.append(addr)
@@ -176,13 +193,14 @@ async def scan_named_coil(scanner: ThesslaGreenDeviceScanner, coil_registers: di
 
 
 async def scan_named_discrete(
-    scanner: ThesslaGreenDeviceScanner, discrete_registers: dict[int, str]
+    scanner: Any, discrete_registers: dict[int, str]
 ) -> None:
     """Scan FC02 discrete input registers in batches."""
+    known_missing = getattr(scanner, "_known_missing_registers", KNOWN_MISSING_REGISTERS)
     addr_to_names: dict[int, set[str]] = {}
     addresses: list[int] = []
     for addr, name in discrete_registers.items():
-        if name in KNOWN_MISSING_REGISTERS.get("discrete_inputs", set()):
+        if name in known_missing.get("discrete_inputs", set()):
             continue
         addr_to_names.setdefault(addr, set()).add(name)
         addresses.append(addr)
@@ -215,7 +233,7 @@ async def scan_named_discrete(
 
 
 async def run_named_scan(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     input_registers: dict[int, str],
     holding_registers: dict[int, str],
     coil_registers: dict[int, str],
@@ -229,7 +247,7 @@ async def run_named_scan(
 
 
 def compute_scan_blocks(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     input_registers: dict[int, str],
     holding_registers: dict[int, str],
     coil_registers: dict[int, str],
@@ -243,7 +261,10 @@ def compute_scan_blocks(
     _ = scanner
     if scanner.full_register_scan:
         return {
-            "input_registers": (0 if input_max >= 0 else None, input_max if input_max >= 0 else None),
+            "input_registers": (
+                0 if input_max >= 0 else None,
+                input_max if input_max >= 0 else None,
+            ),
             "holding_registers": (
                 0 if holding_max >= 0 else None,
                 holding_max if holding_max >= 0 else None,
@@ -256,7 +277,9 @@ def compute_scan_blocks(
         }
     return {
         "input_registers": (
-            (min(input_registers.keys()), max(input_registers.keys())) if input_registers else (None, None)
+            (min(input_registers.keys()), max(input_registers.keys()))
+            if input_registers
+            else (None, None)
         ),
         "holding_registers": (
             (min(holding_registers.keys()), max(holding_registers.keys()))
@@ -264,7 +287,9 @@ def compute_scan_blocks(
             else (None, None)
         ),
         "coil_registers": (
-            (min(coil_registers.keys()), max(coil_registers.keys())) if coil_registers else (None, None)
+            (min(coil_registers.keys()), max(coil_registers.keys()))
+            if coil_registers
+            else (None, None)
         ),
         "discrete_inputs": (
             (min(discrete_registers.keys()), max(discrete_registers.keys()))
@@ -275,7 +300,7 @@ def compute_scan_blocks(
 
 
 def collect_missing_registers(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     input_registers: dict[int, str],
     holding_registers: dict[int, str],
     coil_registers: dict[int, str],
@@ -302,7 +327,7 @@ def collect_missing_registers(
 
 
 async def load_registers(
-    scanner: ThesslaGreenDeviceScanner,
+    scanner: Any,
     async_get_all_registers_cb: Callable[[Any | None], Awaitable[list[Any]]],
 ) -> tuple[
     dict[int, dict[int, str]],
@@ -320,7 +345,7 @@ async def load_registers(
     return register_map, register_ranges
 
 
-def log_skipped_ranges(scanner: ThesslaGreenDeviceScanner) -> None:
+def log_skipped_ranges(scanner: Any) -> None:
     """Log summary of ranges skipped due to Modbus exceptions."""
     if scanner._unsupported_input_ranges:
         ranges = ", ".join(
@@ -337,16 +362,24 @@ def log_skipped_ranges(scanner: ThesslaGreenDeviceScanner) -> None:
 
     addr_to_name: dict[str, dict[int, str]] = {
         "input_registers": {
-            addr: name for addr, name in scanner._registers.get(4, {}).items() if isinstance(name, str)
+            addr: name
+            for addr, name in scanner._registers.get(4, {}).items()
+            if isinstance(name, str)
         },
         "holding_registers": {
-            addr: name for addr, name in scanner._registers.get(3, {}).items() if isinstance(name, str)
+            addr: name
+            for addr, name in scanner._registers.get(3, {}).items()
+            if isinstance(name, str)
         },
         "coil_registers": {
-            addr: name for addr, name in scanner._registers.get(1, {}).items() if isinstance(name, str)
+            addr: name
+            for addr, name in scanner._registers.get(1, {}).items()
+            if isinstance(name, str)
         },
         "discrete_inputs": {
-            addr: name for addr, name in scanner._registers.get(2, {}).items() if isinstance(name, str)
+            addr: name
+            for addr, name in scanner._registers.get(2, {}).items()
+            if isinstance(name, str)
         },
     }
 

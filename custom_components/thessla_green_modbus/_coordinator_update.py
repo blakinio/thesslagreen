@@ -17,7 +17,7 @@ from .utils import utcnow as _utcnow
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
 
-_LOGGER = logging.getLogger(__name__.rsplit('.', maxsplit=1)[0])
+_LOGGER = logging.getLogger(__name__.rsplit(".", maxsplit=1)[0])
 
 
 async def run_update_cycle(

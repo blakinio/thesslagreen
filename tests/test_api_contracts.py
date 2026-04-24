@@ -35,7 +35,10 @@ def test_scanner_core_public_api_contains_register_cache_wrappers() -> None:
 
 def test_services_module_wrappers_delegate_to_targets() -> None:
     """Services wrappers should point to extracted target helpers."""
-    assert services._get_coordinator_from_entity_id_impl is services_targets.get_coordinator_from_entity_id
+    assert (
+        services._get_coordinator_from_entity_id_impl
+        is services_targets.get_coordinator_from_entity_id
+    )
     assert services._iter_target_coordinators_impl is services_targets.iter_target_coordinators
     expected_exports = {
         "extract_entity_ids",

@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 import ipaddress
 import logging
+from collections.abc import Callable
 from typing import Any
 
 from homeassistant.const import CONF_HOST, CONF_PORT
@@ -43,7 +44,7 @@ def validate_slave_id(data: dict[str, Any]) -> int:
 def validate_tcp_config(
     data: dict[str, Any],
     *,
-    looks_like_hostname: callable,
+    looks_like_hostname: Callable[[str], bool],
 ) -> tuple[str, int]:
     """Validate and normalize TCP connection fields."""
     host = str(data.get(CONF_HOST, "") or "").strip()
@@ -78,9 +79,9 @@ def validate_tcp_config(
 def validate_rtu_config(
     data: dict[str, Any],
     *,
-    normalize_baud_rate: callable,
-    normalize_parity: callable,
-    normalize_stop_bits: callable,
+    normalize_baud_rate: Callable[[Any], int],
+    normalize_parity: Callable[[Any], str],
+    normalize_stop_bits: Callable[[Any], int],
 ) -> None:
     """Validate and normalize RTU serial fields."""
     serial_port = str(data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT) or "").strip()
@@ -113,7 +114,7 @@ def process_scan_capabilities(
     scan_result: dict[str, Any],
     *,
     capabilities_cls: type,
-    caps_to_dict: callable,
+    caps_to_dict: Callable[[Any], dict[str, Any]],
     logger: logging.Logger,
 ) -> dict[str, Any]:
     """Extract and validate capabilities from scan result dict."""

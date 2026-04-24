@@ -62,7 +62,9 @@ async def test_set_temperature_scaling():
     """Ensure temperatures are scaled before writing to Modbus."""
 
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
     coordinator.async_request_refresh = AsyncMock()
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.data = {}
@@ -81,7 +83,9 @@ async def test_set_temperature_scaling():
 def test_target_temperature_none_when_unavailable():
     """Return None when no target temperature register is present."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
     coordinator.capabilities.basic_control = True
     coordinator.data = {}
 
@@ -96,7 +100,9 @@ def test_target_temperature_none_when_unavailable():
 def test_hvac_mode_off_uses_on_off_panel_mode():
     """Ensure OFF is driven by on_off_panel_mode, not mapped to AUTO."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
     coordinator.capabilities.basic_control = True
     coordinator.data = {"on_off_panel_mode": 0, "mode": 0}
 
@@ -108,7 +114,9 @@ def test_hvac_mode_off_uses_on_off_panel_mode():
 def test_hvac_mode_auto_when_panel_on():
     """Ensure AUTO is reported when the panel is on and mode is automatic."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
     coordinator.capabilities.basic_control = True
     coordinator.data = {"on_off_panel_mode": 1, "mode": 0}
 
@@ -120,7 +128,9 @@ def test_hvac_mode_auto_when_panel_on():
 def test_fan_modes_respect_min_max_limits():
     """Fan modes should honor dynamic min/max limits up to 150%."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
     coordinator.data = {"min_percentage": 20, "max_percentage": 150}
 
     climate = ThesslaGreenClimate(coordinator)
@@ -132,7 +142,9 @@ def test_fan_modes_respect_min_max_limits():
 def test_fan_mode_clamps_to_max_percentage():
     """Fan mode string should clamp to max percentage."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
     coordinator.data = {
         "min_percentage": 10,
         "max_percentage": 150,
@@ -159,7 +171,9 @@ def test_hvac_mode_mappings():
 async def test_set_hvac_mode_turns_on_before_mode():
     """Setting HVAC mode should power on before changing the mode register."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.async_request_refresh = AsyncMock()
     coordinator.data = {"on_off_panel_mode": 0}
@@ -177,7 +191,9 @@ async def test_set_hvac_mode_turns_on_before_mode():
 async def test_set_temperature_temporary_mode_uses_multi_write():
     """Temporary mode should use the 3-register block and avoid permanent writes."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
     coordinator.data = {"mode": 2}
     coordinator.async_write_temporary_temperature = AsyncMock(return_value=True)
     coordinator.async_write_register = AsyncMock(return_value=True)
@@ -199,7 +215,6 @@ async def test_force_full_register_list_creates_climate(mock_coordinator, mock_c
     hass = MagicMock()
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_config_entry.runtime_data = mock_coordinator
-
 
     mock_coordinator.available_registers = {
         "input_registers": set(),
@@ -225,7 +240,9 @@ async def test_force_full_register_list_creates_climate(mock_coordinator, mock_c
 def test_percentage_limits_max_below_min():
     """When max_percentage < min_percentage, max is clamped to min (line 238)."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
     coordinator.data = {"min_percentage": 80, "max_percentage": 20}
 
     climate = ThesslaGreenClimate(coordinator)
@@ -238,7 +255,9 @@ def test_percentage_limits_max_below_min():
 def test_percentage_limits_invalid_types():
     """Non-numeric min/max default to 0 and 150 respectively."""
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
     coordinator.data = {"min_percentage": "bad", "max_percentage": None}
 
     climate = ThesslaGreenClimate(coordinator)
@@ -258,7 +277,9 @@ def test_preset_mode_no_special_mode():
     from custom_components.thessla_green_modbus.climate import SPECIAL_FUNCTION_MAP  # noqa: F401
 
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
     coordinator.data = {"special_mode": 0}
 
     climate = ThesslaGreenClimate(coordinator)
@@ -270,7 +291,9 @@ def test_preset_mode_active_special_function():
     from custom_components.thessla_green_modbus.climate import SPECIAL_FUNCTION_MAP
 
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
 
     # Take the first defined preset and set its bit
     first_preset, first_bit = next(iter(SPECIAL_FUNCTION_MAP.items()))
@@ -287,7 +310,9 @@ def test_preset_mode_unknown_bits_returns_none():
     from custom_components.thessla_green_modbus import climate as climate_mod
 
     hass = SimpleNamespace()
-    coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev", timedelta(seconds=1))
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
     coordinator.data = {"special_mode": 0b11111111}
 
     climate_entity = ThesslaGreenClimate(coordinator)

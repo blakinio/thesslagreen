@@ -1,4 +1,5 @@
 """Plugin to detect unclosed event loops by forcing GC and checking warnings."""
+
 import asyncio
 import gc
 import warnings

@@ -1,4 +1,3 @@
-
 from custom_components.thessla_green_modbus.const import (
     DOMAIN,
     device_unique_id_prefix,
@@ -86,9 +85,7 @@ def test_migrate_unique_id_strips_m3h_suffix():
     result = migrate_unique_id(
         uid_with_m3h, serial_number=None, host=HOST, port=PORT, slave_id=SLAVE
     )
-    expected = migrate_unique_id(
-        uid_base, serial_number=None, host=HOST, port=PORT, slave_id=SLAVE
-    )
+    expected = migrate_unique_id(uid_base, serial_number=None, host=HOST, port=PORT, slave_id=SLAVE)
     assert result == expected  # nosec B101
 
 

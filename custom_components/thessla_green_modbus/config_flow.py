@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-import inspect
 import logging
-import traceback
 from collections.abc import Awaitable, Callable
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
@@ -20,6 +17,7 @@ from voluptuous import Invalid as VOL_INVALID
 from .config_flow_confirm import (
     build_confirmation_placeholders as _build_confirmation_placeholders,
 )
+from .config_flow_device_validation import validate_input_impl as _validate_input_impl
 from .config_flow_entry import build_unique_id as _build_unique_id_impl
 from .config_flow_entry import prepare_entry_payload as _prepare_entry_payload_impl
 from .config_flow_errors import classify_os_error as _classify_os_error_impl
@@ -44,6 +42,8 @@ from .config_flow_options_form import (
 )
 from .config_flow_payloads import caps_to_dict as _caps_to_dict_impl
 from .config_flow_payloads import normalize_connection_type as _normalize_connection_type_impl
+from .config_flow_reauth import process_reauth_submission as _process_reauth_submission_impl
+from .config_flow_reauth_confirm import apply_reauth_update as _apply_reauth_update_impl
 from .config_flow_runtime import TIMEOUT_EXCEPTIONS
 from .config_flow_runtime import (
     call_with_optional_timeout as _call_with_optional_timeout_impl,
@@ -53,19 +53,14 @@ from .config_flow_runtime import (
 )
 from .config_flow_runtime import run_with_retry as _run_with_retry_impl
 from .config_flow_schema import build_connection_schema as _build_connection_schema_impl
+from .config_flow_user_submit import process_user_submission as _process_user_submission_impl
 from .config_flow_validation import process_scan_capabilities as _process_scan_capabilities_impl
 from .config_flow_validation import validate_rtu_config as _validate_rtu_config_impl
 from .config_flow_validation import validate_slave_id as _validate_slave_id_impl
 from .config_flow_validation import validate_tcp_config as _validate_tcp_config_impl
 from .const import (
-    CONF_BAUD_RATE,
-    CONF_CONNECTION_MODE,
-    CONF_DEEP_SCAN,
     CONF_MAX_REGISTERS_PER_REQUEST,
-    CONF_PARITY,
-    CONF_SERIAL_PORT,
     CONF_SLAVE_ID,
-    CONF_STOP_BITS,
     CONF_TIMEOUT,
     CONNECTION_TYPE_TCP,
     DEFAULT_DEEP_SCAN,
@@ -83,10 +78,11 @@ from .const import (
     MODBUS_PARITY,
     MODBUS_STOP_BITS,
 )
-from .errors import CannotConnect, InvalidAuth, is_invalid_auth_error
-from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from .errors import CannotConnect, InvalidAuth
+from .modbus_exceptions import ModbusIOException
 
 _LOGGER = logging.getLogger(__name__)
+__all__ = ["VOL_INVALID", "CannotConnect", "ConfigFlow", "InvalidAuth", "validate_input"]
 
 if TYPE_CHECKING:
     from homeassistant.components.dhcp import DhcpServiceInfo
@@ -99,7 +95,6 @@ else:
     _ConfigFlowBase = config_entries.ConfigFlow
     DhcpServiceInfo = Any
     ZeroconfServiceInfo = Any
-
 
 
 def _is_request_cancelled_error(exc: ModbusIOException) -> bool:
@@ -123,7 +118,6 @@ async def _load_scanner_module(hass: HomeAssistant) -> Any:
 # Delay between retries when establishing the connection during the config flow.
 # Uses exponential backoff: ``backoff * 2 ** (attempt-1)``.
 CONFIG_FLOW_BACKOFF = 0.1
-
 
 
 def _strip_translation_prefix(value: str) -> str:
@@ -220,125 +214,40 @@ def _process_scan_capabilities(
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
-    connection_type = _normalize_connection_type(data)
-    slave_id = _validate_slave_id(data)
-
-    name = data.get(CONF_NAME, DEFAULT_NAME)
-    timeout = data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
-    host = ""
-    port = DEFAULT_PORT
-    if connection_type == CONNECTION_TYPE_TCP:
-        host, port = _validate_tcp_config(data)
-    else:
-        _validate_rtu_config(data)
-
-    module = await _load_scanner_module(hass)
-    scanner_cls = ThesslaGreenDeviceScanner or module.ThesslaGreenDeviceScanner
-    capabilities_cls = DeviceCapabilities or module.DeviceCapabilities
-
-    scanner: Any | None = None
-    try:
-        scanner = await _run_with_retry(
-            lambda: scanner_cls.create(
-                host=host,
-                port=port,
-                slave_id=slave_id,
-                timeout=timeout,
-                retry=DEFAULT_RETRY,
-                backoff=CONFIG_FLOW_BACKOFF,
-                deep_scan=data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
-                connection_type=connection_type,
-                connection_mode=data.get(CONF_CONNECTION_MODE),
-                serial_port=data.get(CONF_SERIAL_PORT),
-                baud_rate=data.get(CONF_BAUD_RATE),
-                parity=data.get(CONF_PARITY, DEFAULT_PARITY),
-                stop_bits=data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS),
-                hass=hass,
-            ),
-            retries=DEFAULT_RETRY,
-            backoff=CONFIG_FLOW_BACKOFF,
-        )
-
-        short_timeout = max(2, timeout)
-        verify_cb = getattr(scanner, "verify_connection", None)
-        if not callable(verify_cb):
-            raise AttributeError("verify_connection")
-
-        await _run_with_retry(
-            lambda: _call_with_optional_timeout(verify_cb, short_timeout),
-            retries=DEFAULT_RETRY,
-            backoff=CONFIG_FLOW_BACKOFF,
-        )
-
-        # Perform full device scan
-        scan_result = await _run_with_retry(
-            lambda: _call_with_optional_timeout(scanner.scan_device, timeout),
-            retries=DEFAULT_RETRY,
-            backoff=CONFIG_FLOW_BACKOFF,
-        )
-
-        if not isinstance(scan_result, dict) or not scan_result:
-            raise CannotConnect("invalid_format")
-
-        caps_dict = _process_scan_capabilities(scan_result, capabilities_cls)
-        scan_result["capabilities"] = caps_dict
-        device_info = scan_result.get("device_info", {})
-
-        return {
-            "title": name,
-            "device_info": device_info,
-            "scan_result": scan_result,
-        }
-
-    except ConnectionException as exc:
-        _LOGGER.error("Connection error: %s", exc)
-        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        raise CannotConnect("cannot_connect") from exc
-    except asyncio.CancelledError:
-        raise
-    except ModbusIOException as exc:
-        if _is_request_cancelled_error(exc):
-            _LOGGER.info("Modbus request cancelled during device validation.")
-            raise CannotConnect("timeout") from exc
-        _LOGGER.error("Modbus IO error during device validation: %s", exc)
-        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        raise CannotConnect("io_error") from exc
-    except TIMEOUT_EXCEPTIONS as exc:
-        _LOGGER.warning("Timeout during device validation: %s", exc)
-        if _should_log_timeout_traceback_impl(exc):
-            _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        raise CannotConnect("timeout") from exc
-    except ModbusException as exc:
-        _LOGGER.error("Modbus error: %s", exc)
-        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        if is_invalid_auth_error(exc):
-            raise InvalidAuth from exc
-        raise CannotConnect("modbus_error") from exc
-    except AttributeError as exc:
-        _LOGGER.error("Attribute error during device validation: %s", exc)
-        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        raise CannotConnect("missing_method") from exc
-    except OSError as exc:
-        reason = _classify_os_error_impl(exc)
-        if reason == "dns_failure":
-            _LOGGER.error("DNS resolution failed: %s", exc)
-        elif reason == "connection_refused":
-            _LOGGER.error("Connection refused: %s", exc)
-        else:
-            _LOGGER.error("Unexpected error during device validation: %s", exc)
-        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        raise CannotConnect(reason) from exc
-    except CannotConnect:
-        raise
-    except (ValueError, TypeError, RuntimeError, ImportError) as exc:
-        _LOGGER.error("Unexpected error during device validation: %s", exc)
-        _LOGGER.debug("Traceback:\n%s", traceback.format_exc())
-        raise CannotConnect("cannot_connect") from exc
-    finally:
-        if scanner is not None and hasattr(scanner, "close"):
-            close_result = scanner.close()
-            if inspect.isawaitable(close_result):
-                await close_result
+    return await _validate_input_impl(
+        hass,
+        data,
+        normalize_connection_type=_normalize_connection_type,
+        validate_slave_id=_validate_slave_id,
+        validate_tcp_config=_validate_tcp_config,
+        validate_rtu_config=_validate_rtu_config,
+        load_scanner_module=_load_scanner_module,
+        scanner_cls_override=ThesslaGreenDeviceScanner,
+        capabilities_cls_override=DeviceCapabilities,
+        run_with_retry=lambda func, retries, backoff: _run_with_retry(
+            func,
+            retries=retries,
+            backoff=backoff,
+        ),
+        call_with_optional_timeout=_call_with_optional_timeout,
+        process_scan_capabilities=_process_scan_capabilities,
+        is_request_cancelled_error=_is_request_cancelled_error,
+        classify_os_error=_classify_os_error_impl,
+        should_log_timeout_traceback=_should_log_timeout_traceback_impl,
+        logger=_LOGGER,
+        conf_name=CONF_NAME,
+        conf_timeout=CONF_TIMEOUT,
+        default_name=DEFAULT_NAME,
+        default_port=DEFAULT_PORT,
+        default_timeout=DEFAULT_TIMEOUT,
+        default_retry=DEFAULT_RETRY,
+        default_deep_scan=DEFAULT_DEEP_SCAN,
+        default_parity=DEFAULT_PARITY,
+        default_stop_bits=DEFAULT_STOP_BITS,
+        connection_type_tcp=CONNECTION_TYPE_TCP,
+        config_flow_backoff=CONFIG_FLOW_BACKOFF,
+        timeout_exceptions=TIMEOUT_EXCEPTIONS,
+    )
 
 
 class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
@@ -460,51 +369,26 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
         self._discovered_host = discovery_info.host
         return await self.async_step_user()
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            try:
-                max_regs = user_input.get(
-                    CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
-                )
-                if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
-                    raise VOL_INVALID("max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST])
-
-                info = await validate_input(self.hass, user_input)
-
+            info, submit_errors = await _process_user_submission_impl(
+                user_input,
+                validate_input=validate_input,
+                hass=self.hass,
+                logger=_LOGGER,
+            )
+            if info is not None:
                 self._data = user_input
                 self._device_info = info.get("device_info", {})
                 self._scan_result = info.get("scan_result", {})
 
                 await self.async_set_unique_id(self._build_unique_id(user_input))
-
-            except CannotConnect as exc:
-                errors["base"] = exc.args[0] if exc.args else "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except VOL_INVALID as err:
-                _LOGGER.error(
-                    "Invalid input for %s: %s",
-                    err.path[0] if err.path else "unknown",
-                    err,
-                )
-                errors[err.path[0] if err.path else CONF_HOST] = err.error_message
-            except (ConnectionException, ModbusException):
-                _LOGGER.exception("Modbus communication error")
-                errors["base"] = "cannot_connect"
-            except ValueError as err:
-                _LOGGER.error("Invalid value provided: %s", err)
-                errors["base"] = "invalid_input"
-            except KeyError as err:
-                _LOGGER.error("Missing required data: %s", err)
-                errors["base"] = "invalid_input"
-            else:
                 self._abort_if_unique_id_configured()
                 return await self.async_step_confirm()
+            errors.update(submit_errors)
 
         return self.async_show_form(
             step_id="user",
@@ -512,9 +396,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_reauth(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_reauth(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle reauthentication by collecting updated connection details."""
         errors: dict[str, str] = {}
         entry = None
@@ -538,39 +420,18 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
             )
 
         if user_input is not None:
-            try:
-                max_regs = user_input.get(
-                    CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
-                )
-                if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
-                    raise VOL_INVALID("max_registers_range", path=[CONF_MAX_REGISTERS_PER_REQUEST])
-
-                info = await validate_input(self.hass, user_input)
+            info, submit_errors = await _process_reauth_submission_impl(
+                user_input,
+                validate_input=validate_input,
+                hass=self.hass,
+                logger=_LOGGER,
+            )
+            if info is not None:
                 self._data = user_input
                 self._device_info = info.get("device_info", {})
                 self._scan_result = info.get("scan_result", {})
                 return await self.async_step_reauth_confirm()
-
-            except CannotConnect as exc:
-                errors["base"] = exc.args[0] if exc.args else "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except VOL_INVALID as err:
-                _LOGGER.error(
-                    "Invalid input for %s: %s",
-                    err.path[0] if err.path else "unknown",
-                    err,
-                )
-                errors[err.path[0] if err.path else CONF_HOST] = err.error_message
-            except (ConnectionException, ModbusException):
-                _LOGGER.exception("Modbus communication error")
-                errors["base"] = "cannot_connect"
-            except ValueError as err:
-                _LOGGER.error("Invalid value provided: %s", err)
-                errors["base"] = "invalid_input"
-            except KeyError as err:
-                _LOGGER.error("Missing required data: %s", err)
-                errors["base"] = "invalid_input"
+            errors.update(submit_errors)
 
         return self.async_show_form(
             step_id="reauth",
@@ -591,27 +452,14 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
             reauth_entry_id = self._tg_flow_reauth_entry_id or getattr(
                 self, "_tg_reauth_entry_id", None
             )
-            if self.hass is None:
-                _LOGGER.error("Cannot complete reauth - missing Home Assistant context")
-                return self.async_abort(reason="reauth_failed")
-            if reauth_entry_id is None:
-                _LOGGER.error("Cannot complete reauth - missing entry id")
-                return self.async_abort(reason="reauth_entry_missing")
-
-            entry = self.hass.config_entries.async_get_entry(reauth_entry_id)
-            if entry is None:
-                _LOGGER.error(
-                    "Reauthentication requested for missing entry %s",
-                    reauth_entry_id,
-                )
-                return self.async_abort(reason="reauth_entry_missing")
-
-            data, options = self._prepare_entry_payload(cap_cls)
-            combined_options = dict(entry.options)
-            combined_options.update(options)
-            self.hass.config_entries.async_update_entry(entry, data=data, options=combined_options)
-            await self.hass.config_entries.async_reload(entry.entry_id)
-            return self.async_abort(reason="reauth_successful")
+            reason = await _apply_reauth_update_impl(
+                hass=self.hass,
+                reauth_entry_id=reauth_entry_id,
+                prepare_entry_payload=self._prepare_entry_payload,
+                capabilities_cls=cap_cls,
+                logger=_LOGGER,
+            )
+            return self.async_abort(reason=reason)
 
         return await self._async_show_confirmation(cap_cls, "reauth_confirm")
 
@@ -635,9 +483,7 @@ class OptionsFlow(config_entries.OptionsFlow):
         """Return the config entry for this options flow."""
         return self._stored_config_entry
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle options flow."""
         errors: dict[str, str] = {}
 

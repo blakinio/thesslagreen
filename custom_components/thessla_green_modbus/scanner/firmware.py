@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ..scanner_register_maps import HOLDING_REGISTERS, INPUT_REGISTERS, REGISTER_DEFINITIONS
 
@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def scan_firmware_info(
-    scanner: ThesslaGreenDeviceScanner, info_regs: list[int], device: ScannerDeviceInfo
+    scanner: Any, info_regs: list[int], device: ScannerDeviceInfo
 ) -> None:
     """Parse firmware version from info_regs and update device."""
     major: int | None = None
@@ -45,7 +45,9 @@ async def scan_firmware_info(
     if None in (major, minor, patch):
         fallback_results: dict[str, int] = {}
         for name in ("version_major", "version_minor", "version_patch"):
-            current = major if name == "version_major" else minor if name == "version_minor" else patch
+            current = (
+                major if name == "version_major" else minor if name == "version_minor" else patch
+            )
             if current is not None:
                 continue
             probe = None
@@ -100,7 +102,7 @@ async def scan_firmware_info(
 
 
 async def scan_device_identity(
-    scanner: ThesslaGreenDeviceScanner, info_regs: list[int], device: ScannerDeviceInfo
+    scanner: Any, info_regs: list[int], device: ScannerDeviceInfo
 ) -> None:
     """Parse serial number and device name from registers into device."""
     try:
@@ -114,7 +116,10 @@ async def scan_device_identity(
         _LOGGER.exception("Unexpected error parsing serial number: %s", err)
     try:
         start = HOLDING_REGISTERS["device_name"]
-        name_regs = await scanner._read_holding_block(start, REGISTER_DEFINITIONS["device_name"].length) or []
+        name_regs = (
+            await scanner._read_holding_block(start, REGISTER_DEFINITIONS["device_name"].length)
+            or []
+        )
         if name_regs:
             name_bytes = bytearray()
             for reg in name_regs:

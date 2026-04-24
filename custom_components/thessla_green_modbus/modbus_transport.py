@@ -18,8 +18,10 @@ except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover
 else:  # pragma: no cover
     SERIAL_IMPORT_ERROR = None
 
+from ._transport_retry import apply_transport_backoff, log_transport_retry
 from .const import CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU
-from .error_policy import next_backoff, to_log_message
+from .error_contract import classify_error
+from .error_policy import to_log_message
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from .modbus_helpers import (
     _call_modbus,
@@ -32,6 +34,13 @@ _MIN_SLAVE_ID = 1
 _MAX_SLAVE_ID = 247
 _MAX_READ_REGISTERS = 125
 _MAX_WRITE_REGISTERS = 123
+
+
+def classify_transport_error(exc: BaseException) -> tuple[str, str]:
+    """Expose normalized retry classification for transport layer tests."""
+
+    contract = classify_error(exc)
+    return contract.kind, contract.reason
 
 
 def _crc16(data: bytes) -> int:
@@ -130,7 +139,8 @@ class BaseModbusTransport(ABC):
                 _LOGGER.debug("Reset connection failed during CancelledError handling: %s", exc)
             raise
         except ModbusException as exc:
-            _LOGGER.error("Permanent Modbus error: %s", to_log_message(exc))
+            kind, reason = classify_transport_error(exc)
+            _LOGGER.error("Permanent Modbus error (%s/%s): %s", kind, reason, to_log_message(exc))
             self.offline_state = True
             raise
         except (
@@ -192,11 +202,13 @@ class BaseModbusTransport(ABC):
     async def _handle_timeout(self, attempt: int, exc: Exception) -> None:
         """Handle timeout errors with reconnection and backoff."""
 
-        _LOGGER.warning(
-            "Modbus call timed out on attempt %s/%s: %s",
-            attempt,
-            self.max_retries,
-            exc,
+        log_transport_retry(
+            logger=_LOGGER,
+            operation="timeout",
+            attempt=attempt,
+            max_attempts=self.max_retries,
+            exc=exc,
+            base_backoff=self.base_backoff,
         )
         self.offline_state = True
         await self._reset_connection()
@@ -205,11 +217,13 @@ class BaseModbusTransport(ABC):
     async def _handle_transient(self, attempt: int, exc: Exception) -> None:
         """Handle transient transport errors."""
 
-        _LOGGER.warning(
-            "Transient Modbus transport error on attempt %s/%s: %s",
-            attempt,
-            self.max_retries,
-            exc,
+        log_transport_retry(
+            logger=_LOGGER,
+            operation="transient",
+            attempt=attempt,
+            max_attempts=self.max_retries,
+            exc=exc,
+            base_backoff=self.base_backoff,
         )
         self.offline_state = True
         await self._reset_connection()
@@ -217,9 +231,9 @@ class BaseModbusTransport(ABC):
 
     async def _apply_backoff(self, attempt: int) -> None:
         """Sleep for the calculated backoff duration respecting the maximum."""
-        delay = next_backoff(attempt=attempt + 1, base=self.base_backoff, max_backoff=self.max_backoff)
-        if delay > 0:
-            await asyncio.sleep(delay)
+        await apply_transport_backoff(
+            attempt=attempt, base_backoff=self.base_backoff, max_backoff=self.max_backoff
+        )
 
     @abstractmethod
     def _is_connected(self) -> bool:
@@ -278,7 +292,116 @@ class BaseModbusTransport(ABC):
         """Write multiple holding registers."""
 
 
-class TcpModbusTransport(BaseModbusTransport):
+class _ClientBackedTransport(BaseModbusTransport):
+    """Shared implementation for transports backed by a pymodbus-like client."""
+
+    client: Any | None = None
+
+    async def _ensure_client(self) -> Any:
+        if self.client is None:
+            await self.ensure_connected()
+        assert self.client is not None
+        return self.client
+
+    async def _invoke_client(
+        self, method_name: str, slave_id: int, address: int, **kwargs: Any
+    ) -> Any:
+        client = await self._ensure_client()
+        func = getattr(client, method_name)
+        return await self.call(func, slave_id, address, **kwargs)
+
+    async def _connect_client(self, *, endpoint: str) -> None:
+        client = self.client
+        if client is None:  # pragma: no cover
+            raise ConnectionException("Internal error: client not initialized before connect")
+        connect_method = getattr(client, "connect", None)
+        if callable(connect_method):
+            connected = connect_method()
+            if inspect.isawaitable(connected):
+                connected = await connected
+        else:
+            connected = True
+            client.connected = True
+        if not connected:
+            self.offline_state = True
+            raise ConnectionException(f"Could not connect to {endpoint}")
+        self.offline_state = False
+
+    async def _reset_connection(self) -> None:
+        client = self.client
+        if client is None:
+            return
+        try:
+            await async_maybe_await_close(client)
+        finally:
+            self.client = None
+
+    async def read_input_registers(
+        self,
+        slave_id: int,
+        address: int,
+        *,
+        count: int,
+        attempt: int = 1,
+    ) -> Any:
+        return await self._invoke_client(
+            "read_input_registers",
+            slave_id,
+            address,
+            count=count,
+            attempt=attempt,
+        )
+
+    async def read_holding_registers(
+        self,
+        slave_id: int,
+        address: int,
+        *,
+        count: int,
+        attempt: int = 1,
+    ) -> Any:
+        return await self._invoke_client(
+            "read_holding_registers",
+            slave_id,
+            address,
+            count=count,
+            attempt=attempt,
+        )
+
+    async def write_register(
+        self,
+        slave_id: int,
+        address: int,
+        *,
+        value: int,
+        attempt: int = 1,
+    ) -> Any:
+        return await self._invoke_client(
+            "write_register",
+            slave_id,
+            address,
+            value=value,
+            attempt=attempt,
+        )
+
+    async def write_registers(
+        self,
+        slave_id: int,
+        address: int,
+        *,
+        values: list[int],
+        attempt: int = 1,
+    ) -> Any:
+        return await self._invoke_client(
+            "write_registers",
+            slave_id,
+            address,
+            values=values,
+            attempt=attempt,
+        )
+
+
+class TcpModbusTransport(_ClientBackedTransport):
     """TCP Modbus transport implementation."""
 
     def __init__(
@@ -372,106 +495,11 @@ class TcpModbusTransport(BaseModbusTransport):
                 self.timeout,
             )
             self.client = self._build_tcp_client()
-        connect_method = getattr(self.client, "connect", None)
-        if callable(connect_method):
-            connected = connect_method()
-            if inspect.isawaitable(connected):
-                connected = await connected
-        else:
-            connected = True
-            self.client.connected = True
-        if not connected:
-            self.offline_state = True
-            raise ConnectionException(f"Could not connect to {self.host}:{self.port}")
+        await self._connect_client(endpoint=f"{self.host}:{self.port}")
         _LOGGER.debug("TCP Modbus connection established to %s:%s", self.host, self.port)
-        self.offline_state = False
-
-    async def _reset_connection(self) -> None:
-        if self.client is None:
-            return
-        try:
-            await async_maybe_await_close(self.client)
-        finally:
-            self.client = None
-
-    async def read_input_registers(
-        self,
-        slave_id: int,
-        address: int,
-        *,
-        count: int,
-        attempt: int = 1,
-    ) -> Any:
-        if self.client is None:
-            await self.ensure_connected()
-        assert self.client is not None
-        return await self.call(
-            self.client.read_input_registers,
-            slave_id,
-            address,
-            count=count,
-            attempt=attempt,
-        )
-
-    async def read_holding_registers(
-        self,
-        slave_id: int,
-        address: int,
-        *,
-        count: int,
-        attempt: int = 1,
-    ) -> Any:
-        if self.client is None:
-            await self.ensure_connected()
-        assert self.client is not None
-        return await self.call(
-            self.client.read_holding_registers,
-            slave_id,
-            address,
-            count=count,
-            attempt=attempt,
-        )
-
-    async def write_register(
-        self,
-        slave_id: int,
-        address: int,
-        *,
-        value: int,
-        attempt: int = 1,
-    ) -> Any:
-        if self.client is None:
-            await self.ensure_connected()
-        assert self.client is not None
-        return await self.call(
-            self.client.write_register,
-            slave_id,
-            address,
-            value=value,
-            attempt=attempt,
-        )
-
-    async def write_registers(
-        self,
-        slave_id: int,
-        address: int,
-        *,
-        values: list[int],
-        attempt: int = 1,
-    ) -> Any:
-        if self.client is None:
-            await self.ensure_connected()
-        assert self.client is not None
-        return await self.call(
-            self.client.write_registers,
-            slave_id,
-            address,
-            values=values,
-            attempt=attempt,
-        )
 
 
-class RtuModbusTransport(BaseModbusTransport):
+class RtuModbusTransport(_ClientBackedTransport):
     """RTU Modbus transport implementation using async serial client."""
 
     def __init__(
@@ -519,103 +547,8 @@ class RtuModbusTransport(BaseModbusTransport):
             stopbits=self.stopbits,
             timeout=self.timeout,
         )
-        connect_method = getattr(self.client, "connect", None)
-        if callable(connect_method):
-            connected = connect_method()
-            if inspect.isawaitable(connected):
-                connected = await connected
-        else:
-            connected = True
-            self.client.connected = True
-        if not connected:
-            self.offline_state = True
-            raise ConnectionException(f"Could not connect to {self.serial_port}")
+        await self._connect_client(endpoint=self.serial_port)
         _LOGGER.debug("RTU Modbus connection established on %s", self.serial_port)
-        self.offline_state = False
-
-    async def _reset_connection(self) -> None:
-        if self.client is None:
-            return
-        try:
-            await async_maybe_await_close(self.client)
-        finally:
-            self.client = None
-
-    async def read_input_registers(
-        self,
-        slave_id: int,
-        address: int,
-        *,
-        count: int,
-        attempt: int = 1,
-    ) -> Any:
-        if self.client is None:
-            await self.ensure_connected()
-        assert self.client is not None
-        return await self.call(
-            self.client.read_input_registers,
-            slave_id,
-            address,
-            count=count,
-            attempt=attempt,
-        )
-
-    async def read_holding_registers(
-        self,
-        slave_id: int,
-        address: int,
-        *,
-        count: int,
-        attempt: int = 1,
-    ) -> Any:
-        if self.client is None:
-            await self.ensure_connected()
-        assert self.client is not None
-        return await self.call(
-            self.client.read_holding_registers,
-            slave_id,
-            address,
-            count=count,
-            attempt=attempt,
-        )
-
-    async def write_register(
-        self,
-        slave_id: int,
-        address: int,
-        *,
-        value: int,
-        attempt: int = 1,
-    ) -> Any:
-        if self.client is None:
-            await self.ensure_connected()
-        assert self.client is not None
-        return await self.call(
-            self.client.write_register,
-            slave_id,
-            address,
-            value=value,
-            attempt=attempt,
-        )
-
-    async def write_registers(
-        self,
-        slave_id: int,
-        address: int,
-        *,
-        values: list[int],
-        attempt: int = 1,
-    ) -> Any:
-        if self.client is None:
-            await self.ensure_connected()
-        assert self.client is not None
-        return await self.call(
-            self.client.write_registers,
-            slave_id,
-            address,
-            values=values,
-            attempt=attempt,
-        )
 
 
 class RawRtuOverTcpTransport(BaseModbusTransport):
@@ -712,9 +645,7 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
     @staticmethod
     def _validate_read_count(count: int) -> None:
         if not (1 <= count <= _MAX_READ_REGISTERS):
-            raise ModbusIOException(
-                f"Invalid read count={count}; expected 1-{_MAX_READ_REGISTERS}"
-            )
+            raise ModbusIOException(f"Invalid read count={count}; expected 1-{_MAX_READ_REGISTERS}")
 
     @staticmethod
     def _validate_write_count(qty: int) -> None:
@@ -795,6 +726,29 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
             await self._writer.drain()
             return await self._read_response(slave_id, function)
 
+    @staticmethod
+    def _decode_register_words(data: bytes, *, count: int) -> list[int]:
+        expected_bytes = count * 2
+        if len(data) != expected_bytes:
+            raise ModbusIOException("Invalid byte count in RTU response")
+        return [int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)]
+
+    @staticmethod
+    def _validate_write_echo(response: bytes, *, address: int, expected_value: int) -> None:
+        if len(response) != 4:
+            raise ModbusIOException("Invalid write response length")
+        resp_addr = (response[0] << 8) | response[1]
+        resp_value = (response[2] << 8) | response[3]
+        if resp_addr != address or resp_value != expected_value:
+            raise ModbusIOException("Write response does not match request")
+
+    async def _read_registers_common(
+        self, *, slave_id: int, address: int, count: int, function: int
+    ) -> RawModbusResponse:
+        frame = self._build_read_frame(slave_id, function, address, count)
+        data = await self._send_frame(frame, slave_id, function)
+        return RawModbusResponse(self._decode_register_words(data, count=count))
+
     async def read_input_registers(
         self,
         slave_id: int,
@@ -808,13 +762,12 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         self._validate_read_count(count)
 
         async def _invoke() -> RawModbusResponse:
-            frame = self._build_read_frame(slave_id, 4, address, count)
-            data = await self._send_frame(frame, slave_id, 4)
-            expected_bytes = count * 2
-            if len(data) != expected_bytes:
-                raise ModbusIOException("Invalid byte count in RTU response")
-            registers = [int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)]
-            return RawModbusResponse(registers)
+            return await self._read_registers_common(
+                slave_id=slave_id,
+                address=address,
+                count=count,
+                function=4,
+            )
 
         return await self._execute(_invoke, ensure_connection=True)
 
@@ -831,13 +784,12 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         self._validate_read_count(count)
 
         async def _invoke() -> RawModbusResponse:
-            frame = self._build_read_frame(slave_id, 3, address, count)
-            data = await self._send_frame(frame, slave_id, 3)
-            expected_bytes = count * 2
-            if len(data) != expected_bytes:
-                raise ModbusIOException("Invalid byte count in RTU response")
-            registers = [int.from_bytes(data[i : i + 2], "big") for i in range(0, len(data), 2)]
-            return RawModbusResponse(registers)
+            return await self._read_registers_common(
+                slave_id=slave_id,
+                address=address,
+                count=count,
+                function=3,
+            )
 
         return await self._execute(_invoke, ensure_connection=True)
 
@@ -855,12 +807,7 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         async def _invoke() -> RawModbusWriteResponse:
             frame = self._build_write_single_frame(slave_id, address, value)
             response = await self._send_frame(frame, slave_id, 6)
-            if len(response) != 4:
-                raise ModbusIOException("Invalid write response length")
-            resp_addr = (response[0] << 8) | response[1]
-            resp_value = (response[2] << 8) | response[3]
-            if resp_addr != address or resp_value != (value & 0xFFFF):
-                raise ModbusIOException("Write response does not match request")
+            self._validate_write_echo(response, address=address, expected_value=(value & 0xFFFF))
             return RawModbusWriteResponse()
 
         return await self._execute(_invoke, ensure_connection=True)
@@ -880,12 +827,7 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         async def _invoke() -> RawModbusWriteResponse:
             frame = self._build_write_multiple_frame(slave_id, address, values)
             response = await self._send_frame(frame, slave_id, 16)
-            if len(response) != 4:
-                raise ModbusIOException("Invalid write response length")
-            resp_addr = (response[0] << 8) | response[1]
-            resp_qty = (response[2] << 8) | response[3]
-            if resp_addr != address or resp_qty != len(values):
-                raise ModbusIOException("Write response does not match request")
+            self._validate_write_echo(response, address=address, expected_value=len(values))
             return RawModbusWriteResponse()
 
         return await self._execute(_invoke, ensure_connection=True)

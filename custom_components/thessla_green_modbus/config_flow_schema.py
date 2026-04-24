@@ -111,8 +111,12 @@ def build_connection_schema(
         if baud_options
         else vol.All(vol.Coerce(int), vol.Range(min=1200, max=230400))
     )
-    parity_validator: Any = vol.In(parity_options) if parity_options else vol.In(["none", "even", "odd"])
-    stop_bits_validator: Any = vol.In(stop_bits_options) if stop_bits_options else vol.In(["1", "2"])
+    parity_validator: Any = (
+        vol.In(parity_options) if parity_options else vol.In(["none", "even", "odd"])
+    )
+    stop_bits_validator: Any = (
+        vol.In(stop_bits_options) if stop_bits_options else vol.In(["1", "2"])
+    )
 
     data_schema: dict[Any, Any] = {
         vol.Required(
@@ -122,12 +126,18 @@ def build_connection_schema(
                 "selector": {
                     "select": {
                         "options": [
-                            {"value": CONNECTION_TYPE_TCP, "label": f"{DOMAIN}.connection_type_tcp"},
+                            {
+                                "value": CONNECTION_TYPE_TCP,
+                                "label": f"{DOMAIN}.connection_type_tcp",
+                            },
                             {
                                 "value": CONNECTION_TYPE_TCP_RTU,
                                 "label": f"{DOMAIN}.connection_type_tcp_rtu",
                             },
-                            {"value": CONNECTION_TYPE_RTU, "label": f"{DOMAIN}.connection_type_rtu"},
+                            {
+                                "value": CONNECTION_TYPE_RTU,
+                                "label": f"{DOMAIN}.connection_type_rtu",
+                            },
                         ]
                     }
                 }

@@ -66,12 +66,8 @@ class DeviceCapabilities(collections.abc.Mapping):
 
     basic_control: bool = False
     temperature_sensors: set[str] = field(default_factory=set)  # Names of temperature sensors
-    flow_sensors: set[str] = field(
-        default_factory=set
-    )  # Airflow sensor identifiers
-    special_functions: set[str] = field(
-        default_factory=set
-    )  # Optional feature flags
+    flow_sensors: set[str] = field(default_factory=set)  # Airflow sensor identifiers
+    special_functions: set[str] = field(default_factory=set)  # Optional feature flags
     expansion_module: bool = False
     constant_flow: bool = False
     gwc_system: bool = False

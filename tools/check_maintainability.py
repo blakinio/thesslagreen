@@ -11,6 +11,25 @@ DEFAULT_MAX_FILE_LINES = 1300
 DEFAULT_MAX_FUNCTION_LINES = 260
 DEFAULT_SCAN_ROOTS = ("custom_components/thessla_green_modbus",)
 
+STRICT_PATH_LIMITS: dict[str, tuple[int, int]] = {
+    "custom_components/thessla_green_modbus/coordinator.py": (1200, 220),
+    "custom_components/thessla_green_modbus/config_flow.py": (1000, 220),
+    "custom_components/thessla_green_modbus/modbus_transport.py": (930, 210),
+    "custom_components/thessla_green_modbus/registers/loader.py": (860, 210),
+    "custom_components/thessla_green_modbus/scanner/io.py": (820, 210),
+    "custom_components/thessla_green_modbus/scanner/core.py": (760, 210),
+}
+
+
+def _limits_for_path(
+    path: Path, default_file_lines: int, default_function_lines: int
+) -> tuple[int, int]:
+    as_posix = path.as_posix()
+    for strict_path, limits in STRICT_PATH_LIMITS.items():
+        if as_posix.endswith(strict_path):
+            return limits
+    return default_file_lines, default_function_lines
+
 
 @dataclass(slots=True)
 class Violation:
@@ -66,16 +85,21 @@ def check_limits(
     violations: list[Violation] = []
     for path in _iter_python_files(roots):
         source = path.read_text(encoding="utf-8")
+        path_max_file_lines, path_max_function_lines = _limits_for_path(
+            path,
+            default_file_lines=max_file_lines,
+            default_function_lines=max_function_lines,
+        )
         line_count = len(source.splitlines())
-        if line_count > max_file_lines:
+        if line_count > path_max_file_lines:
             violations.append(
                 Violation(
                     path=path,
-                    message=f"file has {line_count} lines (limit: {max_file_lines})",
+                    message=f"file has {line_count} lines (limit: {path_max_file_lines})",
                 )
             )
         tree = ast.parse(source, filename=str(path))
-        violations.extend(_collect_function_violations(path, tree, max_function_lines))
+        violations.extend(_collect_function_violations(path, tree, path_max_function_lines))
     return violations
 
 

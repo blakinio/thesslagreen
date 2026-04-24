@@ -51,6 +51,7 @@ from custom_components.thessla_green_modbus.const import DOMAIN
 # Helper
 # ---------------------------------------------------------------------------
 
+
 def _collect_entities(async_add_mock: MagicMock) -> list:
     """Extract the entity list from the first call to async_add_entities."""
     if not async_add_mock.called:
@@ -83,6 +84,7 @@ def _make_full_capabilities() -> SimpleNamespace:
 # Shared patch context
 # ---------------------------------------------------------------------------
 
+
 def _all_patches():
     """Return a list of patch objects covering all 5 capability-filtered platforms."""
     _cap = "custom_components.thessla_green_modbus.{mod}.capability_block_reason"
@@ -102,6 +104,7 @@ def _all_patches():
 # ---------------------------------------------------------------------------
 # Test 1 – each platform creates ≥ 1 entity and entities are well-formed
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_all_platforms_create_at_least_one_entity(
@@ -177,6 +180,7 @@ async def test_all_platforms_create_at_least_one_entity(
 # ---------------------------------------------------------------------------
 # Test 2 – entity count snapshot: verify counts match definitions
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_entity_counts_per_platform(
