@@ -1,25 +1,34 @@
-# Diagnostics Fields
+# Diagnostics
 
-The Thessla Green Modbus integration exposes several fields via the Home Assistant diagnostics panel. These fields provide insight into device state and communication issues.
+## Where to download diagnostics
+From Home Assistant UI for this integration/config entry.
+TODO: verify exact HA menu path wording.
 
-- `registers_hash`: Stable hash of the register definitions packaged with the integration.
-- `capabilities`: Features supported by the connected device.
-- `firmware_version`: Firmware version reported by the device.
-- `total_registers_json`: Count of registers defined in the packaged JSON register map.
-- `total_available_registers`: Count of registers known to the integration.
-- `registers_discovered`: Number of registers found on the device during scanning.
-- `effective_batch`: Largest batch size used when reading registers.
-- `autoscan`: Indicates if register discovery is enabled.
-- `force_full`: Shows if the full register list is forced instead of autoscan.
-- `last_scan`: ISO-8601 timestamp of the most recent register scan.
-- `error_statistics`: Breakdown of recent connection and timeout errors.
-- `raw_registers`: Raw register dump returned during the last scan, when available.
-- `unknown_registers`: Registers read from the device that are not in the register map.
-- `failed_addresses`: Addresses skipped during scanning due to errors.
-- `active_errors`: Currently active error or status codes with translations when available.
+## What diagnostics include
+- Integration configuration snapshot (redacted).
+- Runtime status and connectivity context.
+- Poll/update statistics.
+- Scan-related state/caches.
 
-All IP addresses shown in diagnostics are masked to hide network details. When an IPv6
-address includes a zone index (for example `fe80::1%eth0`), the zone portion is removed
-before masking so interface names are not revealed.
+## What is redacted
+Diagnostics must not expose passwords, tokens, precise private data, or sensitive network secrets.
 
-These diagnostics make it easier to troubleshoot setup issues and confirm device behavior.
+## Runtime status
+Includes online/offline and recent update behavior.
+TODO: verify exact status fields from code.
+
+## Connection statistics
+Includes timing/error counters useful for troubleshooting.
+TODO: verify exact counters from code.
+
+## Scan cache
+May include detected capabilities and register availability cache.
+TODO: verify exact cache keys from code.
+
+## Failed/skipped registers
+May include unsupported/failed ranges for diagnostics context.
+TODO: verify exact representation from code.
+
+## Log level service
+Temporary debug log level can be controlled via service.
+See `docs/services.md`.
