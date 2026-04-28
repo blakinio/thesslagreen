@@ -12,7 +12,12 @@ import pytest
 
 
 def _ensure_current_event_loop() -> asyncio.AbstractEventLoop:
-    """Return current loop or create one when pytest starts without it."""
+    """Ensure a main-thread event loop exists for PHCC/pytest-asyncio startup.
+
+    On Python 3.13, pytest-asyncio may begin with no current loop in MainThread,
+    while pytest-homeassistant-custom-component's debug fixture still calls
+    ``asyncio.get_event_loop()`` during setup.
+    """
     try:
         return asyncio.get_event_loop()
     except RuntimeError:
@@ -28,7 +33,8 @@ if ROOT not in sys.path:
 from custom_components.thessla_green_modbus.const import DOMAIN
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-# pytest-asyncio / PHCC may start without a current main-thread loop.
+# Required workaround for current PHCC/pytest-asyncio behavior on Python 3.13:
+# ensure the main-thread loop exists before plugin fixtures request it.
 _ensure_current_event_loop()
 
 
@@ -59,7 +65,7 @@ def mock_config_entry():
 
 @pytest.fixture(autouse=True)
 def enable_event_loop_debug():
-    """Compatibility override for HA plugin fixture on Python 3.13."""
+    """Keep PHCC debug-loop fixture compatible when no loop is pre-created."""
     loop = _ensure_current_event_loop()
     loop.set_debug(True)
     yield
