@@ -67,10 +67,24 @@ async def async_registers_sha256(hass: Any | None, json_path: Path | str) -> str
     return await async_compute_file_hash(hass, path, mtime)
 
 
+def get_cached_file_info(path: Path | str) -> tuple[float, str] | None:
+    """Return cached ``(mtime, digest)`` metadata for ``path``."""
+    return _cached_file_info.get(str(Path(path)))
+
+
+def get_cached_registers(file_hash: str, mtime: float) -> list[RegisterDef] | None:
+    """Return cached registers for ``(file_hash, mtime)`` key, if present."""
+    return _register_cache.get((file_hash, mtime))
+
+
+def set_cached_registers(file_hash: str, mtime: float, registers: list[RegisterDef]) -> None:
+    """Store register list for ``(file_hash, mtime)`` key."""
+    _register_cache[(file_hash, mtime)] = registers
+
+
 def clear_cache(*, register_map_cache_clear: Callable[[], None] | None = None) -> None:
     """Clear all register/file hash caches used by the loader."""
     _cached_file_info.clear()
     _register_cache.clear()
     if register_map_cache_clear is not None:
         register_map_cache_clear()
-

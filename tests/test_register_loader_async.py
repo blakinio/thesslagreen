@@ -9,6 +9,7 @@ import pytest
 from custom_components.thessla_green_modbus.registers.cache import (
     async_compute_file_hash,
     async_registers_sha256,
+    clear_cache,
 )
 from custom_components.thessla_green_modbus.registers.loader import get_registers_path
 from custom_components.thessla_green_modbus.registers.parser import async_load_registers_from_file
@@ -49,11 +50,9 @@ async def test_async_loader_uses_executor(tmp_path):
 
 async def test_async_registers_sha256_uses_executor_for_stat(tmp_path):
     """async_registers_sha256 must call path.stat via the executor, not inline."""
-    from custom_components.thessla_green_modbus.registers import cache as _cache
-
     tmp_json = tmp_path / "registers.json"
     tmp_json.write_text('{"registers": []}', encoding="utf-8")
-    _cache._cached_file_info.clear()
+    clear_cache()
 
     hass = _FakeHass()
     result = await async_registers_sha256(hass, tmp_json)

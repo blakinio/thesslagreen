@@ -8,10 +8,11 @@ from pathlib import Path
 from typing import Any
 
 from .cache import (
-    _cached_file_info,
-    _register_cache,
     async_registers_sha256,
+    get_cached_file_info,
+    get_cached_registers,
     registers_sha256,
+    set_cached_registers,
 )
 from .cache import (
     clear_cache as _clear_register_cache,
@@ -37,15 +38,14 @@ def load_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
     """Return cached register definitions, reloading if file changed."""
     path = Path(json_path) if json_path is not None else _REGISTERS_PATH
     file_hash = registers_sha256(path)
-    cached = _cached_file_info.get(str(path))
+    cached = get_cached_file_info(path)
     if cached is None:
         raise RuntimeError(f"Missing cache metadata for register file: {path}")
     mtime = cached[0]
-    key = (file_hash, mtime)
-    regs = _register_cache.get(key)
+    regs = get_cached_registers(file_hash, mtime)
     if regs is None:
         regs = load_registers_from_file(path)
-        _register_cache[key] = regs
+        set_cached_registers(file_hash, mtime, regs)
     return regs
 
 
@@ -55,15 +55,14 @@ async def async_load_registers(
     """Return cached register definitions asynchronously."""
     path = Path(json_path) if json_path is not None else _REGISTERS_PATH
     file_hash = await async_registers_sha256(hass, path)
-    cached = _cached_file_info.get(str(path))
+    cached = get_cached_file_info(path)
     if cached is None:
         raise RuntimeError(f"Missing cache metadata for register file: {path}")
     mtime = cached[0]
-    key = (file_hash, mtime)
-    regs = _register_cache.get(key)
+    regs = get_cached_registers(file_hash, mtime)
     if regs is None:
         regs = await async_load_registers_from_file(hass, path)
-        _register_cache[key] = regs
+        set_cached_registers(file_hash, mtime, regs)
     return regs
 
 

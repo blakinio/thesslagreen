@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 from custom_components.thessla_green_modbus.registers.cache import (
     async_registers_sha256,
+    get_cached_file_info,
+    get_cached_registers,
     registers_sha256,
 )
 from custom_components.thessla_green_modbus.registers.loader import (
@@ -512,12 +514,12 @@ def test_get_all_registers_sorted(tmp_path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Phase 7 — remaining loader.py coverage gaps
+# Unicode and async loader behavior
 # ---------------------------------------------------------------------------
 
 
 def test_decode_multi_register_string_unicode_error_recovery() -> None:
-    """Invalid UTF-8 bytes trigger error-recovery decode path (line 147)."""
+    """Invalid UTF-8 bytes should be decoded with replacement characters."""
     reg = RegisterDef(
         function=3,
         address=0,
@@ -533,7 +535,7 @@ def test_decode_multi_register_string_unicode_error_recovery() -> None:
 
 
 async def test_async_registers_sha256_computes_and_caches(tmp_path: Path) -> None:
-    """async_registers_sha256 returns hex digest and caches result (lines 75, 540)."""
+    """async_registers_sha256 returns a deterministic digest for unchanged files."""
     path = tmp_path / "regs.json"
     path.write_text('{"registers": []}')
     clear_cache()
@@ -547,7 +549,7 @@ async def test_async_registers_sha256_computes_and_caches(tmp_path: Path) -> Non
 
 
 async def test_async_load_registers_populates_cache(tmp_path: Path) -> None:
-    """async_load_registers loads and caches register list on cache miss (lines 576-577)."""
+    """async_load_registers should populate and reuse the register list cache."""
     from custom_components.thessla_green_modbus.registers.loader import (
         async_load_registers,
     )
@@ -570,7 +572,7 @@ async def test_async_load_registers_populates_cache(tmp_path: Path) -> None:
 
 
 async def test_async_get_registers_by_function_filters(tmp_path: Path) -> None:
-    """async_get_registers_by_function normalises fn and filters (lines 622-623)."""
+    """async_get_registers_by_function should normalize and filter function code."""
     from custom_components.thessla_green_modbus.registers.loader import (
         async_get_registers_by_function,
     )
@@ -588,3 +590,25 @@ async def test_async_get_registers_by_function_filters(tmp_path: Path) -> None:
     assert all(r.function == 3 for r in regs)
     assert any(r.name == "hold_reg" for r in regs)
     assert not any(r.name == "inp_reg" for r in regs)
+
+
+def test_cache_helpers_expose_cached_state_via_public_api(tmp_path: Path) -> None:
+    """Cache helper functions should expose hash/register cache state."""
+    path = tmp_path / "regs.json"
+    _write(path, [{"function": "03", "address_dec": 0, "name": "r", "access": "R"}])
+    clear_cache()
+
+    regs = load_registers(path)
+    file_info = get_cached_file_info(path)
+    assert file_info is not None
+    mtime, digest = file_info
+    assert isinstance(digest, str) and len(digest) == 64
+    assert get_cached_registers(digest, mtime) is regs
+
+
+def test_loader_all_has_no_private_cache_names() -> None:
+    """loader.__all__ should only expose public API names."""
+    from custom_components.thessla_green_modbus.registers import loader
+
+    assert "_cached_file_info" not in loader.__all__
+    assert "_register_cache" not in loader.__all__
