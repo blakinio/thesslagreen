@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib  # noqa: F401 - kept for tests patching scanner.core.importlib
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict as _dataclasses_asdict
@@ -23,8 +22,7 @@ from ..const import (
     SERIAL_PARITY_MAP,
     SERIAL_STOP_BITS_MAP,
 )
-from ..modbus_exceptions import ModbusIOException
-from ..modbus_helpers import _call_modbus, async_maybe_await_close
+from ..modbus_helpers import async_maybe_await_close
 from ..modbus_helpers import group_reads as _group_reads
 from ..modbus_transport import (
     BaseModbusTransport,
@@ -52,8 +50,6 @@ from ..utils import (
 )
 from . import capabilities_facade as scanner_capabilities_facade
 from . import firmware as scanner_firmware
-from . import io as _scanner_io_impl
-from . import io_runtime as scanner_io_runtime
 from . import orchestration as scanner_orchestration
 from . import read_facade as scanner_read_facade
 from . import register_map_runtime as scanner_register_map_runtime
@@ -67,25 +63,9 @@ _LOGGER = logging.getLogger(__name__)
 REGISTER_DEFINITIONS = _register_maps.REGISTER_DEFINITIONS
 SAFE_REGISTERS = _SAFE_REGISTERS
 __all__ = [
-    "REGISTER_HASH",
     "DeviceCapabilities",
     "ThesslaGreenDeviceScanner",
-    "_async_build_register_maps",
-    "_async_ensure_register_maps",
-    "_build_register_maps",
-    "_build_register_maps_from",
-    "_ensure_register_maps",
-    "async_ensure_register_maps",
-    "is_request_cancelled_error",
 ]
-
-
-def _attach_pymodbus_client_module() -> None:
-    """Ensure `pymodbus.client` is importable and attached to `pymodbus`."""
-    scanner_io_runtime.attach_pymodbus_client_module()
-
-
-_attach_pymodbus_client_module()
 
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper only
@@ -93,114 +73,6 @@ if TYPE_CHECKING:  # pragma: no cover - typing helper only
 else:
     AsyncModbusSerialClientType = Any
 
-
-def ensure_pymodbus_client_module() -> None:
-    """Ensure `pymodbus.client` is importable and attached to `pymodbus`."""
-    _attach_pymodbus_client_module()
-
-
-# Register definition caches - populated lazily
-
-
-def is_request_cancelled_error(exc: ModbusIOException) -> bool:
-    """Return True when a modbus IO error indicates a cancelled request."""
-    return bool(_scanner_io_impl.is_request_cancelled_error(exc))
-
-
-async def _maybe_retry_yield(backoff: float, attempt: int, retry: int) -> None:
-    """Yield control between retries to allow cancellation to propagate."""
-    await scanner_io_runtime.maybe_retry_yield(backoff=backoff, attempt=attempt, retry=retry)
-
-
-async def _call_modbus_with_fallback(
-    func: Any,
-    slave_id: int,
-    address: int,
-    *,
-    count: int,
-    attempt: int,
-    retry: int,
-    timeout: int,
-    backoff: float,
-    backoff_jitter: float | tuple[float, float] | None,
-    apply_backoff: bool = True,
-) -> Any:
-    """Call `_call_modbus` with rich kwargs, fallback to minimal mock signatures."""
-    return await scanner_io_runtime.call_modbus_with_fallback(
-        _call_modbus,
-        func,
-        slave_id,
-        address,
-        count=count,
-        attempt=attempt,
-        retry=retry,
-        timeout=timeout,
-        backoff=backoff,
-        backoff_jitter=backoff_jitter,
-        apply_backoff=apply_backoff,
-    )
-
-
-async def _sleep_retry_backoff(
-    *, backoff: float, backoff_jitter: float | tuple[float, float] | None, attempt: int, retry: int
-) -> None:
-    """Sleep between retries using modbus_helpers timing semantics."""
-    await scanner_io_runtime.sleep_retry_backoff(
-        backoff=backoff,
-        backoff_jitter=backoff_jitter,
-        attempt=attempt,
-        retry=retry,
-    )
-
-
-# Register-map wrappers re-exported from scanner core.
-REGISTER_HASH = scanner_register_map_runtime.initial_register_hash()
-
-
-def _sync_register_hash_from_maps() -> None:
-    """Synchronize locally re-exported register hash from scanner_register_maps."""
-    global REGISTER_HASH
-    REGISTER_HASH = scanner_register_map_runtime.sync_register_hash_from_maps()
-
-
-def _build_register_maps_from(regs: list[Any], register_hash: str) -> None:
-    """Populate register lookup maps from provided register definitions."""
-    global REGISTER_HASH
-    REGISTER_HASH = scanner_register_map_runtime.build_register_maps_from(regs, register_hash)
-
-
-def _build_register_maps() -> None:
-    """Populate register lookup maps from current register definitions."""
-    global REGISTER_HASH
-    REGISTER_HASH = scanner_register_map_runtime.build_register_maps()
-
-
-async def _async_build_register_maps(hass: Any | None) -> None:
-    """Populate register lookup maps from current definitions asynchronously."""
-    global REGISTER_HASH
-    REGISTER_HASH = await scanner_register_map_runtime.async_build_register_maps(hass)
-
-
-def _ensure_register_maps() -> None:
-    """Ensure register lookup maps are populated."""
-    global REGISTER_HASH
-    REGISTER_HASH = scanner_register_map_runtime.ensure_register_maps(REGISTER_HASH)
-
-
-async def _async_ensure_register_maps(hass: Any | None) -> None:
-    """Ensure register lookup maps are populated without blocking the event loop."""
-    global REGISTER_HASH
-    REGISTER_HASH = await scanner_register_map_runtime.async_ensure_register_maps(
-        REGISTER_HASH, hass
-    )
-
-
-async def async_ensure_register_maps(hass: Any | None = None) -> None:
-    """Ensure register lookup maps are populated without blocking the event loop."""
-    await _async_ensure_register_maps(hass)
-
-
-# Ensure register lookup maps are available before use
 
 
 class ThesslaGreenDeviceScanner(
@@ -259,7 +131,9 @@ class ThesslaGreenDeviceScanner(
         1-16 registers per request.
         """
         if not registers_ready:
-            _ensure_register_maps()
+            scanner_register_map_runtime.ensure_register_maps(
+                scanner_register_map_runtime.initial_register_hash()
+            )
         # Avoid sticky logger levels from previous tests/services.
         _LOGGER.setLevel(logging.DEBUG)
         self.host = host
@@ -312,8 +186,6 @@ class ThesslaGreenDeviceScanner(
         self._hass = hass
 
         scanner_setup.initialize_runtime_collections(self, DeviceCapabilities)
-        # Keep overridable register metadata on the scanner instance so tests
-        # patching scanner.core symbols remain effective after helper extraction.
         self._input_register_map = INPUT_REGISTERS
         self._holding_register_map = HOLDING_REGISTERS
         self._coil_register_map = COIL_REGISTERS
@@ -342,7 +214,7 @@ class ThesslaGreenDeviceScanner(
 
     async def _async_setup(self) -> None:
         """Asynchronously load register definitions."""
-        await scanner_setup.async_setup_register_maps(self, _async_ensure_register_maps)
+        await scanner_setup.async_setup_register_maps(self)
         self._names_by_address = {
             4: self._build_names_by_address(
                 {name: addr for addr, name in self._registers.get(4, {}).items()}
@@ -424,8 +296,6 @@ class ThesslaGreenDeviceScanner(
             parity=parity,
             stop_bits=stop_bits,
             hass=hass,
-            ensure_client_module_fn=ensure_pymodbus_client_module,
-            async_ensure_register_maps_fn=async_ensure_register_maps,
             ),
         )
 
@@ -504,15 +374,6 @@ class ThesslaGreenDeviceScanner(
         self,
     ) -> tuple[dict[int, str], dict[int, str], dict[int, str], dict[int, str], int, int, int, int]:
         """Select which registers to scan and compute address ranges."""
-        # Refresh maps from module-level symbols so tests patching scanner.core.*
-        # remain effective even after helper extraction.
-        self._input_register_map = INPUT_REGISTERS
-        self._holding_register_map = HOLDING_REGISTERS
-        self._coil_register_map = COIL_REGISTERS
-        self._discrete_input_register_map = DISCRETE_INPUT_REGISTERS
-        self._known_missing_registers = KNOWN_MISSING_REGISTERS
-        self._multi_register_sizes = MULTI_REGISTER_SIZES
-        self._update_known_missing_addresses()
         return scanner_selection.select_scan_registers(self)
 
     async def _run_full_scan(

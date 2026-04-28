@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import custom_components.thessla_green_modbus.scanner.core as sc
 import pytest
 from custom_components.thessla_green_modbus.registers.loader import clear_cache, get_registers_path
+from custom_components.thessla_green_modbus.scanner import register_map_cache
 
 
 def test_scanner_register_cache_invalidation(tmp_path: Path, monkeypatch) -> None:
@@ -22,7 +23,7 @@ def test_scanner_register_cache_invalidation(tmp_path: Path, monkeypatch) -> Non
     sc.COIL_REGISTERS.clear()
     sc.DISCRETE_INPUT_REGISTERS.clear()
     sc.MULTI_REGISTER_SIZES.clear()
-    sc.REGISTER_HASH = None
+    register_map_cache.REGISTER_HASH = None
 
 
 @pytest.mark.asyncio

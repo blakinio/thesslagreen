@@ -19,7 +19,6 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
 )
 from custom_components.thessla_green_modbus.scanner.core import (
     ThesslaGreenDeviceScanner,
-    _build_register_maps,
 )
 
 # ---------------------------------------------------------------------------
@@ -78,8 +77,12 @@ def _make_transport(
 
 
 def test_build_register_maps_direct():
-    """Call _build_register_maps() directly to cover lines 245-247."""
-    _build_register_maps()
+    """Build register maps via scanner register-map runtime module."""
+    from custom_components.thessla_green_modbus.scanner.register_map_runtime import (
+        build_register_maps,
+    )
+
+    build_register_maps()
     from custom_components.thessla_green_modbus.scanner.core import REGISTER_DEFINITIONS
 
     assert isinstance(REGISTER_DEFINITIONS, dict)
@@ -88,30 +91,32 @@ def test_build_register_maps_direct():
 @pytest.mark.asyncio
 async def test_maybe_retry_yield_backoff_positive():
     """Cover line 145: backoff > 0 causes early return without sleeping."""
-    from custom_components.thessla_green_modbus.scanner.core import _maybe_retry_yield
+    from custom_components.thessla_green_modbus.scanner.io_runtime import maybe_retry_yield
 
     with patch("asyncio.sleep", AsyncMock()) as mock_sleep:
         # backoff > 0 → early return, no sleep
-        await _maybe_retry_yield(backoff=0.1, attempt=0, retry=3)
+        await maybe_retry_yield(backoff=0.1, attempt=0, retry=3)
         mock_sleep.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_call_modbus_with_fallback_type_error_reraise():
     """Cover line 182: TypeError with non-'unexpected keyword' message is re-raised."""
-    from custom_components.thessla_green_modbus.scanner.core import _call_modbus_with_fallback
+    from custom_components.thessla_green_modbus.modbus_helpers import _call_modbus
+    from custom_components.thessla_green_modbus.scanner.io_runtime import call_modbus_with_fallback
 
     async def raise_other_type_error(*args, **kwargs):
         raise TypeError("something unrelated to keyword")
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.modbus_helpers._call_modbus",
             side_effect=raise_other_type_error,
         ),
         pytest.raises(TypeError, match="something unrelated"),
     ):
-        await _call_modbus_with_fallback(
+        await call_modbus_with_fallback(
+            _call_modbus,
             MagicMock(),
             1,
             0,
@@ -1379,36 +1384,22 @@ async def test_scan_device_auto_detect_all_fail():
 
 
 # ---------------------------------------------------------------------------
-# Group R: scan_device legacy compat path (line 1663)
+# Group R: scan_device non-dict return path
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_scan_device_scan_returns_non_dict_raises():
-    """Line 1663: scan() returning non-dict raises TypeError (legacy compat path)."""
+    """scan() returning non-dict should raise TypeError."""
     scanner = await _make_scanner()
 
     # Patch scan at class level with a regular coroutine function so that
     # scan_method.__func__ IS ThesslaGreenDeviceScanner.scan (bypassing first branch).
-    # Then in the legacy compat path, scan() returns non-dict → TypeError.
+    # scan() returns non-dict → TypeError.
     async def fake_scan(self_arg):
         return "not_a_dict"
 
-    mock_ctor = MagicMock()
-    mock_client = MagicMock()
-    mock_client.connect.return_value = True
-    mock_ctor.return_value = mock_client
-
-    with (
-        patch.object(ThesslaGreenDeviceScanner, "scan", fake_scan),
-        patch(
-            "custom_components.thessla_green_modbus.scanner.core.importlib.import_module"
-        ) as mock_import,
-    ):
-        mock_mod = MagicMock()
-        mock_mod.ModbusTcpClient = mock_ctor
-        mock_import.return_value = mock_mod
-
+    with patch.object(ThesslaGreenDeviceScanner, "scan", fake_scan):
         with patch.object(scanner, "close", AsyncMock()):
             with pytest.raises(TypeError, match="scan\\(\\) must return a dict"):
                 await scanner.scan_device()
@@ -1460,20 +1451,19 @@ async def test_close_client_async_maybe_await_raises():
 
 
 def test_ensure_register_maps_rebuilds_on_hash_mismatch():
-    """Line 262: rebuilds when hash differs from REGISTER_HASH."""
-    import custom_components.thessla_green_modbus.scanner.core as sc
+    """register_map_runtime.ensure_register_maps should rebuild mismatched cache hash."""
+    import custom_components.thessla_green_modbus.scanner.register_map_cache as cache
+    from custom_components.thessla_green_modbus.scanner.register_map_runtime import (
+        ensure_register_maps,
+    )
 
-    original_hash = sc.REGISTER_HASH
+    original_hash = cache.REGISTER_HASH
     try:
-        # Force a mismatch so _build_register_maps is called
-        sc.REGISTER_HASH = "stale_hash"
-        from custom_components.thessla_green_modbus.scanner.core import _ensure_register_maps
-
-        _ensure_register_maps()
-        # After rebuild, hash should be updated
-        assert sc.REGISTER_HASH != "stale_hash"
+        cache.REGISTER_HASH = "stale_hash"
+        updated_hash = ensure_register_maps("stale_hash")
+        assert updated_hash != "stale_hash"
     finally:
-        sc.REGISTER_HASH = original_hash
+        cache.REGISTER_HASH = original_hash
 
 
 # ---------------------------------------------------------------------------
@@ -1961,17 +1951,13 @@ async def test_scan_device_legacy_returns_dict():
 
 @pytest.mark.asyncio
 async def test_scan_device_importlib_fails():
-    """Lines 1643-1644: importlib.import_module raises → legacy_ctor = None."""
+    """scan_device should continue via transport path when setup probes fail."""
     scanner = await _make_scanner()
     mock_transport = _make_transport()
     mock_transport.client = AsyncMock()
 
     with (
         patch.object(scanner, "_build_tcp_transport", return_value=mock_transport),
-        patch(
-            "custom_components.thessla_green_modbus.scanner.core.importlib.import_module",
-            side_effect=Exception("import failed"),
-        ),
         patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
         patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
         patch.object(scanner, "_read_input", AsyncMock(return_value=None)),
@@ -2257,14 +2243,16 @@ async def test_mark_holding_unsupported_partial_overlap():
 
 def test_ensure_pymodbus_import_fails():
     """Lines 119-120: except Exception: return when importlib raises."""
-    from custom_components.thessla_green_modbus.scanner.core import ensure_pymodbus_client_module
+    from custom_components.thessla_green_modbus.scanner.io_runtime import (
+        attach_pymodbus_client_module,
+    )
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner.core.importlib.import_module",
+        "custom_components.thessla_green_modbus.scanner.io_runtime.importlib.import_module",
         side_effect=ImportError("no pymodbus"),
     ):
         # Must not raise
-        ensure_pymodbus_client_module()
+        attach_pymodbus_client_module()
 
 
 # ---------------------------------------------------------------------------
@@ -2319,7 +2307,7 @@ async def test_async_setup_load_registers_returns_plain_dict():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._async_ensure_register_maps",
+            "custom_components.thessla_green_modbus.scanner.setup.async_ensure_register_maps",
             AsyncMock(),
         ),
         patch.object(scanner, "_load_registers", AsyncMock(return_value=plain_dict)),
