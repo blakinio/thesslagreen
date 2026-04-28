@@ -42,10 +42,7 @@ from ._coordinator_device_info import run_device_scan as _run_device_scan_impl
 from ._coordinator_device_info import warn_missing_device_info as _warn_missing_device_info_impl
 from ._coordinator_factory import build_config_from_params as _build_config_from_params_impl
 from ._coordinator_init import normalize_runtime_config as _normalize_runtime_config_impl
-from ._coordinator_io import (
-    _ModbusIOMixin,
-    _PermanentModbusError,
-)
+from ._coordinator_io_mixin import _ModbusIOMixin
 from ._coordinator_register_groups import (
     compute_register_groups as _compute_register_groups_impl,
 )
@@ -55,6 +52,7 @@ from ._coordinator_register_processing import (
 from ._coordinator_register_processing import (
     process_register_value as _process_register_value_impl,
 )
+from ._coordinator_retry import _PermanentModbusError
 from ._coordinator_scan_cache import (
     apply_scan_cache as _apply_scan_cache_impl,
 )

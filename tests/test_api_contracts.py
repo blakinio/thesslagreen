@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import custom_components.thessla_green_modbus._coordinator_io as coordinator_io
+import custom_components.thessla_green_modbus._coordinator_retry as coordinator_retry
 import custom_components.thessla_green_modbus.config_flow as config_flow
 import custom_components.thessla_green_modbus.coordinator as coordinator
 import custom_components.thessla_green_modbus.scanner.core as scanner_core
@@ -13,7 +13,7 @@ import custom_components.thessla_green_modbus.services_targets as services_targe
 
 def test_coordinator_exports_permanent_modbus_error() -> None:
     """Coordinator should expose permanent modbus error type."""
-    assert coordinator._PermanentModbusError is coordinator_io._PermanentModbusError
+    assert coordinator._PermanentModbusError is coordinator_retry._PermanentModbusError
     assert "_PermanentModbusError" in coordinator.__all__
 
 
