@@ -13,6 +13,23 @@ from .services_schema import (
 )
 
 
+async def _write_optional_register(
+    deps: ServiceHandlerDeps,
+    coordinator: object,
+    register_name: str,
+    value: object,
+    entity_id: str,
+    action: str,
+    error_message: str,
+) -> bool:
+    if value is None:
+        return True
+    if not await deps.write_register(coordinator, register_name, value, entity_id, action):
+        deps.logger.error(error_message, entity_id)
+        return False
+    return True
+
+
 def register_parameter_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
     """Register parameter/configuration services."""
 
@@ -28,14 +45,15 @@ def register_parameter_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -
                 deps.logger.error("Failed to set bypass mode for %s", entity_id)
                 continue
             if min_temperature is not None:
-                if not await deps.write_register(
+                if not await _write_optional_register(
+                    deps,
                     coordinator,
                     "min_bypass_temperature",
                     min_temperature,
                     entity_id,
                     "set bypass parameters",
+                    "Failed to set bypass min temperature for %s",
                 ):
-                    deps.logger.error("Failed to set bypass min temperature for %s", entity_id)
                     continue
             await coordinator.async_request_refresh()
             deps.logger.info("Set bypass parameters for %s", entity_id)
@@ -52,26 +70,26 @@ def register_parameter_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -
             ):
                 deps.logger.error("Failed to set GWC mode for %s", entity_id)
                 continue
-            if min_air_temperature is not None:
-                if not await deps.write_register(
-                    coordinator,
-                    "min_gwc_air_temperature",
-                    min_air_temperature,
-                    entity_id,
-                    "set GWC parameters",
-                ):
-                    deps.logger.error("Failed to set GWC min air temperature for %s", entity_id)
-                    continue
-            if max_air_temperature is not None:
-                if not await deps.write_register(
-                    coordinator,
-                    "max_gwc_air_temperature",
-                    max_air_temperature,
-                    entity_id,
-                    "set GWC parameters",
-                ):
-                    deps.logger.error("Failed to set GWC max air temperature for %s", entity_id)
-                    continue
+            if not await _write_optional_register(
+                deps,
+                coordinator,
+                "min_gwc_air_temperature",
+                min_air_temperature,
+                entity_id,
+                "set GWC parameters",
+                "Failed to set GWC min air temperature for %s",
+            ):
+                continue
+            if not await _write_optional_register(
+                deps,
+                coordinator,
+                "max_gwc_air_temperature",
+                max_air_temperature,
+                entity_id,
+                "set GWC parameters",
+                "Failed to set GWC max air temperature for %s",
+            ):
+                continue
             await coordinator.async_request_refresh()
             deps.logger.info("Set GWC parameters for %s", entity_id)
 
@@ -114,26 +132,26 @@ def register_parameter_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -
             ):
                 deps.logger.error("Failed to set heating curve offset for %s", entity_id)
                 continue
-            if max_supply_temp is not None:
-                if not await deps.write_register(
-                    coordinator,
-                    "max_supply_temperature",
-                    max_supply_temp,
-                    entity_id,
-                    "set temperature curve",
-                ):
-                    deps.logger.error("Failed to set max supply temperature for %s", entity_id)
-                    continue
-            if min_supply_temp is not None:
-                if not await deps.write_register(
-                    coordinator,
-                    "min_supply_temperature",
-                    min_supply_temp,
-                    entity_id,
-                    "set temperature curve",
-                ):
-                    deps.logger.error("Failed to set min supply temperature for %s", entity_id)
-                    continue
+            if not await _write_optional_register(
+                deps,
+                coordinator,
+                "max_supply_temperature",
+                max_supply_temp,
+                entity_id,
+                "set temperature curve",
+                "Failed to set max supply temperature for %s",
+            ):
+                continue
+            if not await _write_optional_register(
+                deps,
+                coordinator,
+                "min_supply_temperature",
+                min_supply_temp,
+                entity_id,
+                "set temperature curve",
+                "Failed to set min supply temperature for %s",
+            ):
+                continue
             await coordinator.async_request_refresh()
             deps.logger.info("Set temperature curve for %s", entity_id)
 
