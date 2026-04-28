@@ -10,38 +10,29 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+
+def _ensure_current_event_loop() -> asyncio.AbstractEventLoop:
+    """Return current loop or create one when pytest starts without it."""
+    try:
+        return asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop
+
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from custom_components.thessla_green_modbus.const import DOMAIN
-from homeassistant.components import climate as ha_climate
-from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-try:
-    asyncio.get_event_loop()
-except RuntimeError:
-    # pytest-asyncio 1.x can start with no current loop in MainThread.
-    # Some HA plugin fixtures still call get_event_loop() during setup.
-    asyncio.set_event_loop(asyncio.new_event_loop())
-
-if not hasattr(dr, "DeviceRegistryStore"):
-    dr.DeviceRegistryStore = object  # type: ignore[attr-defined]
-if not hasattr(ha_climate, "PRESET_ECO"):
-    ha_climate.PRESET_ECO = "eco"  # type: ignore[attr-defined]
+# pytest-asyncio / PHCC may start without a current main-thread loop.
+_ensure_current_event_loop()
 
 
 
-def _fake_modbus_response(*, registers=None, bits=None):
-    """Build a minimal pymodbus-like response object for tests."""
-    resp = MagicMock()
-    resp.isError.return_value = False
-    if registers is not None:
-        resp.registers = registers
-    if bits is not None:
-        resp.bits = bits
-    return resp
 
 
 @pytest.fixture
@@ -69,11 +60,7 @@ def mock_config_entry():
 @pytest.fixture(autouse=True)
 def enable_event_loop_debug():
     """Compatibility override for HA plugin fixture on Python 3.13."""
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    loop = _ensure_current_event_loop()
     loop.set_debug(True)
     yield
 
