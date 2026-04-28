@@ -4,17 +4,8 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
-
-from tests.platform_stubs import install_fan_stubs
-
-install_fan_stubs()
-
-# ---------------------------------------------------------------------------
-# Actual tests
-# ---------------------------------------------------------------------------
-
 from custom_components.thessla_green_modbus.fan import ThesslaGreenFan
+from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 
 
 def test_fan_creation_and_state(mock_coordinator):
