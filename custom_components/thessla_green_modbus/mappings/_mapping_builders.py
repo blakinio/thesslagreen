@@ -10,7 +10,6 @@ from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.helpers.entity import EntityCategory
 
 from ..const import (
-    SPECIAL_FUNCTION_MAP,
     coil_registers,
     discrete_input_registers,
     holding_registers,

@@ -181,7 +181,7 @@ async def async_migrate_entity_unique_ids(
 
     try:
         entity_registry = er.async_get(hass) if hasattr(er, "async_get") else None
-    except (AttributeError, TypeError, ValueError):
+    except (KeyError, AttributeError, TypeError, ValueError):
         entity_registry = None
 
     if entity_registry is None:

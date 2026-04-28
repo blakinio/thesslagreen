@@ -28,7 +28,7 @@ except ModuleNotFoundError:  # pragma: no cover - test/runtime fallback without 
 Platform = _HAPlatform
 
 
-from .registers.loader import get_registers_by_function
+from .registers.loader import get_registers_by_function  # noqa: E402
 
 if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.core import HomeAssistant
