@@ -19,12 +19,12 @@ from .modbus_transport_client import (
 from .modbus_transport_raw import RawRtuOverTcpTransport
 
 __all__ = [
+    "SERIAL_IMPORT_ERROR",
     "BaseModbusTransport",
     "RawModbusResponse",
     "RawModbusWriteResponse",
     "RawRtuOverTcpTransport",
     "RtuModbusTransport",
-    "SERIAL_IMPORT_ERROR",
     "TcpModbusTransport",
     "_AsyncModbusSerialClient",
     "_ClientBackedTransport",

@@ -5,8 +5,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from .error_contract import classify_error, log_retry_attempt
+from .error_contract import log_retry_attempt
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from .transport.retry import classify_transport_error
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,8 +65,8 @@ def _log_disconnect_failure(
 def classify_retry_error(exc: BaseException) -> tuple[str, str]:
     """Expose normalized retry classification for coordinator layer tests."""
 
-    contract = classify_error(exc)
-    return contract.kind, contract.reason
+    decision = classify_transport_error(exc)
+    return decision.kind.value, decision.reason
 
 
 async def _safe_disconnect_for_retry(

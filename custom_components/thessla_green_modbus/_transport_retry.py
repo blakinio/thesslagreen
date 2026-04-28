@@ -6,7 +6,7 @@ import asyncio
 import logging
 
 from .error_contract import log_retry_attempt
-from .error_policy import next_backoff
+from .transport.retry import calculate_backoff
 
 
 def log_transport_retry(
@@ -34,6 +34,6 @@ def log_transport_retry(
 async def apply_transport_backoff(*, attempt: int, base_backoff: float, max_backoff: float) -> None:
     """Sleep using standard exponential backoff calculation."""
 
-    delay = next_backoff(attempt=attempt + 1, base=base_backoff, max_backoff=max_backoff)
+    delay = calculate_backoff(attempt=attempt + 1, base=base_backoff, max_backoff=max_backoff)
     if delay > 0:
         await asyncio.sleep(delay)

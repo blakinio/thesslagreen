@@ -7,8 +7,6 @@ from pathlib import Path
 
 from custom_components.thessla_green_modbus.utils import _to_snake_case
 
-from tests.platform_stubs import install_common_ha_stubs
-
 INTENTIONAL_OMISSIONS = {
     "serial_number_2",
     "serial_number_3",
@@ -31,9 +29,6 @@ INTENTIONAL_OMISSIONS = {
     "device_name_8",
     "lock_pass_2",
 }
-
-# Minimal Home Assistant stubs required to import entity mappings
-install_common_ha_stubs()
 
 
 def test_all_registers_covered() -> None:

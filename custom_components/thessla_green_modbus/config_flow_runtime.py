@@ -8,15 +8,10 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from .error_policy import (
-    ErrorKind,
-    classify_exception,
-    next_backoff,
-    should_retry,
-)
-from .error_policy import (
     is_request_cancelled_error as _is_request_cancelled_error_impl,
 )
 from .modbus_exceptions import ModbusIOException
+from .transport.retry import ErrorKind, calculate_backoff, classify_transport_error, should_retry
 
 TIMEOUT_EXCEPTIONS = (TimeoutError, asyncio.TimeoutError)
 
@@ -40,14 +35,14 @@ async def run_with_retry(
                 return await result
             return result
         except BaseException as exc:
-            kind = classify_exception(exc)
-            if kind is ErrorKind.CANCELLED:
+            decision = classify_transport_error(exc)
+            if decision.kind is ErrorKind.CANCELLED:
                 raise
-            if isinstance(exc, ModbusIOException) and kind is ErrorKind.TIMEOUT:
+            if isinstance(exc, ModbusIOException) and decision.reason == "cancelled":
                 raise TimeoutError("Modbus request cancelled") from exc
-            if not should_retry(kind, attempt, retries):
+            if not should_retry(decision, attempt, retries):
                 raise
-            delay = next_backoff(attempt=attempt, base=backoff)
+            delay = calculate_backoff(attempt=attempt, base=backoff)
             if delay > 0:
                 await asyncio.sleep(delay)
 
