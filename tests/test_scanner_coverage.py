@@ -102,21 +102,14 @@ async def test_maybe_retry_yield_backoff_positive():
 @pytest.mark.asyncio
 async def test_call_modbus_with_fallback_type_error_reraise():
     """Cover line 182: TypeError with non-'unexpected keyword' message is re-raised."""
-    from custom_components.thessla_green_modbus.modbus_helpers import _call_modbus
     from custom_components.thessla_green_modbus.scanner.io_runtime import call_modbus_with_fallback
 
     async def raise_other_type_error(*args, **kwargs):
         raise TypeError("something unrelated to keyword")
 
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.modbus_helpers._call_modbus",
-            side_effect=raise_other_type_error,
-        ),
-        pytest.raises(TypeError, match="something unrelated"),
-    ):
+    with pytest.raises(TypeError, match="something unrelated"):
         await call_modbus_with_fallback(
-            _call_modbus,
+            raise_other_type_error,
             MagicMock(),
             1,
             0,
@@ -455,7 +448,7 @@ async def test_read_input_modbus_io_cancelled(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(side_effect=exc),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -475,7 +468,7 @@ async def test_read_input_timeout_error(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(side_effect=TimeoutError("timeout")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -495,7 +488,7 @@ async def test_read_input_oserror(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(side_effect=OSError("connection reset")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -617,7 +610,7 @@ async def test_read_holding_skips_when_failures_exceed_retry():
     mock_client = AsyncMock()
 
     with patch(
-        "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+        "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
         AsyncMock(),
     ) as mock_call:
         result = await scanner._read_holding(mock_client, 10, 1)
@@ -641,7 +634,7 @@ async def test_read_holding_success_clears_failure_counter():
     ok_resp = _make_ok_response([42])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(return_value=ok_resp),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -665,7 +658,7 @@ async def test_read_holding_cancelled_error_reraises():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(side_effect=asyncio.CancelledError()),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -682,7 +675,7 @@ async def test_read_holding_oserror_breaks(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(side_effect=OSError("broken pipe")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -709,7 +702,7 @@ async def test_read_coil_two_arg_count_none():
     bit_resp = _make_bit_response([True])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(return_value=bit_resp),
         ),
     ):
@@ -728,7 +721,7 @@ async def test_read_coil_two_arg_int_address():
     bit_resp = _make_bit_response([False])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(return_value=bit_resp),
         ),
     ):
@@ -767,7 +760,7 @@ async def test_read_coil_timeout_error(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(side_effect=TimeoutError("timeout")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -808,7 +801,7 @@ async def test_read_coil_modbus_exception_with_transport_reconnect(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             side_effect=call_modbus_side_effect,
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -834,7 +827,7 @@ async def test_read_coil_cancelled_error_reraises():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(side_effect=asyncio.CancelledError()),
         ),
         pytest.raises(asyncio.CancelledError),
@@ -851,7 +844,7 @@ async def test_read_coil_oserror_breaks(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(side_effect=OSError("broken pipe")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -878,7 +871,7 @@ async def test_read_discrete_two_arg_count_none():
     bit_resp = _make_bit_response([True])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(return_value=bit_resp),
         ),
     ):
@@ -897,7 +890,7 @@ async def test_read_discrete_two_arg_int_address():
     bit_resp = _make_bit_response([False])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(return_value=bit_resp),
         ),
     ):
@@ -931,7 +924,7 @@ async def test_read_discrete_timeout_error(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(side_effect=TimeoutError("timeout")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -966,7 +959,7 @@ async def test_read_discrete_modbus_exception_with_transport_reconnect():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             side_effect=call_side_effect,
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -986,7 +979,7 @@ async def test_read_discrete_cancelled_error_reraises():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(side_effect=asyncio.CancelledError()),
         ),
         pytest.raises(asyncio.CancelledError),
@@ -1003,7 +996,7 @@ async def test_read_discrete_oserror_breaks(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(side_effect=OSError("network error")),
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -2109,7 +2102,7 @@ async def test_read_input_client_fallback_from_self():
     ok_resp = _make_ok_response([88])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(return_value=ok_resp),
         ),
     ):
@@ -2198,7 +2191,7 @@ async def test_read_holding_client_fallback_from_self():
     ok_resp = _make_ok_response([77])
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(return_value=ok_resp),
         ),
     ):
@@ -2644,7 +2637,7 @@ async def test_read_coil_transport_reconnect_ensure_raises():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             side_effect=call_modbus_side_effect,
         ),
         patch("asyncio.sleep", AsyncMock()),
@@ -2683,7 +2676,7 @@ async def test_read_discrete_transport_reconnect_ensure_raises():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             side_effect=call_side_effect,
         ),
         patch("asyncio.sleep", AsyncMock()),

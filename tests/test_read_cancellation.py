@@ -22,7 +22,7 @@ async def test_read_cancellation_during_sleep(method, caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
             AsyncMock(side_effect=ModbusIOException("boom")),
         ),
         patch("asyncio.sleep", AsyncMock(side_effect=asyncio.CancelledError)),

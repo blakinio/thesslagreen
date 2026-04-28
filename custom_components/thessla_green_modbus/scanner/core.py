@@ -74,7 +74,6 @@ else:
     AsyncModbusSerialClientType = Any
 
 
-
 class ThesslaGreenDeviceScanner(
     scanner_capabilities_facade.ScannerCapabilitiesFacadeMixin,
     scanner_read_facade.ScannerReadFacadeMixin,
@@ -274,28 +273,28 @@ class ThesslaGreenDeviceScanner(
         return cast(
             ThesslaGreenDeviceScanner,
             await scanner_setup.async_create_scanner_instance(
-            cls,
-            host=host,
-            port=port,
-            slave_id=slave_id,
-            timeout=timeout,
-            retry=retry,
-            backoff=backoff,
-            backoff_jitter=backoff_jitter,
-            verbose_invalid_values=verbose_invalid_values,
-            scan_uart_settings=scan_uart_settings,
-            skip_known_missing=skip_known_missing,
-            deep_scan=deep_scan,
-            full_register_scan=full_register_scan,
-            max_registers_per_request=max_registers_per_request,
-            safe_scan=safe_scan,
-            connection_type=connection_type,
-            connection_mode=connection_mode,
-            serial_port=serial_port,
-            baud_rate=baud_rate,
-            parity=parity,
-            stop_bits=stop_bits,
-            hass=hass,
+                cls,
+                host=host,
+                port=port,
+                slave_id=slave_id,
+                timeout=timeout,
+                retry=retry,
+                backoff=backoff,
+                backoff_jitter=backoff_jitter,
+                verbose_invalid_values=verbose_invalid_values,
+                scan_uart_settings=scan_uart_settings,
+                skip_known_missing=skip_known_missing,
+                deep_scan=deep_scan,
+                full_register_scan=full_register_scan,
+                max_registers_per_request=max_registers_per_request,
+                safe_scan=safe_scan,
+                connection_type=connection_type,
+                connection_mode=connection_mode,
+                serial_port=serial_port,
+                baud_rate=baud_rate,
+                parity=parity,
+                stop_bits=stop_bits,
+                hass=hass,
             ),
         )
 
