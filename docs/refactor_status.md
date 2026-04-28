@@ -2,6 +2,10 @@
 
 Last reviewed: 2026-04-28.
 
+Related document:
+
+- `docs/maintainability_audit.md`
+
 ## Scope and direction
 
 The project is in an incremental refactor toward layered architecture:
