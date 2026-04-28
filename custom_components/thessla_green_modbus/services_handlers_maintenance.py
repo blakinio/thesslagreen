@@ -15,15 +15,51 @@ from .services_schema import (
     SYNC_TIME_SCHEMA,
 )
 
+FILTER_TYPE_MAP = {"presostat": 1, "flat_filters": 2, "cleanpad": 3, "cleanpad_pure": 4}
+BAUD_MAP = {
+    "4800": 0,
+    "9600": 1,
+    "14400": 2,
+    "19200": 3,
+    "28800": 4,
+    "38400": 5,
+    "57600": 6,
+    "76800": 7,
+    "115200": 8,
+}
+PARITY_MAP = {"none": 0, "even": 1, "odd": 2}
+STOP_MAP = {"1": 0, "2": 1}
+
+
+def _normalize_modbus_options(deps: ServiceHandlerDeps, call: ServiceCall) -> tuple[str, str | None, str | None, str | None]:
+    port = deps.normalize_option(call.data["port"])
+    baud_rate = call.data.get("baud_rate")
+    parity = call.data.get("parity")
+    stop_bits = call.data.get("stop_bits")
+    return (
+        port,
+        deps.normalize_option(baud_rate) if baud_rate else None,
+        deps.normalize_option(parity) if parity else None,
+        deps.normalize_option(stop_bits) if stop_bits else None,
+    )
+
+
+async def _write_device_name(coordinator: object, device_name: str, batch: int) -> bool:
+    chars_per_batch = batch * 2
+    for i in range(0, len(device_name), chars_per_batch):
+        chunk = device_name[i : i + chars_per_batch]
+        reg_offset = i // 2
+        if not await coordinator.async_write_register("device_name", chunk, refresh=False, offset=reg_offset):
+            return False
+    return True
+
 
 def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
     """Register maintenance services."""
 
     async def reset_filters(call: ServiceCall) -> None:
         filter_type = deps.normalize_option(call.data["filter_type"])
-        filter_value = {"presostat": 1, "flat_filters": 2, "cleanpad": 3, "cleanpad_pure": 4}[
-            filter_type
-        ]
+        filter_value = FILTER_TYPE_MAP[filter_type]
 
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
             if not await deps.write_register(
@@ -71,30 +107,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
             deps.logger.info("Started pressure test for %s", entity_id)
 
     async def set_modbus_parameters(call: ServiceCall) -> None:
-        port = deps.normalize_option(call.data["port"])
-        baud_rate = call.data.get("baud_rate")
-        parity = call.data.get("parity")
-        stop_bits = call.data.get("stop_bits")
-        if baud_rate:
-            baud_rate = deps.normalize_option(baud_rate)
-        if parity:
-            parity = deps.normalize_option(parity)
-        if stop_bits:
-            stop_bits = deps.normalize_option(stop_bits)
-
-        baud_map = {
-            "4800": 0,
-            "9600": 1,
-            "14400": 2,
-            "19200": 3,
-            "28800": 4,
-            "38400": 5,
-            "57600": 6,
-            "76800": 7,
-            "115200": 8,
-        }
-        parity_map = {"none": 0, "even": 1, "odd": 2}
-        stop_map = {"1": 0, "2": 1}
+        port, baud_rate, parity, stop_bits = _normalize_modbus_options(deps, call)
 
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
             port_prefix = "uart_0" if port == "air_b" else "uart_1"
@@ -102,7 +115,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                 if not await deps.write_register(
                     coordinator,
                     f"{port_prefix}_baud",
-                    baud_map[baud_rate],
+                    BAUD_MAP[baud_rate],
                     entity_id,
                     "set Modbus parameters",
                 ):
@@ -112,7 +125,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                 if not await deps.write_register(
                     coordinator,
                     f"{port_prefix}_parity",
-                    parity_map[parity],
+                    PARITY_MAP[parity],
                     entity_id,
                     "set Modbus parameters",
                 ):
@@ -122,7 +135,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                 if not await deps.write_register(
                     coordinator,
                     f"{port_prefix}_stop",
-                    stop_map[stop_bits],
+                    STOP_MAP[stop_bits],
                     entity_id,
                     "set Modbus parameters",
                 ):
@@ -146,23 +159,12 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                     continue
             else:
                 batch = getattr(coordinator, "effective_batch", 2)
-                chars_per_batch = batch * 2
-                failed = False
-                for i in range(0, len(device_name), chars_per_batch):
-                    chunk = device_name[i : i + chars_per_batch]
-                    reg_offset = i // 2
-                    try:
-                        if not await coordinator.async_write_register(
-                            "device_name", chunk, refresh=False, offset=reg_offset
-                        ):
-                            deps.logger.error("Failed to set device name for %s", entity_id)
-                            failed = True
-                            break
-                    except (ModbusException, ConnectionException) as err:
-                        deps.logger.error("Failed to set device name for %s: %s", entity_id, err)
-                        failed = True
-                        break
-                if failed:
+                try:
+                    if not await _write_device_name(coordinator, device_name, batch):
+                        deps.logger.error("Failed to set device name for %s", entity_id)
+                        continue
+                except (ModbusException, ConnectionException) as err:
+                    deps.logger.error("Failed to set device name for %s: %s", entity_id, err)
                     continue
             await coordinator.async_request_refresh()
             deps.logger.info("Set device name to '%s' for %s", device_name, entity_id)
