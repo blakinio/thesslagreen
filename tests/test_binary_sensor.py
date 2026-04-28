@@ -3,15 +3,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from tests.platform_stubs import install_binary_sensor_stubs
-
-install_binary_sensor_stubs()
-
-# ---------------------------------------------------------------------------
-# Actual tests
-# ---------------------------------------------------------------------------
-
 from custom_components.thessla_green_modbus.binary_sensor import (
     BINARY_SENSOR_DEFINITIONS,
     LEGACY_PROBLEM_KEY_PATTERN,

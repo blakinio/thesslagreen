@@ -4,21 +4,12 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
-
-from tests.platform_stubs import install_text_stubs
-
-install_text_stubs()
-
-# ---------------------------------------------------------------------------
-# Imports under test
-# ---------------------------------------------------------------------------
-
 from custom_components.thessla_green_modbus.const import DOMAIN
 from custom_components.thessla_green_modbus.mappings import (
     ENTITY_MAPPINGS,
     TEXT_ENTITY_MAPPINGS,
 )
+from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
