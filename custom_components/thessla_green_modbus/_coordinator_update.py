@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from pymodbus.exceptions import ModbusException
 
-from ._coordinator_io import handle_update_error
+from ._coordinator_update_errors import handle_update_error
 from .modbus_exceptions import ConnectionException
 from .utils import utcnow as _utcnow
 
