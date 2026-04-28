@@ -6,7 +6,7 @@ import importlib
 from typing import Any
 
 from .. import modbus_helpers as _mh
-from ..error_contract import classify_error
+from ..transport.retry import classify_transport_error
 from . import io as _scanner_io_impl
 
 
@@ -74,8 +74,8 @@ async def sleep_retry_backoff(
 def classify_scanner_error(exc: BaseException) -> tuple[str, str]:
     """Expose normalized retry classification for scanner layer tests."""
 
-    contract = classify_error(exc)
-    return contract.kind, contract.reason
+    decision = classify_transport_error(exc)
+    return decision.kind.value, decision.reason
 
 
 def log_scanner_retry(

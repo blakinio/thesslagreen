@@ -4,15 +4,6 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-from tests.platform_stubs import install_select_stubs
-
-install_select_stubs()
-
-# ---------------------------------------------------------------------------
-# Actual tests
-# ---------------------------------------------------------------------------
-
 from custom_components.thessla_green_modbus import select
 from custom_components.thessla_green_modbus.mappings import ENTITY_MAPPINGS
 from custom_components.thessla_green_modbus.modbus_exceptions import (

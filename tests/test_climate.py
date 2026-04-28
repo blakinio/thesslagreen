@@ -5,14 +5,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-from tests.platform_stubs import install_climate_stubs
-
-install_climate_stubs()
-
-# ---------------------------------------------------------------------------
-# Actual imports after stubbing
-# ---------------------------------------------------------------------------
 from custom_components.thessla_green_modbus.climate import (
     HVAC_MODE_MAP,
     HVAC_MODE_REVERSE_MAP,

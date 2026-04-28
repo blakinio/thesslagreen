@@ -8,9 +8,9 @@ from typing import Any, cast
 
 from pymodbus.client import AsyncModbusTcpClient
 
-from ..error_contract import classify_error
 from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from ..modbus_helpers import chunk_register_range
+from ..transport.retry import ErrorKind, classify_transport_error
 from .io_core import (
     _call_modbus_with_fallback,
     _expand_cached_failed_range,
@@ -113,7 +113,7 @@ async def read_input(
                 _LOGGER.debug("Read input registers %d-%d: %s", start, end, registers)
                 return registers
         except ModbusIOException as exc:
-            contract = classify_error(exc)
+            decision = classify_transport_error(exc)
             log_scanner_retry(
                 operation=f"read_input:{start}-{end}",
                 attempt=attempt,
@@ -121,7 +121,7 @@ async def read_input(
                 exc=exc,
                 backoff=scanner.backoff,
             )
-            if contract.reason == "cancelled" or is_request_cancelled_error(exc):
+            if decision.kind is ErrorKind.CANCELLED or is_request_cancelled_error(exc):
                 aborted_transiently = True
                 break
             track_input_failure(scanner, count, address)

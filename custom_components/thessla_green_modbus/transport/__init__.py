@@ -1,1 +1,2 @@
-"""TODO: module scaffold for branch test refactor."""
+"""Transport-layer helpers."""
+
