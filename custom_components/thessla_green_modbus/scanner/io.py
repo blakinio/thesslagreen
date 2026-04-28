@@ -1,4 +1,4 @@
-"""Backward-compatible scanner I/O exports."""
+"""Scanner I/O exports."""
 
 from .io_core import (
     _call_modbus_with_fallback_fn,

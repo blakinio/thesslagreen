@@ -17,16 +17,11 @@ def test_coordinator_exports_permanent_modbus_error() -> None:
     assert "_PermanentModbusError" in coordinator.__all__
 
 
-def test_scanner_core_public_api_contains_register_cache_wrappers() -> None:
-    """Scanner core should expose register cache wrappers in its public API."""
+def test_scanner_core_public_api_is_minimal() -> None:
+    """Scanner core should expose only true scanner class API."""
     expected_exports = {
-        "REGISTER_HASH",
-        "_build_register_maps",
-        "_build_register_maps_from",
-        "_ensure_register_maps",
-        "_async_build_register_maps",
-        "_async_ensure_register_maps",
-        "async_ensure_register_maps",
+        "DeviceCapabilities",
+        "ThesslaGreenDeviceScanner",
     }
     assert expected_exports.issubset(set(scanner_core.__all__))
     for export_name in expected_exports:
@@ -67,6 +62,8 @@ def test_config_flow_keeps_helper_surface() -> None:
         assert hasattr(config_flow, helper_name)
 
 
-def test_scanner_core_exports_init_helper() -> None:
-    """Scanner helper name should be available."""
-    assert hasattr(scanner_core, "ensure_pymodbus_client_module")
+def test_scanner_package_exports_cancelled_error_helper() -> None:
+    """Scanner package should expose cancelled-request classifier from scanner.io."""
+    import custom_components.thessla_green_modbus.scanner as scanner_pkg
+
+    assert hasattr(scanner_pkg, "is_request_cancelled_error")

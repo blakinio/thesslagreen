@@ -33,6 +33,8 @@ from ..scanner_helpers import SAFE_REGISTERS
 from ..scanner_register_maps import REGISTER_DEFINITIONS
 from ..utils import default_connection_mode
 from .io import is_request_cancelled_error
+from .io_runtime import attach_pymodbus_client_module
+from .register_map_runtime import async_ensure_register_maps, initial_register_hash
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -133,9 +135,9 @@ def update_known_missing_addresses(
             scanner._known_missing_addresses.update(range(addr, addr + size))
 
 
-async def async_setup_register_maps(scanner: Any, async_ensure_register_maps: Any) -> None:
+async def async_setup_register_maps(scanner: Any) -> None:
     """Asynchronously load register definitions and build address/name maps."""
-    await async_ensure_register_maps(scanner._hass)
+    await async_ensure_register_maps(initial_register_hash(), scanner._hass)
     loaded = await scanner._load_registers()
     if isinstance(loaded, tuple):
         scanner._registers = loaded[0]
@@ -371,12 +373,10 @@ async def async_create_scanner_instance(
     parity: str,
     stop_bits: int,
     hass: Any | None,
-    ensure_client_module_fn: Any,
-    async_ensure_register_maps_fn: Any,
 ) -> Any:
     """Create and initialize scanner instance with bound read helper methods."""
-    ensure_client_module_fn()
-    await async_ensure_register_maps_fn(hass)
+    attach_pymodbus_client_module()
+    await async_ensure_register_maps(initial_register_hash(), hass)
     scanner = scanner_cls(
         host,
         port,
