@@ -1,25 +1,25 @@
-# Airflow Sensor Migration
+# Airflow migration
 
-Recent versions of the integration report supply and exhaust airflow in
-**m³/h** instead of percentages. Legacy entities used percentage values and
-may have statistics stored in Home Assistant's database.
+## Why migration exists
+Airflow-related entities and semantics were adjusted to align runtime data representation and integration behavior.
 
-## Clearing old statistics
+## What changed
+TODO: verify exact airflow migration scope from migration code.
 
-1. Stop Home Assistant.
-2. Run:
-   ```bash
-   python3 tools/clear_airflow_stats.py /path/to/config
-   ```
-   This removes statistics for the old `sensor.supply_flow_rate` and
-   `sensor.exhaust_flow_rate` entities.
-3. Start Home Assistant – new entities will be created with fresh statistics.
+## Old entities
+TODO: verify exact old entity names from migration code.
 
-Alternatively, open **Developer Tools → Statistics** in Home Assistant and
-manually clear the statistics for these sensors.
+## New entities
+TODO: verify exact new entity names from migration code.
 
-## Choosing airflow units
+## How to verify after upgrade
+- Open entity registry for integration entities.
+- Confirm expected airflow entities are present and updating.
+- Check history/statistics continuity where applicable.
 
-A new option **Airflow unit** is available in the integration options. Select
-`m³/h` (default) or `percentage` to have the sensors report airflow in the
-preferred unit.
+## Troubleshooting
+- If entities are missing, run capability scan and check diagnostics.
+- If stale IDs remain, remove disabled/obsolete entities manually after verification.
+
+## Rollback / manual cleanup
+TODO: verify supported rollback path from code/release notes.

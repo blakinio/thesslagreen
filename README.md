@@ -72,11 +72,20 @@ logger:
 
 ## Dokumentacja dodatkowa
 
-- [Diagnostyka](docs/diagnostics.md)
-- [Skanowanie rejestrów](docs/register_scanning.md)
-- [Migracja encji przepływu](docs/airflow_migration.md)
-- [Dlaczego potrzebna jest migracja entity_id](docs/entity_id_migration.md)
-- [Changelog](CHANGELOG.md)
+- [Architecture](docs/thesslagreen_architecture.md)
+- [Codex Guidelines](docs/codex_guidelines.md)
+- [Refactor Plan](docs/refactor_plan.md)
+- [Testing Strategy](docs/testing_strategy.md)
+- [Supported Devices](docs/supported_devices.md)
+- [Supported Functions](docs/supported_functions.md)
+- [Data Updates](docs/data_updates.md)
+- [Diagnostics](docs/diagnostics.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Register Scanning](docs/register_scanning.md)
+- [Services](docs/services.md)
+- [Quality Scale](docs/quality_scale.md)
+- [Airflow Migration](docs/airflow_migration.md)
+- [Entity ID Migration](docs/entity_id_migration.md)
 
 ## Rozwój i testy
 

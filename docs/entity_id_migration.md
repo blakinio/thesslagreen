@@ -1,33 +1,22 @@
-# Dlaczego potrzebna jest migracja `entity_id`
+# Entity ID migration
 
-Krótko: **to ograniczenie działania Home Assistant Entity Registry**, a nie integracji.
+## Why this migration exists
+Entity IDs may need controlled migration when naming rules or mapping strategy changes.
 
-## Co dzieje się przy zmianie nazwy encji
+## What is migrated
+TODO: verify migration scope from code (`custom_components/thessla_green_modbus/__init__.py` and migration helpers).
 
-Integracja tworzy encje na podstawie stabilnego `unique_id` i sugeruje `object_id`.
-Jeśli encja o danym `unique_id` już istnieje w rejestrze HA, Home Assistant
-**zachowuje dotychczasowe `entity_id`** (nawet jeśli nowa sugerowana nazwa jest inna).
+## What is not migrated
+TODO: verify exclusions from migration code.
 
-W praktyce oznacza to, że po aktualizacji schematu nazewnictwa integracja może
-widzieć nadal stare `entity_id`, dopóki nie zostanie wykonana migracja.
+## How to check migration result
+- Open entity registry after upgrade.
+- Verify entity IDs expected by dashboards/automations.
+- Check logs for migration warnings/errors.
 
-## Dlaczego nie można po prostu „tworzyć poprawnie od nowa”
+## Known limitations
+TODO: verify known limitations from code and changelog.
 
-Dla istniejących encji HA nie tworzy nowego wpisu automatycznie, bo rozpoznaje
-je po `unique_id` jako tę samą encję. To celowe zachowanie, które chroni:
-
-- historię encji,
-- statystyki,
-- automatyzacje i dashboardy powiązane z encją.
-
-Bez migracji mielibyśmy chaos: część encji ze starymi nazwami, część z nowymi,
-a czasem duplikaty po ręcznych zmianach.
-
-## Co robi migracja w tej integracji
-
-- mapuje historyczne aliasy do aktualnych nazw,
-- sprząta przestarzałe, niemapowalne wpisy (`problem`, `problem_N`),
-- utrzymuje możliwie dużą kompatybilność z istniejącymi automatyzacjami.
-
-Dzięki temu po aktualizacji encje przechodzą do aktualnego schematu możliwie
-bezboleśnie i przewidywalnie.
+## Troubleshooting
+- If IDs did not migrate as expected, inspect integration logs and diagnostics.
+- Re-link automations/scripts to current entity IDs if required.

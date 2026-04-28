@@ -1,60 +1,40 @@
-# Register scanning and entity mapping
+# Register scanning
 
-During the initial device scan the integration probes many Modbus register ranges. Some of
-the detected addresses represent configuration blocks or multi-register values rather than
-single data points. These registers do not map directly to Home Assistant entities.
+## Purpose
+Detect device capabilities and available register/function set.
 
-If a register cannot be read because the device returns a Modbus exception or if the value
-fails basic validation, the affected addresses are now recorded and exposed in the
-diagnostics. This makes it easier to troubleshoot missing features or firmware
-incompatibilities.
+## Safe scan
+Conservative probing focused on low-risk essential ranges.
+TODO: verify from code.
 
-Only addresses defined in [mappings/__init__.py](../custom_components/thessla_green_modbus/mappings/__init__.py)
-are exposed as entities by default. The list covers all supported sensors and controls.
+## Normal scan
+Default detection mode for typical capability discovery.
+TODO: verify from code.
 
-Enabling the **force_full_register_list** option creates entities for every discovered
-register. This can reveal additional data but may also surface partial values or internal
-configuration fields that have no dedicated entity class. Use this option with care and
-primarily for debugging or development purposes.
+## Deep scan
+Extended probing for additional optional capabilities.
+TODO: verify from code.
 
-## Dodawanie lub aktualizowanie rejestrów
+## Full register list mode
+Diagnostic mode that attempts broad probing against register definitions.
+Full register list mode is diagnostic and may expose entities/registers that are not supported by a given device.
 
-1. Edytuj plik `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json` dodając nowe obiekty
-   lub modyfikując istniejące wpisy.
-2. Zachowaj unikalność adresów oraz posortowaną kolejność.
-3. Uruchom test walidacyjny:
+## Scan cache
+Scan results may be cached to reduce repeated probing.
+TODO: verify cache lifetime and storage from code.
 
-   ```bash
-   pytest tests/test_register_loader.py
-   ```
+## Known missing registers
+Some registers may be absent on specific model/firmware combinations.
 
-4. Zaktualizuj tłumaczenia w `custom_components/thessla_green_modbus/translations/en.json` i `pl.json`,
-   dodając nowe klucze i usuwając nieużywane. Uruchom `pytest tests/test_unused_translations.py`, aby
-   upewnić się, że tłumaczenia są aktualne.
-5. Do commitu dodaj zmodyfikowany plik JSON.
-6. Jeżeli dany rejestr ma charakter stricte techniczny lub konfiguracyjny i nie powinien być
-   eksponowany jako encja, dopisz jego nazwę do stałej `INTENTIONAL_OMISSIONS` w pliku
-   `tests/test_register_coverage.py`.
+## Unsupported registers
+Unsupported registers should be handled gracefully and not treated as fatal for whole integration.
 
-## Oznaczanie rejestrów technicznych
+## When to rescan
+- After firmware/device change.
+- After significant config/protocol changes.
+- When expected entities are missing.
 
-Niektóre wpisy w dokumentacji Modbus opisują pola konfiguracyjne lub pomocnicze,
-które nie są potrzebne w Home Assistant. Aby zachować kompletność listy, ale
-unikać tworzenia zbędnych encji, ich nazwy należy umieścić w stałej
-`INTENTIONAL_OMISSIONS` w teście `tests/test_register_coverage.py`. Dzięki temu
-testy będą weryfikować, że wszystkie pozostałe rejestry są odpowiednio
-obsługiwane przez integrację.
-
-## Walidacja rejestrów (repo-only)
-
-Jedynym źródłem prawdy dla mapowania rejestrów jest plik
-`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
-oraz testy/guardy znajdujące się w repozytorium.
-
-Zalecane komendy walidacyjne:
-
-```bash
-python tools/validate_registers.py
-python tools/validate_entity_mappings.py
-pytest -q tests/test_register_loader.py tests/test_register_coverage.py
-```
+## Risks of full scan
+- Longer scan time.
+- Extra load on communication channel.
+- More unsupported-address errors in logs.
