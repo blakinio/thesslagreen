@@ -46,13 +46,19 @@ async def test_input_range_read_after_block_failure():
     async def fake_read_discrete(client, address, count):
         return [False]
 
-    with (
-        patch("custom_components.thessla_green_modbus.scanner.core.INPUT_REGISTERS", regs),
-        patch("custom_components.thessla_green_modbus.scanner.core.HOLDING_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner.core.COIL_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner.core.DISCRETE_INPUT_REGISTERS", {}),
-        patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
-    ):
+    scanner._input_register_map = regs
+    scanner._holding_register_map = {}
+    scanner._coil_register_map = {}
+    scanner._discrete_input_register_map = {}
+    scanner._known_missing_registers = {
+        "input_registers": set(),
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+    }
+    scanner._update_known_missing_addresses()
+
+    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
         mock_client = MagicMock()
         mock_client.connect = AsyncMock(return_value=True)
         mock_client.close = AsyncMock()
@@ -60,7 +66,7 @@ async def test_input_range_read_after_block_failure():
 
         with (
             patch(
-                "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+                "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
                 side_effect=fake_call_modbus,
             ),
             patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
@@ -111,16 +117,19 @@ async def test_block_exception_allows_single_register_reads():
     async def fake_read_discrete(client, address, count):
         return [False]
 
-    with (
-        patch("custom_components.thessla_green_modbus.scanner.core.INPUT_REGISTERS", regs),
-        patch("custom_components.thessla_green_modbus.scanner.core.HOLDING_REGISTERS", {}),
-        patch("custom_components.thessla_green_modbus.scanner.core.COIL_REGISTERS", {}),
-        patch(
-            "custom_components.thessla_green_modbus.scanner.core.DISCRETE_INPUT_REGISTERS",
-            {},
-        ),
-        patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
-    ):
+    scanner._input_register_map = regs
+    scanner._holding_register_map = {}
+    scanner._coil_register_map = {}
+    scanner._discrete_input_register_map = {}
+    scanner._known_missing_registers = {
+        "input_registers": set(),
+        "holding_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+    }
+    scanner._update_known_missing_addresses()
+
+    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
         mock_client = MagicMock()
         mock_client.connect = AsyncMock(return_value=True)
         mock_client.close = AsyncMock()
@@ -128,7 +137,7 @@ async def test_block_exception_allows_single_register_reads():
 
         with (
             patch(
-                "custom_components.thessla_green_modbus.scanner.core._call_modbus",
+                "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
                 side_effect=fake_call_modbus,
             ),
             patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
