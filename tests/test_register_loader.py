@@ -4,15 +4,6 @@ import json
 from pathlib import Path
 
 import pytest
-
-from tests.platform_stubs import install_integration_package_stub
-
-# Stub the integration package to avoid executing its heavy __init__
-install_integration_package_stub(
-    Path(__file__).resolve().parents[1] / "custom_components" / "thessla_green_modbus",
-    max_batch_registers=16,
-)
-
 from custom_components.thessla_green_modbus.registers.loader import (
     _REGISTERS_PATH,
     _SPECIAL_MODES_PATH,

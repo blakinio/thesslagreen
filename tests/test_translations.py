@@ -6,8 +6,6 @@ from pathlib import Path
 
 import yaml
 
-from tests.platform_stubs import install_sensor_platform_stubs
-
 ROOT = Path(__file__).resolve().parent.parent / "custom_components" / "thessla_green_modbus"
 
 with open(ROOT / "translations" / "en.json", encoding="utf-8") as f:
@@ -55,7 +53,6 @@ def _load_keys(file: Path, var_name: str) -> list[str]:
 
 
 # Import sensor module to obtain translation keys
-install_sensor_platform_stubs()
 
 SENSOR_KEYS = [*_load_runtime_translation_keys("SENSOR_ENTITY_MAPPINGS"), "error_codes"]
 BINARY_KEYS = _load_runtime_translation_keys("BINARY_SENSOR_ENTITY_MAPPINGS")
