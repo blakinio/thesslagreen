@@ -57,6 +57,7 @@ pymodbus / raw socket
 11. Nie tworzyć legacy modules, compatibility shims ani re-export shimów.
 12. Po przepisaniu kodu na nową warstwę usunąć stary odpowiednik.
 13. coordinator.py nie może być jeszcze przenoszony.
+14. coordinator/ nie może być odtwarzany przed dedykowaną migracją.
 ```
 
 ---
@@ -67,11 +68,14 @@ pymodbus / raw socket
 Do czasu domknięcia migracji coordinatora obowiązuje:
 
 ```text
-- coordinator.py pozostaje na miejscu,
-- równoległy katalog coordinator/ może współistnieć,
+- coordinator.py pozostaje na miejscu (aktywna lokalizacja),
+- katalog coordinator/ nie istnieje i nie może być odtwarzany na tym etapie,
 - nie tworzymy shimów ani proxy modułów,
 - nie dokumentujemy migracji, jeśli nie ma realnego kodu migracyjnego.
 ```
+
+Migracja `coordinator.py` -> `coordinator/` jest wyłącznie celem przyszłym i wymaga dedykowanego PR.
+W tej przyszłej migracji należy zaktualizować importy bezpośrednio (bez compatibility/re-export shimów).
 
 ---
 

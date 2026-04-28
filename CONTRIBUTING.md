@@ -161,6 +161,7 @@ When touching architecture-related code/docs, keep these constraints:
 - No proxy modules.
 - `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant.
 - `coordinator.py` must not be moved yet.
+- `coordinator/` must not be recreated before a dedicated migration PR.
 
 See also: [`docs/refactor_status.md`](docs/refactor_status.md).
 
