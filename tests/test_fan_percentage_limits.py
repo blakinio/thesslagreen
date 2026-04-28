@@ -3,11 +3,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-
-from tests.platform_stubs import install_fan_stubs
-
-install_fan_stubs()
-
 from custom_components.thessla_green_modbus.coordinator import (
     ThesslaGreenModbusCoordinator,
 )
