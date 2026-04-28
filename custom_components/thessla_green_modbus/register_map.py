@@ -15,7 +15,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
-from .registers.loader import RegisterDef, get_all_registers
+from .registers.loader import get_all_registers
+from .registers.register_def import RegisterDef
 from .utils import BCD_TIME_PREFIXES
 
 _LOGGER = logging.getLogger(__name__)

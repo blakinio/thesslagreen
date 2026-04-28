@@ -103,7 +103,7 @@ def test_parse_states_skips_empty_parts():
 # Phase 8 — entity_mappings.py internal function coverage
 # ---------------------------------------------------------------------------
 
-from custom_components.thessla_green_modbus.registers.loader import RegisterDef
+from custom_components.thessla_green_modbus.registers.register_def import RegisterDef
 
 
 def test_get_register_info_skips_nameless_registers(monkeypatch):

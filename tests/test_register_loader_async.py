@@ -6,12 +6,12 @@ import functools
 from typing import Any
 
 import pytest
-from custom_components.thessla_green_modbus.registers.loader import (
-    _REGISTERS_PATH,
+from custom_components.thessla_green_modbus.registers.cache import (
     async_compute_file_hash,
-    async_load_registers_from_file,
     async_registers_sha256,
 )
+from custom_components.thessla_green_modbus.registers.loader import get_registers_path
+from custom_components.thessla_green_modbus.registers.parser import async_load_registers_from_file
 
 pytestmark = pytest.mark.asyncio
 
@@ -29,14 +29,13 @@ async def test_async_loader_uses_executor(tmp_path):
     """Ensure async loader reads via the executor helper."""
 
     tmp_json = tmp_path / "registers.json"
-    tmp_json.write_text(_REGISTERS_PATH.read_text(), encoding="utf-8")
+    tmp_json.write_text(get_registers_path().read_text(), encoding="utf-8")
     mtime = tmp_json.stat().st_mtime
 
     hass = _FakeHass()
     file_hash = await async_compute_file_hash(hass, tmp_json, mtime)
-    registers = await async_load_registers_from_file(
-        hass, tmp_json, mtime=mtime, file_hash=file_hash
-    )
+    _ = file_hash
+    registers = await async_load_registers_from_file(hass, tmp_json)
 
     assert registers
     assert any(call[0] == tmp_json.read_bytes for call in hass.calls)
@@ -50,11 +49,11 @@ async def test_async_loader_uses_executor(tmp_path):
 
 async def test_async_registers_sha256_uses_executor_for_stat(tmp_path):
     """async_registers_sha256 must call path.stat via the executor, not inline."""
-    from custom_components.thessla_green_modbus.registers import loader as _loader
+    from custom_components.thessla_green_modbus.registers import cache as _cache
 
     tmp_json = tmp_path / "registers.json"
     tmp_json.write_text('{"registers": []}', encoding="utf-8")
-    _loader._cached_file_info.clear()
+    _cache._cached_file_info.clear()
 
     hass = _FakeHass()
     result = await async_registers_sha256(hass, tmp_json)

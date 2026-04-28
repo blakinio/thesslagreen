@@ -135,7 +135,7 @@ from .modbus_transport import (
     BaseModbusTransport,
 )
 from .register_defs_cache import get_register_definitions
-from .registers.loader import RegisterDef
+from .registers.register_def import RegisterDef
 from .scanner import (
     DeviceCapabilities,
     ThesslaGreenDeviceScanner,
