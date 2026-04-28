@@ -1,9 +1,5 @@
 from unittest.mock import MagicMock
 
-from tests.platform_stubs import install_common_ha_stubs
-
-install_common_ha_stubs()
-
 from custom_components.thessla_green_modbus.const import (
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
