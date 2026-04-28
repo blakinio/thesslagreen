@@ -35,6 +35,36 @@ _TIME_ENTITY_PREFIXES = (
 )
 
 
+def _is_already_mapped(register: str, mappings: dict[str, dict[str, Any]]) -> bool:
+    """Return True if *register* already exists in direct mapping keys."""
+    return register in mappings
+
+
+def _is_mapped_as_binary_source(register: str, binary_mappings: dict[str, dict[str, Any]]) -> bool:
+    """Return True if a binary mapping references *register* as its source register."""
+    return any(v.get("register") == register for v in binary_mappings.values())
+
+
+def _is_problem_register(register: str) -> bool:
+    """Return True for diagnostic/problem registers handled as binary sensors."""
+    return register in {"alarm", "error"} or register.startswith(("s_", "e_", "f_"))
+
+
+def _parse_info_states(info_text: str) -> dict[str, int]:
+    """Parse '0 - foo; 1 - bar' style info text into state mapping."""
+    states: dict[str, int] = {}
+    for part in info_text.split(";"):
+        part = part.strip()
+        if " - " not in part:
+            continue
+        val_str, label = part.split(" - ", 1)
+        try:
+            states[_to_snake_case(label)] = int(val_str.strip())
+        except ValueError:
+            continue
+    return states
+
+
 def _get_parent() -> Any:
     """Return the parent mappings package module for attribute resolution.
 
@@ -279,29 +309,23 @@ def _extend_entity_mappings_from_registers() -> None:
         if reg.function != 3 or not reg.name:
             continue
         register = reg.name
-        if register in number_mappings:
+        if any(
+            _is_already_mapped(register, current_map)
+            for current_map in (
+                number_mappings,
+                sensor_mappings,
+                binary_mappings,
+                switch_mappings,
+                select_mappings,
+                text_mappings,
+                time_mappings,
+            )
+        ):
             continue
-        if register in sensor_mappings:
-            continue
-        if register in binary_mappings:
-            continue
-        if any(v.get("register") == register for v in binary_mappings.values()):
-            continue
-        if register in switch_mappings:
-            continue
-        if register in select_mappings:
-            continue
-        if register in text_mappings:
-            continue
-        if register in time_mappings:
+        if _is_mapped_as_binary_source(register, binary_mappings):
             continue
 
-        if (
-            register in {"alarm", "error"}
-            or register.startswith("s_")
-            or register.startswith("e_")
-            or register.startswith("f_")
-        ):
+        if _is_problem_register(register):
             if register not in binary_keys:
                 continue
             binary_mappings.setdefault(
@@ -450,16 +474,7 @@ def _extend_entity_mappings_from_registers() -> None:
                 continue
 
             if "W" in access and info_text and ";" in info_text and max_val <= 10:
-                states: dict[str, int] = {}
-                for part in info_text.split(";"):
-                    part = part.strip()
-                    if " - " not in part:
-                        continue
-                    val_str, label = part.split(" - ", 1)
-                    try:
-                        states[_to_snake_case(label)] = int(val_str.strip())
-                    except ValueError:
-                        continue
+                states = _parse_info_states(info_text)
                 if states:
                     if register not in select_keys:
                         continue
@@ -495,7 +510,11 @@ __all__ = [
     "_TIME_ENTITY_PREFIXES",
     "_extend_entity_mappings_from_registers",
     "_get_parent",
+    "_is_already_mapped",
+    "_is_mapped_as_binary_source",
+    "_is_problem_register",
     "_load_discrete_mappings",
     "_load_number_mappings",
+    "_parse_info_states",
     "_resolve",
 ]
