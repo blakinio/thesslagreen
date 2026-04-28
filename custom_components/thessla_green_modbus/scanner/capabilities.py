@@ -12,7 +12,6 @@ from ..utils import BCD_TIME_PREFIXES, decode_bcd_time
 
 if TYPE_CHECKING:
     from ..scanner_device_info import DeviceCapabilities
-    from .core import ThesslaGreenDeviceScanner
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -102,7 +101,7 @@ def analyze_capabilities(scanner: Any) -> DeviceCapabilities:
         if any(pat in reg for reg in all_registers for pat in patterns):
             setattr(caps, attr, True)
 
-    return cast(DeviceCapabilities, caps)
+    return cast("DeviceCapabilities", caps)
 
 
 def filter_unsupported_addresses(

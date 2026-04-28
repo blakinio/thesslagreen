@@ -90,7 +90,7 @@ def test_registers_match_json() -> None:
 
 def _make_reg(**kwargs):
     """Return a minimal RegisterDef with required fields."""
-    from custom_components.thessla_green_modbus.registers.loader import RegisterDef
+    from custom_components.thessla_green_modbus.registers.register_def import RegisterDef
 
     defaults = {"function": 3, "address": 100, "name": "test_reg", "access": "RW"}
     defaults.update(kwargs)

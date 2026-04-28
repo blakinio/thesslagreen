@@ -1,18 +1,12 @@
 """Tests for ``plan_group_reads`` utility."""
 
-import importlib
-import sys
-
 import pytest
 from custom_components.thessla_green_modbus.modbus_helpers import group_reads
-
-
-@pytest.fixture()
-def loader_mod():
-    """Return the current loader module (fresh after any reloads)."""
-    mod_name = "custom_components.thessla_green_modbus.registers.loader"
-    return sys.modules.get(mod_name) or importlib.import_module(mod_name)
-
+from custom_components.thessla_green_modbus.registers.definition import ReadPlan
+from custom_components.thessla_green_modbus.registers.read_planner import (
+    plan_group_reads as planner_plan_group_reads,
+)
+from custom_components.thessla_green_modbus.registers.register_def import RegisterDef
 
 try:
     from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
@@ -35,49 +29,28 @@ def test_group_reads_respects_max_block_size(size):
         assert groups == group_reads(addresses, max_block_size=MAX_BATCH_REGISTERS)
 
 
-def test_plan_group_reads_merges_consecutive_addresses(monkeypatch, loader_mod):
-    _Register = loader_mod.RegisterDef
-    _ReadPlan = loader_mod.ReadPlan
-    _plan_group_reads = loader_mod.plan_group_reads
-    regs = [_Register("input", addr, f"r{addr}", "r") for addr in [0, 1, 2, 3, 10, 11, 12]]
-    monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.registers.loader.load_registers",
-        lambda: regs,
-    )
-    assert _plan_group_reads() == [_ReadPlan("input", 0, 4), _ReadPlan("input", 10, 3)]
+def test_plan_group_reads_merges_consecutive_addresses():
+    regs = [RegisterDef("input", addr, f"r{addr}", "r") for addr in [0, 1, 2, 3, 10, 11, 12]]
+    assert planner_plan_group_reads(lambda: regs) == [ReadPlan("input", 0, 4), ReadPlan("input", 10, 3)]
 
 
-def test_plan_group_reads_respects_max_block_size(monkeypatch, loader_mod):
-    _Register = loader_mod.RegisterDef
-    _ReadPlan = loader_mod.ReadPlan
-    _plan_group_reads = loader_mod.plan_group_reads
-    regs = [_Register("input", addr, f"r{addr}", "r") for addr in range(22)]
-    monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.registers.loader.load_registers",
-        lambda: regs,
-    )
-    assert _plan_group_reads() == [
-        _ReadPlan("input", 0, MAX_BATCH_REGISTERS),
-        _ReadPlan("input", MAX_BATCH_REGISTERS, 6),
+def test_plan_group_reads_respects_max_block_size():
+    regs = [RegisterDef("input", addr, f"r{addr}", "r") for addr in range(22)]
+    assert planner_plan_group_reads(lambda: regs) == [
+        ReadPlan("input", 0, MAX_BATCH_REGISTERS),
+        ReadPlan("input", MAX_BATCH_REGISTERS, 6),
     ]
 
 
 @pytest.mark.parametrize("size", [1, 4, MAX_BATCH_REGISTERS, 32])
-def test_plan_group_reads_varied_block_sizes(monkeypatch, size, loader_mod):
-    _Register = loader_mod.RegisterDef
-    _ReadPlan = loader_mod.ReadPlan
-    _plan_group_reads = loader_mod.plan_group_reads
-    regs = [_Register("input", addr, f"r{addr}", "r") for addr in range(10)]
-    monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.registers.loader.load_registers",
-        lambda: regs,
-    )
+def test_plan_group_reads_varied_block_sizes(size):
+    regs = [RegisterDef("input", addr, f"r{addr}", "r") for addr in range(10)]
     addresses = [r.address for r in regs]
     expected = [
-        _ReadPlan("input", start, length)
+        ReadPlan("input", start, length)
         for start, length in group_reads(addresses, max_block_size=size)
     ]
-    assert _plan_group_reads(max_block_size=size) == expected
+    assert planner_plan_group_reads(lambda: regs, max_block_size=size) == expected
 
 
 @pytest.mark.skipif(ThesslaGreenDeviceScanner is None, reason="scanner unavailable")

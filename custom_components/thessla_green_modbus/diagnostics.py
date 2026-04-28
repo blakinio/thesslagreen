@@ -20,7 +20,8 @@ from homeassistant.helpers import translation
 
 from .const import CONFIG_FLOW_VERSION_SCALE, DOMAIN
 from .coordinator import ThesslaGreenModbusCoordinator
-from .registers.loader import _REGISTERS_PATH, get_all_registers, registers_sha256
+from .registers.cache import registers_sha256
+from .registers.loader import get_all_registers, get_registers_path
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ async def async_get_config_entry_diagnostics(
     diagnostics.setdefault("effective_batch", coordinator.effective_batch)
     diagnostics.setdefault(
         "registers_hash",
-        await _run_executor_job(hass, registers_sha256, _REGISTERS_PATH),
+        await _run_executor_job(hass, registers_sha256, get_registers_path()),
     )
     diagnostics.setdefault("capabilities", coordinator.capabilities.as_dict())
 

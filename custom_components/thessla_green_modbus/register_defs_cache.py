@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from .registers.loader import RegisterDef, get_all_registers
+from .registers.loader import get_all_registers
+from .registers.register_def import RegisterDef
 
 
 @lru_cache(maxsize=1)

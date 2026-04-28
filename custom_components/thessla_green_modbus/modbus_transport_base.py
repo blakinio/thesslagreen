@@ -3,12 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import logging
 from abc import ABC, abstractmethod
 from typing import Any
-
-from pymodbus.client import AsyncModbusTcpClient
 
 try:  # pragma: no cover
     from pymodbus.client import AsyncModbusSerialClient as _AsyncModbusSerialClient
@@ -19,15 +16,12 @@ else:  # pragma: no cover
     SERIAL_IMPORT_ERROR = None
 
 from ._transport_retry import apply_transport_backoff, log_transport_retry
-from .const import CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU
-from .error_contract import classify_error
 from .error_policy import to_log_message
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from .modbus_helpers import (
     _call_modbus,
-    async_maybe_await_close,
-    get_rtu_framer,
 )
+from .transport.retry import classify_transport_error as _classify_transport_error
 
 _LOGGER = logging.getLogger(__name__)
 _MIN_SLAVE_ID = 1
@@ -39,8 +33,8 @@ _MAX_WRITE_REGISTERS = 123
 def classify_transport_error(exc: BaseException) -> tuple[str, str]:
     """Expose normalized retry classification for transport layer tests."""
 
-    contract = classify_error(exc)
-    return contract.kind, contract.reason
+    decision = _classify_transport_error(exc)
+    return decision.kind.value, decision.reason
 
 
 def _crc16(data: bytes) -> int:
@@ -294,13 +288,13 @@ class BaseModbusTransport(ABC):
 
 
 __all__ = [
-    "BaseModbusTransport",
-    "RawModbusResponse",
-    "RawModbusWriteResponse",
     "_MAX_READ_REGISTERS",
     "_MAX_SLAVE_ID",
     "_MAX_WRITE_REGISTERS",
     "_MIN_SLAVE_ID",
+    "BaseModbusTransport",
+    "RawModbusResponse",
+    "RawModbusWriteResponse",
     "_append_crc",
     "_crc16",
     "classify_transport_error",

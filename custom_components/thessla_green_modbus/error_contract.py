@@ -6,7 +6,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from .transport.retry import ErrorKind as RetryErrorKind
+from .transport.retry import classify_transport_error
 
 ErrorKind = Literal["transient", "permanent"]
 
@@ -21,21 +22,14 @@ class ErrorContract:
 
 def classify_error(exc: BaseException) -> ErrorContract:
     """Classify exceptions into transient/permanent with normalized reasons."""
-
-    if isinstance(exc, TimeoutError):
-        return ErrorContract("transient", "timeout")
-    if isinstance(exc, ModbusIOException):
-        msg = str(exc).lower()
-        if "cancelled" in msg:
-            return ErrorContract("transient", "cancelled")
-        return ErrorContract("transient", "modbus_io")
-    if isinstance(exc, ConnectionException):
-        return ErrorContract("transient", "connection")
-    if isinstance(exc, OSError):
-        return ErrorContract("transient", "os_error")
-    if isinstance(exc, ModbusException):
-        return ErrorContract("permanent", "modbus")
-    return ErrorContract("permanent", "unexpected")
+    decision = classify_transport_error(exc)
+    if decision.kind is RetryErrorKind.TRANSIENT:
+        return ErrorContract("transient", decision.reason)
+    if decision.kind is RetryErrorKind.CANCELLED:
+        return ErrorContract("transient", "cancelled")
+    if decision.kind is RetryErrorKind.UNSUPPORTED_REGISTER:
+        return ErrorContract("permanent", "illegal_data_address")
+    return ErrorContract("permanent", decision.reason)
 
 
 def is_transient(exc: BaseException) -> bool:
