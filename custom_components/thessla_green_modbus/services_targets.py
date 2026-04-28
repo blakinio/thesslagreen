@@ -64,7 +64,7 @@ def get_coordinator_from_entity_id(hass: HomeAssistant, entity_id: str) -> Any |
     if not entity_registry:
         try:
             entity_registry = er.async_get(hass) if hasattr(er, "async_get") else None
-        except (TypeError, AttributeError):
+        except (KeyError, TypeError, AttributeError):
             entity_registry = None
     entry = entity_registry.async_get(entity_id) if entity_registry else None
     if not entry:

@@ -134,4 +134,5 @@ __all__ = [
     "group_registers",
     "load_registers",
     "plan_group_reads",
+    "registers_sha256",
 ]
