@@ -29,6 +29,35 @@ Logika domenowa urządzenia nie zależy od Home Assistant.
 
 ---
 
+
+## Stan bieżący (2026-04-28)
+
+Repozytorium jest w trakcie etapowej refaktoryzacji. Obok struktury docelowej współistnieją jeszcze elementy przejściowe.
+
+Wymóg bieżący:
+
+```text
+coordinator.py nie może być na razie przenoszony
+```
+
+Dopuszczalny stan przejściowy:
+
+```text
+custom_components/thessla_green_modbus/coordinator.py
+custom_components/thessla_green_modbus/coordinator/
+```
+
+Niezmiennie obowiązuje zakaz tworzenia:
+
+```text
+- legacy modules,
+- compatibility shims,
+- re-export shims,
+- proxy modules.
+```
+
+---
+
 ## Warstwy
 
 ### 1. HA Layer

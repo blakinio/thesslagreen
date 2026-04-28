@@ -25,7 +25,7 @@ This project adheres to a simple code of conduct:
 
 ### Prerequisites
 
-- Python 3.12+
+- Python 3.13+
 - Home Assistant 2026.1.0+ (managed outside `requirements.txt`)
 - Git
 - A ThesslaGreen AirPack device (for testing)
@@ -117,7 +117,7 @@ The test suite ensures the JSON definitions remain valid.
 ### Branch Strategy
 
 - `main` - stable releases
-- `develop` - development branch
+- `dev` - development branch
 - `feature/your-feature-name` - feature branches
 - `bugfix/issue-description` - bug fix branches
 
@@ -150,6 +150,19 @@ We follow these conventions:
 - Implement retry logic
 - Use efficient batch reading
 - Validate register values
+
+### Refactor guardrails
+
+When touching architecture-related code/docs, keep these constraints:
+
+- No legacy modules.
+- No compatibility shims.
+- No re-export shims.
+- No proxy modules.
+- `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant.
+- `coordinator.py` must not be moved yet.
+
+See also: [`docs/refactor_status.md`](docs/refactor_status.md).
 
 ### File Structure
 
