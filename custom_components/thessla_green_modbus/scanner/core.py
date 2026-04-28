@@ -345,8 +345,7 @@ class ThesslaGreenDeviceScanner(
     ) -> list[tuple[int, int]]:
         """Group consecutive register addresses for efficient batch reads.
 
-        The grouping implementation delegates to the shared ``group_reads`` helper.
-        delegates grouping to the shared ``group_reads`` helper so that the
+        The grouping implementation delegates to the shared ``group_reads`` helper so that the
         scanner benefits from the same optimisation logic used elsewhere in the
         project.  Any registers that have previously been marked as missing are
         split into their own single-register groups to avoid unnecessary
