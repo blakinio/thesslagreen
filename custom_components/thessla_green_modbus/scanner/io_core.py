@@ -12,14 +12,13 @@ from typing import TYPE_CHECKING, Any, cast
 from pymodbus.client import AsyncModbusTcpClient
 
 from .. import modbus_helpers as _mh
-from ..error_contract import classify_error, log_retry_attempt
-from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from ..modbus_helpers import _call_modbus, chunk_register_range
+from ..error_contract import log_retry_attempt
+from ..modbus_exceptions import ConnectionException
+from ..modbus_helpers import _call_modbus
 
 if TYPE_CHECKING:
     from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType
 
-    from .core import ThesslaGreenDeviceScanner
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -263,13 +262,13 @@ def _expand_cached_failed_range(
 
 
 __all__ = [
+    "_call_modbus_with_fallback",
+    "_expand_cached_failed_range",
+    "_sleep_retry_backoff",
     "ensure_pymodbus_client_module",
     "is_request_cancelled_error",
     "resolve_transport_and_client",
     "track_holding_failure",
     "track_input_failure",
     "unpack_read_args",
-    "_call_modbus_with_fallback",
-    "_expand_cached_failed_range",
-    "_sleep_retry_backoff",
 ]

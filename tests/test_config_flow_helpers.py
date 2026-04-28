@@ -1,19 +1,9 @@
 """Tests for config_flow helper functions that don't require HA."""
 
 import asyncio
-import sys
-from pathlib import Path
 
 import pytest
 import voluptuous as vol
-
-from tests.platform_stubs import install_network_validation_stub, install_registers_stub
-
-install_network_validation_stub()
-_original_registers = sys.modules.get("custom_components.thessla_green_modbus.registers")
-_original_loader = sys.modules.get("custom_components.thessla_green_modbus.registers.loader")
-install_registers_stub(Path("dummy"))
-
 from custom_components.thessla_green_modbus.config_flow import (
     ConfigFlow,
     _normalize_baud_rate,
@@ -22,15 +12,6 @@ from custom_components.thessla_green_modbus.config_flow import (
     _run_with_retry,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
-
-if _original_registers is not None:
-    sys.modules["custom_components.thessla_green_modbus.registers"] = _original_registers
-else:  # pragma: no cover - defensive cleanup
-    sys.modules.pop("custom_components.thessla_green_modbus.registers", None)
-if _original_loader is not None:
-    sys.modules["custom_components.thessla_green_modbus.registers.loader"] = _original_loader
-else:  # pragma: no cover - defensive cleanup
-    sys.modules.pop("custom_components.thessla_green_modbus.registers.loader", None)
 
 # ---------------------------------------------------------------------------
 # _normalize_baud_rate
