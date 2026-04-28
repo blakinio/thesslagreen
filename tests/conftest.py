@@ -33,8 +33,6 @@ _ensure_current_event_loop()
 
 
 
-
-
 @pytest.fixture
 def mock_config_entry():
     """Return a mock config entry."""
@@ -59,7 +57,7 @@ def mock_config_entry():
 
 @pytest.fixture(autouse=True)
 def enable_event_loop_debug():
-    """Compatibility override for HA plugin fixture on Python 3.13."""
+    """Enable asyncio debug mode; ensures a current loop exists for PHCC."""
     loop = _ensure_current_event_loop()
     loop.set_debug(True)
     yield
