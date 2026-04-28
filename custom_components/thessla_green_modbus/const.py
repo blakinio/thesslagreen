@@ -8,6 +8,8 @@ from functools import cache, lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
+from .registers.loader import get_registers_by_function
+
 try:
     from homeassistant.const import Platform as _HAPlatform
 except ModuleNotFoundError:  # pragma: no cover - test/runtime fallback without HA
@@ -27,8 +29,6 @@ except ModuleNotFoundError:  # pragma: no cover - test/runtime fallback without 
 
 Platform = _HAPlatform
 
-
-from .registers.loader import get_registers_by_function  # noqa: E402
 
 if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.core import HomeAssistant
