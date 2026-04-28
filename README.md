@@ -74,6 +74,7 @@ logger:
 
 - [Architektura docelowa](docs/thesslagreen_architecture.md)
 - [Wytyczne refaktoryzacji](docs/thesslagreen_guidelines.md)
+- [Status refaktoryzacji](docs/refactor_status.md)
 - [Changelog](CHANGELOG.md)
 
 ## Rozwój i testy
@@ -112,3 +113,5 @@ pytest tests/ -x -q
 > (Python 3.11+). Running `pytest` in a container with Python < 3.13 will
 > fail at import with `ImportError: cannot import name 'StrEnum' from 'enum'`.
 > This is expected — the test environment must use Python 3.13.
+
+> **Refactor constraints (must keep):** no legacy modules, no compatibility/re-export/proxy shims; `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant; and `coordinator.py` must stay in place for now. See [`docs/refactor_status.md`](docs/refactor_status.md).
