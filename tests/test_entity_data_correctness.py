@@ -9,25 +9,6 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-
-from tests.platform_stubs import (
-    install_binary_sensor_stubs,
-    install_number_stubs,
-    install_select_stubs,
-)
-
-# ---------------------------------------------------------------------------
-# HA component stubs
-# ---------------------------------------------------------------------------
-
-install_binary_sensor_stubs()
-install_number_stubs()
-install_select_stubs()
-
-# ---------------------------------------------------------------------------
-# Imports (after stubs are in place)
-# ---------------------------------------------------------------------------
-
 from custom_components.thessla_green_modbus.binary_sensor import ThesslaGreenBinarySensor
 from custom_components.thessla_green_modbus.mappings import (
     BINARY_SENSOR_ENTITY_MAPPINGS,

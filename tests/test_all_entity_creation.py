@@ -20,31 +20,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from tests.platform_stubs import (
-    install_binary_sensor_stubs,
-    install_fan_stubs,
-    install_number_stubs,
-    install_select_stubs,
-    install_switch_stubs,
-    install_time_stubs,
-)
-
-# ---------------------------------------------------------------------------
-# Required HA component stubs
-# ---------------------------------------------------------------------------
-
-install_binary_sensor_stubs()
-install_fan_stubs()
-install_switch_stubs()
-install_number_stubs()
-install_select_stubs()
-install_time_stubs()
-
-# ---------------------------------------------------------------------------
-# Now it is safe to import the integration domain constant
-# ---------------------------------------------------------------------------
-
 from custom_components.thessla_green_modbus.const import DOMAIN
 
 # ---------------------------------------------------------------------------

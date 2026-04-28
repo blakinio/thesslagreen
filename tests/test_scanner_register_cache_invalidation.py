@@ -3,13 +3,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import custom_components.thessla_green_modbus.scanner.core as sc
 import pytest
-from custom_components.thessla_green_modbus.registers.loader import _REGISTERS_PATH, clear_cache
+from custom_components.thessla_green_modbus.registers.loader import clear_cache, get_registers_path
 
 
 def test_scanner_register_cache_invalidation(tmp_path: Path, monkeypatch) -> None:
     """Scanner should rebuild register maps when definitions change."""
     tmp_json = tmp_path / "registers.json"
-    tmp_json.write_text(_REGISTERS_PATH.read_text(), encoding="utf-8")
+    tmp_json.write_text(get_registers_path().read_text(), encoding="utf-8")
     monkeypatch.setattr(
         "custom_components.thessla_green_modbus.registers.loader._REGISTERS_PATH",
         tmp_json,

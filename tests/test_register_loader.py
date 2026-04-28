@@ -4,26 +4,21 @@ import json
 from pathlib import Path
 
 import pytest
-
-from tests.platform_stubs import install_integration_package_stub
-
-# Stub the integration package to avoid executing its heavy __init__
-install_integration_package_stub(
-    Path(__file__).resolve().parents[1] / "custom_components" / "thessla_green_modbus",
-    max_batch_registers=16,
+from custom_components.thessla_green_modbus.registers.cache import (
+    async_registers_sha256,
+    get_cached_file_info,
+    get_cached_registers,
+    registers_sha256,
 )
-
 from custom_components.thessla_green_modbus.registers.loader import (
-    _REGISTERS_PATH,
-    _SPECIAL_MODES_PATH,
-    RegisterDef,
-    _load_registers_from_file,
     clear_cache,
     get_all_registers,
     get_registers_by_function,
+    get_registers_path,
     load_registers,
-    registers_sha256,
 )
+from custom_components.thessla_green_modbus.registers.parser import load_registers_from_file
+from custom_components.thessla_green_modbus.registers.register_def import RegisterDef
 
 
 def _add_desc(reg: dict) -> dict:
@@ -79,7 +74,7 @@ def test_default_multiplier_resolution(tmp_path) -> None:
     path = tmp_path / "regs.json"
     _write(path, [reg])
 
-    loaded = _load_registers_from_file(path, mtime=0, file_hash="")[0]
+    loaded = load_registers_from_file(path)[0]
     assert loaded.multiplier == 1
     assert loaded.resolution == 1
 
@@ -184,7 +179,7 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
 
     # Use a temporary copy of the register file so we can modify it
     path = tmp_path / "regs.json"
-    path.write_text(_REGISTERS_PATH.read_text())
+    path.write_text(get_registers_path().read_text())
 
     read_calls = 0
     hash_calls = 0
@@ -261,7 +256,7 @@ def test_registers_reload_on_file_change(tmp_path) -> None:
     """Changing the register JSON file triggers a reload."""
 
     path = tmp_path / "regs.json"
-    path.write_text(_REGISTERS_PATH.read_text())
+    path.write_text(get_registers_path().read_text())
 
     clear_cache()
 
@@ -280,7 +275,7 @@ def test_clear_cache_resets_file_hash(tmp_path, monkeypatch) -> None:
     """clear_cache should reset the cached file hash."""
 
     path = tmp_path / "regs.json"
-    path.write_text(_REGISTERS_PATH.read_text())
+    path.write_text(get_registers_path().read_text())
 
     hash_calls = 0
     real_read_bytes = Path.read_bytes
@@ -325,7 +320,7 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
     _write(path, registers)
 
     with pytest.raises(ValueError):
-        _load_registers_from_file(path, mtime=0, file_hash="")
+        load_registers_from_file(path)
 
 
 @pytest.mark.parametrize(
@@ -385,7 +380,7 @@ def test_invalid_registers_rejected(tmp_path, register) -> None:
     _write(path, [register])
 
     with pytest.raises(ValueError):
-        _load_registers_from_file(path, mtime=0, file_hash="")
+        load_registers_from_file(path)
 
 
 def test_bits_within_bitmask_width(tmp_path) -> None:
@@ -402,7 +397,7 @@ def test_bits_within_bitmask_width(tmp_path) -> None:
     path = tmp_path / "regs.json"
     _write(path, [reg])
 
-    _load_registers_from_file(path, file_hash="", mtime=0)
+    load_registers_from_file(path)
 
 
 @pytest.mark.parametrize(
@@ -426,7 +421,7 @@ def test_missing_descriptions_rejected(tmp_path, reg) -> None:
     path.write_text(json.dumps({"registers": [base]}))
 
     with pytest.raises(ValueError):
-        _load_registers_from_file(path, mtime=0, file_hash="")
+        load_registers_from_file(path)
 
 
 def test_missing_register_file_raises_runtime_error(tmp_path) -> None:
@@ -434,7 +429,7 @@ def test_missing_register_file_raises_runtime_error(tmp_path) -> None:
 
     path = tmp_path / "regs.json"
     with pytest.raises(RuntimeError) as exc:
-        _load_registers_from_file(path, mtime=0, file_hash="")
+        load_registers_from_file(path)
     assert str(path) in str(exc.value)
 
 
@@ -444,26 +439,28 @@ def test_invalid_register_file_raises_runtime_error(tmp_path) -> None:
     path = tmp_path / "regs.json"
     path.write_text("not json", encoding="utf-8")
     with pytest.raises(RuntimeError) as exc:
-        _load_registers_from_file(path, mtime=0, file_hash="")
+        load_registers_from_file(path)
     assert str(path) in str(exc.value)
 
 
 def test_register_file_sorted() -> None:
     """Ensure register JSON is sorted and loader preserves ordering."""
 
-    data = json.loads(_REGISTERS_PATH.read_text(encoding="utf-8"))
+    data = json.loads(get_registers_path().read_text(encoding="utf-8"))
     regs = data["registers"]
     keys = [(str(r["function"]), int(r["address_dec"])) for r in regs]
     assert keys == sorted(keys)
 
 
 def test_special_modes_invalid_json(monkeypatch) -> None:
-    """Loader falls back to empty special mode enum on invalid file."""
+    """Parser falls back to empty special mode enum on invalid file."""
 
     import importlib
     from pathlib import Path
 
-    special_path = _SPECIAL_MODES_PATH
+    from custom_components.thessla_green_modbus.registers import parser as parser_module
+
+    special_path = parser_module._SPECIAL_MODES_PATH
     real_read_text = Path.read_text
 
     def bad_read(self, *args, **kwargs):  # pragma: no cover - simple stub
@@ -473,14 +470,14 @@ def test_special_modes_invalid_json(monkeypatch) -> None:
 
     monkeypatch.setattr(Path, "read_text", bad_read)
 
-    loader_module = importlib.import_module(
-        "custom_components.thessla_green_modbus.registers.loader"
+    parser_module = importlib.import_module(
+        "custom_components.thessla_green_modbus.registers.parser"
     )
-    loader_module = importlib.reload(loader_module)
-    assert loader_module._SPECIAL_MODES_ENUM == {}  # nosec B101
+    parser_module = importlib.reload(parser_module)
+    assert parser_module._SPECIAL_MODES_ENUM == {}  # nosec B101
 
     monkeypatch.setattr(Path, "read_text", real_read_text)
-    importlib.reload(loader_module)
+    importlib.reload(parser_module)
 
 
 def test_get_all_registers_sorted(tmp_path) -> None:
@@ -517,12 +514,12 @@ def test_get_all_registers_sorted(tmp_path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Phase 7 — remaining loader.py coverage gaps
+# Unicode and async loader behavior
 # ---------------------------------------------------------------------------
 
 
 def test_decode_multi_register_string_unicode_error_recovery() -> None:
-    """Invalid UTF-8 bytes trigger error-recovery decode path (line 147)."""
+    """Invalid UTF-8 bytes should be decoded with replacement characters."""
     reg = RegisterDef(
         function=3,
         address=0,
@@ -538,11 +535,7 @@ def test_decode_multi_register_string_unicode_error_recovery() -> None:
 
 
 async def test_async_registers_sha256_computes_and_caches(tmp_path: Path) -> None:
-    """async_registers_sha256 returns hex digest and caches result (lines 75, 540)."""
-    from custom_components.thessla_green_modbus.registers.loader import (
-        async_registers_sha256,
-    )
-
+    """async_registers_sha256 returns a deterministic digest for unchanged files."""
     path = tmp_path / "regs.json"
     path.write_text('{"registers": []}')
     clear_cache()
@@ -556,7 +549,7 @@ async def test_async_registers_sha256_computes_and_caches(tmp_path: Path) -> Non
 
 
 async def test_async_load_registers_populates_cache(tmp_path: Path) -> None:
-    """async_load_registers loads and caches register list on cache miss (lines 576-577)."""
+    """async_load_registers should populate and reuse the register list cache."""
     from custom_components.thessla_green_modbus.registers.loader import (
         async_load_registers,
     )
@@ -579,7 +572,7 @@ async def test_async_load_registers_populates_cache(tmp_path: Path) -> None:
 
 
 async def test_async_get_registers_by_function_filters(tmp_path: Path) -> None:
-    """async_get_registers_by_function normalises fn and filters (lines 622-623)."""
+    """async_get_registers_by_function should normalize and filter function code."""
     from custom_components.thessla_green_modbus.registers.loader import (
         async_get_registers_by_function,
     )
@@ -597,3 +590,25 @@ async def test_async_get_registers_by_function_filters(tmp_path: Path) -> None:
     assert all(r.function == 3 for r in regs)
     assert any(r.name == "hold_reg" for r in regs)
     assert not any(r.name == "inp_reg" for r in regs)
+
+
+def test_cache_helpers_expose_cached_state_via_public_api(tmp_path: Path) -> None:
+    """Cache helper functions should expose hash/register cache state."""
+    path = tmp_path / "regs.json"
+    _write(path, [{"function": "03", "address_dec": 0, "name": "r", "access": "R"}])
+    clear_cache()
+
+    regs = load_registers(path)
+    file_info = get_cached_file_info(path)
+    assert file_info is not None
+    mtime, digest = file_info
+    assert isinstance(digest, str) and len(digest) == 64
+    assert get_cached_registers(digest, mtime) is regs
+
+
+def test_loader_all_has_no_private_cache_names() -> None:
+    """loader.__all__ should only expose public API names."""
+    from custom_components.thessla_green_modbus.registers import loader
+
+    assert "_cached_file_info" not in loader.__all__
+    assert "_register_cache" not in loader.__all__

@@ -4,17 +4,8 @@ import asyncio
 import types
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from tests.platform_stubs import install_sensor_platform_stubs
-
-install_sensor_platform_stubs()
-
-# ---------------------------------------------------------------------------
-# Actual tests
-# ---------------------------------------------------------------------------
-
 import custom_components.thessla_green_modbus.select as select_module
+import pytest
 from custom_components.thessla_green_modbus.const import (
     AIRFLOW_UNIT_PERCENTAGE,
     CONF_AIRFLOW_UNIT,

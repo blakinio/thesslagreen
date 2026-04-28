@@ -1,4 +1,4 @@
-from custom_components.thessla_green_modbus.registers.loader import RegisterDef as Register
+from custom_components.thessla_green_modbus.registers.register_def import RegisterDef as Register
 
 
 def test_coil_and_discrete_enum():

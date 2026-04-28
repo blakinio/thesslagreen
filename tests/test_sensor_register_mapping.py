@@ -1,15 +1,6 @@
 """Validate SENSOR_DEFINITIONS register mapping."""
 
 import pytest
-
-from tests.platform_stubs import install_common_ha_stubs
-
-install_common_ha_stubs()
-
-# ---------------------------------------------------------------------------
-# Actual test
-# ---------------------------------------------------------------------------
-
 from custom_components.thessla_green_modbus.mappings import ENTITY_MAPPINGS
 from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
