@@ -294,8 +294,8 @@ class RtuModbusTransport(_ClientBackedTransport):
 
 
 __all__ = [
-    "RtuModbusTransport",
     "SERIAL_IMPORT_ERROR",
+    "RtuModbusTransport",
     "TcpModbusTransport",
     "_AsyncModbusSerialClient",
     "_ClientBackedTransport",

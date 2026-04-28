@@ -4,14 +4,11 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from ..const import HOLDING_BATCH_BOUNDARIES, KNOWN_MISSING_REGISTERS
 from ..scanner_helpers import UART_OPTIONAL_REGS
 from ..scanner_register_maps import MULTI_REGISTER_SIZES
-
-if TYPE_CHECKING:
-    from .core import ThesslaGreenDeviceScanner
 
 _LOGGER = logging.getLogger(__name__)
 
