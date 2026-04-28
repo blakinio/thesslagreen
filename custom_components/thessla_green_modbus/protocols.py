@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any, Protocol, TypeAlias
 
 from homeassistant.core import HomeAssistant, ServiceCall
 
@@ -35,9 +35,9 @@ class ScannerFactory(Protocol):
     ) -> Awaitable[ScannerProtocol]: ...
 
 
-type IterTargetCoordinators = Callable[[HomeAssistant, ServiceCall], list[tuple[str, Any]]]
-type NormalizeOption = Callable[[str], str]
-type ClampAirflowRate = Callable[[Any, int], int]
-type WriteRegister = Callable[[Any, str, Any, str, str], Awaitable[bool]]
-type CreateLogLevelManager = Callable[[HomeAssistant], Any]
-type DateTimeNow = Callable[[], datetime]
+IterTargetCoordinators: TypeAlias = Callable[[HomeAssistant, ServiceCall], list[tuple[str, Any]]]  # noqa: UP040
+NormalizeOption: TypeAlias = Callable[[str], str]  # noqa: UP040
+ClampAirflowRate: TypeAlias = Callable[[Any, int], int]  # noqa: UP040
+WriteRegister: TypeAlias = Callable[[Any, str, Any, str, str], Awaitable[bool]]  # noqa: UP040
+CreateLogLevelManager: TypeAlias = Callable[[HomeAssistant], Any]  # noqa: UP040
+DateTimeNow: TypeAlias = Callable[[], datetime]  # noqa: UP040
