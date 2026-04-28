@@ -26,12 +26,20 @@ The following constraints are active and must be preserved:
 
 ## Current transitional note
 
-Both forms currently exist in the repository:
+Current active coordinator location:
 
 - `custom_components/thessla_green_modbus/coordinator.py`
-- `custom_components/thessla_green_modbus/coordinator/`
 
-This is a temporary refactor stage. Until migration is complete, `coordinator.py` remains in place and should not be relocated.
+Current repository state:
+
+- `custom_components/thessla_green_modbus/coordinator/` is **not present**.
+- The old empty `coordinator/` scaffold was removed because it shadowed `coordinator.py` and broke imports.
+
+Transition rule (current):
+
+- `coordinator.py` remains in place and must not be moved in this stage.
+- `coordinator/` must not be recreated until a dedicated future PR performs a real migration to a package layout.
+- That future migration must update imports directly and must not use compatibility shims, re-export shims, or proxy modules.
 
 ## Documentation policy for refactor work
 

@@ -40,12 +40,15 @@ Wymóg bieżący:
 coordinator.py nie może być na razie przenoszony
 ```
 
-Dopuszczalny stan przejściowy:
+Stan przejściowy (aktualny):
 
 ```text
-custom_components/thessla_green_modbus/coordinator.py
-custom_components/thessla_green_modbus/coordinator/
+custom_components/thessla_green_modbus/coordinator.py      # obecna aktywna lokalizacja
+custom_components/thessla_green_modbus/coordinator/         # NIE występuje i nie może być odtwarzany
 ```
+
+Migracja do docelowego katalogu `coordinator/` jest planem przyszłym i wymaga osobnego PR.
+W takim PR importy muszą zostać zaktualizowane bezpośrednio, bez shimów kompatybilności i bez modułów proxy.
 
 Niezmiennie obowiązuje zakaz tworzenia:
 
