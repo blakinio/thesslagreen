@@ -1,7 +1,10 @@
 """Direct tests for pure mapping-builder helper functions."""
 
 from custom_components.thessla_green_modbus.mappings._mapping_builders import (
+    _build_binary_toggle_mapping,
     _build_problem_binary_mapping,
+    _build_select_mapping,
+    _build_switch_mapping,
     _build_time_like_mapping,
     _is_already_mapped,
     _is_mapped_as_binary_source,
@@ -59,5 +62,32 @@ def test_build_time_like_mapping_shape() -> None:
     assert _build_time_like_mapping("schedule_slot") == {
         "translation_key": "schedule_slot",
         "icon": "mdi:clock-outline",
+        "register_type": "holding_registers",
+    }
+
+
+def test_build_switch_mapping_shape() -> None:
+    assert _build_switch_mapping("enable_feature") == {
+        "icon": "mdi:toggle-switch",
+        "register": "enable_feature",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "enable_feature",
+    }
+
+
+def test_build_binary_toggle_mapping_shape() -> None:
+    assert _build_binary_toggle_mapping("filter_dirty") == {
+        "translation_key": "filter_dirty",
+        "icon": "mdi:checkbox-marked-circle-outline",
+        "register_type": "holding_registers",
+    }
+
+
+def test_build_select_mapping_shape() -> None:
+    assert _build_select_mapping("mode", {"auto": 0, "manual": 1}) == {
+        "icon": "mdi:format-list-bulleted",
+        "translation_key": "mode",
+        "states": {"auto": 0, "manual": 1},
         "register_type": "holding_registers",
     }
