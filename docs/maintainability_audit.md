@@ -34,7 +34,7 @@ Top maintainability pressure points:
 9. `tests/test_config_flow_user.py` (~638)
 10. `tests/test_services_handlers_parameters.py` (~523)
 
-Interpretation: maintainability risk is concentrated mostly in tests (very large multipurpose files), with one significant production hotspot (`coordinator.py`).
+Interpretation: maintainability pressure is still concentrated mostly in tests, with one significant production hotspot (`coordinator.py`).
 
 ## 2) Largest classes
 
@@ -46,7 +46,7 @@ Top class-size hotspots:
 4. `ThesslaGreenClimate` in `climate.py` (~333)
 5. `RegisterDefinition` in `registers/schema.py` (~313)
 
-Interpretation: the coordinator/scheduler/scanner stack remains the core complexity center. Given current constraints, this should be monitored but not structurally moved yet.
+Interpretation: the coordinator/scheduler/scanner stack remains the core complexity center. Per current constraints, this should be reduced incrementally without moving `coordinator.py`.
 
 ## 3) Largest methods/functions
 
@@ -63,7 +63,7 @@ Top function-size hotspots:
 9. `register_parameter_services` in `services_handlers_parameters.py` (~144)
 10. `async_write_register` in `_coordinator_schedule.py` (~137)
 
-Interpretation: mapping builders and service registration logic are strong candidates for decomposition into smaller pure helpers.
+Interpretation: mapping builders plus service registration/orchestration remain strong candidates for further decomposition into smaller pure helpers.
 
 ## 4) Files with mixed responsibilities
 
@@ -99,7 +99,7 @@ Completed since earlier audit cycle:
 
 ## 6) Next 5 safest refactor PRs
 
-Ordered for low risk and high maintainability gain (excluding restricted coordinator/scanner/registers/transport boundary work):
+Ordered for low risk and maintainability gain while honoring current constraints:
 
 1. **Continue helper extraction from `mappings/_mapping_builders.py`**
    - reduce the remaining ~210-line builder function via pure transformation helpers.
@@ -114,12 +114,14 @@ Ordered for low risk and high maintainability gain (excluding restricted coordin
 
 ## 7) Things not to touch yet
 
-- `custom_components/thessla_green_modbus/coordinator.py` location and coordinator package migration.
-- `_coordinator_*.py` boundary changes.
-- `scanner/`, `registers/`, and `transport/` structural moves.
-- Compatibility shims/proxy modules/re-export modules.
-- Test rewrites that alter coordinator/scanner/register/transport behavioral coverage semantics.
+- Do not move `custom_components/thessla_green_modbus/coordinator.py` yet.
+- Do not recreate `custom_components/thessla_green_modbus/coordinator/` until a dedicated real migration PR exists.
+- No compatibility shims.
+- No proxy modules.
+- No re-export-only modules.
+- No legacy modules.
+- No structural moves across `scanner/`, `registers/`, and `transport/` boundaries in this stage.
 
 ## Notes
 
-This audit intentionally avoids production code changes and focuses on mapping a low-risk refactor sequence for future PRs.
+This audit is intentionally factual and repository-backed, with no speculative features and no migration-document content.

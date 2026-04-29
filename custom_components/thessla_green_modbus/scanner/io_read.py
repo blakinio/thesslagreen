@@ -31,6 +31,33 @@ except (ImportError, AttributeError):
 _LOGGER = logging.getLogger(__name__)
 
 
+def _mark_failed_addresses(scanner: Any, register_type: str, start: int, end: int) -> None:
+    """Track read failures for a contiguous address range."""
+    scanner.failed_addresses["modbus_exceptions"][register_type].update(range(start, end + 1))
+
+
+def _is_unsupported_range(ranges: Any, start: int, end: int) -> bool:
+    """Return True when start-end is fully covered by any unsupported range."""
+    return any(skip_start <= start and end <= skip_end for skip_start, skip_end in ranges)
+
+
+def _log_read_abort(kind: str, start: int, end: int, attempt: int, retry: int) -> None:
+    """Log a transiently aborted read due to timeout/cancellation."""
+    _LOGGER.warning(
+        "Aborted reading %s registers %d-%d after %d/%d attempts due to timeout/cancellation",
+        kind,
+        start,
+        end,
+        attempt,
+        retry,
+    )
+
+
+def _log_read_failure(kind: str, start: int, end: int, retry: int) -> None:
+    """Log terminal read failure after retry budget is exhausted."""
+    _LOGGER.error("Failed to read %s registers %d-%d after %d retries", kind, start, end, retry)
+
+
 async def read_input(
     scanner: Any,
     client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
@@ -47,9 +74,7 @@ async def read_input(
     if not skip_cache:
         for skip_start, skip_end in scanner._unsupported_input_ranges:
             if skip_start <= start and end <= skip_end:
-                scanner.failed_addresses["modbus_exceptions"]["input_registers"].update(
-                    range(start, end + 1)
-                )
+                _mark_failed_addresses(scanner, "input_registers", start, end)
                 return None
     cached_failed_range = (
         None
@@ -63,9 +88,7 @@ async def read_input(
         if (skip_start, skip_end) not in scanner._input_skip_log_ranges:
             _LOGGER.debug("Skipping cached failed input registers %d-%d", skip_start, skip_end)
             scanner._input_skip_log_ranges.add((skip_start, skip_end))
-        scanner.failed_addresses["modbus_exceptions"]["input_registers"].update(
-            range(skip_start, skip_end + 1)
-        )
+        _mark_failed_addresses(scanner, "input_registers", skip_start, skip_end)
         return None
 
     transport, client = resolve_transport_and_client(scanner, client)
@@ -103,9 +126,7 @@ async def read_input(
                     )
                     scanner._failed_input.update(range(start, end + 1))
                     scanner._mark_input_unsupported(start, end, code)
-                    scanner.failed_addresses["modbus_exceptions"]["input_registers"].update(
-                        range(start, end + 1)
-                    )
+                    _mark_failed_addresses(scanner, "input_registers", start, end)
                     return None
                 if skip_cache and count == 1:
                     scanner._mark_input_supported(address)
@@ -162,19 +183,11 @@ async def read_input(
         )
 
     if aborted_transiently:
-        _LOGGER.warning(
-            "Aborted reading input registers %d-%d after %d/%d attempts due to timeout/cancellation",
-            start,
-            end,
-            attempted_reads,
-            scanner.retry,
-        )
+        _log_read_abort("input", start, end, attempted_reads, scanner.retry)
         return None
 
-    scanner.failed_addresses["modbus_exceptions"]["input_registers"].update(range(start, end + 1))
-    _LOGGER.error(
-        "Failed to read input registers %d-%d after %d retries", start, end, scanner.retry
-    )
+    _mark_failed_addresses(scanner, "input_registers", start, end)
+    _log_read_failure("input", start, end, scanner.retry)
     return None
 
 
@@ -226,12 +239,9 @@ async def read_holding(
     end = address + count - 1
 
     if not skip_cache:
-        for skip_start, skip_end in scanner._unsupported_holding_ranges:
-            if skip_start <= start and end <= skip_end:
-                scanner.failed_addresses["modbus_exceptions"]["holding_registers"].update(
-                    range(start, end + 1)
-                )
-                return None
+        if _is_unsupported_range(scanner._unsupported_holding_ranges, start, end):
+            _mark_failed_addresses(scanner, "holding_registers", start, end)
+            return None
         cached_failed_range = _expand_cached_failed_range(
             start=start,
             end=end,
@@ -240,9 +250,7 @@ async def read_holding(
         if cached_failed_range is not None:
             cached_start, cached_end = cached_failed_range
             if cached_start <= start and end <= cached_end:
-                scanner.failed_addresses["modbus_exceptions"]["holding_registers"].update(
-                    range(cached_start, cached_end + 1)
-                )
+                _mark_failed_addresses(scanner, "holding_registers", cached_start, cached_end)
                 return None
 
     failures = scanner._holding_failures.get(address, 0)
@@ -286,18 +294,14 @@ async def read_holding(
                     if code == 2:
                         scanner._failed_holding.update(range(start, end + 1))
                         scanner._mark_holding_unsupported(start, end, code)
-                        scanner.failed_addresses["modbus_exceptions"]["holding_registers"].update(
-                            range(start, end + 1)
-                        )
+                        _mark_failed_addresses(scanner, "holding_registers", start, end)
                         return None
                     if count == 1:
                         track_holding_failure(scanner, count, address)
                         if address in scanner._failed_holding:
                             scanner._failed_holding.update(range(start, end + 1))
                             scanner._mark_holding_unsupported(start, end, code or 0)
-                            scanner.failed_addresses["modbus_exceptions"][
-                                "holding_registers"
-                            ].update(range(start, end + 1))
+                            _mark_failed_addresses(scanner, "holding_registers", start, end)
                             return None
                     continue
                 if skip_cache and count == 1:
@@ -349,22 +353,12 @@ async def read_holding(
         )
 
     if aborted_transiently:
-        _LOGGER.warning(
-            "Aborted reading holding registers %d-%d after %d/%d attempts due to timeout/cancellation",
-            start,
-            end,
-            attempted_reads,
-            scanner.retry,
-        )
-        _LOGGER.error(
-            "Failed to read holding registers %d-%d after %d retries", start, end, scanner.retry
-        )
+        _log_read_abort("holding", start, end, attempted_reads, scanner.retry)
+        _log_read_failure("holding", start, end, scanner.retry)
         return None
 
-    _LOGGER.error(
-        "Failed to read holding registers %d-%d after %d retries", start, end, scanner.retry
-    )
-    scanner.failed_addresses["modbus_exceptions"]["holding_registers"].update(range(start, end + 1))
+    _log_read_failure("holding", start, end, scanner.retry)
+    _mark_failed_addresses(scanner, "holding_registers", start, end)
     return None
 
 

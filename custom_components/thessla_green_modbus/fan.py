@@ -91,11 +91,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     @property
     def available(self) -> bool:
         """Return if the fan entity is available."""
-        return (
-            self.coordinator.last_update_success
-            and self.coordinator.data.get("on_off_panel_mode") is not None
-            and not getattr(self.coordinator, "offline_state", False)
-        )
+        return self._coordinator_connected() and self._has_value("on_off_panel_mode")
 
     @property
     def is_on(self) -> bool | None:

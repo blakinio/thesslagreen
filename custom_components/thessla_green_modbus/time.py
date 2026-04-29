@@ -94,9 +94,7 @@ class ThesslaGreenTime(ThesslaGreenEntity, TimeEntity):
         0xFFFF), so we keep the entity available to allow the user to set
         an initial value.
         """
-        return self.coordinator.last_update_success and not getattr(
-            self.coordinator, "offline_state", False
-        )
+        return self._coordinator_connected()
 
     @property
     def native_value(self) -> dt_time | None:
@@ -130,14 +128,9 @@ class ThesslaGreenTime(ThesslaGreenEntity, TimeEntity):
         """
         time_str = f"{value.hour:02d}:{value.minute:02d}"
         try:
-            success = await self.coordinator.async_write_register(
-                self._register_name, time_str, refresh=False
-            )
+            await self._write_register(self._register_name, time_str)
         except (ModbusException, ConnectionException) as err:
             _LOGGER.error("Error setting %s to %s: %s", self._register_name, time_str, err)
             return
-
-        if success:
-            await self.coordinator.async_request_refresh()
-        else:
-            _LOGGER.error("Failed to set %s to %s", self._register_name, time_str)
+        except RuntimeError as err:
+            _LOGGER.error("Failed to set %s to %s: %s", self._register_name, time_str, err)

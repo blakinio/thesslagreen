@@ -6,7 +6,7 @@ from collections.abc import Callable
 from datetime import timedelta
 
 from .const import CONNECTION_MODE_AUTO
-from .coordinator_models import CoordinatorConfig
+from .coordinator.models import CoordinatorConfig
 
 
 def normalize_runtime_config(

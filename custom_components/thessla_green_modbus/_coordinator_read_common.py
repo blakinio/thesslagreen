@@ -7,7 +7,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from ._coordinator_retry import _PermanentModbusError
+from .coordinator.retry import _PermanentModbusError
 from .modbus_exceptions import ModbusException, ModbusIOException
 
 _LOGGER = logging.getLogger(__name__)

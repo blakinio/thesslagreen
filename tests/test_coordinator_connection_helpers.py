@@ -6,16 +6,16 @@ import asyncio
 import logging
 
 import pytest
-from custom_components.thessla_green_modbus._coordinator_connection import (
+from custom_components.thessla_green_modbus.const import (
+    CONNECTION_MODE_TCP_RTU,
+    CONNECTION_TYPE_TCP,
+)
+from custom_components.thessla_green_modbus.coordinator.connection import (
     build_tcp_transport,
     connect_direct_tcp_client,
     connect_transport_or_client,
     ensure_transport_selected,
     setup_client_with_retry,
-)
-from custom_components.thessla_green_modbus.const import (
-    CONNECTION_MODE_TCP_RTU,
-    CONNECTION_TYPE_TCP,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,

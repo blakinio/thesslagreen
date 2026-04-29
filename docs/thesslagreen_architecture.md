@@ -37,7 +37,7 @@ Repozytorium jest w trakcie etapowej refaktoryzacji. Obok struktury docelowej ws
 Wymóg bieżący:
 
 ```text
-coordinator.py nie może być na razie przenoszony
+coordinator.py został przeniesiony do pakietu coordinator/
 ```
 
 Stan przejściowy (aktualny):

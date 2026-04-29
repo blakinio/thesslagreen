@@ -191,15 +191,8 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
         try:
-            success = await self.coordinator.async_write_register(
-                self.register_name, value, refresh=False, offset=0
-            )
-            if success:
-                await self.coordinator.async_request_refresh()
-                _LOGGER.debug("Set %s to %.2f", self.register_name, value)
-            else:
-                _LOGGER.error("Failed to set %s to %.2f", self.register_name, value)
-                raise RuntimeError(f"Failed to write register {self.register_name}")
+            await self._write_register(self.register_name, value, include_offset=True)
+            _LOGGER.debug("Set %s to %.2f", self.register_name, value)
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to set %s to %.2f: %s", self.register_name, value, exc)

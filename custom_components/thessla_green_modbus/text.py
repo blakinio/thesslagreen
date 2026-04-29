@@ -89,9 +89,7 @@ class ThesslaGreenText(ThesslaGreenEntity, TextEntity):
     @property
     def available(self) -> bool:
         """Return True whenever the coordinator is connected."""
-        return self.coordinator.last_update_success and not getattr(
-            self.coordinator, "offline_state", False
-        )
+        return self._coordinator_connected()
 
     @property
     def native_value(self) -> str | None:
@@ -104,14 +102,9 @@ class ThesslaGreenText(ThesslaGreenEntity, TextEntity):
     async def async_set_value(self, value: str) -> None:
         """Write a new string value to the register."""
         try:
-            success = await self.coordinator.async_write_register(
-                self._register_name, value, refresh=False
-            )
+            await self._write_register(self._register_name, value)
         except (ModbusException, ConnectionException) as err:
             _LOGGER.error("Error setting %s to %r: %s", self._register_name, value, err)
             return
-
-        if success:
-            await self.coordinator.async_request_refresh()
-        else:
-            _LOGGER.error("Failed to set %s to %r", self._register_name, value)
+        except RuntimeError as err:
+            _LOGGER.error("Failed to set %s to %r: %s", self._register_name, value, err)

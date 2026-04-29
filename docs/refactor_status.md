@@ -30,9 +30,9 @@ The following constraints are active and must be preserved:
 
 ## Current transitional note
 
-Current active coordinator location:
+Current active coordinator package:
 
-- `custom_components/thessla_green_modbus/coordinator.py`
+- `custom_components/thessla_green_modbus/coordinator/`
 
 Current repository state:
 
