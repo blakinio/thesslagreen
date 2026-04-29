@@ -73,6 +73,32 @@ def _build_success_payload(name: str, scan_result: dict[str, Any]) -> dict[str, 
     }
 
 
+def _validate_scan_result(scan_result: Any) -> dict[str, Any]:
+    """Validate scanner payload shape and return typed mapping."""
+    if not isinstance(scan_result, dict) or not scan_result:
+        raise CannotConnect("invalid_format")
+    return scan_result
+
+
+def _build_timeout_runner(
+    *,
+    run_with_retry: Callable[[Callable[[], Awaitable[Any]], int, float], Awaitable[Any]],
+    call_with_optional_timeout: Callable[[Callable[[], Any], float], Awaitable[Any]],
+    retries: int,
+    backoff: float,
+) -> Callable[[Callable[[], Any], float], Awaitable[Any]]:
+    """Create retry+timeout wrapper for scanner callbacks."""
+
+    async def _run(func: Callable[[], Any], timeout: float) -> Any:
+        return await run_with_retry(
+            lambda: call_with_optional_timeout(func, timeout),
+            retries,
+            backoff,
+        )
+
+    return _run
+
+
 async def _maybe_close_scanner(scanner: Any | None) -> None:
     """Close scanner instance when available."""
     if scanner is not None and hasattr(scanner, "close"):
@@ -211,25 +237,21 @@ async def validate_input_impl(
             config_flow_backoff,
         )
 
+        run_scanner_call = _build_timeout_runner(
+            run_with_retry=run_with_retry,
+            call_with_optional_timeout=call_with_optional_timeout,
+            retries=default_retry,
+            backoff=config_flow_backoff,
+        )
         short_timeout = max(2, params["timeout"])
         verify_cb = getattr(scanner, "verify_connection", None)
         if not callable(verify_cb):
             raise AttributeError("verify_connection")
+        await run_scanner_call(verify_cb, short_timeout)
 
-        await run_with_retry(
-            lambda: call_with_optional_timeout(verify_cb, short_timeout),
-            default_retry,
-            config_flow_backoff,
+        scan_result = _validate_scan_result(
+            await run_scanner_call(scanner.scan_device, params["timeout"])
         )
-
-        scan_result = await run_with_retry(
-            lambda: call_with_optional_timeout(scanner.scan_device, params["timeout"]),
-            default_retry,
-            config_flow_backoff,
-        )
-
-        if not isinstance(scan_result, dict) or not scan_result:
-            raise CannotConnect("invalid_format")
 
         caps_dict = process_scan_capabilities(scan_result, capabilities_cls)
         scan_result["capabilities"] = caps_dict

@@ -120,6 +120,25 @@ def _build_rtu_fields(
     }
 
 
+def _build_scan_option_fields(current_values: dict[str, Any]) -> dict[Any, Any]:
+    """Build shared scan/options schema fields."""
+    return {
+        vol.Optional(CONF_NAME, default=current_values.get(CONF_NAME, DEFAULT_NAME)): str,
+        vol.Optional(
+            CONF_DEEP_SCAN,
+            default=current_values.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
+            description={"advanced": True},
+        ): bool,
+        vol.Optional(
+            CONF_MAX_REGISTERS_PER_REQUEST,
+            default=current_values.get(
+                CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+            ),
+            description={"selector": {"number": {"min": 1, "max": MAX_BATCH_REGISTERS, "step": 1}}},
+        ): int,
+    }
+
+
 def build_connection_schema(
     defaults: dict[str, Any],
     *,
@@ -188,19 +207,7 @@ def build_connection_schema(
         vol.Required(CONF_SLAVE_ID, default=slave_default): vol.All(
             vol.Coerce(int), vol.Range(min=0, max=247)
         ),
-        vol.Optional(CONF_NAME, default=current_values.get(CONF_NAME, DEFAULT_NAME)): str,
-        vol.Optional(
-            CONF_DEEP_SCAN,
-            default=current_values.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
-            description={"advanced": True},
-        ): bool,
-        vol.Optional(
-            CONF_MAX_REGISTERS_PER_REQUEST,
-            default=current_values.get(
-                CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
-            ),
-            description={"selector": {"number": {"min": 1, "max": MAX_BATCH_REGISTERS, "step": 1}}},
-        ): int,
+        **_build_scan_option_fields(current_values),
     }
 
     if connection_default in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU):
