@@ -42,7 +42,10 @@ jobs:
           python -m pip install homeassistant==${{ matrix.ha-version }} hacs
 
       - name: Ruff
-        run: ruff check .
+        run: ruff check custom_components tests tools
+
+      - name: Compile Python sources
+        run: python -m compileall -q custom_components/thessla_green_modbus tests tools
 
       - name: Compare registers with vendor reference
         run: python tools/compare_registers_with_reference.py
