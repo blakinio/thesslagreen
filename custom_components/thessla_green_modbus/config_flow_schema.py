@@ -46,6 +46,80 @@ def _option_default(prefix: str, options: list[Any], value: Any, fallback: Any) 
     return target
 
 
+def _resolve_defaults(
+    current_values: dict[str, Any], discovered_host: str | None
+) -> dict[str, Any]:
+    """Resolve normalized defaults used by schema sections."""
+    connection_default = current_values.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
+    port_default = current_values.get(CONF_PORT, DEFAULT_PORT)
+    normalized_type, resolved_mode = resolve_connection_settings(
+        connection_default,
+        current_values.get("connection_mode"),
+        port_default,
+    )
+    if normalized_type == CONNECTION_TYPE_TCP and resolved_mode == "tcp_rtu":
+        connection_default = CONNECTION_TYPE_TCP_RTU
+    else:
+        connection_default = normalized_type
+    return {
+        "connection_default": connection_default,
+        "host_default": current_values.get(CONF_HOST, discovered_host or ""),
+        "port_default": port_default,
+        "slave_default": current_values.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID),
+        "serial_port_default": current_values.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT),
+    }
+
+
+def _build_connection_type_field(connection_default: str) -> dict[Any, Any]:
+    return {
+        vol.Required(
+            CONF_CONNECTION_TYPE,
+            default=connection_default,
+            description={
+                "selector": {
+                    "select": {
+                        "options": [
+                            {"value": CONNECTION_TYPE_TCP, "label": f"{DOMAIN}.connection_type_tcp"},
+                            {
+                                "value": CONNECTION_TYPE_TCP_RTU,
+                                "label": f"{DOMAIN}.connection_type_tcp_rtu",
+                            },
+                            {"value": CONNECTION_TYPE_RTU, "label": f"{DOMAIN}.connection_type_rtu"},
+                        ]
+                    }
+                }
+            },
+        ): vol.In({CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU, CONNECTION_TYPE_RTU})
+    }
+
+
+def _build_tcp_fields(host_default: str, port_default: int) -> dict[Any, Any]:
+    return {
+        vol.Required(CONF_HOST, default=host_default): str,
+        vol.Required(CONF_PORT, default=port_default): vol.All(
+            vol.Coerce(int), vol.Range(min=1, max=65535)
+        ),
+    }
+
+
+def _build_rtu_fields(
+    serial_port_default: str,
+    *,
+    baud_default: Any,
+    baud_validator: Any,
+    parity_default: Any,
+    parity_validator: Any,
+    stop_bits_default: Any,
+    stop_bits_validator: Any,
+) -> dict[Any, Any]:
+    return {
+        vol.Required(CONF_SERIAL_PORT, default=serial_port_default): str,
+        vol.Required(CONF_BAUD_RATE, default=baud_default): baud_validator,
+        vol.Required(CONF_PARITY, default=parity_default): parity_validator,
+        vol.Required(CONF_STOP_BITS, default=stop_bits_default): stop_bits_validator,
+    }
+
+
 def build_connection_schema(
     defaults: dict[str, Any],
     *,
@@ -57,21 +131,12 @@ def build_connection_schema(
     """Return schema for connection details with provided defaults."""
     current_values = defaults or {}
 
-    connection_default = current_values.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-    host_default = current_values.get(CONF_HOST, discovered_host or "")
-    port_default = current_values.get(CONF_PORT, DEFAULT_PORT)
-    slave_default = current_values.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)
-    connection_mode_default = current_values.get("connection_mode")
-
-    normalized_type, resolved_mode = resolve_connection_settings(
-        connection_default, connection_mode_default, port_default
-    )
-    if normalized_type == CONNECTION_TYPE_TCP and resolved_mode == "tcp_rtu":
-        connection_default = CONNECTION_TYPE_TCP_RTU
-    else:
-        connection_default = normalized_type
-
-    serial_port_default = current_values.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT)
+    resolved_defaults = _resolve_defaults(current_values, discovered_host)
+    connection_default = resolved_defaults["connection_default"]
+    host_default = resolved_defaults["host_default"]
+    port_default = resolved_defaults["port_default"]
+    slave_default = resolved_defaults["slave_default"]
+    serial_port_default = resolved_defaults["serial_port_default"]
 
     baud_options = modbus_baud_rates if modbus_baud_rates is not None else []
     parity_options = modbus_parity if modbus_parity is not None else []
@@ -119,30 +184,7 @@ def build_connection_schema(
     )
 
     data_schema: dict[Any, Any] = {
-        vol.Required(
-            CONF_CONNECTION_TYPE,
-            default=connection_default,
-            description={
-                "selector": {
-                    "select": {
-                        "options": [
-                            {
-                                "value": CONNECTION_TYPE_TCP,
-                                "label": f"{DOMAIN}.connection_type_tcp",
-                            },
-                            {
-                                "value": CONNECTION_TYPE_TCP_RTU,
-                                "label": f"{DOMAIN}.connection_type_tcp_rtu",
-                            },
-                            {
-                                "value": CONNECTION_TYPE_RTU,
-                                "label": f"{DOMAIN}.connection_type_rtu",
-                            },
-                        ]
-                    }
-                }
-            },
-        ): vol.In({CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU, CONNECTION_TYPE_RTU}),
+        **_build_connection_type_field(connection_default),
         vol.Required(CONF_SLAVE_ID, default=slave_default): vol.All(
             vol.Coerce(int), vol.Range(min=0, max=247)
         ),
@@ -162,22 +204,18 @@ def build_connection_schema(
     }
 
     if connection_default in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU):
-        data_schema.update(
-            {
-                vol.Required(CONF_HOST, default=host_default): str,
-                vol.Required(CONF_PORT, default=port_default): vol.All(
-                    vol.Coerce(int), vol.Range(min=1, max=65535)
-                ),
-            }
-        )
+        data_schema.update(_build_tcp_fields(host_default, port_default))
     else:
         data_schema.update(
-            {
-                vol.Required(CONF_SERIAL_PORT, default=serial_port_default): str,
-                vol.Required(CONF_BAUD_RATE, default=baud_default): baud_validator,
-                vol.Required(CONF_PARITY, default=parity_default): parity_validator,
-                vol.Required(CONF_STOP_BITS, default=stop_bits_default): stop_bits_validator,
-            }
+            _build_rtu_fields(
+                serial_port_default,
+                baud_default=baud_default,
+                baud_validator=baud_validator,
+                parity_default=parity_default,
+                parity_validator=parity_validator,
+                stop_bits_default=stop_bits_default,
+                stop_bits_validator=stop_bits_validator,
+            )
         )
 
     return vol.Schema(data_schema)
