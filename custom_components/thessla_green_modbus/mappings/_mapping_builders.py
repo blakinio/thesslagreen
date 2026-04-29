@@ -131,6 +131,55 @@ def _build_select_mapping(register: str, states: dict[str, int]) -> dict[str, An
     }
 
 
+def _route_enum_mapping(
+    target: str | None,
+    register: str,
+    payload: dict[str, Any] | None,
+    sensor_mappings: dict[str, Any],
+    binary_mappings: dict[str, Any],
+    switch_mappings: dict[str, Any],
+    select_mappings: dict[str, Any],
+) -> bool:
+    """Apply enum-classification result to mapping stores and return handled state."""
+    if target == "switch":
+        switch_mappings.setdefault(register, payload)
+        return True
+    if target == "binary":
+        binary_mappings.setdefault(register, payload)
+        return True
+    if target == "select":
+        select_mappings.setdefault(register, payload)
+        return True
+    if target == "sensor":
+        sensor_mappings.setdefault(register, payload)
+        return True
+    return False
+
+
+def _route_min_max_mapping(
+    target: str | None,
+    register: str,
+    payload: dict[str, Any] | None,
+    number_mappings: dict[str, Any],
+    binary_mappings: dict[str, Any],
+    switch_mappings: dict[str, Any],
+    select_mappings: dict[str, Any],
+) -> bool:
+    """Apply min/max-classification result to mapping stores and return handled state."""
+    if target == "switch":
+        switch_mappings.setdefault(register, payload)
+        return True
+    if target == "binary":
+        binary_mappings.setdefault(register, payload)
+        return True
+    if target == "select":
+        select_mappings.setdefault(register, payload)
+        return True
+    if target == "number":
+        number_mappings.setdefault(register, payload)
+        return True
+    return False
+
 
 
 def _resolve_parent_child_mappings(parent: Any) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
@@ -528,14 +577,15 @@ def _extend_entity_mappings_from_registers() -> None:
                 binary_keys,
                 select_keys,
             )
-            if target == "switch":
-                switch_mappings.setdefault(register, payload)
-            elif target == "binary":
-                binary_mappings.setdefault(register, payload)
-            elif target == "select":
-                select_mappings.setdefault(register, payload)
-            elif target == "sensor":
-                sensor_mappings.setdefault(register, payload)
+            _route_enum_mapping(
+                target,
+                register,
+                payload,
+                sensor_mappings,
+                binary_mappings,
+                switch_mappings,
+                select_mappings,
+            )
             continue
 
         target, payload = _classify_min_max_mapping(
@@ -552,17 +602,15 @@ def _extend_entity_mappings_from_registers() -> None:
             select_keys,
             number_keys,
         )
-        if target == "switch":
-            switch_mappings.setdefault(register, payload)
-            continue
-        if target == "binary":
-            binary_mappings.setdefault(register, payload)
-            continue
-        if target == "select":
-            select_mappings.setdefault(register, payload)
-            continue
-        if target == "number":
-            number_mappings.setdefault(register, payload)
+        _route_min_max_mapping(
+            target,
+            register,
+            payload,
+            number_mappings,
+            binary_mappings,
+            switch_mappings,
+            select_mappings,
+        )
 
 
 
@@ -584,4 +632,6 @@ __all__ = [
     "_parse_info_states",
     "_resolve",
     "_resolve_parent_child_mappings",
+    "_route_enum_mapping",
+    "_route_min_max_mapping",
 ]
