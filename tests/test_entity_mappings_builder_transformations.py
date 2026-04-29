@@ -1,12 +1,49 @@
 """Tests for extracted transformation helpers in mapping builders."""
 
 from custom_components.thessla_green_modbus.mappings._mapping_builders import (
+    _build_base_translation_mapping,
     _classify_enum_mapping,
     _classify_min_max_mapping,
+    _diag_register_candidates,
+    _is_binary_state_pair,
+    _iter_bitmask_binary_entries,
     _resolve_parent_child_mappings,
     _route_enum_mapping,
     _route_min_max_mapping,
 )
+
+
+def test_build_base_translation_mapping_shape() -> None:
+    assert _build_base_translation_mapping("pump", "holding_registers") == {
+        "translation_key": "pump",
+        "register_type": "holding_registers",
+    }
+
+
+def test_is_binary_state_pair_detects_only_01_pairs() -> None:
+    assert _is_binary_state_pair({"off": 0, "on": 1}) is True
+    assert _is_binary_state_pair({"off": 0, "on": 2}) is False
+
+
+def test_diag_register_candidates_includes_alarm_error_and_prefixed() -> None:
+    candidates = _diag_register_candidates({"s_x", "e_1", "normal", "temp"})
+    assert {"alarm", "error", "s_x", "e_1"}.issubset(candidates)
+
+
+def test_iter_bitmask_binary_entries_named_and_fallback() -> None:
+    reg = type("Reg", (), {"name": "status", "function": 3, "bits": [{"name": "Pump On"}, None]})
+    entries = dict(_iter_bitmask_binary_entries(reg))
+    assert entries["status_pump_on"] == {
+        "translation_key": "status_pump_on",
+        "register_type": "holding_registers",
+        "register": "status",
+        "bit": 1,
+    }
+    assert entries["status"] == {
+        "translation_key": "status",
+        "register_type": "holding_registers",
+        "bitmask": True,
+    }
 
 
 def test_resolve_parent_child_mappings_returns_parent_dicts() -> None:
