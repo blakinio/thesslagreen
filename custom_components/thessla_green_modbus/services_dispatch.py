@@ -77,3 +77,20 @@ async def write_mapped_optional_register(
         write_register_func,
         logger,
     )
+
+
+async def write_register_batch(
+    coordinator: Any,
+    register_pairs: list[tuple[str, int]],
+    entity_id: str,
+    action: str,
+    write_register_func: Any,
+    logger: Any,
+    error_messages: dict[str, str],
+) -> bool:
+    """Write a sequence of register/value pairs and stop on first failure."""
+    for register_name, value in register_pairs:
+        if not await write_register_func(coordinator, register_name, value, entity_id, action):
+            logger.error(error_messages[register_name], entity_id)
+            return False
+    return True

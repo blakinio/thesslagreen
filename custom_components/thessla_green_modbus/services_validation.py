@@ -80,3 +80,28 @@ def normalize_modbus_options(normalize: Any, data: dict[str, Any]) -> tuple[str,
         normalize(parity) if parity else None,
         normalize(stop_bits) if stop_bits else None,
     )
+
+
+def reset_settings_registers(reset_type: str) -> list[tuple[str, int]]:
+    """Return reset register writes for selected reset type."""
+    mapping = {
+        "user_settings": [("hard_reset_settings", 1)],
+        "schedule_settings": [("hard_reset_schedule", 1)],
+        "all_settings": [("hard_reset_settings", 1), ("hard_reset_schedule", 1)],
+    }
+    return mapping[reset_type]
+
+
+def iter_modbus_parameter_writes(
+    port: str,
+    baud_rate: str | None,
+    parity: str | None,
+    stop_bits: str | None,
+) -> list[tuple[str, str | None, dict[str, int], str]]:
+    """Build normalized optional Modbus register writes."""
+    port_prefix = "uart_0" if port == "air_b" else "uart_1"
+    return [
+        (f"{port_prefix}_baud", baud_rate, BAUD_MAP, "Failed to set baud rate for %s"),
+        (f"{port_prefix}_parity", parity, PARITY_MAP, "Failed to set parity for %s"),
+        (f"{port_prefix}_stop", stop_bits, STOP_MAP, "Failed to set stop bits for %s"),
+    ]
