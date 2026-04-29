@@ -51,3 +51,29 @@ async def write_optional_register(
         logger.error(error_message, entity_id)
         return False
     return True
+
+
+async def write_mapped_optional_register(
+    coordinator: Any,
+    register_name: str,
+    option_value: str | None,
+    option_map: dict[str, int],
+    entity_id: str,
+    action: str,
+    error_message: str,
+    write_register_func: Any,
+    logger: Any,
+) -> bool:
+    """Write mapped register value when option is provided."""
+    if option_value is None:
+        return True
+    return await write_optional_register(
+        coordinator,
+        register_name,
+        option_map[option_value],
+        entity_id,
+        action,
+        error_message,
+        write_register_func,
+        logger,
+    )
