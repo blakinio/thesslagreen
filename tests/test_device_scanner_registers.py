@@ -1,8 +1,7 @@
-"""Register/value validation tests for device scanner."""
+"""Register decoding/formatting tests for device scanner."""
 
 from unittest.mock import patch
 
-import pytest
 from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
@@ -12,7 +11,10 @@ from custom_components.thessla_green_modbus.utils import (
     _decode_register_time,
 )
 
-pytestmark = pytest.mark.asyncio
+
+async def _make_scanner(**kwargs):
+    return await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 1, **kwargs)
+
 
 async def test_is_valid_register_value():
     """Test register value validation."""
@@ -62,7 +64,6 @@ async def test_is_valid_register_value():
     assert scanner._is_valid_register_value("schedule_summer_mon_1", 1024) is True
     assert scanner._is_valid_register_value("setting_winter_mon_1", 12844) is True
 
-
 async def test_decode_register_time():
     """Verify time decoding for HH:MM byte-encoded values."""
     assert _decode_register_time(1024) == 240
@@ -70,7 +71,6 @@ async def test_decode_register_time():
     assert _decode_register_time(4660) == 1132
     assert _decode_register_time(9312) is None
     assert _decode_register_time(2400) is None
-
 
 async def test_decode_bcd_time():
     """Verify time decoding for both BCD and decimal values."""
@@ -80,7 +80,6 @@ async def test_decode_bcd_time():
     assert _decode_bcd_time(9312) is None
     assert _decode_bcd_time(2400) is None
 
-
 async def test_decode_aatt_value():
     """Verify decoding of combined airflow and temperature settings."""
     assert _decode_aatt(15400) == {"airflow_pct": 60, "temp_c": 20.0}
@@ -88,21 +87,17 @@ async def test_decode_aatt_value():
     assert _decode_aatt(-1) is None
     assert _decode_aatt(65320) is None
 
-
 async def test_format_register_value_schedule():
     """Formatted schedule registers should render as HH:MM."""
     assert _format_register_value("schedule_summer_mon_1", 1557) == "06:15"
-
 
 async def test_format_register_value_manual_airing_le():
     """Little-endian manual airing times should decode correctly."""
     assert _format_register_value("manual_airing_time_to_start", 7688) == "08:30"
 
-
 async def test_format_register_value_airing_schedule():
     """Airing schedule registers should render as HH:MM."""
     assert _format_register_value("airing_summer_mon", 1557) == "06:15"
-
 
 async def test_format_register_value_airing_durations():
     """Airing mode duration registers should return raw minute values."""
@@ -112,14 +107,11 @@ async def test_format_register_value_airing_durations():
     assert _format_register_value("airing_switch_mode_off_delay", 10) == 10
     assert _format_register_value("airing_switch_coef", 2) == 2
 
-
 async def test_format_register_value_setting():
     """Formatted setting registers should show percent and temperature."""
     assert _format_register_value("setting_winter_mon_1", 15400) == "60% @ 20°C"
 
-
 async def test_format_register_value_invalid_time():
     """Invalid time registers should show raw hex with invalid marker."""
     assert _format_register_value("schedule_summer_mon_1", 9216) == "9216 (invalid)"
-
 

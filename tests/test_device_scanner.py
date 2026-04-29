@@ -196,6 +196,26 @@ async def test_temperature_register_unavailable_kept():
     assert "outside_temperature" not in result["available_registers"]["input_registers"]
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 async def test_scan_excludes_unavailable_temperature():
     """Temperature register with SENSOR_UNAVAILABLE should be included (sensor disconnected, register exists)."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
