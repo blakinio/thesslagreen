@@ -65,6 +65,42 @@ def _parse_info_states(info_text: str) -> dict[str, int]:
     return states
 
 
+def _is_register_mapped_anywhere(register: str, mappings: tuple[dict[str, Any], ...]) -> bool:
+    """Return True when *register* exists in any mapping dictionary."""
+    return any(_is_already_mapped(register, current_map) for current_map in mappings)
+
+
+def _build_problem_binary_mapping(register: str) -> dict[str, Any]:
+    """Return standard mapping payload for problem-style binary sensors."""
+    return {
+        "translation_key": register,
+        "icon": "mdi:alert-circle",
+        "register_type": "holding_registers",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+    }
+
+
+def _build_time_like_mapping(register: str) -> dict[str, Any]:
+    """Return standard mapping payload for time-like register entities."""
+    return {
+        "translation_key": register,
+        "icon": "mdi:clock-outline",
+        "register_type": "holding_registers",
+    }
+
+
+def _build_season_setting_mapping(register: str) -> dict[str, Any]:
+    """Return standard mapping payload for seasonal settings."""
+    from ..schedule_helpers import PERCENT_10_SELECT_STATES
+
+    return {
+        "translation_key": register,
+        "icon": "mdi:fan",
+        "register_type": "holding_registers",
+        "states": PERCENT_10_SELECT_STATES,
+    }
+
+
 def _get_parent() -> Any:
     """Return the parent mappings package module for attribute resolution.
 
@@ -280,8 +316,6 @@ def _extend_entity_mappings_from_registers() -> None:
     avoid creating unnamed "Rekuperator" fallback entities for reserved or
     undocumented registers.
     """
-    from ..schedule_helpers import PERCENT_10_SELECT_STATES
-
     _get_all = _resolve("get_all_registers", get_all_registers)
     _tkeys = _resolve("_load_translation_keys", _load_translation_keys)
     _num_tkeys = _resolve("_number_translation_keys", _number_translation_keys)
@@ -309,9 +343,9 @@ def _extend_entity_mappings_from_registers() -> None:
         if reg.function != 3 or not reg.name:
             continue
         register = reg.name
-        if any(
-            _is_already_mapped(register, current_map)
-            for current_map in (
+        if _is_register_mapped_anywhere(
+            register,
+            (
                 number_mappings,
                 sensor_mappings,
                 binary_mappings,
@@ -319,7 +353,7 @@ def _extend_entity_mappings_from_registers() -> None:
                 select_mappings,
                 text_mappings,
                 time_mappings,
-            )
+            ),
         ):
             continue
         if _is_mapped_as_binary_source(register, binary_mappings):
@@ -330,12 +364,7 @@ def _extend_entity_mappings_from_registers() -> None:
                 continue
             binary_mappings.setdefault(
                 register,
-                {
-                    "translation_key": register,
-                    "icon": "mdi:alert-circle",
-                    "register_type": "holding_registers",
-                    "device_class": BinarySensorDeviceClass.PROBLEM,
-                },
+                _build_problem_binary_mapping(register),
             )
             continue
 
@@ -347,20 +376,12 @@ def _extend_entity_mappings_from_registers() -> None:
             if register.startswith(_TIME_ENTITY_PREFIXES) and "W" in reg_access:
                 time_mappings.setdefault(
                     register,
-                    {
-                        "translation_key": register,
-                        "icon": "mdi:clock-outline",
-                        "register_type": "holding_registers",
-                    },
+                    _build_time_like_mapping(register),
                 )
             else:
                 sensor_mappings.setdefault(
                     register,
-                    {
-                        "translation_key": register,
-                        "icon": "mdi:clock-outline",
-                        "register_type": "holding_registers",
-                    },
+                    _build_time_like_mapping(register),
                 )
             continue
 
@@ -369,12 +390,7 @@ def _extend_entity_mappings_from_registers() -> None:
             if "W" in reg_access:
                 select_mappings.setdefault(
                     register,
-                    {
-                        "translation_key": register,
-                        "icon": "mdi:fan",
-                        "register_type": "holding_registers",
-                        "states": PERCENT_10_SELECT_STATES,
-                    },
+                    _build_season_setting_mapping(register),
                 )
             else:
                 sensor_mappings.setdefault(
@@ -508,11 +524,15 @@ def _extend_entity_mappings_from_registers() -> None:
 
 __all__ = [
     "_TIME_ENTITY_PREFIXES",
+    "_build_problem_binary_mapping",
+    "_build_season_setting_mapping",
+    "_build_time_like_mapping",
     "_extend_entity_mappings_from_registers",
     "_get_parent",
     "_is_already_mapped",
     "_is_mapped_as_binary_source",
     "_is_problem_register",
+    "_is_register_mapped_anywhere",
     "_load_discrete_mappings",
     "_load_number_mappings",
     "_parse_info_states",
