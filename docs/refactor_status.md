@@ -23,27 +23,18 @@ The following constraints are active and must be preserved:
 
 1. No legacy modules.
 2. No compatibility shims.
-3. No re-export shims.
+3. No re-export-only modules.
 4. No proxy modules.
 5. `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant.
-6. `coordinator.py` must not be moved yet.
 
-## Current transitional note
+## Coordinator migration status
 
-Current active coordinator package:
+Dedicated migration PR completed. Current canonical state:
 
-- `custom_components/thessla_green_modbus/coordinator/`
-
-Current repository state:
-
-- `custom_components/thessla_green_modbus/coordinator/` is present and contains active coordinator helper modules.
-- `custom_components/thessla_green_modbus/coordinator.py` remains the active top-level coordinator entrypoint in this transition stage.
-
-Transition rule (current):
-
-- `coordinator.py` remains in place and must not be moved in this stage.
-- `coordinator.py` must remain in place in this stage even while `coordinator/` helpers exist.
-- Any future full migration of coordinator entrypoint/import ownership must update imports directly and must not use compatibility shims, re-export shims, or proxy modules.
+- `custom_components/thessla_green_modbus/coordinator/` exists and is the coordinator package.
+- `custom_components/thessla_green_modbus/coordinator/coordinator.py` is the coordinator implementation module inside the package.
+- `custom_components/thessla_green_modbus/coordinator.py` has been removed.
+- Imports must target canonical package modules directly (no compatibility shims/proxies/re-export-only modules).
 
 ## Documentation policy for refactor work
 

@@ -37,18 +37,17 @@ Repozytorium jest w trakcie etapowej refaktoryzacji. Obok struktury docelowej ws
 Wymóg bieżący:
 
 ```text
-coordinator.py został przeniesiony do pakietu coordinator/
+coordinator package migration is completed and active.
 ```
 
 Stan przejściowy (aktualny):
 
 ```text
-custom_components/thessla_green_modbus/coordinator.py      # obecna aktywna lokalizacja
-custom_components/thessla_green_modbus/coordinator/         # NIE występuje i nie może być odtwarzany
+custom_components/thessla_green_modbus/coordinator/         # obecna aktywna lokalizacja (canonical)
+custom_components/thessla_green_modbus/coordinator.py       # usunięty
 ```
 
-Migracja do docelowego katalogu `coordinator/` jest planem przyszłym i wymaga osobnego PR.
-W takim PR importy muszą zostać zaktualizowane bezpośrednio, bez shimów kompatybilności i bez modułów proxy.
+Migracja do `coordinator/` została wykonana w dedykowanym PR. Importy powinny wskazywać moduły kanoniczne bez shimów/proxy/re-export-only modules.
 
 Niezmiennie obowiązuje zakaz tworzenia:
 
