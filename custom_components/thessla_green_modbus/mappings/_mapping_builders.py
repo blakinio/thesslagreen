@@ -101,6 +101,36 @@ def _build_season_setting_mapping(register: str) -> dict[str, Any]:
     }
 
 
+def _build_switch_mapping(register: str) -> dict[str, Any]:
+    """Return standard mapping payload for writable on/off style registers."""
+    return {
+        "icon": "mdi:toggle-switch",
+        "register": register,
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": register,
+    }
+
+
+def _build_binary_toggle_mapping(register: str) -> dict[str, Any]:
+    """Return standard mapping payload for read-only on/off style registers."""
+    return {
+        "translation_key": register,
+        "icon": "mdi:checkbox-marked-circle-outline",
+        "register_type": "holding_registers",
+    }
+
+
+def _build_select_mapping(register: str, states: dict[str, int]) -> dict[str, Any]:
+    """Return standard mapping payload for select entities based on states."""
+    return {
+        "icon": "mdi:format-list-bulleted",
+        "translation_key": register,
+        "states": states,
+        "register_type": "holding_registers",
+    }
+
+
 def _get_parent() -> Any:
     """Return the parent mappings package module for attribute resolution.
 
@@ -419,36 +449,21 @@ def _extend_entity_mappings_from_registers() -> None:
                         continue
                     switch_mappings.setdefault(
                         register,
-                        {
-                            "icon": "mdi:toggle-switch",
-                            "register": register,
-                            "register_type": "holding_registers",
-                            "category": None,
-                            "translation_key": register,
-                        },
+                        _build_switch_mapping(register),
                     )
                 else:
                     if register not in binary_keys:
                         continue
                     binary_mappings.setdefault(
                         register,
-                        {
-                            "translation_key": register,
-                            "icon": "mdi:checkbox-marked-circle-outline",
-                            "register_type": "holding_registers",
-                        },
+                        _build_binary_toggle_mapping(register),
                     )
             elif "W" in access:
                 if register not in select_keys:
                     continue
                 select_mappings.setdefault(
                     register,
-                    {
-                        "icon": "mdi:format-list-bulleted",
-                        "translation_key": register,
-                        "states": enum_states,
-                        "register_type": "holding_registers",
-                    },
+                    _build_select_mapping(register, enum_states),
                 )
             else:
                 sensor_mappings.setdefault(
@@ -468,24 +483,14 @@ def _extend_entity_mappings_from_registers() -> None:
                         continue
                     switch_mappings.setdefault(
                         register,
-                        {
-                            "icon": "mdi:toggle-switch",
-                            "register": register,
-                            "register_type": "holding_registers",
-                            "category": None,
-                            "translation_key": register,
-                        },
+                        _build_switch_mapping(register),
                     )
                 else:
                     if register not in binary_keys:
                         continue
                     binary_mappings.setdefault(
                         register,
-                        {
-                            "translation_key": register,
-                            "icon": "mdi:checkbox-marked-circle-outline",
-                            "register_type": "holding_registers",
-                        },
+                        _build_binary_toggle_mapping(register),
                     )
                 continue
 
@@ -496,12 +501,7 @@ def _extend_entity_mappings_from_registers() -> None:
                         continue
                     select_mappings.setdefault(
                         register,
-                        {
-                            "icon": "mdi:format-list-bulleted",
-                            "translation_key": register,
-                            "states": states,
-                            "register_type": "holding_registers",
-                        },
+                        _build_select_mapping(register, states),
                     )
                     continue
 
