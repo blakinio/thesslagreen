@@ -87,6 +87,48 @@ def _log_read_failure(kind: str, start: int, end: int, retry: int) -> None:
     _LOGGER.error("Failed to read %s registers %d-%d after %d retries", kind, start, end, retry)
 
 
+def _normalize_register_result(response: Any) -> list[int]:
+    """Normalize a successful register response payload."""
+    return cast(list[int], response.registers)
+
+
+def _handle_terminal_read_failure(scanner: Any, register_type: str, start: int, end: int) -> None:
+    """Mark all addresses in a terminally failed read range."""
+    _mark_failed_addresses(scanner, register_type, start, end)
+
+
+def _should_skip_input_range(scanner: Any, start: int, end: int, skip_cache: bool) -> tuple[bool, int, int]:
+    """Return (skip, mark_start, mark_end) for unsupported/cached input ranges."""
+    if skip_cache:
+        return False, start, end
+    if _is_unsupported_range(scanner._unsupported_input_ranges, start, end):
+        return True, start, end
+    cached_failed_range = _expand_cached_failed_range(
+        start=start,
+        end=end,
+        failed_registers=scanner._failed_input,
+    )
+    if cached_failed_range is None:
+        return False, start, end
+    return True, cached_failed_range[0], cached_failed_range[1]
+
+
+def _should_skip_holding_range(scanner: Any, start: int, end: int, skip_cache: bool) -> tuple[bool, int, int]:
+    """Return (skip, mark_start, mark_end) for unsupported/cached holding ranges."""
+    if skip_cache:
+        return False, start, end
+    if _is_unsupported_range(scanner._unsupported_holding_ranges, start, end):
+        return True, start, end
+    cached_failed_range = _expand_cached_failed_range(
+        start=start,
+        end=end,
+        failed_registers=scanner._failed_holding,
+    )
+    if cached_failed_range is None:
+        return False, start, end
+    return True, cached_failed_range[0], cached_failed_range[1]
+
+
 async def read_input(
     scanner: Any,
     client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
@@ -100,24 +142,12 @@ async def read_input(
     start = address
     end = address + count - 1
 
-    if not skip_cache:
-        for skip_start, skip_end in scanner._unsupported_input_ranges:
-            if skip_start <= start and end <= skip_end:
-                _mark_failed_addresses(scanner, "input_registers", start, end)
-                return None
-    cached_failed_range = (
-        None
-        if skip_cache
-        else _expand_cached_failed_range(
-            start=start, end=end, failed_registers=scanner._failed_input
-        )
-    )
-    if cached_failed_range is not None:
-        skip_start, skip_end = cached_failed_range
-        if (skip_start, skip_end) not in scanner._input_skip_log_ranges:
+    should_skip, skip_start, skip_end = _should_skip_input_range(scanner, start, end, skip_cache)
+    if should_skip:
+        if (skip_start, skip_end) != (start, end) and (skip_start, skip_end) not in scanner._input_skip_log_ranges:
             _LOGGER.debug("Skipping cached failed input registers %d-%d", skip_start, skip_end)
             scanner._input_skip_log_ranges.add((skip_start, skip_end))
-        _mark_failed_addresses(scanner, "input_registers", skip_start, skip_end)
+        _handle_terminal_read_failure(scanner, "input_registers", skip_start, skip_end)
         return None
 
     transport, client = resolve_transport_and_client(scanner, client)
@@ -209,7 +239,7 @@ async def read_input(
         _log_read_abort("input", start, end, attempted_reads, scanner.retry)
         return None
 
-    _mark_failed_addresses(scanner, "input_registers", start, end)
+    _handle_terminal_read_failure(scanner, "input_registers", start, end)
     _log_read_failure("input", start, end, scanner.retry)
     return None
 
@@ -261,20 +291,10 @@ async def read_holding(
     start = address
     end = address + count - 1
 
-    if not skip_cache:
-        if _is_unsupported_range(scanner._unsupported_holding_ranges, start, end):
-            _mark_failed_addresses(scanner, "holding_registers", start, end)
-            return None
-        cached_failed_range = _expand_cached_failed_range(
-            start=start,
-            end=end,
-            failed_registers=scanner._failed_holding,
-        )
-        if cached_failed_range is not None:
-            cached_start, cached_end = cached_failed_range
-            if cached_start <= start and end <= cached_end:
-                _mark_failed_addresses(scanner, "holding_registers", cached_start, cached_end)
-                return None
+    should_skip, skip_start, skip_end = _should_skip_holding_range(scanner, start, end, skip_cache)
+    if should_skip:
+        _handle_terminal_read_failure(scanner, "holding_registers", skip_start, skip_end)
+        return None
 
     failures = scanner._holding_failures.get(address, 0)
     if failures >= scanner.retry:
@@ -339,7 +359,7 @@ async def read_holding(
                     scanner._mark_holding_supported(address)
                 if address in scanner._holding_failures:
                     del scanner._holding_failures[address]
-                return cast(list[int], response.registers)
+                return _normalize_register_result(response)
         except TimeoutError:
             _LOGGER.warning(
                 "Timeout reading holding %d (attempt %d/%d)",
@@ -389,7 +409,7 @@ async def read_holding(
         return None
 
     _log_read_failure("holding", start, end, scanner.retry)
-    _mark_failed_addresses(scanner, "holding_registers", start, end)
+    _handle_terminal_read_failure(scanner, "holding_registers", start, end)
     return None
 
 
