@@ -4,6 +4,8 @@ from custom_components.thessla_green_modbus.mappings._mapping_builders import (
     _classify_enum_mapping,
     _classify_min_max_mapping,
     _resolve_parent_child_mappings,
+    _route_enum_mapping,
+    _route_min_max_mapping,
 )
 
 
@@ -81,3 +83,37 @@ def test_classify_min_max_mapping_select_then_number() -> None:
         "step": 5,
         "scale": 1,
     }
+
+
+def test_route_enum_mapping_routes_to_expected_bucket() -> None:
+    sensor: dict[str, dict[str, object]] = {}
+    binary: dict[str, dict[str, object]] = {}
+    switch: dict[str, dict[str, object]] = {}
+    select: dict[str, dict[str, object]] = {}
+    payload = {"translation_key": "mode", "states": {"auto": 2}}
+
+    handled = _route_enum_mapping(
+        "select", "mode", payload, sensor, binary, switch, select
+    )
+    assert handled is True
+    assert select == {"mode": payload}
+    assert sensor == {}
+    assert binary == {}
+    assert switch == {}
+
+
+def test_route_min_max_mapping_routes_to_expected_bucket() -> None:
+    number: dict[str, dict[str, object]] = {}
+    binary: dict[str, dict[str, object]] = {}
+    switch: dict[str, dict[str, object]] = {}
+    select: dict[str, dict[str, object]] = {}
+    payload = {"unit": "%", "min": 0, "max": 100}
+
+    handled = _route_min_max_mapping(
+        "number", "speed", payload, number, binary, switch, select
+    )
+    assert handled is True
+    assert number == {"speed": payload}
+    assert binary == {}
+    assert switch == {}
+    assert select == {}
