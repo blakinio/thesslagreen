@@ -12,6 +12,7 @@ from custom_components.thessla_green_modbus.services_dispatch import (
     write_optional_register,
     write_register,
     write_register_batch,
+    write_register_steps,
 )
 from custom_components.thessla_green_modbus.services_validation import (
     BAUD_MAP,
@@ -133,6 +134,29 @@ async def test_write_register_batch_logs_and_stops_on_failure():
     assert result is False
     assert write_func.await_count == 2
     logger.error.assert_called_once_with("err2 %s", "climate.a")
+
+
+@pytest.mark.asyncio
+async def test_write_register_steps_skips_optional_none_and_stops_on_failure():
+    write_func = AsyncMock(side_effect=[True, False])
+    logger = SimpleNamespace(error=AsyncMock())
+
+    result = await write_register_steps(
+        object(),
+        [
+            ("required", 1, False, "required err %s"),
+            ("optional", None, True, "optional err %s"),
+            ("required_2", 2, False, "required2 err %s"),
+        ],
+        "climate.a",
+        "action",
+        write_func,
+        logger,
+    )
+
+    assert result is False
+    assert write_func.await_count == 2
+    logger.error.assert_called_once_with("required2 err %s", "climate.a")
 
 
 def test_reset_settings_registers_all_settings():

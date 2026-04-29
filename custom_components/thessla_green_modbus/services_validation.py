@@ -22,6 +22,8 @@ BAUD_MAP = {
 }
 PARITY_MAP = {"none": 0, "even": 1, "odd": 2}
 STOP_MAP = {"1": 0, "2": 1}
+BYPASS_MODE_MAP = {"auto": 0, "open": 1, "closed": 2}
+GWC_MODE_MAP = {"off": 0, "auto": 1, "forced": 2}
 
 
 def validate_bypass_temperature_range(data: dict[str, Any]) -> dict[str, Any]:

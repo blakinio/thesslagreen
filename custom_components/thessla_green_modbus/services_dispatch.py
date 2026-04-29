@@ -94,3 +94,25 @@ async def write_register_batch(
             logger.error(error_messages[register_name], entity_id)
             return False
     return True
+
+
+async def write_register_steps(
+    coordinator: Any,
+    steps: list[tuple[str, object, bool, str]],
+    entity_id: str,
+    action: str,
+    write_register_func: Any,
+    logger: Any,
+) -> bool:
+    """Write required/optional register steps and stop on first failure.
+
+    Each step is ``(register_name, value, optional, error_message)``.
+    Optional values are skipped when ``value`` is ``None``.
+    """
+    for register_name, value, optional, error_message in steps:
+        if optional and value is None:
+            continue
+        if not await write_register_func(coordinator, register_name, value, entity_id, action):
+            logger.error(error_message, entity_id)
+            return False
+    return True
