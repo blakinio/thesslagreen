@@ -1601,7 +1601,7 @@
           "name": "Czas zakończenia"
         },
         "period": {
-          "description": "Okres dnia (1 lub 2)",
+          "description": "Numer przedziału dnia (1-4)",
           "name": "Okres",
           "selector": {
             "select": {
@@ -1611,6 +1611,10 @@
               }
             }
           }
+        },
+        "season": {
+          "description": "Wybierz bank harmonogramu lato/zima",
+          "name": "Sezon"
         },
         "start_time": {
           "description": "Czas rozpoczęcia okresu (HH:MM)",
@@ -1801,6 +1805,12 @@
     },
     "sync_time": {
       "description": "Synchronizuje zegar rekuperatora AirPack z aktualnym czasem Home Assistant. Przydatne po zaniku zasilania.",
+      "fields": {
+        "entity_id": {
+          "description": "Encja climate urządzenia AirPack.",
+          "name": "Encja"
+        }
+      },
       "name": "Synchronizuj zegar urządzenia"
     },
     "refresh_device_data": {
