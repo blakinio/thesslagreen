@@ -59,7 +59,9 @@ from .config_flow_runtime import (
 )
 from .config_flow_runtime import run_with_retry as _run_with_retry_impl
 from .config_flow_schema import build_connection_schema as _build_connection_schema_impl
+from .config_flow_steps import extract_discovered_state as _extract_discovered_state_impl
 from .config_flow_steps import merge_options_payload as _merge_options_payload_impl
+from .config_flow_steps import resolve_reauth_defaults as _resolve_reauth_defaults_impl
 from .config_flow_steps import validate_options_submission as _validate_options_submission_impl
 from .config_flow_user_submit import process_user_submission as _process_user_submission_impl
 from .config_flow_validation import process_scan_capabilities as _process_scan_capabilities_impl
@@ -388,8 +390,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
             )
             if info is not None:
                 self._data = user_input
-                self._device_info = info.get("device_info", {})
-                self._scan_result = info.get("scan_result", {})
+                self._device_info, self._scan_result = _extract_discovered_state_impl(info)
 
                 await self.async_set_unique_id(self._build_unique_id(user_input))
                 self._abort_if_unique_id_configured()
@@ -414,7 +415,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
 
         defaults: dict[str, Any] = {}
         if entry is not None:
-            defaults = {**entry.options, **entry.data}
+            defaults = _resolve_reauth_defaults_impl(entry.data, entry.options)
 
         if self._tg_flow_reauth_entry_id is None:
             self._tg_flow_reauth_entry_id = entry.entry_id if entry else None
@@ -434,8 +435,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
             )
             if info is not None:
                 self._data = user_input
-                self._device_info = info.get("device_info", {})
-                self._scan_result = info.get("scan_result", {})
+                self._device_info, self._scan_result = _extract_discovered_state_impl(info)
                 return await self.async_step_reauth_confirm()
             errors.update(submit_errors)
 

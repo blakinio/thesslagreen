@@ -28,3 +28,16 @@ def merge_options_payload(
     merged = dict(existing_options or {})
     merged.update(dict(user_input))
     return merged
+
+
+def extract_discovered_state(info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return device_info and scan_result dictionaries from validation output."""
+    return dict(info.get("device_info", {})), dict(info.get("scan_result", {}))
+
+
+def resolve_reauth_defaults(
+    entry_data: dict[str, Any] | None,
+    entry_options: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Build reauth defaults from config entry payloads."""
+    return {**(entry_options or {}), **(entry_data or {})}

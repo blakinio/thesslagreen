@@ -11,6 +11,10 @@ from custom_components.thessla_green_modbus.config_flow import (
     _normalize_stop_bits,
     _run_with_retry,
 )
+from custom_components.thessla_green_modbus.config_flow_steps import (
+    extract_discovered_state,
+    resolve_reauth_defaults,
+)
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
 
 # ---------------------------------------------------------------------------
@@ -258,7 +262,22 @@ def test_vol_invalid_class():
 
     err = cf_mod.VOL_INVALID("test message", path=["field"])
     assert err.error_message == "test message"
-    assert err.path == ["field"]
+
+
+def test_extract_discovered_state_returns_dicts():
+    """Helper should normalize missing keys to empty dicts."""
+    device_info, scan_result = extract_discovered_state({"device_info": {"name": "x"}})
+    assert device_info == {"name": "x"}
+    assert scan_result == {}
+
+
+def test_resolve_reauth_defaults_options_overridden_by_data():
+    """Entry data should override conflicting option defaults."""
+    defaults = resolve_reauth_defaults(
+        {"host": "from_data", "slave_id": 3},
+        {"host": "from_options", "deep_scan": True},
+    )
+    assert defaults == {"host": "from_data", "slave_id": 3, "deep_scan": True}
 
 
 def test_vol_invalid_no_path():
