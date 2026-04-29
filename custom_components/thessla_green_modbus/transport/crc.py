@@ -12,5 +12,10 @@ def crc16(data: bytes) -> int:
     return crc & 0xFFFF
 
 
+def crc16_bytes(data: bytes) -> bytes:
+    """Return Modbus CRC16 serialized in little-endian order."""
+    return crc16(data).to_bytes(2, "little")
+
+
 def append_crc(data: bytes) -> bytes:
-    return data + crc16(data).to_bytes(2, "little")
+    return data + crc16_bytes(data)
