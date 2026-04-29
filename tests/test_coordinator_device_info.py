@@ -1,58 +1,47 @@
-"""Tests for coordinator device-info/scan helper extraction."""
+"""Split coordinator coverage tests by behavior area."""
 
 from __future__ import annotations
 
-import asyncio
-import logging
-from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
-from custom_components.thessla_green_modbus._coordinator_device_info import (
-    run_device_scan,
-    warn_missing_device_info,
-)
+from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 
 
-class _DummyScanner:
-    def __init__(self) -> None:
-        self.closed = False
-
-    async def scan_device(self) -> dict[str, str]:
-        return {"model": "X"}
-
-    async def close(self) -> None:
-        self.closed = True
-
-
-def test_run_device_scan_applies_result_and_closes() -> None:
-    scanner = _DummyScanner()
-    applied: dict[str, str] = {}
-
-    async def _create() -> _DummyScanner:
-        return scanner
-
-    def _apply(result: dict[str, str]) -> None:
-        applied.update(result)
-
-    run_logger = logging.getLogger("test.run_device_scan")
-    asyncio.run(
-        run_device_scan(create_scanner=_create, apply_scan_result=_apply, logger=run_logger)
+def _make_coordinator(**kwargs) -> ThesslaGreenModbusCoordinator:
+    hass = MagicMock()
+    hass.async_add_executor_job = None
+    return ThesslaGreenModbusCoordinator.from_params(
+        hass=hass,
+        host="192.168.1.1",
+        port=502,
+        slave_id=1,
+        name="test",
+        scan_interval=30,
+        timeout=3,
+        retry=2,
+        **kwargs,
     )
 
-    assert applied == {"model": "X"}
-    assert scanner.closed is True
 
+def test_get_device_info_model_from_entry():
+    """get_device_info uses entry.options when device_info has no model (line 2539)."""
+    coord = _make_coordinator()
+    from unittest.mock import MagicMock
 
-def test_warn_missing_device_info_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
-    caplog.set_level("WARNING")
-    cfg = SimpleNamespace(host="127.0.0.1", port=502, slave_id=1)
+    entry = MagicMock()
+    entry.options = {"model": "Thessla Air 350"}
+    entry.data = {}
+    coord.entry = entry
+    coord.device_scan_result = {}
+    coord.device_info = {}
+    info = coord.get_device_info()
+    assert info["model"] == "Thessla Air 350"
 
-    warn_missing_device_info(
-        device_info={"model": "Unknown", "firmware": "Unknown"},
-        config=cfg,
-        device_name="Thessla",
-        logger=logging.getLogger("test.warn_missing"),
-        unknown_model="Unknown",
-    )
+def test_compat_device_info_getattr_key_error():
+    """_CompatDeviceInfo.__getattr__ raises AttributeError for missing key (lines 2552-2555)."""
+    coord = _make_coordinator()
+    info = coord.get_device_info()
+    with pytest.raises(AttributeError):
+        _ = info.nonexistent_attribute_xyz
 
-    assert any("missing model and firmware" in rec.getMessage().lower() for rec in caplog.records)
