@@ -25,7 +25,73 @@ from .io import is_request_cancelled_error
 
 _LOGGER = logging.getLogger(__name__)
 
+def _initialize_scan_tracking() -> tuple[dict[str, dict[int, Any]], dict[str, int]]:
+    """Create scan containers for unknown and scanned registers."""
+    return (
+        {
+            "input_registers": {},
+            "holding_registers": {},
+            "coil_registers": {},
+            "discrete_inputs": {},
+        },
+        {
+            "input_registers": 0,
+            "holding_registers": 0,
+            "coil_registers": 0,
+            "discrete_inputs": 0,
+        },
+    )
 
+
+def _should_run_full_scan(scanner: Any) -> bool:
+    """Select full vs named scan mode."""
+    return bool(scanner.full_register_scan)
+
+
+async def _accumulate_raw_registers(scanner: Any) -> dict[int, int]:
+    """Collect raw input registers for deep scan mode."""
+    raw_registers: dict[int, int] = {}
+    if not scanner.deep_scan:
+        return raw_registers
+    for start, count in scanner._group_registers_for_batch_read(list(range(287))):
+        data = (
+            await scanner._read_input(scanner._client, start, count)
+            if scanner._client is not None
+            else await scanner._read_input(None, start, count)
+        )
+        if data is None:
+            continue
+        for offset, value in enumerate(data):
+            raw_registers[start + offset] = value
+    return raw_registers
+
+
+def _build_scan_result(scanner: Any, *, device: ScannerDeviceInfo, caps: DeviceCapabilities, available_registers: dict[str, set[str]], unknown_registers: dict[str, dict[int, Any]], scanned_registers: dict[str, int], scan_blocks: dict[str, list[tuple[int, int]]], missing_registers: dict[str, dict[str, int]], scan_started: float, raw_registers: dict[int, int]) -> dict[str, Any]:
+    """Assemble the scan result payload."""
+    result: dict[str, Any] = {
+        "available_registers": available_registers,
+        "device_info": device.as_dict(),
+        "capabilities": caps.as_dict(),
+        "register_count": sum(len(v) for v in available_registers.values()),
+        "scan_blocks": scan_blocks,
+        "unknown_registers": unknown_registers,
+        "scanned_registers": scanned_registers,
+        "missing_registers": missing_registers,
+        "failed_addresses": {
+            "modbus_exceptions": {k: sorted(v) for k, v in scanner.failed_addresses["modbus_exceptions"].items() if v},
+            "invalid_values": {k: sorted(v) for k, v in scanner.failed_addresses["invalid_values"].items() if v},
+        },
+        "resolved_connection_mode": scanner._resolved_connection_mode,
+        "scan_stats": {
+            "total_attempts": sum(scanned_registers.values()),
+            "successful_reads": sum(len(v) for v in available_registers.values()),
+            "scan_duration": max(0.0001, time.monotonic() - scan_started),
+        },
+    }
+    if scanner.deep_scan:
+        result["raw_registers"] = raw_registers
+        result["total_addresses_scanned"] = len(raw_registers)
+    return result
 
 
 def _uses_custom_scan_impl(scanner: Any) -> bool:
@@ -191,20 +257,9 @@ async def scan(scanner: Any) -> dict[str, Any]:
         discrete_max,
     ) = scanner._select_scan_registers()
 
-    unknown_registers: dict[str, dict[int, Any]] = {
-        "input_registers": {},
-        "holding_registers": {},
-        "coil_registers": {},
-        "discrete_inputs": {},
-    }
-    scanned_registers: dict[str, int] = {
-        "input_registers": 0,
-        "holding_registers": 0,
-        "coil_registers": 0,
-        "discrete_inputs": 0,
-    }
+    unknown_registers, scanned_registers = _initialize_scan_tracking()
 
-    if scanner.full_register_scan:
+    if _should_run_full_scan(scanner):
         await scanner._run_full_scan(
             input_max,
             holding_max,
@@ -237,18 +292,7 @@ async def scan(scanner: Any) -> dict[str, Any]:
     )
     scanner._log_skipped_ranges()
 
-    raw_registers: dict[int, int] = {}
-    if scanner.deep_scan:
-        for start, count in scanner._group_registers_for_batch_read(list(range(287))):
-            data = (
-                await scanner._read_input(scanner._client, start, count)
-                if scanner._client is not None
-                else await scanner._read_input(None, start, count)
-            )
-            if data is None:
-                continue
-            for offset, value in enumerate(data):
-                raw_registers[start + offset] = value
+    raw_registers = await _accumulate_raw_registers(scanner)
 
     missing_registers = scanner._collect_missing_registers(
         input_registers, holding_registers, coil_registers, discrete_registers
@@ -266,35 +310,19 @@ async def scan(scanner: Any) -> dict[str, Any]:
         )
 
     available_registers = {key: set(value) for key, value in scanner.available_registers.items()}
-    result = {
-        "available_registers": available_registers,
-        "device_info": device.as_dict(),
-        "capabilities": caps.as_dict(),
-        "register_count": sum(len(v) for v in available_registers.values()),
-        "scan_blocks": scan_blocks,
-        "unknown_registers": unknown_registers,
-        "scanned_registers": scanned_registers,
-        "missing_registers": missing_registers,
-        "failed_addresses": {
-            "modbus_exceptions": {
-                k: sorted(v) for k, v in scanner.failed_addresses["modbus_exceptions"].items() if v
-            },
-            "invalid_values": {
-                k: sorted(v) for k, v in scanner.failed_addresses["invalid_values"].items() if v
-            },
-        },
-        "resolved_connection_mode": scanner._resolved_connection_mode,
-        "scan_stats": {
-            "total_attempts": sum(scanned_registers.values()),
-            "successful_reads": sum(len(v) for v in available_registers.values()),
-            "scan_duration": max(0.0001, time.monotonic() - scan_started),
-        },
-    }
-    if scanner.deep_scan:
-        result["raw_registers"] = raw_registers
-        result["total_addresses_scanned"] = len(raw_registers)
+    return _build_scan_result(
+        scanner,
+        device=device,
+        caps=caps,
+        available_registers=available_registers,
+        unknown_registers=unknown_registers,
+        scanned_registers=scanned_registers,
+        scan_blocks=scan_blocks,
+        missing_registers=missing_registers,
+        scan_started=scan_started,
+        raw_registers=raw_registers,
+    )
 
-    return result
 
 
 async def scan_device(scanner: Any) -> dict[str, Any]:
