@@ -131,6 +131,66 @@ def _build_select_mapping(register: str, states: dict[str, int]) -> dict[str, An
     }
 
 
+def _build_base_translation_mapping(register: str, register_type: str) -> dict[str, Any]:
+    """Return minimal mapping payload with translation key and register type."""
+    return {"translation_key": register, "register_type": register_type}
+
+
+def _is_binary_state_pair(states: dict[str, int]) -> bool:
+    """Return True when parsed states represent a 0/1 pair."""
+    return len(states) == 2 and set(states.values()) == {0, 1}
+
+
+def _diag_register_candidates(holding_regs: set[str]) -> set[str]:
+    """Return diagnostic/problem register names to force into binary mappings."""
+    diag_registers = {"alarm", "error"}
+    diag_registers.update(reg for reg in holding_regs if re.match(r"[se](?:_|\d)", reg))
+    return diag_registers
+
+
+def _iter_bitmask_binary_entries(reg: Any) -> list[tuple[str, dict[str, Any]]]:
+    """Build binary mapping entries derived from a bitmask register definition."""
+    func_map = {
+        1: "coil_registers",
+        2: "discrete_inputs",
+        3: "holding_registers",
+        4: "input_registers",
+    }
+    register_type = func_map.get(reg.function)
+    if not register_type:
+        return []
+
+    bits = reg.bits or []
+    entries: list[tuple[str, dict[str, Any]]] = []
+    unnamed_bit = False
+    for idx, bit_def in enumerate(bits):
+        bit_name = bit_def.get("name") if isinstance(bit_def, dict) else (str(bit_def) if bit_def is not None else None)
+        if bit_name:
+            key = f"{reg.name}_{_to_snake_case(bit_name)}"
+            entries.append(
+                (
+                    key,
+                    {
+                        "translation_key": key,
+                        "register_type": register_type,
+                        "register": reg.name,
+                        "bit": 1 << idx,
+                    },
+                )
+            )
+        else:
+            unnamed_bit = True
+
+    if not bits or unnamed_bit:
+        entries.append(
+            (
+                reg.name,
+                {"translation_key": reg.name, "register_type": register_type, "bitmask": True},
+            )
+        )
+    return entries
+
+
 def _route_enum_mapping(
     target: str | None,
     register: str,
@@ -374,16 +434,20 @@ def _load_discrete_mappings() -> tuple[
     switch_keys = translations["switch"]
     select_keys = translations["select"]
 
-    for reg in _coil_regs():
-        if reg not in binary_keys:
-            continue
-        binary_configs[reg] = {"translation_key": reg, "register_type": "coil_registers"}
-    for reg in _discrete_regs():
-        if reg not in binary_keys:
-            continue
-        binary_configs[reg] = {"translation_key": reg, "register_type": "discrete_inputs"}
+    coil_regs = _coil_regs()
+    discrete_regs = _discrete_regs()
+    holding_regs = _holding_regs()
 
-    for reg in _holding_regs():
+    for reg in coil_regs:
+        if reg not in binary_keys:
+            continue
+        binary_configs[reg] = _build_base_translation_mapping(reg, "coil_registers")
+    for reg in discrete_regs:
+        if reg not in binary_keys:
+            continue
+        binary_configs[reg] = _build_base_translation_mapping(reg, "discrete_inputs")
+
+    for reg in holding_regs:
         info = _get_info(reg)
         if not info:
             continue
@@ -391,8 +455,8 @@ def _load_discrete_mappings() -> tuple[
         if not states:
             continue
         access = (info.get("access") or "").upper()
-        cfg: dict[str, Any] = {"translation_key": reg, "register_type": "holding_registers"}
-        if len(states) == 2 and set(states.values()) == {0, 1}:
+        cfg: dict[str, Any] = _build_base_translation_mapping(reg, "holding_registers")
+        if _is_binary_state_pair(states):
             if "W" in access:
                 if reg in switch_keys:
                     cfg["register"] = reg
@@ -406,10 +470,9 @@ def _load_discrete_mappings() -> tuple[
                 cfg["states"] = states
                 select_configs[reg] = cfg
 
-    diag_registers = {"alarm", "error"}
-    diag_registers.update(reg for reg in _holding_regs() if re.match(r"[se](?:_|\d)", reg))
+    diag_registers = _diag_register_candidates(holding_regs)
     for reg in diag_registers:
-        if reg not in _holding_regs() and reg not in {"alarm", "error"}:
+        if reg not in holding_regs and reg not in {"alarm", "error"}:
             continue
         if reg not in binary_keys:
             continue
@@ -421,49 +484,13 @@ def _load_discrete_mappings() -> tuple[
         switch_configs.pop(reg, None)
         select_configs.pop(reg, None)
 
-    func_map = {
-        1: "coil_registers",
-        2: "discrete_inputs",
-        3: "holding_registers",
-        4: "input_registers",
-    }
     for reg in _get_all():
         if not reg.name:
             continue
         if not reg.extra or not reg.extra.get("bitmask"):
             continue
-        register_type = func_map.get(reg.function)
-        if not register_type:
-            continue
-        bits = reg.bits or []
-        if bits:
-            unnamed_bit = False
-            for idx, bit_def in enumerate(bits):
-                bit_name = (
-                    bit_def.get("name")
-                    if isinstance(bit_def, dict)
-                    else (str(bit_def) if bit_def is not None else None)
-                )
-                if bit_name:
-                    key = f"{reg.name}_{_to_snake_case(bit_name)}"
-                    binary_configs[key] = {
-                        "translation_key": key,
-                        "register_type": register_type,
-                        "register": reg.name,
-                        "bit": 1 << idx,
-                    }
-                else:
-                    unnamed_bit = True
-            if unnamed_bit:
-                binary_configs.setdefault(
-                    reg.name,
-                    {"translation_key": reg.name, "register_type": register_type, "bitmask": True},
-                )
-        else:
-            binary_configs.setdefault(
-                reg.name,
-                {"translation_key": reg.name, "register_type": register_type, "bitmask": True},
-            )
+        for key, payload in _iter_bitmask_binary_entries(reg):
+            binary_configs.setdefault(key, payload)
 
     return binary_configs, switch_configs, select_configs
 
@@ -616,17 +643,21 @@ def _extend_entity_mappings_from_registers() -> None:
 
 __all__ = [
     "_TIME_ENTITY_PREFIXES",
+    "_build_base_translation_mapping",
     "_build_problem_binary_mapping",
     "_build_season_setting_mapping",
     "_build_time_like_mapping",
     "_classify_enum_mapping",
     "_classify_min_max_mapping",
+    "_diag_register_candidates",
     "_extend_entity_mappings_from_registers",
     "_get_parent",
     "_is_already_mapped",
+    "_is_binary_state_pair",
     "_is_mapped_as_binary_source",
     "_is_problem_register",
     "_is_register_mapped_anywhere",
+    "_iter_bitmask_binary_entries",
     "_load_discrete_mappings",
     "_load_number_mappings",
     "_parse_info_states",
