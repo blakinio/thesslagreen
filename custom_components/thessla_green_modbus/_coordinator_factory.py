@@ -17,7 +17,7 @@ from .const import (
     DEFAULT_SERIAL_PORT,
     DEFAULT_STOP_BITS,
 )
-from .coordinator_models import CoordinatorConfig
+from .coordinator.models import CoordinatorConfig
 
 
 def build_config_from_params(

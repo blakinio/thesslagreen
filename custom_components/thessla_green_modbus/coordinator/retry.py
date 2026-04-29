@@ -5,9 +5,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from .error_contract import log_retry_attempt
-from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from .transport.retry import classify_transport_error
+from ..error_contract import log_retry_attempt
+from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from ..transport.retry import classify_transport_error
 
 _LOGGER = logging.getLogger(__name__)
 
