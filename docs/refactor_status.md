@@ -1,6 +1,6 @@
 # Refactor status (current)
 
-Last reviewed: 2026-04-28.
+Last reviewed: 2026-04-29.
 
 Related document:
 
@@ -30,13 +30,13 @@ The following constraints are active and must be preserved:
 
 ## Current transitional note
 
-Current active coordinator location:
+Current active coordinator package:
 
-- `custom_components/thessla_green_modbus/coordinator.py`
+- `custom_components/thessla_green_modbus/coordinator/`
 
 Current repository state:
 
-- `custom_components/thessla_green_modbus/coordinator/` is **not present**.
+- `custom_components/thessla_green_modbus/coordinator/` is present and canonical.
 - The old empty `coordinator/` scaffold was removed because it shadowed `coordinator.py` and broke imports.
 
 Transition rule (current):

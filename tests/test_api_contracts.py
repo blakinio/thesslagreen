@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import custom_components.thessla_green_modbus._coordinator_retry as coordinator_retry
 import custom_components.thessla_green_modbus.config_flow as config_flow
 import custom_components.thessla_green_modbus.coordinator as coordinator
+import custom_components.thessla_green_modbus.coordinator.retry as coordinator_retry
 import custom_components.thessla_green_modbus.scanner.core as scanner_core
 import custom_components.thessla_green_modbus.services as services
 import custom_components.thessla_green_modbus.services_schema as services_schema

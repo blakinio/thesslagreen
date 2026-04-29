@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ._coordinator_retry import _PermanentModbusError
+from .coordinator.retry import _PermanentModbusError
 from .modbus_exceptions import ConnectionException, ModbusException
 from .modbus_helpers import chunk_register_range
 
