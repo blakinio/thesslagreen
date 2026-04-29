@@ -510,22 +510,7 @@ class ThesslaGreenModbusCoordinator(
             self.config.connection_type.upper(),
         )
 
-        if self.force_full_register_list:
-            _LOGGER.info("Using full register list (skipping scan)")
-            self._load_full_register_list()
-        elif not self.enable_device_scan:
-            cache: dict[str, Any] = {}
-            if self.entry is not None:
-                raw_cache = self.entry.options.get("device_scan_cache", {})
-                if isinstance(raw_cache, dict):
-                    cache = raw_cache
-            if cache and self._apply_scan_cache(cache):
-                _LOGGER.info("Using cached device scan results")
-            else:
-                _LOGGER.info("Device scan disabled; falling back to full register list")
-                self._load_full_register_list()
-        else:
-            await self._run_device_scan()
+        await self._prepare_registers_for_setup()
 
         self._warn_missing_device_info()
 
@@ -542,6 +527,31 @@ class ThesslaGreenModbusCoordinator(
             )
 
         return True
+
+    async def _prepare_registers_for_setup(self) -> None:
+        """Prepare register availability from full list, cache, or device scan."""
+        if self.force_full_register_list:
+            _LOGGER.info("Using full register list (skipping scan)")
+            self._load_full_register_list()
+            return
+
+        if not self.enable_device_scan:
+            cache = self._get_scan_cache_from_entry()
+            if cache and self._apply_scan_cache(cache):
+                _LOGGER.info("Using cached device scan results")
+                return
+            _LOGGER.info("Device scan disabled; falling back to full register list")
+            self._load_full_register_list()
+            return
+
+        await self._run_device_scan()
+
+    def _get_scan_cache_from_entry(self) -> dict[str, Any]:
+        """Return cached scan payload from config entry options."""
+        if self.entry is None:
+            return {}
+        raw_cache = self.entry.options.get("device_scan_cache", {})
+        return raw_cache if isinstance(raw_cache, dict) else {}
 
     def _load_full_register_list(self) -> None:
         """Load full register list when forced."""
@@ -781,23 +791,27 @@ class ThesslaGreenModbusCoordinator(
             except OSError:
                 _LOGGER.exception("Unexpected error disconnecting")
         elif self.client is not None:
-            try:
-                close = getattr(self.client, "close", None)
-                if callable(close):
-                    if inspect.iscoroutinefunction(close):
-                        await close()
-                    else:
-                        result = close()
-                        if inspect.isawaitable(result):
-                            await result
-            except (ModbusException, ConnectionException):
-                _LOGGER.debug("Error disconnecting", exc_info=True)
-            except OSError:
-                _LOGGER.exception("Unexpected error disconnecting")
+            await self._close_client_connection()
 
         self.client = None
         self.offline_state = True
         _LOGGER.debug("Disconnected from Modbus device")
+
+    async def _close_client_connection(self) -> None:
+        """Close client object safely for sync or async close implementations."""
+        try:
+            close = getattr(self.client, "close", None)
+            if callable(close):
+                if inspect.iscoroutinefunction(close):
+                    await close()
+                else:
+                    result = close()
+                    if inspect.isawaitable(result):
+                        await result
+        except (ModbusException, ConnectionException):
+            _LOGGER.debug("Error disconnecting", exc_info=True)
+        except OSError:
+            _LOGGER.exception("Unexpected error disconnecting")
 
     async def _disconnect(self) -> None:
         """Disconnect from Modbus device."""
