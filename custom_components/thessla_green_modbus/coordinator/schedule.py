@@ -18,7 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _get_register_definition(register_name: str) -> Any:
-    """Resolve register definitions via coordinator module for tests."""
+    """Resolve register definitions via coordinator package API."""
 
     from custom_components.thessla_green_modbus import coordinator as coordinator_module
 
