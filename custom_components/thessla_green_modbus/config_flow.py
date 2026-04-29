@@ -59,18 +59,18 @@ from .config_flow_runtime import (
 )
 from .config_flow_runtime import run_with_retry as _run_with_retry_impl
 from .config_flow_schema import build_connection_schema as _build_connection_schema_impl
+from .config_flow_steps import merge_options_payload as _merge_options_payload_impl
+from .config_flow_steps import validate_options_submission as _validate_options_submission_impl
 from .config_flow_user_submit import process_user_submission as _process_user_submission_impl
 from .config_flow_validation import process_scan_capabilities as _process_scan_capabilities_impl
 from .config_flow_validation import validate_rtu_config as _validate_rtu_config_impl
 from .config_flow_validation import validate_slave_id as _validate_slave_id_impl
 from .config_flow_validation import validate_tcp_config as _validate_tcp_config_impl
 from .const import (
-    CONF_MAX_REGISTERS_PER_REQUEST,
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
     CONNECTION_TYPE_TCP,
     DEFAULT_DEEP_SCAN,
-    DEFAULT_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_NAME,
     DEFAULT_PARITY,
     DEFAULT_PORT,
@@ -494,16 +494,16 @@ class OptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            max_regs = user_input.get(
-                CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+            errors.update(
+                _validate_options_submission_impl(
+                    user_input,
+                    max_batch_registers=MAX_BATCH_REGISTERS,
+                )
             )
-            if not 1 <= max_regs <= MAX_BATCH_REGISTERS:
-                errors[CONF_MAX_REGISTERS_PER_REQUEST] = "max_registers_range"
-            else:
+            if not errors:
                 # Merge into existing options (do not wipe other keys)
                 entry_options = getattr(self.config_entry, "options", {}) or {}
-                merged = dict(entry_options)
-                merged.update(dict(user_input))
+                merged = _merge_options_payload_impl(entry_options, user_input)
                 return self.async_create_entry(title="", data=merged)
 
         entry_data = getattr(self.config_entry, "data", {}) or {}
