@@ -113,6 +113,127 @@ _TYPE_LENGTHS: dict[str, int | None] = {
 }
 
 
+def _normalise_access(access: Any) -> str:
+    """Return canonical access value."""
+    if access in {"R/-", "R"}:
+        return "R"
+    if access in {"R/W", "RW"}:
+        return "RW"
+    if access == "W":
+        return "W"
+    raise ValueError("access must be one of 'R', 'RW', 'W'")
+
+
+def _normalise_address_dec(addr_dec: Any) -> int:
+    """Normalize decimal register address representation."""
+    if isinstance(addr_dec, str):
+        if not re.fullmatch(r"[0-9]+", addr_dec):
+            _LOGGER.error("Register address must be decimal: %s", addr_dec)
+            raise ValueError("Register address must be decimal")
+        return int(addr_dec)
+    if not isinstance(addr_dec, int) or isinstance(addr_dec, bool):
+        raise ValueError("address_dec must be int or str")
+    return addr_dec
+
+
+def _normalise_type_and_extra(data: dict[str, Any]) -> None:
+    """Sync top-level type field with nested extra metadata."""
+    typ = data.pop("type", None)
+    extra = data.get("extra")
+    if typ is None and isinstance(extra, dict):
+        typ = extra.get("type")
+    if extra is None:
+        extra = {}
+    if typ is not None:
+        extra.setdefault("type", typ)
+        data["type"] = typ
+    if extra:
+        data["extra"] = extra
+
+
+def _validate_scaling_metadata(data: dict[str, Any]) -> None:
+    """Apply default scaling metadata values."""
+    if data.get("multiplier") is None:
+        data["multiplier"] = 1
+    if data.get("resolution") is None:
+        data["resolution"] = 1
+
+
+def _validate_type_length(typ: Any, length: int | None) -> int | None:
+    """Validate register length against type and return default if needed."""
+    if typ is None:
+        return None
+    if typ in {"uint", "int", "float"}:
+        raise ValueError("type aliases are not allowed")
+    expected = _TYPE_LENGTHS.get(typ)
+    if expected is None:
+        if length is None or length < 1:
+            raise ValueError("string type requires length >= 1")
+        return None
+    if length is not None and length != expected:
+        raise ValueError("length does not match type")
+    return expected if length is None else None
+
+
+def _validate_enum_mapping(enum: dict[str, Any] | None) -> None:
+    if enum is None:
+        return
+    if not isinstance(enum, dict):
+        raise ValueError("enum must be a mapping")
+    for k, v in enum.items():
+        try:
+            int(k)
+        except (TypeError, ValueError):
+            raise ValueError("enum keys must be numeric") from None
+        if not isinstance(v, str):
+            raise ValueError("enum values must be strings")
+
+
+def _validate_numeric_bounds(min_val: float | None, max_val: float | None, default: float | None) -> None:
+    if min_val is not None and max_val is not None and min_val > max_val:
+        raise ValueError("min greater than max")
+    if default is not None:
+        if min_val is not None and default < min_val:
+            raise ValueError("default below min")
+        if max_val is not None and default > max_val:
+            raise ValueError("default above max")
+
+
+def _validate_bits_and_mask(bits: list[Any] | None, extra: dict[str, Any] | None) -> None:
+    seen_indices: set[int] = set()
+    if bits is not None:
+        if len(bits) > 16:
+            raise ValueError("bits exceed 16 entries")
+        for bit in bits:
+            if not isinstance(bit, dict):
+                raise ValueError("bits entries must be objects")
+            if "index" not in bit or "name" not in bit:
+                raise ValueError("bits entries must have index and name")
+            idx = bit["index"]
+            name = bit["name"]
+            if not isinstance(idx, int) or isinstance(idx, bool):
+                raise ValueError("bit index must be an integer")
+            if not 0 <= idx <= 15:
+                raise ValueError("bit index out of range")
+            if idx in seen_indices:
+                raise ValueError("bit indices must be unique")
+            if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
+                raise ValueError("bit name must be snake_case")
+            seen_indices.add(idx)
+
+    bitmask_val = extra.get("bitmask") if isinstance(extra, dict) else None
+    mask_int: int | None = None
+    if isinstance(bitmask_val, str):
+        if not re.fullmatch(r"[0-9]+", bitmask_val):
+            raise ValueError("bitmask must be decimal digits")
+        mask_int = int(bitmask_val)
+    elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
+        mask_int = bitmask_val
+
+    if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
+        raise ValueError("bits exceed bitmask width")
+
+
 class RegisterDefinition(BaseModel):
     """Schema describing a raw register definition from JSON."""
 
@@ -164,64 +285,18 @@ class RegisterDefinition(BaseModel):
         # Normalise access values to canonical form
         access = data.get("access")
         if access is not None:
-            if access in {"R/-", "R"}:
-                data["access"] = "R"
-            elif access in {"R/W", "RW"}:
-                data["access"] = "RW"
-            elif access == "W":
-                data["access"] = "W"
-            else:
-                raise ValueError("access must be one of 'R', 'RW', 'W'")
+            data["access"] = _normalise_access(access)
 
         # Normalise address_dec (decimal-only in manufacturer register specification)
         addr_dec = data.get("address_dec")
         if addr_dec is not None:
-            if isinstance(addr_dec, str):
-                if not re.fullmatch(r"[0-9]+", addr_dec):
-                    _LOGGER.error(
-                        "Register address must be decimal: %s",
-                        addr_dec,
-                    )
-                    raise ValueError("Register address must be decimal")
-                addr_dec = int(addr_dec)
-            elif not isinstance(addr_dec, int) or isinstance(addr_dec, bool):
-                raise ValueError("address_dec must be int or str")
-            data["address_dec"] = addr_dec
+            data["address_dec"] = _normalise_address_dec(addr_dec)
 
-        # Handle type field (may be top level or inside extra)
-        typ = data.pop("type", None)
-        extra = data.get("extra")
-        if typ is None and isinstance(extra, dict):
-            typ = extra.get("type")
-        if extra is None:
-            extra = {}
-        if typ is not None:
-            extra.setdefault("type", typ)
-            data["type"] = typ
-        if extra:
-            data["extra"] = extra
-
-        # Enforce/default length based on type
-        typ = data.get("type")
-        if typ is not None:
-            if typ in {"uint", "int", "float"}:
-                raise ValueError("type aliases are not allowed")
-            expected = _TYPE_LENGTHS.get(typ)
-            if expected is None:  # string type
-                length = data.get("length")
-                if length is None or length < 1:
-                    raise ValueError("string type requires length >= 1")
-            else:
-                if "length" in data:
-                    if data["length"] != expected:
-                        raise ValueError("length does not match type")
-                else:
-                    data["length"] = expected
-
-        if data.get("multiplier") is None:
-            data["multiplier"] = 1
-        if data.get("resolution") is None:
-            data["resolution"] = 1
+        _normalise_type_and_extra(data)
+        expected_len = _validate_type_length(data.get("type"), data.get("length"))
+        if expected_len is not None:
+            data["length"] = expected_len
+        _validate_scaling_metadata(data)
 
         return data
 
@@ -280,57 +355,9 @@ class RegisterDefinition(BaseModel):
                 elif self.length != expected:
                     raise ValueError("length does not match type")
 
-            if self.enum is not None:
-                if not isinstance(self.enum, dict):
-                    raise ValueError("enum must be a mapping")
-                for k, v in self.enum.items():
-                    try:
-                        int(k)
-                    except (TypeError, ValueError):
-                        raise ValueError("enum keys must be numeric") from None
-                    if not isinstance(v, str):
-                        raise ValueError("enum values must be strings")
-
-            seen_indices: set[int] = set()
-            if self.bits is not None:
-                if len(self.bits) > 16:
-                    raise ValueError("bits exceed 16 entries")
-                for bit in self.bits:
-                    if not isinstance(bit, dict):
-                        raise ValueError("bits entries must be objects")
-                    if "index" not in bit or "name" not in bit:
-                        raise ValueError("bits entries must have index and name")
-                    idx = bit["index"]
-                    name = bit["name"]
-                    if not isinstance(idx, int) or isinstance(idx, bool):
-                        raise ValueError("bit index must be an integer")
-                    if not 0 <= idx <= 15:
-                        raise ValueError("bit index out of range")
-                    if idx in seen_indices:
-                        raise ValueError("bit indices must be unique")
-                    if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
-                        raise ValueError("bit name must be snake_case")
-                    seen_indices.add(idx)
-
-            bitmask_val = self.extra.get("bitmask") if isinstance(self.extra, dict) else None
-            mask_int: int | None = None
-            if isinstance(bitmask_val, str):
-                if not re.fullmatch(r"[0-9]+", bitmask_val):
-                    raise ValueError("bitmask must be decimal digits")
-                mask_int = int(bitmask_val)
-            elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
-                mask_int = bitmask_val
-
-            if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
-                raise ValueError("bits exceed bitmask width")
-
-            if self.min is not None and self.max is not None and self.min > self.max:
-                raise ValueError("min greater than max")
-            if self.default is not None:
-                if self.min is not None and self.default < self.min:
-                    raise ValueError("default below min")
-                if self.max is not None and self.default > self.max:
-                    raise ValueError("default above max")
+            _validate_enum_mapping(self.enum)
+            _validate_bits_and_mask(self.bits, self.extra)
+            _validate_numeric_bounds(self.min, self.max, self.default)
             return self
 
     else:
@@ -351,63 +378,9 @@ class RegisterDefinition(BaseModel):
                 elif length != expected:
                     raise ValueError("length does not match type")
 
-            enum = values.get("enum")
-            if enum is not None:
-                if not isinstance(enum, dict):
-                    raise ValueError("enum must be a mapping")
-                for k, v in enum.items():
-                    try:
-                        int(k)
-                    except (TypeError, ValueError):
-                        raise ValueError("enum keys must be numeric") from None
-                    if not isinstance(v, str):
-                        raise ValueError("enum values must be strings")
-
-            seen_indices: set[int] = set()
-            bits = values.get("bits")
-            if bits is not None:
-                if len(bits) > 16:
-                    raise ValueError("bits exceed 16 entries")
-                for bit in bits:
-                    if not isinstance(bit, dict):
-                        raise ValueError("bits entries must be objects")
-                    if "index" not in bit or "name" not in bit:
-                        raise ValueError("bits entries must have index and name")
-                    idx = bit["index"]
-                    name = bit["name"]
-                    if not isinstance(idx, int) or isinstance(idx, bool):
-                        raise ValueError("bit index must be an integer")
-                    if not 0 <= idx <= 15:
-                        raise ValueError("bit index out of range")
-                    if idx in seen_indices:
-                        raise ValueError("bit indices must be unique")
-                    if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
-                        raise ValueError("bit name must be snake_case")
-                    seen_indices.add(idx)
-
-            extra = values.get("extra")
-            bitmask_val = extra.get("bitmask") if isinstance(extra, dict) else None
-            mask_int: int | None = None
-            if isinstance(bitmask_val, str):
-                if not re.fullmatch(r"[0-9]+", bitmask_val):
-                    raise ValueError("bitmask must be decimal digits")
-                mask_int = int(bitmask_val)
-            elif isinstance(bitmask_val, int) and not isinstance(bitmask_val, bool):
-                mask_int = bitmask_val
-
-            if mask_int is not None and max(seen_indices, default=-1) >= mask_int.bit_length():
-                raise ValueError("bits exceed bitmask width")
-
-            min_val = values.get("min")
-            max_val = values.get("max")
-            default = values.get("default")
-            if min_val is not None and max_val is not None and min_val > max_val:
-                raise ValueError("min greater than max")
-            if default is not None:
-                if min_val is not None and default < min_val:
-                    raise ValueError("default below min")
-                if max_val is not None and default > max_val:
-                    raise ValueError("default above max")
+            _validate_enum_mapping(values.get("enum"))
+            _validate_bits_and_mask(values.get("bits"), values.get("extra"))
+            _validate_numeric_bounds(values.get("min"), values.get("max"), values.get("default"))
             return values
 
     if hasattr(pydantic, "field_validator"):
