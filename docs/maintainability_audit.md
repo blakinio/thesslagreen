@@ -25,7 +25,7 @@ Executed:
 9. `tests/test_services_handlers_parameters.py` (~523)
 10. `tests/test_config_flow_helpers.py` (~508)
 
-Interpretation: hotspot pressure remains test-heavy; the largest production modules are still `coordinator/coordinator.py`, `mappings/_mapping_builders.py`, and scanner I/O helpers.
+Interpretation: hotspot pressure remains test-heavy; the largest production modules are still `coordinator/coordinator.py`, `mappings/_mapping_builders.py`, and scanner I/O helpers (`scanner/io_read.py`).
 
 ## 2) Largest classes
 
@@ -48,7 +48,7 @@ Interpretation: hotspot pressure remains test-heavy; the largest production modu
 9. `read_input` in `scanner/io_read.py` (~125)
 10. `validate_input_impl` in `config_flow_device_validation.py` (~114)
 
-## 4) Completed refactors reflected in current state (PRs #1411–#1421)
+## 4) Completed refactors reflected in current dev state (latest merged PR batch #1411–#1421)
 
 - Diagnostics helper split completed.
 - Service metadata/translations consistency alignment completed.
