@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -11,12 +10,11 @@ from .services_handler_deps import ServiceHandlerDeps
 from .services_schema import (
     REFRESH_DEVICE_DATA_SCHEMA,
     SCAN_ALL_REGISTERS_SCHEMA,
-    SET_LOG_LEVEL_SCHEMA,
 )
 
 
 def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
-    """Register refresh/scan/logging services."""
+    """Register refresh/scan services."""
 
     async def refresh_device_data(call: ServiceCall) -> None:
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
@@ -71,15 +69,6 @@ def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
             )
         return results or None
 
-    async def set_debug_logging(call: ServiceCall) -> None:
-        level_name = str(call.data.get("level", "debug")).upper()
-        duration = int(call.data.get("duration", 900))
-        level_value = getattr(logging, level_name, logging.DEBUG)
-        manager = hass.data.setdefault(deps.domain, {}).setdefault(
-            "_log_level_manager", deps.create_log_level_manager(hass)
-        )
-        manager.set_level(level_value, duration)
-
     hass.services.async_register(
         deps.domain, "refresh_device_data", refresh_device_data, REFRESH_DEVICE_DATA_SCHEMA
     )
@@ -88,7 +77,4 @@ def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
     )
     hass.services.async_register(
         deps.domain, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA
-    )
-    hass.services.async_register(
-        deps.domain, "set_debug_logging", set_debug_logging, SET_LOG_LEVEL_SCHEMA
     )

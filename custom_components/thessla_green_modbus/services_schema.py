@@ -19,10 +19,10 @@ from .const import (
     RESET_TYPES,
     SPECIAL_MODE_OPTIONS,
 )
-from .services_helpers import (
+from .services_validation import (
     validate_bypass_temperature_range as _validate_bypass_temperature_range_impl,
 )
-from .services_helpers import (
+from .services_validation import (
     validate_gwc_temperature_range as _validate_gwc_temperature_range_impl,
 )
 

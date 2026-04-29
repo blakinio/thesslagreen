@@ -15,23 +15,17 @@ from homeassistant.util import dt as dt_util
 from . import services_schema as _services_schema
 from .const import DOMAIN, SPECIAL_FUNCTION_MAP
 from .scanner import ThesslaGreenDeviceScanner
+from .services_dispatch import write_register as _write_register_impl
 from .services_handlers import (
     ServiceHandlerDeps,
     register_data_services,
+    register_logging_services,
     register_maintenance_services,
     register_mode_services,
     register_parameter_services,
     register_schedule_services,
 )
 from .services_helpers import clamp_airflow_rate as _clamp_airflow_rate_impl
-from .services_helpers import normalize_option as _normalize_option_impl
-from .services_helpers import write_register as _write_register_impl
-from .services_schema import (
-    validate_bypass_temperature_range as _validate_bypass_temperature_range_impl,
-)
-from .services_schema import (
-    validate_gwc_temperature_range as _validate_gwc_temperature_range_impl,
-)
 from .services_targets import (
     extract_entity_ids_with_extractor as _extract_entity_ids_impl,
 )
@@ -39,6 +33,13 @@ from .services_targets import (
     get_coordinator_from_entity_id as _get_coordinator_from_entity_id_impl,
 )
 from .services_targets import iter_target_coordinators as _iter_target_coordinators_impl
+from .services_validation import normalize_option as _normalize_option_impl
+from .services_validation import (
+    validate_bypass_temperature_range as _validate_bypass_temperature_range_impl,
+)
+from .services_validation import (
+    validate_gwc_temperature_range as _validate_gwc_temperature_range_impl,
+)
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
@@ -151,8 +152,11 @@ SERVICE_REGISTRATION_GROUPS: tuple[ServiceRegistrationGroup, ...] = (
             "refresh_device_data",
             "get_unknown_registers",
             "scan_all_registers",
-            "set_debug_logging",
         ),
+    ),
+    ServiceRegistrationGroup(
+        register=register_logging_services,
+        service_names=("set_debug_logging",),
     ),
 )
 
