@@ -54,7 +54,7 @@ HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 from custom_components.thessla_green_modbus.coordinator import (
     ThesslaGreenModbusCoordinator,
 )
-from custom_components.thessla_green_modbus.coordinator import (
+from custom_components.thessla_green_modbus.coordinator.coordinator import (
     dt_util as coordinator_dt_util,
 )
 
@@ -657,7 +657,7 @@ def test_post_process_data(coordinator):
     coordinator._last_power_timestamp = fake_now - timedelta(hours=1)
 
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.dt_util.utcnow",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.dt_util.utcnow",
         return_value=fake_now,
     ):
         processed_data = coordinator._post_process_data(raw_data)
@@ -803,7 +803,7 @@ async def test_reconfigure_does_not_leak_connections(coordinator):
             self.connected = False
 
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.AsyncModbusTcpClient",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.AsyncModbusTcpClient",
         FakeClient,
     ):
         for _ in range(3):
@@ -936,7 +936,7 @@ async def test_async_setup_invalid_capabilities(coordinator):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
+            "custom_components.thessla_green_modbus.coordinator.coordinator.ThesslaGreenDeviceScanner.create",
             AsyncMock(return_value=scanner_instance),
         ),
         pytest.raises(CannotConnect) as err,

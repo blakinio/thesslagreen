@@ -37,7 +37,7 @@ async def handle_update_error(
     use_helper: bool = True,
 ) -> UpdateFailed:
     """Shared error-handling path for coordinator update failures."""
-    from .errors import is_invalid_auth_error
+    from ..errors import is_invalid_auth_error
 
     apply_update_failure_state(coordinator, exc, timeout_error=timeout_error)
     await coordinator._disconnect()

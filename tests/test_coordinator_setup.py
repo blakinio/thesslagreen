@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from unittest.mock import MagicMock
 
-from custom_components.thessla_green_modbus.coordinator import (
+from custom_components.thessla_green_modbus.coordinator.coordinator import (
     ThesslaGreenModbusCoordinator,
     _utcnow,
 )
@@ -77,5 +77,4 @@ def test_coordinator_init_jitter_zero():
     """backoff_jitter = 0 is stored as 0.0 (line 331-332)."""
     coord = _make_coordinator(backoff_jitter=0)
     assert coord.backoff_jitter == 0.0
-
 
