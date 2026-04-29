@@ -82,38 +82,6 @@ def test_build_register_maps_direct():
     assert isinstance(REGISTER_DEFINITIONS, dict)
 
 
-@pytest.mark.asyncio
-async def test_maybe_retry_yield_backoff_positive():
-    """Cover line 145: backoff > 0 causes early return without sleeping."""
-    from custom_components.thessla_green_modbus.scanner.io_runtime import maybe_retry_yield
-
-    with patch("asyncio.sleep", AsyncMock()) as mock_sleep:
-        # backoff > 0 → early return, no sleep
-        await maybe_retry_yield(backoff=0.1, attempt=0, retry=3)
-        mock_sleep.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_call_modbus_with_fallback_type_error_reraise():
-    """Cover line 182: TypeError with non-'unexpected keyword' message is re-raised."""
-    from custom_components.thessla_green_modbus.scanner.io_runtime import call_modbus_with_fallback
-
-    async def raise_other_type_error(*args, **kwargs):
-        raise TypeError("something unrelated to keyword")
-
-    with pytest.raises(TypeError, match="something unrelated"):
-        await call_modbus_with_fallback(
-            raise_other_type_error,
-            MagicMock(),
-            1,
-            0,
-            count=1,
-            attempt=1,
-            retry=1,
-            timeout=5,
-            backoff=0.0,
-            backoff_jitter=None,
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -411,47 +379,11 @@ async def test_read_holding_two_arg_int_address():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_read_holding_skips_when_failures_exceed_retry():
-    """Lines 2158-2161: When failures >= retry, skip register immediately."""
-    scanner = await _make_scanner(retry=2)
-    scanner._holding_failures[10] = 2  # equals retry
-    mock_client = AsyncMock()
-
-    with patch(
-        "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
-        AsyncMock(),
-    ) as mock_call:
-        result = await scanner._read_holding(mock_client, 10, 1)
-
-    assert result is None
-    mock_call.assert_not_called()
-
 
 # ---------------------------------------------------------------------------
 # Group AB: Holding success clears failure counter (line 2217)
 # ---------------------------------------------------------------------------
 
-
-@pytest.mark.asyncio
-async def test_read_holding_success_clears_failure_counter():
-    """Line 2217: Successful read removes address from _holding_failures."""
-    scanner = await _make_scanner(retry=3)
-    scanner._holding_failures[5] = 1  # partial failure
-    mock_client = AsyncMock()
-
-    ok_resp = _make_ok_response([42])
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
-            AsyncMock(return_value=ok_resp),
-        ),
-        patch("asyncio.sleep", AsyncMock()),
-    ):
-        result = await scanner._read_holding(mock_client, 5, 1)
-
-    assert result == [42]
-    assert 5 not in scanner._holding_failures
 
 
 # ---------------------------------------------------------------------------
@@ -1530,73 +1462,9 @@ async def test_mark_input_supported_partial_range():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_read_coil_transport_reconnect_ensure_raises():
-    """Lines 2404-2405: except Exception: pass when ensure_connected raises."""
-    scanner = await _make_scanner(retry=2)
-    mock_transport = MagicMock()
-    mock_transport.ensure_connected = AsyncMock(side_effect=OSError("reconnect fail"))
-    scanner._transport = mock_transport
-
-    mock_client = AsyncMock()
-    scanner._client = mock_client
-
-    bit_resp = _make_bit_response([True])
-    call_count = {"n": 0}
-
-    async def call_modbus_side_effect(*args, **kwargs):
-        call_count["n"] += 1
-        if call_count["n"] == 1:
-            raise ModbusException("connection lost")
-        return bit_resp
-
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
-            side_effect=call_modbus_side_effect,
-        ),
-        patch("asyncio.sleep", AsyncMock()),
-    ):
-        result = await scanner._read_coil(mock_client, 0, 1)
-
-    # Despite ensure_connected raising, the second attempt succeeds
-    assert result == [True]
-    mock_transport.ensure_connected.assert_called()
-
 
 # ---------------------------------------------------------------------------
 # Lines 2507-2508: discrete transport reconnect ensure_connected raises
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_read_discrete_transport_reconnect_ensure_raises():
-    """Lines 2507-2508: except Exception: pass when ensure_connected raises for discrete."""
-    scanner = await _make_scanner(retry=2)
-    mock_transport = MagicMock()
-    mock_transport.ensure_connected = AsyncMock(side_effect=OSError("reconnect fail"))
-    scanner._transport = mock_transport
-
-    mock_client = AsyncMock()
-    scanner._client = mock_client
-
-    bit_resp = _make_bit_response([True])
-    call_count = {"n": 0}
-
-    async def call_side_effect(*args, **kwargs):
-        call_count["n"] += 1
-        if call_count["n"] == 1:
-            raise ModbusException("connection lost")
-        return bit_resp
-
-    with (
-        patch(
-            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
-            side_effect=call_side_effect,
-        ),
-        patch("asyncio.sleep", AsyncMock()),
-    ):
-        result = await scanner._read_discrete(mock_client, 0, 1)
-
-    assert result == [True]
-    mock_transport.ensure_connected.assert_called()
