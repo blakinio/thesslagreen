@@ -34,6 +34,28 @@ class _CoordinatorCapabilitiesMixin:
         }
     )
     _MODEL_FLOW_TOLERANCE = 15
+    def _decode_device_clock(self, data: dict[str, Any]) -> str | None:
+        """Decode device clock from packed BCD date/time registers."""
+        raw_yymm = data.get("date_time")
+        raw_ddtt = data.get("date_time_ddtt")
+        raw_ggmm = data.get("date_time_ggmm")
+        raw_sscc = data.get("date_time_sscc")
+        if any(v is None for v in (raw_yymm, raw_ddtt, raw_ggmm, raw_sscc)):
+            return None
+
+        def _bcd(b: int) -> int:
+            return ((b >> 4) & 0xF) * 10 + (b & 0xF)
+
+        yy = _bcd((raw_yymm >> 8) & 0xFF)
+        mm = _bcd(raw_yymm & 0xFF)
+        dd = _bcd((raw_ddtt >> 8) & 0xFF)
+        hh = _bcd((raw_ggmm >> 8) & 0xFF)
+        mi = _bcd(raw_ggmm & 0xFF)
+        ss = _bcd((raw_sscc >> 8) & 0xFF)
+        year = 2000 + yy
+        if 1 <= mm <= 12 and 1 <= dd <= 31 and hh <= 23 and mi <= 59 and ss <= 59:
+            return f"{year:04d}-{mm:02d}-{dd:02d}T{hh:02d}:{mi:02d}:{ss:02d}"
+        return None
 
     def _lookup_model_power(self, nominal_flow: float) -> tuple[float, float] | None:
         """Return (fan_total_max_W, heater_max_W) for the closest known model.
@@ -224,31 +246,9 @@ class _CoordinatorCapabilitiesMixin:
 
         # Decode device clock from BCD registers 0-3
         try:
-            raw_yymm = data.get("date_time")
-            raw_ddtt = data.get("date_time_ddtt")
-            raw_ggmm = data.get("date_time_ggmm")
-            raw_sscc = data.get("date_time_sscc")
-            if (
-                raw_yymm is not None
-                and raw_ddtt is not None
-                and raw_ggmm is not None
-                and raw_sscc is not None
-            ):
-
-                def _bcd(b: int) -> int:
-                    return ((b >> 4) & 0xF) * 10 + (b & 0xF)
-
-                yy = _bcd((raw_yymm >> 8) & 0xFF)
-                mm = _bcd(raw_yymm & 0xFF)
-                dd = _bcd((raw_ddtt >> 8) & 0xFF)
-                hh = _bcd((raw_ggmm >> 8) & 0xFF)
-                mi = _bcd(raw_ggmm & 0xFF)
-                ss = _bcd((raw_sscc >> 8) & 0xFF)
-                year = 2000 + yy
-                if 1 <= mm <= 12 and 1 <= dd <= 31 and hh <= 23 and mi <= 59 and ss <= 59:
-                    data["device_clock"] = (
-                        f"{year:04d}-{mm:02d}-{dd:02d}T{hh:02d}:{mi:02d}:{ss:02d}"
-                    )
+            device_clock = self._decode_device_clock(data)
+            if device_clock is not None:
+                data["device_clock"] = device_clock
         except (TypeError, ValueError, AttributeError) as exc:
             _LOGGER.debug("Failed to decode device clock: %s", exc)
 

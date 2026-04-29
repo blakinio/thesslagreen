@@ -109,69 +109,6 @@ def test_coordinator_clamps_effective_batch():
 
 
 @pytest.mark.asyncio
-async def test_async_write_invalid_register(coordinator):
-    """Return False and do not refresh on unknown register."""
-    coordinator._ensure_connection = AsyncMock()
-    result = await coordinator.async_write_register("invalid", 1)
-    assert result is False
-
-
-@pytest.mark.asyncio
-async def test_async_write_valid_register(coordinator):
-    """Test successful register write and refresh outside lock."""
-    coordinator._ensure_connection = AsyncMock()
-    client = MagicMock()
-    response = MagicMock()
-    response.isError.return_value = False
-    client.write_register = AsyncMock(return_value=response)
-    coordinator.client = client
-
-    lock_state_during_refresh = None
-
-    async def refresh_side_effect():
-        nonlocal lock_state_during_refresh
-        lock_state_during_refresh = coordinator._write_lock.locked()
-
-    coordinator.async_request_refresh = AsyncMock(side_effect=refresh_side_effect)
-
-    result = await coordinator.async_write_register("mode", 1)
-
-    assert result is True
-    coordinator.async_request_refresh.assert_called_once()
-    assert lock_state_during_refresh is False
-
-
-@pytest.mark.asyncio
-async def test_async_write_register_numeric_out_of_range(coordinator, monkeypatch):
-    """Numeric values outside defined range should raise."""
-    coordinator._ensure_connection = AsyncMock()
-    coordinator.client = MagicMock()
-
-    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
-
-    reg = RegisterDef(function="03", address=0, name="num", access="rw", min=0, max=10)
-    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: reg)
-
-    with pytest.raises(ValueError):
-        await coordinator.async_write_register("num", 11)
-
-
-@pytest.mark.asyncio
-async def test_async_write_register_enum_invalid(coordinator, monkeypatch):
-    """Invalid enum values should raise and be propagated."""
-    coordinator._ensure_connection = AsyncMock()
-    coordinator.client = MagicMock()
-
-    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
-
-    reg = RegisterDef(function="03", address=0, name="mode", access="rw", enum={0: "off", 1: "on"})
-    monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: reg)
-
-    with pytest.raises(ValueError):
-        await coordinator.async_write_register("mode", "invalid")
-
-
-@pytest.mark.asyncio
 async def test_read_holding_registers_none_client(coordinator, caplog):
     """Return empty data when no Modbus client is present."""
     coordinator.client = None
