@@ -4,10 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from custom_components.thessla_green_modbus.coordinator import (
-    ThesslaGreenModbusCoordinator,
-    _PermanentModbusError,
-)
+from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+from custom_components.thessla_green_modbus.coordinator.retry import _PermanentModbusError
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
 
 

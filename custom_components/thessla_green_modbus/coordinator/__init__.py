@@ -1,25 +1,12 @@
 """Coordinator package public API."""
 
-from .coordinator import (
-    AsyncModbusTcpClient,
-    CoordinatorConfig,
-    DeviceCapabilities,
-    ThesslaGreenDeviceScanner,
-    ThesslaGreenModbusCoordinator,
-    _PermanentModbusError,
-    _utcnow,
-    dt_util,
-    get_register_definition,
-)
+from ..registers.loader import get_register_definition
+from ..scanner.core import ThesslaGreenDeviceScanner
+from .coordinator import CoordinatorConfig, ThesslaGreenModbusCoordinator
 
 __all__ = [
-    "AsyncModbusTcpClient",
     "CoordinatorConfig",
-    "DeviceCapabilities",
     "ThesslaGreenDeviceScanner",
     "ThesslaGreenModbusCoordinator",
-    "_PermanentModbusError",
-    "_utcnow",
-    "dt_util",
     "get_register_definition",
 ]

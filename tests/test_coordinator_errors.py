@@ -3,10 +3,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from custom_components.thessla_green_modbus.coordinator import (
-    ThesslaGreenModbusCoordinator,
-    _PermanentModbusError,
-)
+from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+from custom_components.thessla_green_modbus.coordinator.retry import _PermanentModbusError
 
 
 @pytest.mark.asyncio

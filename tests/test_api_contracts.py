@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import custom_components.thessla_green_modbus.config_flow as config_flow
 import custom_components.thessla_green_modbus.coordinator as coordinator
-import custom_components.thessla_green_modbus.coordinator.retry as coordinator_retry
 import custom_components.thessla_green_modbus.scanner.core as scanner_core
 import custom_components.thessla_green_modbus.services as services
 import custom_components.thessla_green_modbus.services_schema as services_schema
 import custom_components.thessla_green_modbus.services_targets as services_targets
 
 
-def test_coordinator_exports_permanent_modbus_error() -> None:
-    """Coordinator should expose permanent modbus error type."""
-    assert coordinator._PermanentModbusError is coordinator_retry._PermanentModbusError
-    assert "_PermanentModbusError" in coordinator.__all__
+def test_coordinator_package_public_api_is_minimal() -> None:
+    """Coordinator package should expose only public coordinator entrypoints."""
+    assert set(coordinator.__all__) == {"CoordinatorConfig", "ThesslaGreenDeviceScanner", "ThesslaGreenModbusCoordinator", "get_register_definition"}
+    for export_name in coordinator.__all__:
+        assert hasattr(coordinator, export_name)
 
 
 def test_scanner_core_public_api_is_minimal() -> None:
