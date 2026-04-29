@@ -26,6 +26,12 @@ from .registers.loader import get_all_registers, get_registers_path
 _LOGGER = logging.getLogger(__name__)
 
 
+def _setdefault_bulk(target: dict[str, Any], defaults: dict[str, Any]) -> None:
+    """Apply dict defaults without overwriting existing values."""
+    for key, value in defaults.items():
+        target.setdefault(key, value)
+
+
 async def _run_executor_job(hass: HomeAssistant, func: Callable[..., Any], *args: Any) -> Any:
     """Run a callable using HA executor when available, fallback inline in tests."""
 
@@ -45,9 +51,6 @@ def _detect_data_anomalies(data: dict[str, Any]) -> list[str]:
     supply_flow_rate = data.get("supply_flow_rate")
     exhaust_flow_rate = data.get("exhaust_flow_rate")
 
-    # Some devices report obviously incorrect instantaneous airflow values where
-    # both airflow registers mirror the CF firmware value. Surface this in
-    # diagnostics to speed up troubleshooting and support triage.
     if (
         isinstance(supply_air_flow, int)
         and isinstance(exhaust_air_flow, int)
@@ -64,61 +67,35 @@ def _detect_data_anomalies(data: dict[str, Any]) -> list[str]:
     return anomalies
 
 
-async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: ConfigEntry
-) -> dict[str, Any]:
-    """Return diagnostics for a config entry.
-
-    Home Assistant calls this coroutine when the diagnostics panel is
-    requested; it is part of the integration contract.
-    """
-    coordinator: ThesslaGreenModbusCoordinator = entry.runtime_data
-
-    diagnostics = coordinator.get_diagnostic_data()
-    diagnostics.setdefault("effective_batch", coordinator.effective_batch)
-    diagnostics.setdefault(
-        "registers_hash",
-        await _run_executor_job(hass, registers_sha256, get_registers_path()),
-    )
-    diagnostics.setdefault("capabilities", coordinator.capabilities.as_dict())
-
-    diagnostics.setdefault("firmware_version", coordinator.device_info.get("firmware"))
-    diagnostics.setdefault(
-        "total_registers_json",
-        await _run_executor_job(hass, lambda: len(get_all_registers())),
-    )
-    diagnostics.setdefault(
-        "total_available_registers",
-        sum(len(regs) for regs in coordinator.available_registers.values()),
-    )
-    diagnostics.setdefault(
-        "registers_discovered",
-        {key: len(val) for key, val in coordinator.available_registers.items()},
-    )
-    diagnostics.setdefault("status_overview", getattr(coordinator, "status_overview", None))
-
-    diagnostics.setdefault("autoscan", not coordinator.force_full_register_list)
-    diagnostics.setdefault("force_full", coordinator.force_full_register_list)
-    diagnostics.setdefault("force_full_register_list", coordinator.force_full_register_list)
-    diagnostics.setdefault("deep_scan", coordinator.deep_scan)
-
-    diagnostics.setdefault(
-        "error_statistics",
-        {
+def _coordinator_defaults(coordinator: ThesslaGreenModbusCoordinator) -> dict[str, Any]:
+    """Build diagnostics defaults derived from coordinator state."""
+    return {
+        "effective_batch": coordinator.effective_batch,
+        "capabilities": coordinator.capabilities.as_dict(),
+        "firmware_version": coordinator.device_info.get("firmware"),
+        "total_available_registers": sum(
+            len(regs) for regs in coordinator.available_registers.values()
+        ),
+        "registers_discovered": {
+            key: len(val) for key, val in coordinator.available_registers.items()
+        },
+        "status_overview": getattr(coordinator, "status_overview", None),
+        "autoscan": not coordinator.force_full_register_list,
+        "force_full": coordinator.force_full_register_list,
+        "force_full_register_list": coordinator.force_full_register_list,
+        "deep_scan": coordinator.deep_scan,
+        "error_statistics": {
             "connection_errors": coordinator.statistics.get("connection_errors", 0),
             "timeout_errors": coordinator.statistics.get("timeout_errors", 0),
         },
-    )
-    diagnostics.setdefault(
-        "last_scan",
-        coordinator.last_scan.isoformat() if coordinator.last_scan else None,
-    )
+        "last_scan": coordinator.last_scan.isoformat() if coordinator.last_scan else None,
+    }
 
-    if coordinator.device_scan_result and "raw_registers" in coordinator.device_scan_result:
-        diagnostics.setdefault("raw_registers", coordinator.device_scan_result["raw_registers"])
 
-    # Always expose registers that were skipped due to errors and any unknown
-    # addresses discovered during the scan.
+def _extract_scan_registers(
+    coordinator: ThesslaGreenModbusCoordinator,
+) -> tuple[dict[str, dict[int, Any]], dict[str, dict[str, list[int]]]]:
+    """Extract unknown/failed scan register results with fallback behavior."""
     unknown_regs: dict[str, dict[int, Any]] = {}
     failed_addrs: dict[str, dict[str, list[int]]] = {}
     if coordinator.device_scan_result:
@@ -126,37 +103,65 @@ async def async_get_config_entry_diagnostics(
         failed_addrs = coordinator.device_scan_result.get("failed_addresses", {})
     if not unknown_regs and hasattr(coordinator, "unknown_registers"):
         unknown_regs = coordinator.unknown_registers
-    diagnostics.setdefault("unknown_registers", unknown_regs)
-    diagnostics.setdefault("failed_addresses", failed_addrs)
+    return unknown_regs, failed_addrs
 
-    # Add human-readable descriptions for active error/status registers
-    translations: dict[str, str] = {}
+
+async def _load_translations(hass: HomeAssistant) -> dict[str, str]:
+    """Load translation mapping used to describe status/error registers."""
     try:
-        translations = await translation.async_get_translations(
+        return await translation.async_get_translations(
             hass, hass.config.language, f"component.{DOMAIN}"
         )
-    except (
-        OSError,
-        ValueError,
-        HomeAssistantError,
-        RuntimeError,
-    ) as err:
+    except (OSError, ValueError, HomeAssistantError, RuntimeError) as err:
         _LOGGER.debug("Translation load failed: %s", err)
-    except (
-        BaseException
-    ) as err:  # pragma: no cover - defensive for unexpected translation-layer errors
+    except BaseException as err:  # pragma: no cover
         if isinstance(err, KeyboardInterrupt | SystemExit | asyncio.CancelledError):
             raise
         _LOGGER.debug("Translation load failed unexpectedly: %s", err)
+    return {}
+
+
+def _build_active_errors(data: dict[str, Any], translations: dict[str, str]) -> dict[str, str]:
+    """Build active translated error/status keys from coordinator data."""
     active_errors: dict[str, str] = {}
-    if coordinator.data:
-        for key, value in coordinator.data.items():
-            if value and (key.startswith("e_") or key.startswith("s_")):
-                active_errors[key] = translations.get(f"codes.{key}", key)
-    if active_errors:
-        diagnostics["active_errors"] = active_errors
+    for key, value in data.items():
+        if value and (key.startswith("e_") or key.startswith("s_")):
+            active_errors[key] = translations.get(f"codes.{key}", key)
+    return active_errors
+
+
+async def async_get_config_entry_diagnostics(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> dict[str, Any]:
+    """Return diagnostics for a config entry."""
+    coordinator: ThesslaGreenModbusCoordinator = entry.runtime_data
+
+    diagnostics = coordinator.get_diagnostic_data()
+    _setdefault_bulk(diagnostics, _coordinator_defaults(coordinator))
+    _setdefault_bulk(
+        diagnostics,
+        {
+            "registers_hash": await _run_executor_job(
+                hass, registers_sha256, get_registers_path()
+            ),
+            "total_registers_json": await _run_executor_job(
+                hass, lambda: len(get_all_registers())
+            ),
+        },
+    )
+
+    if coordinator.device_scan_result and "raw_registers" in coordinator.device_scan_result:
+        diagnostics.setdefault("raw_registers", coordinator.device_scan_result["raw_registers"])
+
+    unknown_regs, failed_addrs = _extract_scan_registers(coordinator)
+    diagnostics.setdefault("unknown_registers", unknown_regs)
+    diagnostics.setdefault("failed_addresses", failed_addrs)
 
     if coordinator.data:
+        active_errors = _build_active_errors(coordinator.data, await _load_translations(hass))
+        if active_errors:
+            diagnostics["active_errors"] = active_errors
+
         anomalies = _detect_data_anomalies(coordinator.data)
         if anomalies:
             diagnostics["anomalies"] = anomalies
@@ -168,11 +173,9 @@ async def async_get_config_entry_diagnostics(
 
 def _redact_sensitive_data(data: dict[str, Any]) -> dict[str, Any]:
     """Redact sensitive information from diagnostics."""
-    # Create a deep copy to avoid modifying the original data
     safe_data = copy.deepcopy(data)
 
     def mask_ip(ip_str: str) -> str:
-        """Return a redacted representation of an IP address."""
         try:
             ip_str_clean = ip_str.split("%", 1)[0]
             ip = ipaddress.ip_address(ip_str_clean)
@@ -184,22 +187,17 @@ def _redact_sensitive_data(data: dict[str, Any]) -> dict[str, Any]:
         segments = ip.exploded.split(":")
         return ":".join([segments[0]] + ["xxxx"] * 6 + [segments[-1]])
 
-    # Redact sensitive connection information
     if "connection" in safe_data and "host" in safe_data["connection"]:
         safe_data["connection"]["host"] = mask_ip(safe_data["connection"]["host"])
 
-    # Redact serial number if present
     if "device_info" in safe_data and "serial_number" in safe_data["device_info"]:
         serial = safe_data["device_info"]["serial_number"]
         if serial and len(serial) > 4:
-            # Show only first and last 2 characters
             safe_data["device_info"]["serial_number"] = f"{serial[:2]}***{serial[-2:]}"
 
-    # Keep error logs but redact any IP addresses in messages
     if "recent_errors" in safe_data:
         for error in safe_data["recent_errors"]:
             if "message" in error:
-                # Simple IP redaction
                 message = error["message"]
                 message = re.sub(
                     r"\b(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f:]+)\b",
