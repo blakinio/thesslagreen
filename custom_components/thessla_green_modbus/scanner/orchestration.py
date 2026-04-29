@@ -26,6 +26,17 @@ from .io import is_request_cancelled_error
 _LOGGER = logging.getLogger(__name__)
 
 
+
+
+def _uses_custom_scan_impl(scanner: Any) -> bool:
+    """Return True when scanner.scan is overridden outside scanner.core."""
+    scan_method = scanner.scan
+    base_scan = getattr(type(scanner), "scan", None)
+    return getattr(scan_method, "__func__", None) is not base_scan or getattr(
+        base_scan, "__module__", ""
+    ) != "custom_components.thessla_green_modbus.scanner.core"
+
+
 async def run_full_scan(
     scanner: Any,
     input_max: int,
@@ -289,12 +300,7 @@ async def scan(scanner: Any) -> dict[str, Any]:
 async def scan_device(scanner: Any) -> dict[str, Any]:
     """Open the Modbus connection, perform a scan and close the client."""
     scan_method = scanner.scan
-    base_scan = getattr(type(scanner), "scan", None)
-    if (
-        getattr(scan_method, "__func__", None) is not base_scan
-        or getattr(base_scan, "__module__", "")
-        != "custom_components.thessla_green_modbus.scanner.core"
-    ):
+    if _uses_custom_scan_impl(scanner):
         try:
             scan_result: Any = scan_method()
             if inspect.isawaitable(scan_result):
