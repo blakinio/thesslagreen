@@ -245,4 +245,4 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         """Return if entity is available."""
         # For switch entities, we don't require the register to be in current data
         # as they are primarily for control, not just display.
-        return bool(self.coordinator.last_update_success)
+        return self._coordinator_connected()
