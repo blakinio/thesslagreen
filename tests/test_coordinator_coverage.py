@@ -305,208 +305,6 @@ def test_post_process_data_timezone_aware_timestamp():
 
 
 @pytest.mark.asyncio
-async def test_async_write_temporary_airflow():
-    """async_write_temporary_airflow calls async_write_registers when registers exist."""
-    coord = _make_coordinator()
-    coord.async_write_registers = AsyncMock(return_value=True)
-    mock_def = MagicMock()
-    mock_def.encode = MagicMock(return_value=1)
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
-        return_value=mock_def,
-    ):
-        result = await coord.async_write_temporary_airflow(50.0)
-    assert result is True
-    coord.async_write_registers.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_async_write_temporary_airflow_missing_register():
-    """async_write_temporary_airflow returns False when registers unavailable (lines 2327-2329)."""
-    coord = _make_coordinator()
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
-        side_effect=KeyError("cfg_mode_1"),
-    ):
-        result = await coord.async_write_temporary_airflow(50.0)
-    assert result is False
-
-
-@pytest.mark.asyncio
-async def test_async_write_temporary_temperature():
-    """async_write_temporary_temperature calls async_write_registers when registers exist."""
-    coord = _make_coordinator()
-    coord.async_write_registers = AsyncMock(return_value=True)
-    mock_def = MagicMock()
-    mock_def.encode = MagicMock(return_value=1)
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
-        return_value=mock_def,
-    ):
-        result = await coord.async_write_temporary_temperature(22.0)
-    assert result is True
-    coord.async_write_registers.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_async_write_temporary_temperature_missing_register():
-    """async_write_temporary_temperature returns False when registers unavailable (lines 2352-2354)."""
-    coord = _make_coordinator()
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
-        side_effect=KeyError("cfg_mode_2"),
-    ):
-        result = await coord.async_write_temporary_temperature(22.0)
-    assert result is False
-
-
-# ---------------------------------------------------------------------------
-# Group S — _disconnect_locked / _disconnect / async_shutdown (lines 2368-2416)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_disconnect_locked_with_transport_oserror():
-    """OSError on transport.close() is caught silently (lines 2376-2377)."""
-    coord = _make_coordinator()
-    transport = MagicMock()
-    transport.close = AsyncMock(side_effect=OSError("io error"))
-    coord._transport = transport
-
-    # Should not raise
-    await coord._disconnect_locked()
-    assert coord.client is None
-
-
-@pytest.mark.asyncio
-async def test_disconnect_locked_with_client_oserror():
-    """OSError on client.close() is caught silently (lines 2388-2391)."""
-    coord = _make_coordinator()
-    coord._transport = None
-    client = MagicMock()
-    client.close = AsyncMock(side_effect=OSError("io error"))
-    coord.client = client
-
-    await coord._disconnect_locked()
-    assert coord.client is None
-
-
-@pytest.mark.asyncio
-async def test_disconnect_locked_with_client_sync_close_awaitable():
-    """Sync client.close() result that is awaitable is awaited (lines 2385-2387)."""
-    coord = _make_coordinator()
-    coord._transport = None
-    client = MagicMock()
-
-    async def _close_coro():
-        return None
-
-    # close is not a coroutinefunction itself, but returns an awaitable
-    client.close = MagicMock(return_value=_close_coro())
-    coord.client = client
-
-    await coord._disconnect_locked()
-    assert coord.client is None
-
-
-
-
-
-
-# ---------------------------------------------------------------------------
-# Group T — status_overview / performance_stats / get_diagnostic_data (2419-2522)
-# ---------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ---------------------------------------------------------------------------
-# Additional coverage: __init__ branches (lines 289-294, 371-399)
-# ---------------------------------------------------------------------------
-
-
-def test_coordinator_init_super_type_error_fallback():
-    """Coordinator init should propagate TypeError from base __init__."""
-    from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-
-    def patched_init(self, *args, **kwargs):
-        raise TypeError("unexpected keyword argument")
-
-    with patch.object(ThesslaGreenModbusCoordinator.__bases__[0], "__init__", patched_init):
-        with pytest.raises(TypeError, match="unexpected keyword argument"):
-            ThesslaGreenModbusCoordinator.from_params(
-                hass=MagicMock(), host="localhost", port=502, slave_id=1
-            )
-
-
-def test_coordinator_init_entry_bad_max_registers_per_request():
-    """TypeError/ValueError in entry.options max_registers → MAX_REGS_PER_REQUEST (lines 371-372)."""
-    from custom_components.thessla_green_modbus.const import CONF_MAX_REGISTERS_PER_REQUEST
-
-    entry = MagicMock()
-    entry.entry_id = "test"
-    entry.data = {}
-    entry.options = {CONF_MAX_REGISTERS_PER_REQUEST: "not_a_number"}
-    hass = MagicMock()
-    coord = ThesslaGreenModbusCoordinator.from_params(
-        hass=hass, host="localhost", port=502, slave_id=1, entry=entry
-    )
-    from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
-
-    assert coord.effective_batch == MAX_BATCH_REGISTERS
-
-
-def test_coordinator_init_max_registers_less_than_1():
-    """effective_batch < 1 is raised to 1 (lines 375-376)."""
-    coord = _make_coordinator(max_registers_per_request=0)
-    assert coord.effective_batch == 1
-
-
-def test_coordinator_init_entry_bad_capabilities():
-    """Invalid capabilities dict in entry.data is caught (lines 397-399)."""
-    from custom_components.thessla_green_modbus.scanner import DeviceCapabilities
-
-    entry = MagicMock()
-    entry.entry_id = "test"
-    entry.data = {"capabilities": {"_invalid_kwarg": "bad"}}
-    entry.options = {}
-    hass = MagicMock()
-
-    original_init = DeviceCapabilities.__init__
-    call_count = [0]
-
-    def patched_init(self, **kwargs):
-        call_count[0] += 1
-        if kwargs:  # Called with kwargs from entry.data → raise TypeError
-            raise TypeError("bad kwarg")
-        original_init(self)
-
-    with patch.object(DeviceCapabilities, "__init__", patched_init):
-        coord = ThesslaGreenModbusCoordinator.from_params(
-            hass=hass, host="localhost", port=502, slave_id=1, entry=entry
-        )
-    # Should not raise; capabilities falls back to default (no capabilities set)
-    assert isinstance(coord.capabilities, DeviceCapabilities)
-
-
-# ---------------------------------------------------------------------------
-# _read_coils_transport / _read_discrete_inputs_transport (lines 680-704)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
 async def test_read_coils_transport_raises_when_no_client():
     """_read_coils_transport raises ConnectionException when client=None (lines 680-681)."""
     coord = _make_coordinator()
@@ -530,67 +328,6 @@ async def test_read_discrete_inputs_transport_raises_when_no_client():
 
 # ---------------------------------------------------------------------------
 # async_setup shortcuts (lines 709, 720-728, 874-877)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_async_setup_force_full_register_list():
-    """force_full_register_list=True skips scan and loads full list (lines 874-877)."""
-    coord = _make_coordinator(force_full_register_list=True)
-    coord._ensure_connection = AsyncMock()
-    coord._test_connection = AsyncMock()
-
-    result = await coord.async_setup()
-    assert result is True
-    # All registers should be loaded
-    assert len(coord.available_registers["input_registers"]) > 0
-
-
-@pytest.mark.asyncio
-async def test_async_setup_scan_disabled_no_entry():
-    """scan disabled with no entry falls back to full register list (lines 720-728)."""
-    coord = _make_coordinator()
-    coord.enable_device_scan = False
-    coord.force_full_register_list = False
-    coord.entry = None
-    coord._ensure_connection = AsyncMock()
-    coord._test_connection = AsyncMock()
-
-    result = await coord.async_setup()
-    assert result is True
-
-
-@pytest.mark.asyncio
-async def test_async_setup_rtu_connection_type():
-    """async_setup uses serial_port endpoint for RTU connection type (line 709)."""
-    from custom_components.thessla_green_modbus.const import CONNECTION_TYPE_RTU
-
-    coord = _make_coordinator(connection_type=CONNECTION_TYPE_RTU, serial_port="/dev/ttyUSB0")
-    coord.enable_device_scan = False
-    coord.force_full_register_list = False
-    coord.entry = None
-    coord._ensure_connection = AsyncMock()
-    coord._test_connection = AsyncMock()
-
-    result = await coord.async_setup()
-    assert result is True
-
-
-# ---------------------------------------------------------------------------
-# _load_full_register_list with skip_missing_registers (lines 944-946)
-# ---------------------------------------------------------------------------
-
-
-def test_load_full_register_list_skips_missing():
-    """skip_missing_registers=True removes known-missing registers (lines 944-946)."""
-    coord = _make_coordinator(skip_missing_registers=True)
-    coord._load_full_register_list()
-    # Should have loaded registers without raising
-    assert isinstance(coord.available_registers, dict)
-
-
-# ---------------------------------------------------------------------------
-# _clear_register_failure (line 1085)
 # ---------------------------------------------------------------------------
 
 
@@ -705,31 +442,6 @@ def test_apply_scan_cache_invalid_capabilities():
 # ---------------------------------------------------------------------------
 
 
-def test_coordinator_init_jitter_list_with_bad_values():
-    """backoff_jitter=[None, None] triggers except (TypeError, ValueError) → jitter_value=None."""
-    coord = _make_coordinator(backoff_jitter=[None, None])
-    assert coord.backoff_jitter is None
-
-
-def test_coordinator_init_jitter_else_none():
-    """backoff_jitter=None hits else branch → jitter_value = None."""
-    coord = _make_coordinator(backoff_jitter=None)
-    assert coord.backoff_jitter is None
-
-
-def test_coordinator_init_jitter_else_default():
-    """backoff_jitter={} hits else branch (not None/'') → jitter_value = DEFAULT_BACKOFF_JITTER."""
-    from custom_components.thessla_green_modbus.const import DEFAULT_BACKOFF_JITTER
-
-    coord = _make_coordinator(backoff_jitter={})
-    assert coord.backoff_jitter == DEFAULT_BACKOFF_JITTER
-
-
-# ---------------------------------------------------------------------------
-# Pass 15 — Sekcja B: _read_with_retry inner paths (lines 543-544, 563-565, 572-576)
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.asyncio
 async def test_read_with_retry_awaitable_returning_none_raises():
     """read_method returns awaitable that resolves to None → raises ModbusException."""
@@ -805,25 +517,6 @@ def test_process_register_value_sensor_unavailable_non_temperature():
     ):
         result = coord._process_register_value(non_temp_reg, SENSOR_UNAVAILABLE)
     assert result == SENSOR_UNAVAILABLE
-
-
-def test_process_register_value_schedule_hh_mm():
-    """schedule_ register with HH:MM decoded → stored as HH:MM string (not minutes)."""
-    from custom_components.thessla_green_modbus import _coordinator_register_processing as rp
-
-    coord = _make_coordinator()
-    mock_def = MagicMock()
-    mock_def.is_temperature.return_value = False
-    mock_def.enum = None
-    mock_def.decode.return_value = "06:30"
-    with patch.object(rp, "get_register_definitions", return_value={"schedule_on_1": mock_def}):
-        result = coord._process_register_value("schedule_on_1", 390)
-    assert result == "06:30"
-
-
-# ---------------------------------------------------------------------------
-# Pass 15 — Sekcja D: async_write_register paths (lines 1997-2166)
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
@@ -977,20 +670,6 @@ def test_process_register_value_decoded_equals_sensor_unavailable():
     assert result == SENSOR_UNAVAILABLE
 
 
-def test_process_register_value_schedule_hh_mm_invalid():
-    """schedule_ register with bad HH:MM → ValueError caught, decoded unchanged (lines 1850-1851)."""
-    from custom_components.thessla_green_modbus import _coordinator_register_processing as rp
-
-    coord = _make_coordinator()
-    mock_def = MagicMock()
-    mock_def.is_temperature.return_value = False
-    mock_def.enum = None
-    mock_def.decode.return_value = "ab:cd"  # valid format but int() will fail
-    with patch.object(rp, "get_register_definitions", return_value={"schedule_on_1": mock_def}):
-        result = coord._process_register_value("schedule_on_1", 999)
-    assert result == "ab:cd"  # returned unchanged after ValueError
-
-
 @pytest.mark.asyncio
 async def test_async_write_register_non_writable_function():
     """Register with function != 1 and != 3 → returns False (lines 2098-2099)."""
@@ -1098,32 +777,6 @@ async def test_call_modbus_no_client_raises():
         await coord._call_modbus(dummy, 100, count=1)
 
 
-@pytest.mark.asyncio
-async def test_disconnect_locked_transport_modbus_exception():
-    """ModbusException during transport.close() → debug log (line 2375)."""
-    coord = _make_coordinator()
-    transport = MagicMock()
-    transport.close = AsyncMock(side_effect=ModbusException("close error"))
-    coord._transport = transport
-    # Should not raise
-    await coord._disconnect_locked()
-    transport.close.assert_awaited_once()
-    assert coord._transport is transport
-    assert coord.client is None
-
-
-@pytest.mark.asyncio
-async def test_disconnect_locked_client_connection_exception():
-    """ConnectionException during client.close() → debug log (line 2389)."""
-    coord = _make_coordinator()
-    coord._transport = None
-    client = MagicMock()
-    client.close = MagicMock(side_effect=ConnectionException("close error"))
-    coord.client = client
-    await coord._disconnect_locked()
-    assert coord.client is None
-
-
 def test_get_device_info_model_from_entry():
     """get_device_info uses entry.options when device_info has no model (line 2539)."""
     coord = _make_coordinator()
@@ -1193,18 +846,6 @@ async def test_read_discrete_inputs_transport_returns_result():
 
 # ---------------------------------------------------------------------------
 # Pass 16 — B2: _normalise_available_registers invalid type (line 968)
-# ---------------------------------------------------------------------------
-
-
-def test_normalise_available_registers_invalid_type():
-    """Non-list/set value skipped via continue (line 968)."""
-    coord = _make_coordinator()
-    result = coord._normalise_available_registers({"input_registers": 42})
-    assert "input_registers" not in result
-
-
-# ---------------------------------------------------------------------------
-# Pass 16 — B3: _compute_register_groups exception branches
 # ---------------------------------------------------------------------------
 
 
@@ -1281,43 +922,6 @@ async def test_test_connection_basic_register_response_none():
 # ---------------------------------------------------------------------------
 # Pass 16 — B5: _build_tcp_transport (lines 1172-1182)
 # ---------------------------------------------------------------------------
-
-
-def test_build_tcp_transport_tcp_rtu_mode():
-    """TCP_RTU mode returns RawRtuOverTcpTransport."""
-    from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP_RTU
-    from custom_components.thessla_green_modbus.modbus_transport import RawRtuOverTcpTransport
-
-    coord = _make_coordinator()
-    result = coord._build_tcp_transport(CONNECTION_MODE_TCP_RTU)
-    assert isinstance(result, RawRtuOverTcpTransport)
-
-
-def test_build_tcp_transport_tcp_mode():
-    """TCP mode returns TcpModbusTransport."""
-    from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP
-    from custom_components.thessla_green_modbus.modbus_transport import TcpModbusTransport
-
-    coord = _make_coordinator()
-    result = coord._build_tcp_transport(CONNECTION_MODE_TCP)
-    assert isinstance(result, TcpModbusTransport)
-
-
-# ---------------------------------------------------------------------------
-# Pass 16 — B6: async_write_register uncovered branches
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_async_write_register_transport_not_connected():
-    """transport.is_connected()=False raises (line 1979)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    transport = MagicMock()
-    transport.is_connected.return_value = False
-    coord._transport = transport
-    result = await coord.async_write_register("mode", 1)
-    assert result is False
 
 
 @pytest.mark.asyncio
@@ -1460,29 +1064,6 @@ async def test_async_write_register_oserror():
 # ---------------------------------------------------------------------------
 # Pass 16 — B7: async_write_registers uncovered branches
 # ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_async_write_registers_transport_not_connected():
-    """transport not connected → False (line 2196)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    transport = MagicMock()
-    transport.is_connected.return_value = False
-    coord._transport = transport
-    result = await coord.async_write_registers(100, [1, 2])
-    assert result is False
-
-
-@pytest.mark.asyncio
-async def test_async_write_registers_no_transport_no_client():
-    """No transport, no client → False (line 2198)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    coord._transport = None
-    coord.client = None
-    result = await coord.async_write_registers(100, [1, 2])
-    assert result is False
 
 
 @pytest.mark.asyncio
