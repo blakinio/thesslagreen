@@ -2,20 +2,32 @@
 
 from custom_components.thessla_green_modbus.mappings._mapping_builders import (
     _build_base_translation_mapping,
+    _build_sensor_season_setting_mapping,
     _classify_enum_mapping,
     _classify_min_max_mapping,
     _diag_register_candidates,
     _is_binary_state_pair,
     _iter_bitmask_binary_entries,
+    _register_context,
     _resolve_parent_child_mappings,
     _route_enum_mapping,
     _route_min_max_mapping,
+    _route_problem_mapping,
+    _route_time_and_season_mappings,
 )
 
 
 def test_build_base_translation_mapping_shape() -> None:
     assert _build_base_translation_mapping("pump", "holding_registers") == {
         "translation_key": "pump",
+        "register_type": "holding_registers",
+    }
+
+
+def test_build_sensor_season_setting_mapping_shape() -> None:
+    assert _build_sensor_season_setting_mapping("setting_summer_mode") == {
+        "translation_key": "setting_summer_mode",
+        "icon": "mdi:fan",
         "register_type": "holding_registers",
     }
 
@@ -154,3 +166,38 @@ def test_route_min_max_mapping_routes_to_expected_bucket() -> None:
     assert binary == {}
     assert switch == {}
     assert select == {}
+
+
+def test_register_context_normalizes_resolution_and_defaults() -> None:
+    reg = type(
+        "Reg",
+        (),
+        {
+            "name": "speed",
+            "access": "rw",
+            "min": 0,
+            "max": 100,
+            "unit": "%",
+            "information": None,
+            "multiplier": 10,
+            "resolution": None,
+        },
+    )
+    assert _register_context(reg) == ("speed", "RW", 0, 100, "%", "", 10, 10)
+
+
+def test_route_problem_mapping_requires_binary_translation_key() -> None:
+    binary: dict[str, dict[str, object]] = {}
+    assert _route_problem_mapping("alarm", {"alarm"}, binary) is True
+    assert "alarm" in binary
+    assert _route_problem_mapping("error", set(), binary) is False
+
+
+def test_route_time_and_season_mappings_routes_expected_buckets() -> None:
+    sensor: dict[str, dict[str, object]] = {}
+    time: dict[str, dict[str, object]] = {}
+    select: dict[str, dict[str, object]] = {}
+    assert _route_time_and_season_mappings("schedule_wake", "RW", sensor, time, select) is True
+    assert "schedule_wake" in time
+    assert _route_time_and_season_mappings("setting_winter_mode", "R", sensor, time, select) is True
+    assert "setting_winter_mode" in sensor

@@ -241,6 +241,60 @@ def _route_min_max_mapping(
     return False
 
 
+def _build_sensor_season_setting_mapping(register: str) -> dict[str, Any]:
+    """Return read-only season setting mapping payload."""
+    return {
+        "translation_key": register,
+        "icon": "mdi:fan",
+        "register_type": "holding_registers",
+    }
+
+
+def _register_context(reg: Any) -> tuple[str, str, Any, Any, Any, str, Any, Any]:
+    """Return normalized register fields used by mapping classifiers."""
+    return (
+        reg.name,
+        (reg.access or "").upper(),
+        reg.min,
+        reg.max,
+        reg.unit,
+        reg.information or "",
+        reg.multiplier or 1,
+        reg.resolution or (reg.multiplier or 1),
+    )
+
+
+def _route_problem_mapping(register: str, binary_keys: set[str], binary_mappings: dict[str, Any]) -> bool:
+    """Route problem register to binary mappings when translation exists."""
+    if register not in binary_keys:
+        return False
+    binary_mappings.setdefault(register, _build_problem_binary_mapping(register))
+    return True
+
+
+def _route_time_and_season_mappings(
+    register: str,
+    access: str,
+    sensor_mappings: dict[str, Any],
+    time_mappings: dict[str, Any],
+    select_mappings: dict[str, Any],
+) -> bool:
+    """Route BCD-time and season-setting registers to dedicated mapping buckets."""
+    if any(register.startswith(prefix) for prefix in BCD_TIME_PREFIXES):
+        if register.startswith(_TIME_ENTITY_PREFIXES) and "W" in access:
+            time_mappings.setdefault(register, _build_time_like_mapping(register))
+        else:
+            sensor_mappings.setdefault(register, _build_time_like_mapping(register))
+        return True
+
+    if register.startswith(("setting_summer_", "setting_winter_")):
+        if "W" in access:
+            select_mappings.setdefault(register, _build_season_setting_mapping(register))
+        else:
+            sensor_mappings.setdefault(register, _build_sensor_season_setting_mapping(register))
+        return True
+    return False
+
 
 def _resolve_parent_child_mappings(parent: Any) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Return mutable mapping dictionaries from parent module."""
@@ -526,7 +580,7 @@ def _extend_entity_mappings_from_registers() -> None:
     for reg in _get_all():
         if reg.function != 3 or not reg.name:
             continue
-        register = reg.name
+        register, access, min_val, max_val, unit, info_text, scale, step = _register_context(reg)
         if _is_register_mapped_anywhere(
             register,
             (
@@ -544,56 +598,20 @@ def _extend_entity_mappings_from_registers() -> None:
             continue
 
         if _is_problem_register(register):
-            if register not in binary_keys:
-                continue
-            binary_mappings.setdefault(
-                register,
-                _build_problem_binary_mapping(register),
-            )
+            _route_problem_mapping(register, binary_keys, binary_mappings)
             continue
 
         if register.startswith("date_time"):
             continue
 
-        if any(register.startswith(prefix) for prefix in BCD_TIME_PREFIXES):
-            reg_access = (reg.access or "").upper()
-            if register.startswith(_TIME_ENTITY_PREFIXES) and "W" in reg_access:
-                time_mappings.setdefault(
-                    register,
-                    _build_time_like_mapping(register),
-                )
-            else:
-                sensor_mappings.setdefault(
-                    register,
-                    _build_time_like_mapping(register),
-                )
+        if _route_time_and_season_mappings(
+            register,
+            access,
+            sensor_mappings,
+            time_mappings,
+            select_mappings,
+        ):
             continue
-
-        if register.startswith(("setting_summer_", "setting_winter_")):
-            reg_access = (reg.access or "").upper()
-            if "W" in reg_access:
-                select_mappings.setdefault(
-                    register,
-                    _build_season_setting_mapping(register),
-                )
-            else:
-                sensor_mappings.setdefault(
-                    register,
-                    {
-                        "translation_key": register,
-                        "icon": "mdi:fan",
-                        "register_type": "holding_registers",
-                    },
-                )
-            continue
-
-        access = (reg.access or "").upper()
-        min_val = reg.min
-        max_val = reg.max
-        unit = reg.unit
-        info_text = reg.information or ""
-        scale = reg.multiplier or 1
-        step = reg.resolution or scale
 
         if reg.enum and not (reg.extra and reg.extra.get("bitmask")):
             target, payload = _classify_enum_mapping(
@@ -646,6 +664,7 @@ __all__ = [
     "_build_base_translation_mapping",
     "_build_problem_binary_mapping",
     "_build_season_setting_mapping",
+    "_build_sensor_season_setting_mapping",
     "_build_time_like_mapping",
     "_classify_enum_mapping",
     "_classify_min_max_mapping",
@@ -661,8 +680,11 @@ __all__ = [
     "_load_discrete_mappings",
     "_load_number_mappings",
     "_parse_info_states",
+    "_register_context",
     "_resolve",
     "_resolve_parent_child_mappings",
     "_route_enum_mapping",
     "_route_min_max_mapping",
+    "_route_problem_mapping",
+    "_route_time_and_season_mappings",
 ]
