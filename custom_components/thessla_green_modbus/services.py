@@ -16,15 +16,13 @@ from . import services_schema as _services_schema
 from .const import DOMAIN, SPECIAL_FUNCTION_MAP
 from .scanner import ThesslaGreenDeviceScanner
 from .services_dispatch import write_register as _write_register_impl
-from .services_handlers import (
-    ServiceHandlerDeps,
-    register_data_services,
-    register_logging_services,
-    register_maintenance_services,
-    register_mode_services,
-    register_parameter_services,
-    register_schedule_services,
-)
+from .services_handler_deps import ServiceHandlerDeps
+from .services_handlers_data import register_data_services
+from .services_handlers_logging import register_logging_services
+from .services_handlers_maintenance import register_maintenance_services
+from .services_handlers_mode import register_mode_services
+from .services_handlers_parameters import register_parameter_services
+from .services_handlers_schedule import register_schedule_services
 from .services_helpers import clamp_airflow_rate as _clamp_airflow_rate_impl
 from .services_targets import (
     extract_entity_ids_with_extractor as _extract_entity_ids_impl,
