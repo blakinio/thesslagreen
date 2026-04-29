@@ -1601,7 +1601,7 @@
           "name": "End Time"
         },
         "period": {
-          "description": "Day period (1 or 2)",
+          "description": "Day slot number (1-4)",
           "name": "Period",
           "selector": {
             "select": {
@@ -1611,6 +1611,10 @@
               }
             }
           }
+        },
+        "season": {
+          "description": "Select summer or winter schedule bank",
+          "name": "Season"
         },
         "start_time": {
           "description": "Start time for the period (HH:MM)",
@@ -1801,6 +1805,12 @@
     },
     "sync_time": {
       "description": "Synchronise the AirPack real-time clock to the current Home Assistant time. Useful after power loss.",
+      "fields": {
+        "entity_id": {
+          "description": "The climate entity of the AirPack device.",
+          "name": "Entity"
+        }
+      },
       "name": "Sync Device Clock"
     },
     "refresh_device_data": {
