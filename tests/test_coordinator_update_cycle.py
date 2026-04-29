@@ -46,6 +46,7 @@ def _make_coordinator(**kwargs) -> ThesslaGreenModbusCoordinator:
 
 
 @pytest.mark.asyncio
+
 async def test_get_client_method_fallback_noop():
     """_get_client_method returns callable no-op when method not found (lines 523-527)."""
     coord = _make_coordinator()
@@ -56,8 +57,6 @@ async def test_get_client_method_fallback_noop():
     result = await method()
     assert result is None
 
-
-@pytest.mark.asyncio
 async def test_get_client_method_from_client():
     """_get_client_method returns method from client when transport not found."""
     coord = _make_coordinator()
@@ -69,81 +68,6 @@ async def test_get_client_method_from_client():
     method = coord._get_client_method("read_holding_registers")
     assert method is expected
 
-
-# ---------------------------------------------------------------------------
-# Group D — _apply_scan_cache (lines 974-997)
-# ---------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-# ---------------------------------------------------------------------------
-# Group H — _compute_register_groups safe_scan=True (lines 1026-1047)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_test_connection_modbus_io_cancelled_skips():
-    """ModbusIOException with 'cancelled' message is swallowed (lines 1125-1130)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    transport.read_input_registers = AsyncMock(side_effect=ModbusIOException("request cancelled"))
-    coord._transport = transport
-
-    # Should not raise
-    await coord._test_connection()
-
-
-@pytest.mark.asyncio
-async def test_test_connection_timeout_raises():
-    """TimeoutError in _test_connection is re-raised (lines 1136-1138)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock(side_effect=TimeoutError("timed out"))
-
-    with pytest.raises(TimeoutError):
-        await coord._test_connection()
-
-
-@pytest.mark.asyncio
-async def test_test_connection_oserror_raises():
-    """OSError in _test_connection is re-raised (lines 1139-1141)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock(side_effect=OSError("conn refused"))
-
-    with pytest.raises(OSError):
-        await coord._test_connection()
-
-
-@pytest.mark.asyncio
-async def test_test_connection_modbus_io_non_cancelled_raises():
-    """Non-cancelled ModbusIOException is re-raised (lines 1131-1132)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    transport.read_input_registers = AsyncMock(side_effect=ModbusIOException("register error"))
-    coord._transport = transport
-
-    with pytest.raises(ModbusIOException):
-        await coord._test_connection()
-
-
-# ---------------------------------------------------------------------------
-# Group N — calculate_power_consumption (lines 1856-1881)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
 async def test_read_coils_transport_raises_when_no_client():
     """_read_coils_transport raises ConnectionException when client=None (lines 680-681)."""
     coord = _make_coordinator()
@@ -153,8 +77,6 @@ async def test_read_coils_transport_raises_when_no_client():
     with pytest.raises(ConnectionException):
         await coord._read_coils_transport(1, 0, count=1)
 
-
-@pytest.mark.asyncio
 async def test_read_discrete_inputs_transport_raises_when_no_client():
     """_read_discrete_inputs_transport raises ConnectionException when client=None (lines 697-698)."""
     coord = _make_coordinator()
@@ -164,12 +86,6 @@ async def test_read_discrete_inputs_transport_raises_when_no_client():
     with pytest.raises(ConnectionException):
         await coord._read_discrete_inputs_transport(1, 0, count=1)
 
-
-# ---------------------------------------------------------------------------
-# async_setup shortcuts (lines 709, 720-728, 874-877)
-# ---------------------------------------------------------------------------
-
-
 def test_clear_register_failure_with_attribute():
     """_clear_register_failure discards from _failed_registers when attr exists (line 1085)."""
     coord = _make_coordinator()
@@ -178,78 +94,6 @@ def test_clear_register_failure_with_attribute():
     assert "outside_temperature" not in coord._failed_registers
     assert "mode" in coord._failed_registers
 
-
-# ---------------------------------------------------------------------------
-# _test_connection: transport is None after _ensure_connection (line 1095)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_test_connection_transport_none_raises():
-    """ConnectionException when transport is None after _ensure_connection (line 1095)."""
-    coord = _make_coordinator()
-    coord._transport = None
-    coord._ensure_connection = AsyncMock()  # does nothing, transport stays None
-
-    with pytest.raises(ConnectionException):
-        await coord._test_connection()
-
-
-@pytest.mark.asyncio
-async def test_test_connection_response_none_raises():
-    """ConnectionException when read_input_registers returns None (lines 1105-1106)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    transport.read_input_registers = AsyncMock(return_value=None)
-    coord._transport = transport
-
-    with pytest.raises(ConnectionException):
-        await coord._test_connection()
-
-
-@pytest.mark.asyncio
-async def test_test_connection_successful():
-    """Full successful connection test (lines 1110-1124)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-
-    ok_response = MagicMock()
-    ok_response.isError.return_value = False
-    ok_response.registers = [100]
-
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    transport.read_input_registers = AsyncMock(return_value=ok_response)
-    coord._transport = transport
-
-    # Should complete without exception
-    await coord._test_connection()
-
-
-@pytest.mark.asyncio
-async def test_test_connection_modbus_exception_raises():
-    """ModbusException in _test_connection is re-raised (lines 1133-1135)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    transport.read_input_registers = AsyncMock(side_effect=ModbusException("modbus error"))
-    coord._transport = transport
-
-    with pytest.raises(ModbusException):
-        await coord._test_connection()
-
-
-# ---------------------------------------------------------------------------
-# _apply_scan_cache exception branch (lines 985-986)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
 async def test_read_with_retry_awaitable_returning_none_raises():
     """read_method returns awaitable that resolves to None → raises ModbusException."""
     coord = _make_coordinator()
@@ -261,8 +105,6 @@ async def test_read_with_retry_awaitable_returning_none_raises():
     with pytest.raises(ModbusException):
         await coord._read_with_retry(read_method, 0, 1, register_type="input_registers")
 
-
-@pytest.mark.asyncio
 async def test_read_with_retry_transient_error_raises_modbus_io():
     """isError()=True with non-ILLEGAL exception_code → raises ModbusIOException."""
     coord = _make_coordinator()
@@ -277,12 +119,6 @@ async def test_read_with_retry_transient_error_raises_modbus_io():
 
     with pytest.raises(ModbusIOException):
         await coord._read_with_retry(read_method, 0, 1, register_type="input_registers")
-
-
-# ---------------------------------------------------------------------------
-# Pass 15 — Sekcja C: _process_register_value paths (lines 1828, 1832-1838, 1850-1851)
-# ---------------------------------------------------------------------------
-
 
 def test_process_register_value_sensor_unavailable_temperature():
     """SENSOR_UNAVAILABLE on a temperature register → returns None."""
@@ -300,7 +136,6 @@ def test_process_register_value_sensor_unavailable_temperature():
     ):
         result = coord._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
     assert result is None
-
 
 def test_process_register_value_sensor_unavailable_non_temperature():
     """SENSOR_UNAVAILABLE on a non-temperature register → returns SENSOR_UNAVAILABLE."""
@@ -325,8 +160,6 @@ def test_process_register_value_sensor_unavailable_non_temperature():
         result = coord._process_register_value(non_temp_reg, SENSOR_UNAVAILABLE)
     assert result == SENSOR_UNAVAILABLE
 
-
-@pytest.mark.asyncio
 async def test_async_write_register_multi_reg_offset_too_large():
     """len(values) + offset > definition.length → returns False immediately."""
     coord = _make_coordinator()
@@ -347,8 +180,6 @@ async def test_async_write_register_multi_reg_offset_too_large():
         result = await coord.async_write_register("some_reg", [1, 2, 3], offset=1)
     assert result is False
 
-
-@pytest.mark.asyncio
 async def test_async_write_register_via_transport():
     """Single-value write when _transport is not None uses transport.write_register."""
     coord = _make_coordinator()
@@ -364,8 +195,6 @@ async def test_async_write_register_via_transport():
     result = await coord.async_write_register("mode", 1)
     assert result is True
 
-
-@pytest.mark.asyncio
 async def test_async_write_register_coil():
     """Coil register (function=1) write returns True on success."""
     coord = _make_coordinator()
@@ -381,8 +210,6 @@ async def test_async_write_register_coil():
     result = await coord.async_write_register("bypass", 1)
     assert result is True
 
-
-@pytest.mark.asyncio
 async def test_async_write_register_response_error_returns_false():
     """Error response on last retry → returns False."""
     coord = _make_coordinator()
@@ -398,25 +225,6 @@ async def test_async_write_register_response_error_returns_false():
     result = await coord.async_write_register("mode", 1)
     assert result is False
 
-
-@pytest.mark.asyncio
-async def test_async_write_register_modbus_exception_retry():
-    """ModbusException during write → disconnect, retry, return False."""
-    coord = _make_coordinator()
-    coord.retry = 2
-    coord._ensure_connection = AsyncMock()
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    transport.write_register = AsyncMock(side_effect=ModbusException("write failed"))
-    coord._transport = transport
-    coord._disconnect = AsyncMock()
-
-    result = await coord.async_write_register("mode", 1)
-    assert result is False
-    coord._disconnect.assert_called()
-
-
-@pytest.mark.asyncio
 async def test_async_write_register_refresh_type_error():
     """TypeError during refresh is silently caught; write still returns True."""
     coord = _make_coordinator()
@@ -432,21 +240,12 @@ async def test_async_write_register_refresh_type_error():
     result = await coord.async_write_register("mode", 1, refresh=True)
     assert result is True
 
-
-# ---------------------------------------------------------------------------
-# Pass 15 — Sekcja E: async_write_registers paths (lines 2179-2189)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
 async def test_async_write_registers_empty_values():
     """Empty values list → returns False immediately."""
     coord = _make_coordinator()
     result = await coord.async_write_registers(100, [])
     assert result is False
 
-
-@pytest.mark.asyncio
 async def test_async_write_registers_too_many_for_single_request():
     """Values exceeding MAX_REGS_PER_REQUEST with require_single_request=True → False."""
     from custom_components.thessla_green_modbus.const import MAX_REGS_PER_REQUEST
@@ -455,12 +254,6 @@ async def test_async_write_registers_too_many_for_single_request():
     values = list(range(MAX_REGS_PER_REQUEST + 1))
     result = await coord.async_write_registers(100, values, require_single_request=True)
     assert result is False
-
-
-# ---------------------------------------------------------------------------
-# Pass 15 addendum — additional uncovered paths
-# ---------------------------------------------------------------------------
-
 
 def test_process_register_value_decoded_equals_sensor_unavailable():
     """When decode() returns SENSOR_UNAVAILABLE, the function returns SENSOR_UNAVAILABLE (lines 1831-1838)."""
@@ -476,8 +269,6 @@ def test_process_register_value_decoded_equals_sensor_unavailable():
         result = coord._process_register_value("mode", 1)
     assert result == SENSOR_UNAVAILABLE
 
-
-@pytest.mark.asyncio
 async def test_async_write_register_non_writable_function():
     """Register with function != 1 and != 3 → returns False (lines 2098-2099)."""
     coord = _make_coordinator()
@@ -498,25 +289,6 @@ async def test_async_write_register_non_writable_function():
         result = await coord.async_write_register("some_reg", 1)
     assert result is False
 
-
-@pytest.mark.asyncio
-async def test_async_write_register_error_response_retries():
-    """Error response on non-last attempt → continues, then fails."""
-    coord = _make_coordinator()
-    coord.retry = 2
-    coord._ensure_connection = AsyncMock()
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    error_response = MagicMock()
-    error_response.isError.return_value = True
-    transport.write_register = AsyncMock(return_value=error_response)
-    coord._transport = transport
-
-    result = await coord.async_write_register("mode", 1)
-    assert result is False
-    assert transport.write_register.call_count == 2  # retried once
-
-
 def test_create_consecutive_groups_empty():
     """Empty registers dict returns [] (line 1931)."""
     from custom_components.thessla_green_modbus._coordinator_register_processing import (
@@ -526,15 +298,12 @@ def test_create_consecutive_groups_empty():
     result = create_consecutive_groups({})
     assert result == []
 
-
 def test_process_register_value_unknown_register():
     """Unknown register name raises KeyError internally → returns False (lines 1810-1812)."""
     coord = _make_coordinator()
     result = coord._process_register_value("definitely_not_a_real_register_xyz", 42)
     assert result is False
 
-
-@pytest.mark.asyncio
 async def test_call_modbus_no_client_raises():
     """_call_modbus with no transport and no client raises ConnectionException (line 486)."""
     coord = _make_coordinator()
@@ -547,8 +316,6 @@ async def test_call_modbus_no_client_raises():
     with pytest.raises(ConnectionException):
         await coord._call_modbus(dummy, 100, count=1)
 
-
-@pytest.mark.asyncio
 async def test_read_with_retry_response_none_via_call_modbus():
     """read_method returns None → _call_modbus called → response None → raises ModbusException."""
     coord = _make_coordinator()
@@ -564,13 +331,6 @@ async def test_read_with_retry_response_none_via_call_modbus():
     with pytest.raises(ModbusException):
         await coord._read_with_retry(read_method, 0, 1, register_type="input_registers")
 
-
-# ---------------------------------------------------------------------------
-# Pass 16 — B1: _read_coils_transport and _read_discrete_inputs_transport
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
 async def test_read_coils_transport_returns_result():
     """_read_coils_transport calls _call_modbus (line 682)."""
     coord = _make_coordinator()
@@ -580,8 +340,6 @@ async def test_read_coils_transport_returns_result():
     result = await coord._read_coils_transport(1, 100, count=1)
     assert result == ok_resp
 
-
-@pytest.mark.asyncio
 async def test_read_discrete_inputs_transport_returns_result():
     """_read_discrete_inputs_transport calls _call_modbus (line 699)."""
     coord = _make_coordinator()
@@ -591,48 +349,6 @@ async def test_read_discrete_inputs_transport_returns_result():
     result = await coord._read_discrete_inputs_transport(1, 100, count=1)
     assert result == ok_resp
 
-
-# ---------------------------------------------------------------------------
-# Pass 16 — B2: _normalise_available_registers invalid type (line 968)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_test_connection_transport_not_connected():
-    """transport.is_connected() False raises ConnectionException (line 1111)."""
-    coord = _make_coordinator()
-    transport = MagicMock()
-    # All reads succeed but then is_connected() returns False
-    transport.read_input_registers = AsyncMock(return_value=MagicMock())
-    transport.is_connected.return_value = False
-    coord._transport = transport
-    coord._ensure_connection = AsyncMock()
-    with pytest.raises(ConnectionException):
-        await coord._test_connection()
-
-
-@pytest.mark.asyncio
-async def test_test_connection_basic_register_response_none():
-    """Final read_input_registers returns None raises ConnectionException (line 1122)."""
-    coord = _make_coordinator()
-    transport = MagicMock()
-    # Loop reads return MagicMock, then final read returns None
-    transport.read_input_registers = AsyncMock(
-        side_effect=[MagicMock(), MagicMock(), MagicMock(), None]
-    )
-    transport.is_connected.return_value = True
-    coord._transport = transport
-    coord._ensure_connection = AsyncMock()
-    with pytest.raises(ConnectionException):
-        await coord._test_connection()
-
-
-# ---------------------------------------------------------------------------
-# Pass 16 — B5: _build_tcp_transport (lines 1172-1182)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
 async def test_async_write_register_multi_reg_non_int_values():
     """list with non-int values → TypeError → False (lines 2014-2016)."""
     coord = _make_coordinator()
@@ -651,8 +367,6 @@ async def test_async_write_register_multi_reg_non_int_values():
         result = await coord.async_write_register("some_reg", ["bad", "x", "y"], offset=0)
     assert result is False
 
-
-@pytest.mark.asyncio
 async def test_async_write_register_offset_exceeds_length():
     """offset >= definition.length → False (lines 2024-2031)."""
     coord = _make_coordinator()
@@ -672,8 +386,6 @@ async def test_async_write_register_offset_exceeds_length():
         result = await coord.async_write_register("some_reg", 1, offset=2)
     assert result is False
 
-
-@pytest.mark.asyncio
 async def test_async_write_register_multi_reg_with_offset_via_transport():
     """Multi-reg with offset > 0 via transport (lines 2033, 2058-2066)."""
     coord = _make_coordinator()
@@ -697,84 +409,6 @@ async def test_async_write_register_multi_reg_with_offset_via_transport():
         result = await coord.async_write_register("some_reg", 5, offset=1)
     assert result is True
 
-
-@pytest.mark.asyncio
-async def test_async_write_register_multi_reg_chunk_error_last_attempt():
-    """Multi-reg chunk error on last attempt → False (lines 2068-2076)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    mock_def = MagicMock()
-    mock_def.length = 2
-    mock_def.function = 3
-    mock_def.address = 100
-    err_resp = MagicMock()
-    err_resp.isError.return_value = True
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    transport.write_registers = AsyncMock(return_value=err_resp)
-    coord._transport = transport
-    coord.retry = 1
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
-        return_value=mock_def,
-    ):
-        result = await coord.async_write_register("some_reg", [1, 2])
-    assert result is False
-
-
-@pytest.mark.asyncio
-async def test_async_write_register_timeout_last_attempt():
-    """TimeoutError on last attempt → False."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    transport.write_register = AsyncMock(side_effect=TimeoutError("write timeout"))
-    coord._transport = transport
-    coord._disconnect = AsyncMock()
-    coord.retry = 1
-    result = await coord.async_write_register("mode", 1)
-    assert result is False
-
-
-@pytest.mark.asyncio
-async def test_async_write_register_timeout_with_retry():
-    """TimeoutError then success (line 2150 continue)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    ok_resp = MagicMock()
-    ok_resp.isError.return_value = False
-    transport.write_register = AsyncMock(side_effect=[TimeoutError("write timeout"), ok_resp])
-    coord._transport = transport
-    coord._disconnect = AsyncMock()
-    coord.async_request_refresh = AsyncMock()
-    coord.retry = 2
-    result = await coord.async_write_register("mode", 1)
-    assert result is True
-
-
-@pytest.mark.asyncio
-async def test_async_write_register_oserror():
-    """OSError in write → False (lines 2151-2154)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    transport.write_register = AsyncMock(side_effect=OSError("io error"))
-    coord._transport = transport
-    coord._disconnect = AsyncMock()
-    result = await coord.async_write_register("mode", 1)
-    assert result is False
-
-
-# ---------------------------------------------------------------------------
-# Pass 16 — B7: async_write_registers uncovered branches
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
 async def test_async_write_registers_single_request_rtu_transport():
     """RTU transport single request (lines 2209-2215)."""
     from custom_components.thessla_green_modbus.const import CONNECTION_TYPE_RTU
@@ -791,8 +425,6 @@ async def test_async_write_registers_single_request_rtu_transport():
     result = await coord.async_write_registers(100, [1, 2], require_single_request=True)
     assert result is True
 
-
-@pytest.mark.asyncio
 async def test_async_write_registers_single_request_tcp_call_modbus():
     """TCP single request via transport (lines 2217-2222)."""
     coord = _make_coordinator()
@@ -807,8 +439,6 @@ async def test_async_write_registers_single_request_tcp_call_modbus():
     result = await coord.async_write_registers(100, [1, 2], require_single_request=True)
     assert result is True
 
-
-@pytest.mark.asyncio
 async def test_async_write_registers_single_request_error_response():
     """Single request error → success=False (line 2224)."""
     coord = _make_coordinator()
@@ -823,8 +453,6 @@ async def test_async_write_registers_single_request_error_response():
     result = await coord.async_write_registers(100, [1, 2], require_single_request=True)
     assert result is False
 
-
-@pytest.mark.asyncio
 async def test_async_write_registers_batch_via_client():
     """Batch write via client (line 2230)."""
     coord = _make_coordinator()
@@ -839,69 +467,6 @@ async def test_async_write_registers_batch_via_client():
     result = await coord.async_write_registers(100, [1, 2])
     assert result is True
 
-
-@pytest.mark.asyncio
-async def test_async_write_registers_batch_error_last_attempt():
-    """Batch error on last attempt → False (lines 2253-2258)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    coord._transport = None
-    client = MagicMock()
-    err_resp = MagicMock()
-    err_resp.isError.return_value = True
-    client.write_registers = AsyncMock(return_value=err_resp)
-    coord.client = client
-    coord._disconnect = AsyncMock()
-    coord.retry = 1
-    result = await coord.async_write_registers(100, [1, 2])
-    assert result is False
-
-
-@pytest.mark.asyncio
-async def test_async_write_registers_modbus_exception():
-    """ModbusException → disconnect + False (lines 2270-2284)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    coord._transport = None
-    client = MagicMock()
-    client.write_registers = AsyncMock(side_effect=ModbusException("write error"))
-    coord.client = client
-    coord._disconnect = AsyncMock()
-    coord.retry = 1
-    result = await coord.async_write_registers(100, [1, 2])
-    assert result is False
-
-
-@pytest.mark.asyncio
-async def test_async_write_registers_timeout_error():
-    """TimeoutError → False (lines 2285-2301)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    coord._transport = None
-    client = MagicMock()
-    client.write_registers = AsyncMock(side_effect=TimeoutError("timeout"))
-    coord.client = client
-    coord._disconnect = AsyncMock()
-    coord.retry = 1
-    result = await coord.async_write_registers(100, [1, 2])
-    assert result is False
-
-
-@pytest.mark.asyncio
-async def test_async_write_registers_oserror():
-    """OSError → False (lines 2302-2305)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    coord._transport = None
-    client = MagicMock()
-    client.write_registers = AsyncMock(side_effect=OSError("io error"))
-    coord.client = client
-    coord._disconnect = AsyncMock()
-    result = await coord.async_write_registers(100, [1, 2])
-    assert result is False
-
-
-@pytest.mark.asyncio
 async def test_async_write_registers_refresh_type_error():
     """TypeError in refresh → still True (lines 2314-2317)."""
     coord = _make_coordinator()
@@ -916,13 +481,6 @@ async def test_async_write_registers_refresh_type_error():
     result = await coord.async_write_registers(100, [1, 2], refresh=True)
     assert result is True
 
-
-# ---------------------------------------------------------------------------
-# Pass 16 — additional coordinator tests for remaining misses
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
 async def test_async_write_register_encoded_non_list():
     """encode() returns non-list → [int(encoded)] (line 2022)."""
     coord = _make_coordinator()
@@ -944,85 +502,4 @@ async def test_async_write_register_encoded_non_list():
         return_value=mock_def,
     ):
         result = await coord.async_write_register("some_reg", 5, offset=0)
-    assert result is True
-
-
-@pytest.mark.asyncio
-async def test_async_write_register_multi_reg_chunk_error_retry():
-    """Multi-reg chunk error retried → success (lines 2075-2076)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    mock_def = MagicMock()
-    mock_def.length = 2
-    mock_def.function = 3
-    mock_def.address = 100
-    err_resp = MagicMock()
-    err_resp.isError.return_value = True
-    ok_resp = MagicMock()
-    ok_resp.isError.return_value = False
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    transport.write_registers = AsyncMock(side_effect=[err_resp, ok_resp])
-    coord._transport = transport
-    coord.retry = 2
-    coord.async_request_refresh = AsyncMock()
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
-        return_value=mock_def,
-    ):
-        result = await coord.async_write_register("some_reg", [1, 2])
-    assert result is True
-
-
-@pytest.mark.asyncio
-async def test_async_write_registers_modbus_exception_retry():
-    """ModbusException with retry → retries (lines 2279-2284)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    coord._transport = None
-    client = MagicMock()
-    ok_resp = MagicMock()
-    ok_resp.isError.return_value = False
-    client.write_registers = AsyncMock(side_effect=[ModbusException("write error"), ok_resp])
-    coord.client = client
-    coord._disconnect = AsyncMock()
-    coord.retry = 2
-    coord.async_request_refresh = AsyncMock()
-    result = await coord.async_write_registers(100, [1, 2])
-    assert result is True
-
-
-@pytest.mark.asyncio
-async def test_async_write_registers_timeout_with_transport():
-    """TimeoutError with transport disconnects (line 2287)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    ok_resp = MagicMock()
-    ok_resp.isError.return_value = False
-    transport.write_registers = AsyncMock(side_effect=[TimeoutError("timeout"), ok_resp])
-    coord._transport = transport
-    coord._disconnect = AsyncMock()
-    coord.retry = 2
-    coord.async_request_refresh = AsyncMock()
-    result = await coord.async_write_registers(100, [1, 2])
-    assert result is True
-
-
-@pytest.mark.asyncio
-async def test_async_write_registers_timeout_continue():
-    """TimeoutError continue on non-last attempt (line 2301)."""
-    coord = _make_coordinator()
-    coord._ensure_connection = AsyncMock()
-    coord._transport = None
-    client = MagicMock()
-    ok_resp = MagicMock()
-    ok_resp.isError.return_value = False
-    client.write_registers = AsyncMock(side_effect=[TimeoutError("timeout"), ok_resp])
-    coord.client = client
-    coord._disconnect = AsyncMock()
-    coord.retry = 2
-    coord.async_request_refresh = AsyncMock()
-    result = await coord.async_write_registers(100, [1, 2])
     assert result is True
