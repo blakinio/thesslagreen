@@ -104,9 +104,7 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         the entity disappearing as «unavailable».
         """
         if self._register_name.startswith(BCD_TIME_PREFIXES + SETTING_SCHEDULE_PREFIXES):
-            return self.coordinator.last_update_success and not getattr(
-                self.coordinator, "offline_state", False
-            )
+            return self._coordinator_connected()
         return super().available
 
     @property
@@ -135,9 +133,11 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
 
         value = self._states[option]
         try:
-            success = await self.coordinator.async_write_register(
-                self._register_name, value, refresh=False
-            )
+            await self._write_register(self._register_name, value)
+        except RuntimeError as err:
+            msg = f"Failed to set {self._register_name} to {option}: {err}"
+            _LOGGER.error(msg)
+            raise HomeAssistantError(msg) from err
         except (ModbusException, ConnectionException) as err:
             err_txt = str(err)
             for prefix in ("Modbus Error: [Connection] ", "Modbus Error: "):
@@ -147,10 +147,3 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
             msg = f"Error setting {self._register_name} to {option}: {err_txt}"
             _LOGGER.error(msg)
             raise HomeAssistantError(msg) from err
-
-        if success:
-            await self.coordinator.async_request_refresh()
-        else:
-            msg = f"Failed to set {self._register_name} to {option}"
-            _LOGGER.error(msg)
-            raise HomeAssistantError(msg)

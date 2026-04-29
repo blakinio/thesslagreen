@@ -73,11 +73,17 @@ class ThesslaGreenEntity(CoordinatorEntity):
         This property forms part of the entity API and is queried by Home
         Assistant even though it is not referenced in the codebase.
         """
-        return (
-            self.coordinator.last_update_success
-            and self.coordinator.data.get(self._key) is not None
-            and not getattr(self.coordinator, "offline_state", False)
+        return self._coordinator_connected() and self._has_value(self._key)
+
+    def _coordinator_connected(self) -> bool:
+        """Return True when coordinator has an up-to-date online state."""
+        return self.coordinator.last_update_success and not getattr(
+            self.coordinator, "offline_state", False
         )
+
+    def _has_value(self, key: str) -> bool:
+        """Return True when a key has non-None state in coordinator data."""
+        return self.coordinator.data.get(key) is not None
 
     def _percentage_limits(self) -> tuple[int, int]:
         """Return min/max percentage limits derived from coordinator data."""
