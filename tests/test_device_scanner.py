@@ -196,24 +196,41 @@ async def test_temperature_register_unavailable_kept():
     assert "outside_temperature" not in result["available_registers"]["input_registers"]
 
 
+async def test_scan_excludes_unavailable_temperature():
+    """Temperature register with SENSOR_UNAVAILABLE should be included (sensor disconnected, register exists)."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
 
+    async def fake_read_input(client, address, count, **kwargs):
+        data = [1] * count
+        if address == 0:
+            data[0:3] = [4, 85, 0]
+        temp_addr = INPUT_REGISTERS["outside_temperature"]
+        if address <= temp_addr < address + count:
+            data[temp_addr - address] = SENSOR_UNAVAILABLE
+        return data
 
+    async def fake_read_holding(client, address, count, **kwargs):
+        return [1] * count
 
+    async def fake_read_coil(client, address, count, **kwargs):
+        return [False] * count
 
+    async def fake_read_discrete(client, address, count, **kwargs):
+        return [False] * count
 
+    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.connect.return_value = True
+        mock_client_class.return_value = mock_client
 
-
-
-
-
-
-
-
-
-
-
-
-
+        with (
+            patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
+            patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
+            patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
+            patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
+        ):
+            scanner.connection_mode = CONNECTION_MODE_TCP
+            result = await scanner.scan_device()
 
 
 
