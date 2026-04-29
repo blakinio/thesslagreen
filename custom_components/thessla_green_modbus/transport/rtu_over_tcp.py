@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from .crc import append_crc, crc16
+from .crc import append_crc, crc16_bytes
 
 
 def validate_crc(payload: bytes, crc_bytes: bytes) -> None:
-    expected = crc16(payload).to_bytes(2, "little")
+    expected = crc16_bytes(payload)
     if crc_bytes != expected:
         raise ValueError("CRC mismatch in RTU response")
 
