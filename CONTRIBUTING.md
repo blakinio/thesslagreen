@@ -160,8 +160,7 @@ When touching architecture-related code/docs, keep these constraints:
 - No re-export shims.
 - No proxy modules.
 - `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant.
-- `coordinator.py` must not be moved yet.
-- `coordinator/` must not be recreated before a dedicated migration PR.
+- coordinator package migration is completed (`coordinator/` is canonical and top-level `coordinator.py` was removed).
 
 See also: [`docs/refactor_status.md`](docs/refactor_status.md).
 
@@ -173,7 +172,7 @@ custom_components/thessla_green_modbus/
 ├── manifest.json            # Integration metadata
 ├── config_flow.py           # Configuration UI
 ├── const.py                 # Constants and register definitions
-├── coordinator.py           # Data coordinator (optimized)
+├── coordinator/             # Coordinator package (canonical)
 ├── scanner/                 # Device capability scanner modules
 ├── climate.py               # Climate entity (enhanced)
 ├── sensor.py                # Sensor entities

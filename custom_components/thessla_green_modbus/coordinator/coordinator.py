@@ -639,7 +639,9 @@ class ThesslaGreenModbusCoordinator(
 
     async def _try_direct_client_connect(self, *, allow_parameterless_ctor: bool) -> bool:
         """Try connecting via AsyncModbusTcpClient and store the connected client."""
-        tcp_client_cls = globals().get("AsyncModbusTcpClient", AsyncModbusTcpClient)
+        from custom_components.thessla_green_modbus import coordinator as coordinator_pkg
+
+        tcp_client_cls = getattr(coordinator_pkg, "AsyncModbusTcpClient", AsyncModbusTcpClient)
         direct_client = await _connect_direct_tcp_client_impl(
             host=self.config.host,
             port=self.config.port,
