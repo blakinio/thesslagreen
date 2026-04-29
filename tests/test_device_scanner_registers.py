@@ -1,6 +1,5 @@
-"""Device scanner register formatting/validation tests."""
+"""Register/value-focused device scanner tests."""
 
-import logging
 from unittest.mock import patch
 
 import pytest
@@ -14,6 +13,7 @@ from custom_components.thessla_green_modbus.utils import (
 )
 
 pytestmark = pytest.mark.asyncio
+
 
 async def test_is_valid_register_value():
     """Test register value validation."""
@@ -113,54 +113,3 @@ async def test_format_register_value_setting():
 async def test_format_register_value_invalid_time():
     """Invalid time registers should show raw hex with invalid marker."""
     assert _format_register_value("schedule_summer_mon_1", 9216) == "9216 (invalid)"
-
-async def test_log_invalid_value_debug_when_not_verbose(caplog):
-    """Invalid values log at DEBUG level when not verbose."""
-    scanner = ThesslaGreenDeviceScanner("host", 502)
-
-    caplog.set_level(logging.DEBUG)
-    scanner._log_invalid_value("test_register", 1)
-
-    assert caplog.records[0].levelno == logging.DEBUG
-    assert "Invalid value for test_register: raw=1 decoded=1" in caplog.text
-
-    caplog.clear()
-    scanner._log_invalid_value("test_register", 1)
-
-    assert not caplog.records
-
-async def test_log_invalid_value_info_then_debug_when_verbose(caplog):
-    """First invalid value logs INFO when verbose, then DEBUG."""
-    scanner = ThesslaGreenDeviceScanner("host", 502, verbose_invalid_values=True)
-
-    caplog.set_level(logging.DEBUG)
-    scanner._log_invalid_value("test_register", 1)
-
-    assert caplog.records[0].levelno == logging.INFO
-    assert "raw=1" in caplog.text
-
-    caplog.clear()
-    scanner._log_invalid_value("test_register", 1)
-
-    assert caplog.records[0].levelno == logging.DEBUG
-    assert "raw=1" in caplog.text
-
-async def test_log_invalid_value_raw_and_formatted(caplog):
-    """Log includes both raw hex and decoded representation."""
-    scanner = ThesslaGreenDeviceScanner("host", 502)
-
-    caplog.set_level(logging.DEBUG)
-    scanner._log_invalid_value("schedule_time", 5632)
-
-    assert "raw=5632" in caplog.text
-    assert "decoded=16:00" in caplog.text
-
-async def test_log_invalid_value_invalid_time(caplog):
-    """Logs include formatted string for invalid time values."""
-    scanner = ThesslaGreenDeviceScanner("host", 502)
-
-    caplog.set_level(logging.DEBUG)
-    scanner._log_invalid_value("schedule_time", 9216)
-
-    assert "raw=9216" in caplog.text
-    assert "decoded=9216 (invalid)" in caplog.text
