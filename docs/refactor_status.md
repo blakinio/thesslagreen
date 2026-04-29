@@ -36,14 +36,14 @@ Current active coordinator package:
 
 Current repository state:
 
-- `custom_components/thessla_green_modbus/coordinator/` is present and canonical.
-- The old empty `coordinator/` scaffold was removed because it shadowed `coordinator.py` and broke imports.
+- `custom_components/thessla_green_modbus/coordinator/` is present and contains active coordinator helper modules.
+- `custom_components/thessla_green_modbus/coordinator.py` remains the active top-level coordinator entrypoint in this transition stage.
 
 Transition rule (current):
 
 - `coordinator.py` remains in place and must not be moved in this stage.
-- `coordinator/` must not be recreated until a dedicated future PR performs a real migration to a package layout.
-- That future migration must update imports directly and must not use compatibility shims, re-export shims, or proxy modules.
+- `coordinator.py` must remain in place in this stage even while `coordinator/` helpers exist.
+- Any future full migration of coordinator entrypoint/import ownership must update imports directly and must not use compatibility shims, re-export shims, or proxy modules.
 
 ## Documentation policy for refactor work
 

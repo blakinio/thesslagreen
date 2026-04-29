@@ -69,60 +69,48 @@ Interpretation: mapping builders plus service registration/orchestration remain 
 
 Priority mixed-responsibility candidates:
 
-- `custom_components/thessla_green_modbus/services_handlers_maintenance.py`
-  - mixes service registration, validation, and workflow orchestration.
-- `custom_components/thessla_green_modbus/services_handlers_parameters.py`
-  - mixes schema-level validation and runtime execution wiring.
-- `custom_components/thessla_green_modbus/config_flow.py`
-  - still combines step orchestration with some nontrivial branching.
 - `custom_components/thessla_green_modbus/mappings/_mapping_builders.py`
-  - combines loading, shaping, and extension logic in one location.
+  - still combines mapping extension orchestration with many transformation details; helper extraction has started but hotspot remains.
+- `custom_components/thessla_green_modbus/services_handlers_maintenance.py`
+  - still combines service registration, input normalization, and workflow logic.
+- `custom_components/thessla_green_modbus/services_handlers_parameters.py`
+  - still mixes validation/schema concerns and runtime execution paths.
+- `custom_components/thessla_green_modbus/config_flow.py`
+  - step orchestration remains broad, even after helper extraction into focused modules.
 - `custom_components/thessla_green_modbus/diagnostics.py`
-  - combines diagnostics API handling with anomaly-analysis helpers.
+  - mixes diagnostics API shape and anomaly analysis internals.
 
-## 5) Recently completed refactors reflected in repo state
+## 5) Completed refactors reflected in current state
 
-Completed and visible in current repository layout:
+Completed since earlier audit cycle:
 
-1. **Config flow tests split by flow area**
-   - focused modules exist (e.g. user, reauth, options, discovery, validation, helpers).
-2. **Service handler tests split by domain**
-   - focused modules exist for maintenance/parameters/modes/schedule/logging/targets and related areas.
-3. **Coordinator tests split**
-   - focused modules exist for setup, connection/transport, scan/capabilities, statistics, lifecycle, errors, offline, and coverage/contract paths.
-4. **Scanner tests split**
-   - focused modules exist for setup, I/O, orchestration, capabilities/firmware logic, and coverage scenarios.
-5. **Modbus transport tests split**
-   - focused modules exist for base/core, raw, RTU/TCP behavior, retry/backoff/lifecycle, compat and error paths.
-6. **Config-flow helper extraction completed**
-   - helper/validation/schema modules are present and used (`config_flow_helpers.py`, `config_flow_device_validation.py`, `config_flow_schema.py`, etc.).
-7. **Service handler helper extraction completed**
-   - helper modules are present and used (`services_handlers_helpers.py`, `services_handlers_maintenance_helpers.py`, `services_handlers_parameters_helpers.py`, etc.).
-8. **Mapping helper extraction started**
-   - mapping logic is partially centralized in helper/builder modules and remains an active hotspot.
-9. **Coordinator IO facade removed**
-   - coordinator path is flatter around direct mixin/helper usage (without reintroducing facade/proxy layer).
-10. **Register loader split completed**
-    - register loading/definition responsibilities are split across dedicated modules.
-11. **Transport retry/error contract introduced**
-    - transport retry/error behavior is covered with focused code/tests around explicit handling paths.
-12. **Scanner core facade cleanup completed**
-    - scanner structure reflects direct responsibilities without compatibility facade reintroduction.
+- Config-flow tests split by flow area (`test_config_flow_user/options/reauth/errors/validation/helpers`).
+- Service handler tests split by domain (`maintenance/parameters/logging/modes/schedule/targets`).
+- Coordinator tests split into focused modules (`setup/connection/scan/statistics/lifecycle/errors/offline` plus targeted helpers).
+- Scanner tests split into focused modules (`setup/io/firmware/capabilities/full_scan/safe_scan`).
+- Modbus transport tests split into focused modules (`base/raw/rtu/tcp/retry/lifecycle/errors`).
+- Mapping helper extraction started (`mappings/_mapping_builders.py` remains active hotspot).
+- Config-flow helper extraction completed (`config_flow_*` helper modules present and used).
+- Service handler helper extraction completed (domain-focused service handler modules present).
+- Coordinator IO facade removed.
+- Register loader split completed (`registers/loader.py` + focused helper modules/tests).
+- Transport retry/error contract introduced (`tests/test_error_contract.py` and focused transport tests).
+- Scanner core facade cleanup completed (scanner modules now separated by responsibilities).
 
 ## 6) Next 5 safest refactor PRs
 
 Ordered for low risk and maintainability gain while honoring current constraints:
 
-1. **Continue decomposing `mappings/_mapping_builders.py`**
-   - extract pure transformation helpers (no behavior change) and add direct unit tests.
-2. **Further split registration wiring in `services_handlers_maintenance.py`**
-   - separate schema declaration, dispatch tables, and execution callbacks.
-3. **Further split registration wiring in `services_handlers_parameters.py`**
-   - isolate reusable schema/validation fragments and runtime write orchestration.
-4. **Reduce private-internal test coupling where low-risk**
-   - prefer public entrypoints when practical; keep private tests only where they represent stable contracts.
-5. **Incrementally shrink large coordinator methods**
-   - extract pure computation helpers only, while keeping `coordinator.py` in place and import paths stable.
+1. **Continue helper extraction from `mappings/_mapping_builders.py`**
+   - reduce the remaining ~210-line builder function via pure transformation helpers.
+2. **Split `tests/test_scanner_coverage.py` by capability group**
+   - keep scenarios but reduce one very large multipurpose test module.
+3. **Split `tests/test_coordinator_coverage.py` by concern**
+   - separate scheduling/statistics/error-coverage clusters into focused files.
+4. **Reduce private-internal coupling in tests incrementally**
+   - move underscore-import tests to public entrypoints where contracts are not private by design.
+5. **Decompose `services_handlers_maintenance.py` registration workflow**
+   - isolate schema/validation helpers from service wiring and execution paths.
 
 ## 7) Things not to touch yet
 
