@@ -10,6 +10,14 @@ from datetime import time
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
+from .codec import (
+    apply_output_scaling,
+    coerce_scaled_input,
+    decode_bitmask_value,
+    decode_enum_value,
+    encode_enum_value,
+)
+
 _LOGGER = logging.getLogger(__name__)
 
 @dataclass(slots=True)
@@ -126,20 +134,12 @@ class RegisterDef:
 
         # Bitmask registers map set bits to enum labels
         if self.extra and self.extra.get("bitmask") and self.enum:
-            flags: list[Any] = []
-            for key, label in sorted(
-                ((int(k), v) for k, v in self.enum.items()), key=lambda x: x[0]
-            ):
-                if raw & key:
-                    flags.append(label)
-            return flags
+            return decode_bitmask_value(raw, self.enum)
 
         # Regular enum registers return the mapped label
-        if self.enum is not None:
-            if raw in self.enum:
-                return self.enum[raw]
-            if str(raw) in self.enum:
-                return self.enum[str(raw)]
+        decoded_enum = decode_enum_value(raw, self.enum)
+        if decoded_enum is not None:
+            return decoded_enum
 
         typ = self.extra.get("type") if self.extra else None
         if typ == "i16":
@@ -212,17 +212,7 @@ class RegisterDef:
 
         raw: Any = value
         if self.enum and not (self.extra and self.extra.get("bitmask")):
-            if isinstance(value, str):
-                for k, v in self.enum.items():
-                    if v == value:
-                        raw = int(k)
-                        break
-                else:
-                    raise ValueError(f"Invalid enum value {value!r} for {self.name}")
-            elif value in self.enum or str(value) in self.enum:
-                raw = int(value)
-            else:
-                raise ValueError(f"Invalid enum value {value!r} for {self.name}")
+            raw = encode_enum_value(value, self.enum, self.name)
 
         try:
             num_val = Decimal(str(value))
@@ -249,12 +239,7 @@ class RegisterDef:
         return int(raw)
 
     def _apply_output_scaling(self, value: Any) -> Any:
-        if self.multiplier not in (None, 1):
-            value *= self.multiplier
-        if self.resolution not in (None, 1):
-            steps = round(value / self.resolution)
-            value = steps * self.resolution
-        return value
+        return apply_output_scaling(value, self.multiplier, self.resolution)
 
     def _encode_multi_register(self, value: Any) -> list[int]:
         if self.extra and self.extra.get("type") == "string":
@@ -295,20 +280,13 @@ class RegisterDef:
         return words
 
     def _coerce_scaled_input(self, *, value: Any, raw_value: Any) -> Any:
-        try:
-            num_val = Decimal(str(value))
-        except (InvalidOperation, TypeError, ValueError):
-            return raw_value
-        if self.min is not None and num_val < Decimal(str(self.min)):
-            raise ValueError(f"{value} is below minimum {self.min} for {self.name}")
-        if self.max is not None and num_val > Decimal(str(self.max)):
-            raise ValueError(f"{value} is above maximum {self.max} for {self.name}")
-        scaled = Decimal(str(raw_value))
-        if self.resolution not in (None, 1):
-            step = Decimal(str(self.resolution))
-            scaled = (scaled / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
-        if self.multiplier not in (None, 1):
-            mult = Decimal(str(self.multiplier))
-            scaled = (scaled / mult).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-        return scaled
+        return coerce_scaled_input(
+            value=value,
+            raw_value=raw_value,
+            minimum=self.min,
+            maximum=self.max,
+            multiplier=self.multiplier,
+            resolution=self.resolution,
+            name=self.name,
+        )
 
