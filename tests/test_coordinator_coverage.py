@@ -476,7 +476,7 @@ def test_coordinator_init_max_registers_less_than_1():
 
 def test_coordinator_init_entry_bad_capabilities():
     """Invalid capabilities dict in entry.data is caught (lines 397-399)."""
-    from custom_components.thessla_green_modbus.coordinator import DeviceCapabilities
+    from custom_components.thessla_green_modbus.scanner import DeviceCapabilities
 
     entry = MagicMock()
     entry.entry_id = "test"
@@ -687,7 +687,7 @@ def test_apply_scan_cache_normalise_exception():
 
 def test_apply_scan_cache_invalid_capabilities():
     """Invalid capabilities dict in cache is caught silently (lines 994-995)."""
-    from custom_components.thessla_green_modbus.coordinator import DeviceCapabilities
+    from custom_components.thessla_green_modbus.scanner import DeviceCapabilities
 
     coord = _make_coordinator()
     with patch.object(DeviceCapabilities, "__init__", side_effect=TypeError("bad")):
@@ -1059,7 +1059,7 @@ def test_post_process_data_naive_now_aware_last_ts():
     coord._last_power_timestamp = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
     # Patch _utcnow to return naive datetime
     with patch(
-        "custom_components.thessla_green_modbus.coordinator._utcnow",
+        "custom_components.thessla_green_modbus.coordinator.coordinator._utcnow",
         return_value=datetime(2024, 1, 1, 12, 0, 30),  # naive
     ):
         data = {"dac_supply": 3.0, "dac_exhaust": 3.0}

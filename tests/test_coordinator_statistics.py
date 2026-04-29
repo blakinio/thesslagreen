@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from custom_components.thessla_green_modbus.coordinator import (
+from custom_components.thessla_green_modbus.coordinator.coordinator import (
     ThesslaGreenModbusCoordinator,
     _utcnow,
 )
