@@ -5,7 +5,7 @@ from __future__ import annotations
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from .modbus_exceptions import ConnectionException, ModbusException
-from .services_dispatch import refresh_and_log_success
+from .services_dispatch import refresh_and_log_success, write_mapped_optional_register
 from .services_handler_deps import ServiceHandlerDeps
 from .services_schema import (
     RESET_FILTERS_SCHEMA,
@@ -15,34 +15,13 @@ from .services_schema import (
     START_PRESSURE_TEST_SCHEMA,
     SYNC_TIME_SCHEMA,
 )
-
-FILTER_TYPE_MAP = {"presostat": 1, "flat_filters": 2, "cleanpad": 3, "cleanpad_pure": 4}
-BAUD_MAP = {
-    "4800": 0,
-    "9600": 1,
-    "14400": 2,
-    "19200": 3,
-    "28800": 4,
-    "38400": 5,
-    "57600": 6,
-    "76800": 7,
-    "115200": 8,
-}
-PARITY_MAP = {"none": 0, "even": 1, "odd": 2}
-STOP_MAP = {"1": 0, "2": 1}
-
-
-def _normalize_modbus_options(deps: ServiceHandlerDeps, call: ServiceCall) -> tuple[str, str | None, str | None, str | None]:
-    port = deps.normalize_option(call.data["port"])
-    baud_rate = call.data.get("baud_rate")
-    parity = call.data.get("parity")
-    stop_bits = call.data.get("stop_bits")
-    return (
-        port,
-        deps.normalize_option(baud_rate) if baud_rate else None,
-        deps.normalize_option(parity) if parity else None,
-        deps.normalize_option(stop_bits) if stop_bits else None,
-    )
+from .services_validation import (
+    BAUD_MAP,
+    FILTER_TYPE_MAP,
+    PARITY_MAP,
+    STOP_MAP,
+    normalize_modbus_options,
+)
 
 
 async def _write_device_name(coordinator: object, device_name: str, batch: int) -> bool:
@@ -105,40 +84,46 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
             await refresh_and_log_success(coordinator, deps.logger, "Started pressure test for %s", entity_id)
 
     async def set_modbus_parameters(call: ServiceCall) -> None:
-        port, baud_rate, parity, stop_bits = _normalize_modbus_options(deps, call)
+        port, baud_rate, parity, stop_bits = normalize_modbus_options(deps.normalize_option, call.data)
 
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
             port_prefix = "uart_0" if port == "air_b" else "uart_1"
-            if baud_rate:
-                if not await deps.write_register(
-                    coordinator,
-                    f"{port_prefix}_baud",
-                    BAUD_MAP[baud_rate],
-                    entity_id,
-                    "set Modbus parameters",
-                ):
-                    deps.logger.error("Failed to set baud rate for %s", entity_id)
-                    continue
-            if parity:
-                if not await deps.write_register(
-                    coordinator,
-                    f"{port_prefix}_parity",
-                    PARITY_MAP[parity],
-                    entity_id,
-                    "set Modbus parameters",
-                ):
-                    deps.logger.error("Failed to set parity for %s", entity_id)
-                    continue
-            if stop_bits:
-                if not await deps.write_register(
-                    coordinator,
-                    f"{port_prefix}_stop",
-                    STOP_MAP[stop_bits],
-                    entity_id,
-                    "set Modbus parameters",
-                ):
-                    deps.logger.error("Failed to set stop bits for %s", entity_id)
-                    continue
+            if not await write_mapped_optional_register(
+                coordinator,
+                f"{port_prefix}_baud",
+                baud_rate,
+                BAUD_MAP,
+                entity_id,
+                "set Modbus parameters",
+                "Failed to set baud rate for %s",
+                deps.write_register,
+                deps.logger,
+            ):
+                continue
+            if not await write_mapped_optional_register(
+                coordinator,
+                f"{port_prefix}_parity",
+                parity,
+                PARITY_MAP,
+                entity_id,
+                "set Modbus parameters",
+                "Failed to set parity for %s",
+                deps.write_register,
+                deps.logger,
+            ):
+                continue
+            if not await write_mapped_optional_register(
+                coordinator,
+                f"{port_prefix}_stop",
+                stop_bits,
+                STOP_MAP,
+                entity_id,
+                "set Modbus parameters",
+                "Failed to set stop bits for %s",
+                deps.write_register,
+                deps.logger,
+            ):
+                continue
             await refresh_and_log_success(coordinator, deps.logger, "Set Modbus parameters for %s", entity_id)
 
     async def set_device_name(call: ServiceCall) -> None:
