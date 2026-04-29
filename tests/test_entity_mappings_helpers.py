@@ -1,11 +1,15 @@
 """Direct tests for pure mapping-builder helper functions."""
 
 from custom_components.thessla_green_modbus.mappings._mapping_builders import (
+    _build_problem_binary_mapping,
+    _build_time_like_mapping,
     _is_already_mapped,
     _is_mapped_as_binary_source,
     _is_problem_register,
+    _is_register_mapped_anywhere,
     _parse_info_states,
 )
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
 
 def test_is_already_mapped_true_and_false() -> None:
@@ -35,3 +39,25 @@ def test_is_problem_register_variants() -> None:
 def test_parse_info_states_parses_and_skips_invalid_parts() -> None:
     parsed = _parse_info_states("0 - off; x - broken;1 - on;ignored")
     assert parsed == {"off": 0, "on": 1}
+
+
+def test_is_register_mapped_anywhere() -> None:
+    assert _is_register_mapped_anywhere("reg_a", ({"reg_a": {}}, {"reg_b": {}})) is True
+    assert _is_register_mapped_anywhere("reg_x", ({"reg_a": {}}, {"reg_b": {}})) is False
+
+
+def test_build_problem_binary_mapping_shape() -> None:
+    assert _build_problem_binary_mapping("alarm") == {
+        "translation_key": "alarm",
+        "icon": "mdi:alert-circle",
+        "register_type": "holding_registers",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+    }
+
+
+def test_build_time_like_mapping_shape() -> None:
+    assert _build_time_like_mapping("schedule_slot") == {
+        "translation_key": "schedule_slot",
+        "icon": "mdi:clock-outline",
+        "register_type": "holding_registers",
+    }
