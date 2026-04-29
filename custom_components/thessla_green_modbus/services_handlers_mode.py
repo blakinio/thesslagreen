@@ -8,6 +8,13 @@ from .services_handler_deps import ServiceHandlerDeps
 from .services_schema import SET_SPECIAL_MODE_SCHEMA
 
 
+async def _refresh_and_log_mode_success(
+    coordinator: object, deps: ServiceHandlerDeps, mode: str, entity_id: str
+) -> None:
+    await coordinator.async_request_refresh()
+    deps.logger.info("Set special mode %s for %s", mode, entity_id)
+
+
 def register_mode_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
     """Register mode-related services."""
 
@@ -34,8 +41,7 @@ def register_mode_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
                         deps.logger.error("Failed to set duration for %s on %s", mode, entity_id)
                         continue
 
-            await coordinator.async_request_refresh()
-            deps.logger.info("Set special mode %s for %s", mode, entity_id)
+            await _refresh_and_log_mode_success(coordinator, deps, mode, entity_id)
 
     hass.services.async_register(
         deps.domain, "set_special_mode", set_special_mode, SET_SPECIAL_MODE_SCHEMA
