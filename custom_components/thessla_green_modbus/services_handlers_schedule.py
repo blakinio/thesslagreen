@@ -8,6 +8,16 @@ from .services_handler_deps import ServiceHandlerDeps
 from .services_schema import SET_AIRFLOW_SCHEDULE_SCHEMA
 
 
+def _resolve_schedule_temperature_byte(
+    coordinator: object, setting_register: str, temperature: float | None
+) -> int:
+    if temperature is not None:
+        return max(0, min(39, round((temperature - 16.0) * 2)))
+
+    current = coordinator.data.get(setting_register) if coordinator.data else None
+    return int(current) & 0xFF if isinstance(current, int) else 0
+
+
 def register_schedule_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
     """Register schedule-related services."""
 
@@ -53,11 +63,9 @@ def register_schedule_services(hass: HomeAssistant, deps: ServiceHandlerDeps) ->
                 deps.logger.error("Failed to set schedule start for %s", entity_id)
                 continue
 
-            if temperature is not None:
-                temp_byte = max(0, min(39, round((temperature - 16.0) * 2)))
-            else:
-                current = coordinator.data.get(setting_register) if coordinator.data else None
-                temp_byte = int(current) & 0xFF if isinstance(current, int) else 0
+            temp_byte = _resolve_schedule_temperature_byte(
+                coordinator, setting_register, temperature
+            )
             aatt_value = ((clamped_airflow & 0xFF) << 8) | (temp_byte & 0xFF)
 
             if not await deps.write_register(

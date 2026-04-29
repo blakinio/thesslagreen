@@ -54,6 +54,15 @@ async def _write_device_name(coordinator: object, device_name: str, batch: int) 
     return True
 
 
+
+
+async def _refresh_and_log(
+    coordinator: object, deps: ServiceHandlerDeps, message: str, *args: object
+) -> None:
+    await coordinator.async_request_refresh()
+    deps.logger.info(message, *args)
+
+
 def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
     """Register maintenance services."""
 
@@ -67,8 +76,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
             ):
                 deps.logger.error("Failed to reset filters for %s", entity_id)
                 continue
-            await coordinator.async_request_refresh()
-            deps.logger.info("Reset filters for %s", entity_id)
+            await _refresh_and_log(coordinator, deps, "Reset filters for %s", entity_id)
 
     async def reset_settings(call: ServiceCall) -> None:
         reset_type = deps.normalize_option(call.data["reset_type"])
@@ -85,8 +93,9 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                 ):
                     deps.logger.error("Failed to reset schedule settings for %s", entity_id)
                     continue
-            await coordinator.async_request_refresh()
-            deps.logger.info("Reset settings (%s) for %s", reset_type, entity_id)
+            await _refresh_and_log(
+                coordinator, deps, "Reset settings (%s) for %s", reset_type, entity_id
+            )
 
     async def start_pressure_test(call: ServiceCall) -> None:
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
@@ -103,8 +112,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
             ):
                 deps.logger.error("Failed to start pressure test for %s", entity_id)
                 continue
-            await coordinator.async_request_refresh()
-            deps.logger.info("Started pressure test for %s", entity_id)
+            await _refresh_and_log(coordinator, deps, "Started pressure test for %s", entity_id)
 
     async def set_modbus_parameters(call: ServiceCall) -> None:
         port, baud_rate, parity, stop_bits = _normalize_modbus_options(deps, call)
@@ -141,8 +149,9 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                 ):
                     deps.logger.error("Failed to set stop bits for %s", entity_id)
                     continue
-            await coordinator.async_request_refresh()
-            deps.logger.info("Set Modbus parameters for %s", entity_id)
+            await _refresh_and_log(
+                coordinator, deps, "Set Modbus parameters for %s", entity_id
+            )
 
     async def set_device_name(call: ServiceCall) -> None:
         device_name = call.data["device_name"]
@@ -166,8 +175,9 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                 except (ModbusException, ConnectionException) as err:
                     deps.logger.error("Failed to set device name for %s: %s", entity_id, err)
                     continue
-            await coordinator.async_request_refresh()
-            deps.logger.info("Set device name to '%s' for %s", device_name, entity_id)
+            await _refresh_and_log(
+                coordinator, deps, "Set device name to '%s' for %s", device_name, entity_id
+            )
 
     async def sync_time(call: ServiceCall) -> None:
         from datetime import datetime as _dt

@@ -30,6 +30,18 @@ async def _write_optional_register(
     return True
 
 
+
+
+async def _refresh_and_log_success(
+    coordinator: object,
+    deps: ServiceHandlerDeps,
+    message: str,
+    entity_id: str,
+) -> None:
+    await coordinator.async_request_refresh()
+    deps.logger.info(message, entity_id)
+
+
 def register_parameter_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
     """Register parameter/configuration services."""
 
@@ -55,8 +67,9 @@ def register_parameter_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -
                     "Failed to set bypass min temperature for %s",
                 ):
                     continue
-            await coordinator.async_request_refresh()
-            deps.logger.info("Set bypass parameters for %s", entity_id)
+            await _refresh_and_log_success(
+                coordinator, deps, "Set bypass parameters for %s", entity_id
+            )
 
     async def set_gwc_parameters(call: ServiceCall) -> None:
         mode = deps.normalize_option(call.data["mode"])
@@ -90,8 +103,9 @@ def register_parameter_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -
                 "Failed to set GWC max air temperature for %s",
             ):
                 continue
-            await coordinator.async_request_refresh()
-            deps.logger.info("Set GWC parameters for %s", entity_id)
+            await _refresh_and_log_success(
+                coordinator, deps, "Set GWC parameters for %s", entity_id
+            )
 
     async def set_air_quality_thresholds(call: ServiceCall) -> None:
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
@@ -112,8 +126,9 @@ def register_parameter_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -
                         break
             if not success:
                 continue
-            await coordinator.async_request_refresh()
-            deps.logger.info("Set air quality thresholds for %s", entity_id)
+            await _refresh_and_log_success(
+                coordinator, deps, "Set air quality thresholds for %s", entity_id
+            )
 
     async def set_temperature_curve(call: ServiceCall) -> None:
         slope = call.data["slope"]
@@ -152,8 +167,9 @@ def register_parameter_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -
                 "Failed to set min supply temperature for %s",
             ):
                 continue
-            await coordinator.async_request_refresh()
-            deps.logger.info("Set temperature curve for %s", entity_id)
+            await _refresh_and_log_success(
+                coordinator, deps, "Set temperature curve for %s", entity_id
+            )
 
     hass.services.async_register(
         deps.domain, "set_bypass_parameters", set_bypass_parameters, SET_BYPASS_PARAMETERS_SCHEMA
