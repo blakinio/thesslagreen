@@ -50,7 +50,11 @@ async def run_with_retry(
 
 
 async def call_with_optional_timeout(func: Callable[[], Any], timeout: float) -> Any:
-    """Call ``func`` and apply timeout only to awaitable results."""
+    """Call ``func`` and apply timeout only to awaitable results.
+
+    This keeps synchronous helper callbacks inexpensive while still
+    enforcing IO timeouts for coroutine-returning scanner operations.
+    """
     result = func()
     if inspect.isawaitable(result):
         return await asyncio.wait_for(result, timeout=timeout)
