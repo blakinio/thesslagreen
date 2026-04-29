@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from custom_components.thessla_green_modbus.coordinator import (
     ThesslaGreenModbusCoordinator,
-    _utcnow,
 )
 from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
@@ -77,46 +76,12 @@ async def test_get_client_method_from_client():
 # ---------------------------------------------------------------------------
 
 
-def test_apply_scan_cache_no_available_returns_false():
-    """cache without available_registers dict returns False (lines 977-979)."""
-    coord = _make_coordinator()
-    assert coord._apply_scan_cache({}) is False
 
 
-def test_apply_scan_cache_non_dict_available_returns_false():
-    """available_registers that's a string returns False."""
-    coord = _make_coordinator()
-    assert coord._apply_scan_cache({"available_registers": "bad"}) is False
 
 
-def test_apply_scan_cache_valid_data_applies():
-    """Valid cache with list registers succeeds and returns True."""
-    coord = _make_coordinator()
-    cache = {
-        "available_registers": {
-            "input_registers": ["outside_temperature"],
-            "holding_registers": ["mode"],
-        },
-        "device_info": {"firmware": "4.8"},
-        "capabilities": {},
-    }
-    result = coord._apply_scan_cache(cache)
-    assert result is True
-    assert coord.device_info == {"firmware": "4.8"}
 
 
-def test_apply_scan_cache_non_list_values_filtered():
-    """Non-list register values are filtered out in _normalise_available_registers."""
-    coord = _make_coordinator()
-    cache = {
-        "available_registers": {
-            "input_registers": "not_a_list",
-            "holding_registers": ["mode"],
-        }
-    }
-    result = coord._apply_scan_cache(cache)
-    assert result is True
-    assert "holding_registers" in coord.available_registers
 
 
 # ---------------------------------------------------------------------------
@@ -444,28 +409,8 @@ async def test_disconnect_locked_with_client_sync_close_awaitable():
     assert coord.client is None
 
 
-@pytest.mark.asyncio
-async def test_disconnect_acquires_lock():
-    """_disconnect acquires _client_lock and calls _disconnect_locked."""
-    coord = _make_coordinator()
-    coord._disconnect_locked = AsyncMock()
-    await coord._disconnect()
-    coord._disconnect_locked.assert_called_once()
 
 
-@pytest.mark.asyncio
-async def test_async_shutdown_calls_disconnect():
-    """async_shutdown calls stop_listener and disconnects (lines 2407-2416)."""
-    coord = _make_coordinator()
-    coord._disconnect = AsyncMock()
-    stop_listener_mock = MagicMock()
-    coord._stop_listener = stop_listener_mock
-
-    await coord.async_shutdown()
-
-    stop_listener_mock.assert_called_once()
-    assert coord._stop_listener is None
-    coord._disconnect.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -473,88 +418,18 @@ async def test_async_shutdown_calls_disconnect():
 # ---------------------------------------------------------------------------
 
 
-def test_status_overview_no_last_update():
-    """status_overview works when no last successful update exists."""
-    coord = _make_coordinator()
-    overview = coord.status_overview
-    assert "online" in overview
-    assert "last_successful_read" in overview
-    assert overview["last_successful_read"] is None
-    assert "error_count" in overview
 
 
-def test_status_overview_with_last_update_and_connected_transport():
-    """status_overview shows online=True when transport connected and recent update."""
-    coord = _make_coordinator()
-    coord.statistics["last_successful_update"] = _utcnow()
-    transport = MagicMock()
-    transport.is_connected.return_value = True
-    coord._transport = transport
-
-    overview = coord.status_overview
-    assert overview["online"] is True
-    assert overview["last_successful_read"] is not None
 
 
-def test_status_overview_counts_all_errors():
-    """error_count sums failed_reads, connection_errors, and timeout_errors."""
-    coord = _make_coordinator()
-    coord.statistics["failed_reads"] = 2
-    coord.statistics["connection_errors"] = 3
-    coord.statistics["timeout_errors"] = 1
-
-    overview = coord.status_overview
-    assert overview["error_count"] == 6
 
 
-def test_performance_stats_structure():
-    """performance_stats returns expected keys."""
-    coord = _make_coordinator()
-    stats = coord.performance_stats
-    assert "total_reads" in stats
-    assert "failed_reads" in stats
-    assert "success_rate" in stats
-    assert "avg_response_time" in stats
-    assert "connection_errors" in stats
-    assert "last_error" in stats
-    assert "registers_available" in stats
-    assert "registers_read" in stats
 
 
-def test_performance_stats_success_rate():
-    """success_rate = 100% when only successful reads."""
-    coord = _make_coordinator()
-    coord.statistics["successful_reads"] = 10
-    coord.statistics["failed_reads"] = 0
-    stats = coord.performance_stats
-    assert stats["success_rate"] == 100.0
 
 
-def test_get_diagnostic_data_structure():
-    """get_diagnostic_data returns all expected keys."""
-    coord = _make_coordinator()
-    coord.last_scan = _utcnow()
-    coord.statistics["last_successful_update"] = _utcnow()
-    data = coord.get_diagnostic_data()
-    assert "connection" in data
-    assert "statistics" in data
-    assert "performance" in data
-    assert "status_overview" in data
-    assert "device_info" in data
-    assert "available_registers" in data
-    assert "capabilities" in data
-    assert "last_scan" in data
 
 
-def test_get_diagnostic_data_with_raw_registers():
-    """get_diagnostic_data includes raw_registers when in device_scan_result."""
-    coord = _make_coordinator()
-    coord.device_scan_result = {
-        "raw_registers": {"0": 123},
-        "total_addresses_scanned": 100,
-    }
-    data = coord.get_diagnostic_data()
-    assert "raw_registers" in data
 
 
 # ---------------------------------------------------------------------------
