@@ -52,6 +52,35 @@ def _log_read_abort(kind: str, start: int, end: int, attempt: int, retry: int) -
         retry,
     )
 
+def _handle_error_response(scanner: Any, *, register_type: str, start: int, end: int, code: int | None) -> None:
+    """Record failed range and unsupported range hints from an exception response."""
+    if register_type == "input_registers":
+        scanner._failed_input.update(range(start, end + 1))
+        scanner._mark_input_unsupported(start, end, code)
+    else:
+        scanner._failed_holding.update(range(start, end + 1))
+        scanner._mark_holding_unsupported(start, end, code)
+    _mark_failed_addresses(scanner, register_type, start, end)
+
+
+def _validate_register_response(response: Any) -> tuple[bool, int | None]:
+    """Return (is_error, exception_code) for a Modbus response-like object."""
+    if response is None:
+        return False, None
+    if response.isError():
+        return True, getattr(response, "exception_code", None)
+    return False, None
+
+
+def _should_abort_input_exception(exc: Exception) -> bool:
+    """Return True when input reads should stop retries immediately."""
+    if isinstance(exc, ModbusIOException):
+        return (
+            classify_transport_error(exc).kind is ErrorKind.CANCELLED
+            or is_request_cancelled_error(exc)
+        )
+    return isinstance(exc, (TimeoutError, OSError))
+
 
 def _log_read_failure(kind: str, start: int, end: int, retry: int) -> None:
     """Log terminal read failure after retry budget is exhausted."""
@@ -116,17 +145,21 @@ async def read_input(
                     backoff_jitter=scanner.backoff_jitter,
                 )
             if response is not None:
-                if response.isError():
-                    code = getattr(response, "exception_code", None)
+                is_error, code = _validate_register_response(response)
+                if is_error:
                     _LOGGER.warning(
                         "Exception code %s while reading input registers %d-%d",
                         code,
                         start,
                         end,
                     )
-                    scanner._failed_input.update(range(start, end + 1))
-                    scanner._mark_input_unsupported(start, end, code)
-                    _mark_failed_addresses(scanner, "input_registers", start, end)
+                    _handle_error_response(
+                        scanner,
+                        register_type="input_registers",
+                        start=start,
+                        end=end,
+                        code=code,
+                    )
                     return None
                 if skip_cache and count == 1:
                     scanner._mark_input_supported(address)
@@ -134,7 +167,6 @@ async def read_input(
                 _LOGGER.debug("Read input registers %d-%d: %s", start, end, registers)
                 return registers
         except ModbusIOException as exc:
-            decision = classify_transport_error(exc)
             log_scanner_retry(
                 operation=f"read_input:{start}-{end}",
                 attempt=attempt,
@@ -142,11 +174,11 @@ async def read_input(
                 exc=exc,
                 backoff=scanner.backoff,
             )
-            if decision.kind is ErrorKind.CANCELLED or is_request_cancelled_error(exc):
+            if _should_abort_input_exception(exc):
                 aborted_transiently = True
                 break
             track_input_failure(scanner, count, address)
-        except TimeoutError as exc:
+        except (TimeoutError, OSError) as exc:
             log_scanner_retry(
                 operation=f"read_input:{start}-{end}",
                 attempt=attempt,
@@ -154,16 +186,7 @@ async def read_input(
                 exc=exc,
                 backoff=scanner.backoff,
             )
-            aborted_transiently = True
-            break
-        except OSError as exc:
-            log_scanner_retry(
-                operation=f"read_input:{start}-{end}",
-                attempt=attempt,
-                max_attempts=scanner.retry,
-                exc=exc,
-                backoff=scanner.backoff,
-            )
+            aborted_transiently = isinstance(exc, TimeoutError)
             break
         except (ModbusException, ConnectionException) as exc:
             log_scanner_retry(
@@ -283,8 +306,8 @@ async def read_holding(
                     backoff_jitter=scanner.backoff_jitter,
                 )
             if response is not None:
-                if response.isError():
-                    code = getattr(response, "exception_code", None)
+                is_error, code = _validate_register_response(response)
+                if is_error:
                     _LOGGER.warning(
                         "Exception code %s while reading holding registers %d-%d",
                         code,
@@ -292,16 +315,24 @@ async def read_holding(
                         end,
                     )
                     if code == 2:
-                        scanner._failed_holding.update(range(start, end + 1))
-                        scanner._mark_holding_unsupported(start, end, code)
-                        _mark_failed_addresses(scanner, "holding_registers", start, end)
+                        _handle_error_response(
+                            scanner,
+                            register_type="holding_registers",
+                            start=start,
+                            end=end,
+                            code=code,
+                        )
                         return None
                     if count == 1:
                         track_holding_failure(scanner, count, address)
                         if address in scanner._failed_holding:
-                            scanner._failed_holding.update(range(start, end + 1))
-                            scanner._mark_holding_unsupported(start, end, code or 0)
-                            _mark_failed_addresses(scanner, "holding_registers", start, end)
+                            _handle_error_response(
+                                scanner,
+                                register_type="holding_registers",
+                                start=start,
+                                end=end,
+                                code=code or 0,
+                            )
                             return None
                     continue
                 if skip_cache and count == 1:
