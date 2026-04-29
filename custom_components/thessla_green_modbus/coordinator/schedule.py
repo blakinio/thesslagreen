@@ -48,6 +48,34 @@ class _CoordinatorScheduleMixin:
     async def _ensure_connection(self) -> None: ...
     async def _disconnect(self) -> None: ...
     def _clear_register_failure(self, name: str) -> None: ...
+    def _assert_write_connection_ready(self) -> None:
+        """Ensure transport/client is present and connected for writes."""
+        transport = self._transport
+        if transport is not None and not transport.is_connected():
+            raise ConnectionException("Modbus transport is not connected")
+        if transport is None and self.client is None:
+            raise ConnectionException("Modbus client is not connected")
+
+    async def _write_registers_payload(
+        self, address: int, values: list[int], attempt: int
+    ) -> Any:
+        """Write a holding-register payload via client, transport, or fallback call."""
+        payload = [int(v) for v in values]
+        if self._transport is None and self.client is not None:
+            return await self.client.write_registers(address=address, values=payload)
+        if self._transport is not None:
+            return await self._transport.write_registers(
+                self.slave_id,
+                address,
+                values=payload,
+                attempt=attempt,
+            )
+        return await self._call_modbus(
+            self._get_client_method("write_registers"),
+            address,
+            values=payload,
+            attempt=attempt,
+        )
 
     def _encode_write_value(
         self,
@@ -178,11 +206,7 @@ class _CoordinatorScheduleMixin:
                     return False
 
                 await self._ensure_connection()
-                transport = self._transport
-                if transport is not None and not transport.is_connected():
-                    raise ConnectionException("Modbus transport is not connected")
-                if transport is None and self.client is None:
-                    raise ConnectionException("Modbus client is not connected")
+                self._assert_write_connection_ready()
 
                 encoded_values, scalar_value = self._encode_write_value(
                     register_name, definition, value, offset
@@ -315,60 +339,24 @@ class _CoordinatorScheduleMixin:
         async with self._write_lock:
             try:
                 await self._ensure_connection()
-                transport = self._transport
-                if transport is not None and not transport.is_connected():
-                    raise ConnectionException("Modbus transport is not connected")
-                if transport is None and self.client is None:
-                    raise ConnectionException("Modbus client is not connected")
+                self._assert_write_connection_ready()
 
                 for attempt in range(1, self.retry + 1):
                     try:
                         success = True
                         if require_single_request:
-                            if self._transport is None and self.client is not None:
-                                response = await self.client.write_registers(
-                                    address=start_address,
-                                    values=[int(v) for v in values],
-                                )
-                            elif self._transport is not None:
-                                response = await self._transport.write_registers(
-                                    self.slave_id,
-                                    start_address,
-                                    values=[int(v) for v in values],
-                                    attempt=attempt,
-                                )
-                            else:
-                                response = await self._call_modbus(
-                                    self._get_client_method("write_registers"),
-                                    start_address,
-                                    values=[int(v) for v in values],
-                                    attempt=attempt,
-                                )
+                            response = await self._write_registers_payload(
+                                start_address, values, attempt
+                            )
                             if response is None or response.isError():
                                 success = False
                         else:
                             for _index, (chunk_start, chunk) in enumerate(
                                 chunk_register_values(start_address, values, self.effective_batch)
                             ):
-                                if self._transport is None and self.client is not None:
-                                    response = await self.client.write_registers(
-                                        address=chunk_start,
-                                        values=[int(v) for v in chunk],
-                                    )
-                                elif self._transport is not None:
-                                    response = await self._transport.write_registers(
-                                        self.slave_id,
-                                        chunk_start,
-                                        values=[int(v) for v in chunk],
-                                        attempt=attempt,
-                                    )
-                                else:
-                                    response = await self._call_modbus(
-                                        self._get_client_method("write_registers"),
-                                        chunk_start,
-                                        values=[int(v) for v in chunk],
-                                        attempt=attempt,
-                                    )
+                                response = await self._write_registers_payload(
+                                    chunk_start, chunk, attempt
+                                )
                                 if response is None or response.isError():
                                     success = False
                                     break
