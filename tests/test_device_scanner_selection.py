@@ -1,139 +1,109 @@
-"""Selection/grouping device scanner tests."""
-
-import logging
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP, SENSOR_UNAVAILABLE
-from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
-from custom_components.thessla_green_modbus.scanner.core import (
-    DeviceCapabilities,
-    ThesslaGreenDeviceScanner,
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ConnectionException,
+    ModbusIOException,
 )
-
-INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function(4)}
-
-pytestmark = pytest.mark.asyncio
+from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
 
-async def test_scan_excludes_unavailable_temperature():
-    """Temperature register with SENSOR_UNAVAILABLE should be included (sensor disconnected, register exists)."""
-    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)
+async def _make_scanner(**kwargs):
+    return await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 1, **kwargs)
 
-    async def fake_read_input(client, address, count, **kwargs):
-        data = [1] * count
-        if address == 0:
-            data[0:3] = [4, 85, 0]
-        temp_addr = INPUT_REGISTERS["outside_temperature"]
-        if address <= temp_addr < address + count:
-            data[temp_addr - address] = SENSOR_UNAVAILABLE
-        return data
 
-    async def fake_read_holding(client, address, count, **kwargs):
-        return [1] * count
+def _make_ok_response(registers):
+    resp = MagicMock()
+    resp.isError.return_value = False
+    resp.registers = list(registers)
+    return resp
 
-    async def fake_read_coil(client, address, count, **kwargs):
-        return [False] * count
 
-    async def fake_read_discrete(client, address, count, **kwargs):
-        return [False] * count
+def _make_transport(*, input_response=None, holding_response=None):
+    transport = MagicMock()
+    transport.close = AsyncMock()
+    transport.ensure_connected = AsyncMock()
+    transport.read_input_registers = AsyncMock(return_value=input_response or _make_ok_response([1]))
+    transport.read_holding_registers = AsyncMock(
+        return_value=holding_response or _make_ok_response([1])
+    )
+    transport.is_connected = MagicMock(return_value=True)
+    return transport
 
-    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
-        mock_client = AsyncMock()
-        mock_client.connect.return_value = True
-        mock_client_class.return_value = mock_client
 
-        with (
-            patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
-            patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
-            patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
-            patch.object(scanner, "_read_discrete", AsyncMock(side_effect=fake_read_discrete)),
-        ):
-            scanner.connection_mode = CONNECTION_MODE_TCP
-            result = await scanner.scan_device()
-
-    assert "outside_temperature" in result["available_registers"]["input_registers"]
-
-async def test_deep_scan_collects_raw_registers():
-    """Deep scan returns raw register values."""
-
-    class DummyClient:
-        async def connect(self):
-            return True
-
-        async def close(self):
-            pass
-
-    async def fake_read_input(self, client, address, count, *, skip_cache=False):
-        return list(range(address, address + count))
-
-    async def fake_read_holding(self, client, address, count, *, skip_cache=False):
-        return [0] * count
-
-    async def fake_read_coil(self, client, address, count):
-        return [0] * count
-
-    async def fake_read_discrete(self, client, address, count):
-        return [0] * count
+@pytest.mark.asyncio
+async def test_scan_device_auto_detect_all_fail():
+    scanner = await _make_scanner(connection_mode="auto")
+    failing_transport = MagicMock()
+    failing_transport.ensure_connected = AsyncMock(side_effect=ConnectionException("no"))
+    failing_transport.close = AsyncMock()
 
     with (
-        patch(
-            "pymodbus.client.AsyncModbusTcpClient",
-            return_value=DummyClient(),
+        patch.object(
+            scanner,
+            "_build_auto_tcp_attempts",
+            return_value=[("tcp", failing_transport, 1.0)],
         ),
-        patch.object(ThesslaGreenDeviceScanner, "_read_input", fake_read_input),
-        patch.object(ThesslaGreenDeviceScanner, "_read_holding", fake_read_holding),
-        patch.object(ThesslaGreenDeviceScanner, "_read_coil", fake_read_coil),
-        patch.object(ThesslaGreenDeviceScanner, "_read_discrete", fake_read_discrete),
+        pytest.raises(ConnectionException, match="Auto-detect Modbus transport failed"),
     ):
-        scanner = await ThesslaGreenDeviceScanner.create("host", 502, 10, deep_scan=True)
-        scanner.connection_mode = CONNECTION_MODE_TCP
-        result = await scanner.scan_device()
+        await scanner.scan_device()
 
-    expected = 300 - 14 + 1
-    assert len(result["raw_registers"]) == expected
-    assert result["total_addresses_scanned"] == expected
 
-async def test_scan_logs_missing_expected_registers(caplog):
-    """Scanner warns when expected registers are not found."""
+@pytest.mark.asyncio
+async def test_scan_device_auto_detect_probe_timeout():
+    scanner = await _make_scanner(connection_mode="auto")
+    t1 = MagicMock()
+    t1.ensure_connected = AsyncMock()
+    t1.read_input_registers = AsyncMock(side_effect=TimeoutError("probe timeout"))
+    t1.close = AsyncMock()
 
-    input_regs = {
-        "version_major": 0,
-        "version_minor": 1,
-        "version_patch": 2,
-        "serial_number": 3,
-        "reg_a": 4,
-    }
+    t2 = _make_transport()
+    t2.client = AsyncMock()
 
-    async def fake_read_input(client, address, count, **kwargs):
-        data = [0] * count
-        if address <= 4 < address + count:
-            data[4 - address] = SENSOR_UNAVAILABLE
-        return data
-
-    scanner = ThesslaGreenDeviceScanner("host", 502)
-    scanner._input_register_map = input_regs
-    scanner._holding_register_map = {}
-    scanner._coil_register_map = {}
-    scanner._discrete_input_register_map = {}
-    scanner._known_missing_registers = {
-        "input_registers": set(),
-        "holding_registers": set(),
-        "coil_registers": set(),
-        "discrete_inputs": set(),
-    }
-    scanner._update_known_missing_addresses()
-
-    scanner._client = object()
     with (
-        patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
+        patch.object(
+            scanner,
+            "_build_auto_tcp_attempts",
+            return_value=[("tcp", t1, 1.0), ("tcp_rtu", t2, 1.0)],
+        ),
+        patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_input", AsyncMock(return_value=None)),
         patch.object(scanner, "_read_holding", AsyncMock(return_value=None)),
         patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
         patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
-        patch.object(scanner, "_analyze_capabilities", return_value=DeviceCapabilities()),
-        patch.object(scanner, "_is_valid_register_value", side_effect=lambda n, v: n != "reg_a"),
-        caplog.at_level(logging.WARNING),
     ):
-        await scanner.scan()
+        result = await scanner.scan_device()
 
-    assert "reg_a=4" in caplog.text
+    assert "available_registers" in result
+
+
+@pytest.mark.asyncio
+async def test_scan_device_auto_detect_probe_modbus_io_cancelled():
+    scanner = await _make_scanner(connection_mode="auto")
+    t1 = MagicMock()
+    t1.ensure_connected = AsyncMock()
+    t1.read_input_registers = AsyncMock(
+        side_effect=ModbusIOException("Request cancelled outside pymodbus")
+    )
+    t1.close = AsyncMock()
+
+    t2 = _make_transport()
+    t2.client = AsyncMock()
+
+    with (
+        patch.object(
+            scanner,
+            "_build_auto_tcp_attempts",
+            return_value=[("tcp", t1, 1.0), ("tcp_rtu", t2, 1.0)],
+        ),
+        patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_input", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_holding", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
+    ):
+        result = await scanner.scan_device()
+
+    assert "available_registers" in result
