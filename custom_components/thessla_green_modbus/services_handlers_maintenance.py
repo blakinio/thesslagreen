@@ -43,12 +43,29 @@ def _clock_payload(now: _dt) -> list[int]:
     return [reg_yymm, reg_ddtt, reg_ggmm, reg_sscc]
 
 
+def _iter_targets(hass: HomeAssistant, call: ServiceCall, deps: ServiceHandlerDeps):
+    """Yield targeted coordinators for maintenance service handlers."""
+    yield from deps.iter_target_coordinators(hass, call)
+
+
+def _maintenance_registrations():
+    """Return registration rows for maintenance services."""
+    return [
+        ("reset_filters", RESET_FILTERS_SCHEMA),
+        ("reset_settings", RESET_SETTINGS_SCHEMA),
+        ("start_pressure_test", START_PRESSURE_TEST_SCHEMA),
+        ("set_modbus_parameters", SET_MODBUS_PARAMETERS_SCHEMA),
+        ("set_device_name", SET_DEVICE_NAME_SCHEMA),
+        ("sync_time", SYNC_TIME_SCHEMA),
+    ]
+
+
 def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
     """Register maintenance services."""
 
     async def reset_filters(call: ServiceCall) -> None:
         filter_value = filter_reset_value(deps.normalize_option, call.data["filter_type"])
-        for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
+        for entity_id, coordinator in _iter_targets(hass, call, deps):
             if not await deps.write_register(coordinator, "filter_change", filter_value, entity_id, "reset filters"):
                 deps.logger.error("Failed to reset filters for %s", entity_id)
                 continue
@@ -58,7 +75,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
         reset_type = deps.normalize_option(call.data["reset_type"])
         registers = reset_settings_registers(reset_type)
 
-        for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
+        for entity_id, coordinator in _iter_targets(hass, call, deps):
             if not await write_register_batch(
                 coordinator,
                 registers,
@@ -77,7 +94,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
             )
 
     async def start_pressure_test(call: ServiceCall) -> None:
-        for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
+        for entity_id, coordinator in _iter_targets(hass, call, deps):
             if not await write_register_batch(
                 coordinator,
                 pressure_test_payload(deps.dt_now()),
@@ -96,7 +113,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
     async def set_modbus_parameters(call: ServiceCall) -> None:
         port, baud_rate, parity, stop_bits = normalize_modbus_options(deps.normalize_option, call.data)
 
-        for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
+        for entity_id, coordinator in _iter_targets(hass, call, deps):
             writes = iter_modbus_parameter_writes(port, baud_rate, parity, stop_bits)
             failed = False
             for register_name, option_value, option_map, error_message in writes:
@@ -119,7 +136,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
 
     async def set_device_name(call: ServiceCall) -> None:
         device_name = call.data["device_name"]
-        for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
+        for entity_id, coordinator in _iter_targets(hass, call, deps):
             try:
                 if len(device_name) >= 16:
                     success = await coordinator.async_write_register("device_name", device_name, refresh=False)
@@ -140,7 +157,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
             )
 
     async def sync_time(call: ServiceCall) -> None:
-        for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
+        for entity_id, coordinator in _iter_targets(hass, call, deps):
             now = _dt.now()
             try:
                 success = await coordinator.async_write_registers(
@@ -155,13 +172,13 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
             except (ModbusException, ConnectionException) as err:
                 deps.logger.error("Failed to sync clock for %s: %s", entity_id, err)
 
-    registrations = [
-        ("reset_filters", reset_filters, RESET_FILTERS_SCHEMA),
-        ("reset_settings", reset_settings, RESET_SETTINGS_SCHEMA),
-        ("start_pressure_test", start_pressure_test, START_PRESSURE_TEST_SCHEMA),
-        ("set_modbus_parameters", set_modbus_parameters, SET_MODBUS_PARAMETERS_SCHEMA),
-        ("set_device_name", set_device_name, SET_DEVICE_NAME_SCHEMA),
-        ("sync_time", sync_time, SYNC_TIME_SCHEMA),
-    ]
-    for service, handler, schema in registrations:
-        hass.services.async_register(deps.domain, service, handler, schema)
+    handlers = {
+        "reset_filters": reset_filters,
+        "reset_settings": reset_settings,
+        "start_pressure_test": start_pressure_test,
+        "set_modbus_parameters": set_modbus_parameters,
+        "set_device_name": set_device_name,
+        "sync_time": sync_time,
+    }
+    for service, schema in _maintenance_registrations():
+        hass.services.async_register(deps.domain, service, handlers[service], schema)
