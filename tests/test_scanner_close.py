@@ -39,7 +39,7 @@ def test_async_setup_closes_scanner():
 
         with (
             patch(
-                "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
+                "custom_components.thessla_green_modbus.coordinator.coordinator.ThesslaGreenDeviceScanner.create",
                 AsyncMock(return_value=scanner),
             ),
             patch.object(coordinator, "_test_connection", AsyncMock()),
@@ -79,7 +79,7 @@ def test_async_setup_cancel_mid_scan(caplog):
 
         with (
             patch(
-                "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
+                "custom_components.thessla_green_modbus.coordinator.coordinator.ThesslaGreenDeviceScanner.create",
                 AsyncMock(return_value=scanner),
             ),
             patch.object(coordinator, "_test_connection", AsyncMock()),
