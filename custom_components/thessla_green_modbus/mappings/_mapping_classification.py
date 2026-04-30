@@ -6,47 +6,18 @@ from typing import Any
 
 from ..utils import _to_snake_case
 from ._helpers import _infer_icon
-
-
-def _build_switch_mapping(register: str) -> dict[str, Any]:
-    return {
-        "icon": "mdi:toggle-switch",
-        "register": register,
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": register,
-    }
-
-
-def _build_binary_toggle_mapping(register: str) -> dict[str, Any]:
-    return {
-        "translation_key": register,
-        "icon": "mdi:checkbox-marked-circle-outline",
-        "register_type": "holding_registers",
-    }
-
-
-def _build_select_mapping(register: str, states: dict[str, int]) -> dict[str, Any]:
-    return {
-        "icon": "mdi:format-list-bulleted",
-        "translation_key": register,
-        "states": states,
-        "register_type": "holding_registers",
-    }
-
-
-def _parse_info_states(info_text: str) -> dict[str, int]:
-    states: dict[str, int] = {}
-    for part in info_text.split(";"):
-        part = part.strip()
-        if " - " not in part:
-            continue
-        val_str, label = part.split(" - ", 1)
-        try:
-            states[_to_snake_case(label)] = int(val_str.strip())
-        except ValueError:
-            continue
-    return states
+from ._mapping_payloads import (
+    build_binary_toggle_mapping as _build_binary_toggle_mapping,
+)
+from ._mapping_payloads import (
+    build_select_mapping as _build_select_mapping,
+)
+from ._mapping_payloads import (
+    build_switch_mapping as _build_switch_mapping,
+)
+from ._mapping_payloads import (
+    parse_info_states as _parse_info_states,
+)
 
 
 def classify_enum_mapping(

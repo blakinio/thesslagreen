@@ -3,18 +3,26 @@
 from types import SimpleNamespace
 
 from custom_components.thessla_green_modbus.mappings._mapping_builders import (
-    _build_binary_toggle_mapping,
     _build_problem_binary_mapping,
-    _build_select_mapping,
-    _build_switch_mapping,
     _build_time_like_mapping,
     _is_already_mapped,
     _is_mapped_as_binary_source,
     _is_problem_register,
     _is_register_mapped_anywhere,
     _is_unmappable_holding_register,
-    _parse_info_states,
     _route_enum_or_min_max_mapping,
+)
+from custom_components.thessla_green_modbus.mappings._mapping_payloads import (
+    build_binary_toggle_mapping as _build_binary_toggle_mapping,
+)
+from custom_components.thessla_green_modbus.mappings._mapping_payloads import (
+    build_select_mapping as _build_select_mapping,
+)
+from custom_components.thessla_green_modbus.mappings._mapping_payloads import (
+    build_switch_mapping as _build_switch_mapping,
+)
+from custom_components.thessla_green_modbus.mappings._mapping_payloads import (
+    parse_info_states as _parse_info_states,
 )
 from custom_components.thessla_green_modbus.mappings._static_discrete import (
     _select_payload,
