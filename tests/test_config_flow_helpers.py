@@ -11,10 +11,18 @@ from custom_components.thessla_green_modbus.config_flow import (
     _normalize_stop_bits,
     _run_with_retry,
 )
+from custom_components.thessla_green_modbus.config_flow_device_validation import (
+    _build_success_payload,
+    _validate_scan_result,
+)
+from custom_components.thessla_green_modbus.config_flow_schema import (
+    _build_serial_defaults_and_validators,
+)
 from custom_components.thessla_green_modbus.config_flow_steps import (
     extract_discovered_state,
     resolve_reauth_defaults,
 )
+from custom_components.thessla_green_modbus.errors import CannotConnect
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
 
 # ---------------------------------------------------------------------------
@@ -249,6 +257,33 @@ async def test_build_connection_schema_empty_baud_rates_bad_baud_default():
         assert schema is not None
     finally:
         cf_mod.MODBUS_BAUD_RATES = original_baud
+
+
+def test_validate_scan_result_rejects_empty():
+    with pytest.raises(CannotConnect) as err:
+        _validate_scan_result({})
+    assert err.value.args[0] == "invalid_format"
+
+
+def test_build_success_payload_includes_title_and_scan_result():
+    scan_result = {"device_info": {"model": "x"}}
+    payload = _build_success_payload("Name", scan_result)
+    assert payload["title"] == "Name"
+    assert payload["device_info"] == {"model": "x"}
+    assert payload["scan_result"] is scan_result
+
+
+def test_build_serial_defaults_and_validators_without_option_lists():
+    values = {"baud_rate": "invalid_baud", "parity": "Odd", "stop_bits": 2}
+    resolved = _build_serial_defaults_and_validators(
+        values,
+        baud_options=[],
+        parity_options=[],
+        stop_bits_options=[],
+    )
+    assert resolved["baud_default"] == 9600
+    assert resolved["parity_default"] == "Odd"
+    assert resolved["stop_bits_default"] == "2"
 
 
 # ---------------------------------------------------------------------------
