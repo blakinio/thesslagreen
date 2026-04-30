@@ -80,6 +80,26 @@ def _validate_scan_result(scan_result: Any) -> dict[str, Any]:
     return scan_result
 
 
+def _build_validation_result(
+    *,
+    name: str,
+    scan_result: dict[str, Any],
+    capabilities_cls: type,
+    process_scan_capabilities: Callable[[dict[str, Any], type], dict[str, Any]],
+) -> dict[str, Any]:
+    """Attach normalized capabilities and build final payload."""
+    scan_result["capabilities"] = process_scan_capabilities(scan_result, capabilities_cls)
+    return _build_success_payload(name, scan_result)
+
+
+def _require_verify_connection(scanner: Any) -> Callable[[], Any]:
+    """Return scanner verify callback or raise when missing."""
+    verify_cb = getattr(scanner, "verify_connection", None)
+    if not callable(verify_cb):
+        raise AttributeError("verify_connection")
+    return verify_cb
+
+
 def _build_timeout_runner(
     *,
     run_with_retry: Callable[[Callable[[], Awaitable[Any]], int, float], Awaitable[Any]],
@@ -115,9 +135,7 @@ async def _run_scanner_validation(
 ) -> dict[str, Any]:
     """Run connection verification and device scan."""
     short_timeout = max(2, timeout)
-    verify_cb = getattr(scanner, "verify_connection", None)
-    if not callable(verify_cb):
-        raise AttributeError("verify_connection")
+    verify_cb = _require_verify_connection(scanner)
     await run_scanner_call(verify_cb, short_timeout)
     return _validate_scan_result(await run_scanner_call(scanner.scan_device, timeout))
 
@@ -283,9 +301,12 @@ async def validate_input_impl(
             run_scanner_call=run_scanner_call,
         )
 
-        caps_dict = process_scan_capabilities(scan_result, capabilities_cls)
-        scan_result["capabilities"] = caps_dict
-        return _build_success_payload(params["name"], scan_result)
+        return _build_validation_result(
+            name=params["name"],
+            scan_result=scan_result,
+            capabilities_cls=capabilities_cls,
+            process_scan_capabilities=process_scan_capabilities,
+        )
     except asyncio.CancelledError:
         raise
     except CannotConnect:
