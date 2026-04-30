@@ -28,6 +28,9 @@ from ._mapping_classification import (
 from ._mapping_classification import (
     classify_min_max_mapping as _classify_min_max_mapping,
 )
+from ._mapping_payloads import (
+    parse_info_states as _parse_info_states,
+)
 
 _TIME_ENTITY_PREFIXES = (
     "schedule_",
@@ -53,21 +56,6 @@ def _is_mapped_as_binary_source(register: str, binary_mappings: dict[str, dict[s
 def _is_problem_register(register: str) -> bool:
     """Return True for diagnostic/problem registers handled as binary sensors."""
     return register in {"alarm", "error"} or register.startswith(("s_", "e_", "f_"))
-
-
-def _parse_info_states(info_text: str) -> dict[str, int]:
-    """Parse '0 - foo; 1 - bar' style info text into state mapping."""
-    states: dict[str, int] = {}
-    for part in info_text.split(";"):
-        part = part.strip()
-        if " - " not in part:
-            continue
-        val_str, label = part.split(" - ", 1)
-        try:
-            states[_to_snake_case(label)] = int(val_str.strip())
-        except ValueError:
-            continue
-    return states
 
 
 def _is_register_mapped_anywhere(register: str, mappings: tuple[dict[str, Any], ...]) -> bool:
@@ -103,36 +91,6 @@ def _build_season_setting_mapping(register: str) -> dict[str, Any]:
         "icon": "mdi:fan",
         "register_type": "holding_registers",
         "states": PERCENT_10_SELECT_STATES,
-    }
-
-
-def _build_switch_mapping(register: str) -> dict[str, Any]:
-    """Return standard mapping payload for writable on/off style registers."""
-    return {
-        "icon": "mdi:toggle-switch",
-        "register": register,
-        "register_type": "holding_registers",
-        "category": None,
-        "translation_key": register,
-    }
-
-
-def _build_binary_toggle_mapping(register: str) -> dict[str, Any]:
-    """Return standard mapping payload for read-only on/off style registers."""
-    return {
-        "translation_key": register,
-        "icon": "mdi:checkbox-marked-circle-outline",
-        "register_type": "holding_registers",
-    }
-
-
-def _build_select_mapping(register: str, states: dict[str, int]) -> dict[str, Any]:
-    """Return standard mapping payload for select entities based on states."""
-    return {
-        "icon": "mdi:format-list-bulleted",
-        "translation_key": register,
-        "states": states,
-        "register_type": "holding_registers",
     }
 
 
