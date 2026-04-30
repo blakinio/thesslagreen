@@ -103,6 +103,107 @@ def _uses_custom_scan_impl(scanner: Any) -> bool:
     ) != "custom_components.thessla_green_modbus.scanner.core"
 
 
+def _normalize_custom_scan_result(scanner: Any, scan_result: Any) -> dict[str, Any]:
+    """Normalize custom scan return shapes to a scan payload."""
+    if (
+        isinstance(scan_result, tuple)
+        and len(scan_result) >= 2
+        and isinstance(scan_result[0], ScannerDeviceInfo)
+        and isinstance(scan_result[1], DeviceCapabilities)
+    ):
+        device, caps = scan_result[0], scan_result[1]
+        unknown = scan_result[2] if len(scan_result) > 2 and isinstance(scan_result[2], dict) else {}
+        return {
+            "available_registers": {
+                k: sorted(v) for k, v in scanner.available_registers.items()
+            },
+            "device_info": device.as_dict(),
+            "capabilities": caps.as_dict(),
+            "register_count": sum(len(v) for v in scanner.available_registers.values()),
+            "unknown_registers": unknown,
+        }
+    if isinstance(scan_result, dict):
+        return scan_result
+    raise TypeError("scan() must return a dict")
+
+
+async def _run_custom_scan(scanner: Any) -> dict[str, Any]:
+    """Run overridden scan implementation and normalize result."""
+    scan_result: Any = scanner.scan()
+    if inspect.isawaitable(scan_result):
+        scan_result = await scan_result
+    return _normalize_custom_scan_result(scanner, scan_result)
+
+
+async def _auto_detect_tcp_transport(scanner: Any) -> None:
+    """Attempt TCP mode probes and keep first successful transport."""
+    last_error: Exception | None = None
+    for selected_mode, transport, timeout in scanner._build_auto_tcp_attempts():
+        try:
+            await asyncio.wait_for(transport.ensure_connected(), timeout=timeout)
+            try:
+                await transport.read_input_registers(scanner.slave_id, 0, count=2)
+            except TimeoutError:
+                raise
+            except ModbusIOException as exc:
+                if is_request_cancelled_error(exc):
+                    raise TimeoutError(str(exc)) from exc
+            except (
+                ModbusException,
+                ConnectionException,
+                OSError,
+                TypeError,
+                ValueError,
+                AttributeError,
+            ) as exc:
+                _LOGGER.debug("Protocol probe non-critical exception (protocol ok): %s", exc)
+        except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
+            last_error = exc
+            await transport.close()
+            continue
+        scanner._transport = transport
+        scanner._resolved_connection_mode = selected_mode
+        _LOGGER.info(
+            "scan_device: auto-selected Modbus transport %s for %s:%s",
+            selected_mode,
+            scanner.host,
+            scanner.port,
+        )
+        return
+    raise ConnectionException("Auto-detect Modbus transport failed") from last_error
+
+
+def _create_rtu_transport(scanner: Any) -> Any:
+    """Create RTU transport from scanner serial configuration."""
+    parity = SERIAL_PARITY_MAP.get(scanner.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
+    stop_bits = SERIAL_STOP_BITS_MAP.get(scanner.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS])
+    rtu_transport_cls = getattr(scanner, "_rtu_transport_cls", RtuModbusTransport)
+    return rtu_transport_cls(
+        serial_port=scanner.serial_port,
+        baudrate=scanner.baud_rate,
+        parity=parity,
+        stopbits=stop_bits,
+        max_retries=scanner.retry,
+        base_backoff=scanner.backoff,
+        max_backoff=DEFAULT_MAX_BACKOFF,
+        timeout=scanner.timeout,
+    )
+
+
+async def _prepare_scan_transport(scanner: Any) -> None:
+    """Prepare scanner transport according to connection strategy."""
+    if scanner.connection_type == CONNECTION_TYPE_RTU:
+        if not scanner.serial_port:
+            raise ConnectionException("Serial port not configured")
+        scanner._transport = _create_rtu_transport(scanner)
+        return
+    mode = scanner._resolved_connection_mode or scanner.connection_mode
+    if mode is None or mode == CONNECTION_MODE_AUTO:
+        await _auto_detect_tcp_transport(scanner)
+        return
+    scanner._transport = scanner._build_tcp_transport(mode)
+
+
 async def run_full_scan(
     scanner: Any,
     input_max: int,
@@ -327,99 +428,12 @@ async def scan(scanner: Any) -> dict[str, Any]:
 
 async def scan_device(scanner: Any) -> dict[str, Any]:
     """Open the Modbus connection, perform a scan and close the client."""
-    scan_method = scanner.scan
     if _uses_custom_scan_impl(scanner):
         try:
-            scan_result: Any = scan_method()
-            if inspect.isawaitable(scan_result):
-                scan_result = await scan_result
-            if (
-                isinstance(scan_result, tuple)
-                and len(scan_result) >= 2
-                and isinstance(scan_result[0], ScannerDeviceInfo)
-                and isinstance(scan_result[1], DeviceCapabilities)
-            ):
-                device, caps = scan_result[0], scan_result[1]
-                unknown = (
-                    scan_result[2]
-                    if len(scan_result) > 2 and isinstance(scan_result[2], dict)
-                    else {}
-                )
-                return {
-                    "available_registers": {
-                        k: sorted(v) for k, v in scanner.available_registers.items()
-                    },
-                    "device_info": device.as_dict(),
-                    "capabilities": caps.as_dict(),
-                    "register_count": sum(len(v) for v in scanner.available_registers.values()),
-                    "unknown_registers": unknown,
-                }
-            if isinstance(scan_result, dict):
-                return scan_result
-            raise TypeError("scan() must return a dict")
+            return await _run_custom_scan(scanner)
         finally:
             await scanner.close()
-
-    if scanner.connection_type == CONNECTION_TYPE_RTU:
-        if not scanner.serial_port:
-            raise ConnectionException("Serial port not configured")
-        parity = SERIAL_PARITY_MAP.get(scanner.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
-        stop_bits = SERIAL_STOP_BITS_MAP.get(
-            scanner.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
-        )
-        rtu_transport_cls = getattr(scanner, "_rtu_transport_cls", RtuModbusTransport)
-        scanner._transport = rtu_transport_cls(
-            serial_port=scanner.serial_port,
-            baudrate=scanner.baud_rate,
-            parity=parity,
-            stopbits=stop_bits,
-            max_retries=scanner.retry,
-            base_backoff=scanner.backoff,
-            max_backoff=DEFAULT_MAX_BACKOFF,
-            timeout=scanner.timeout,
-        )
-    else:
-        mode = scanner._resolved_connection_mode or scanner.connection_mode
-        if mode is None or mode == CONNECTION_MODE_AUTO:
-            last_error: Exception | None = None
-            for selected_mode, transport, timeout in scanner._build_auto_tcp_attempts():
-                try:
-                    await asyncio.wait_for(transport.ensure_connected(), timeout=timeout)
-                    try:
-                        await transport.read_input_registers(scanner.slave_id, 0, count=2)
-                    except TimeoutError:
-                        raise
-                    except ModbusIOException as exc:
-                        if is_request_cancelled_error(exc):
-                            raise TimeoutError(str(exc)) from exc
-                    except (
-                        ModbusException,
-                        ConnectionException,
-                        OSError,
-                        TypeError,
-                        ValueError,
-                        AttributeError,
-                    ) as exc:
-                        _LOGGER.debug(
-                            "Protocol probe non-critical exception (protocol ok): %s", exc
-                        )
-                except (TimeoutError, ConnectionException, ModbusException, OSError) as exc:
-                    last_error = exc
-                    await transport.close()
-                    continue
-                scanner._transport = transport
-                scanner._resolved_connection_mode = selected_mode
-                _LOGGER.info(
-                    "scan_device: auto-selected Modbus transport %s for %s:%s",
-                    selected_mode,
-                    scanner.host,
-                    scanner.port,
-                )
-                break
-            if scanner._transport is None:
-                raise ConnectionException("Auto-detect Modbus transport failed") from last_error
-        else:
-            scanner._transport = scanner._build_tcp_transport(mode)
+    await _prepare_scan_transport(scanner)
 
     try:
         await asyncio.wait_for(scanner._transport.ensure_connected(), timeout=scanner.timeout)

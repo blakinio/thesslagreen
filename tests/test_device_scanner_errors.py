@@ -2,6 +2,10 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.scanner_device_info import (
+    DeviceCapabilities,
+    ScannerDeviceInfo,
+)
 
 
 async def _make_scanner(**kwargs):
@@ -51,6 +55,29 @@ async def test_scan_device_legacy_returns_dict():
         result = await scanner.scan_device()
 
     assert result == {"custom_key": "custom_value"}
+
+
+@pytest.mark.asyncio
+async def test_scan_device_legacy_tuple_result_is_normalized():
+    scanner = await _make_scanner()
+    scanner.available_registers["input_registers"].add("outside_temperature")
+    scanner.available_registers["holding_registers"].add("mode")
+
+    device = ScannerDeviceInfo(model="AirPack", serial_number="123")
+    caps = DeviceCapabilities(basic_control=True)
+
+    async def fake_scan_returns_tuple():
+        return (device, caps, {"input_registers": {99: 1}})
+
+    scanner.scan = fake_scan_returns_tuple  # type: ignore[method-assign]
+
+    with patch.object(scanner, "close", AsyncMock()):
+        result = await scanner.scan_device()
+
+    assert result["device_info"]["model"] == "AirPack"
+    assert result["capabilities"]["basic_control"] is True
+    assert result["register_count"] == 2
+    assert result["unknown_registers"] == {"input_registers": {99: 1}}
 
 
 @pytest.mark.asyncio
