@@ -1,6 +1,7 @@
 """Tests for extracted transformation helpers in mapping builders."""
 
 from custom_components.thessla_green_modbus.mappings._mapping_builders import (
+    _apply_diagnostic_binary_overrides,
     _build_base_translation_mapping,
     _build_sensor_season_setting_mapping,
     _classify_enum_mapping,
@@ -15,6 +16,7 @@ from custom_components.thessla_green_modbus.mappings._mapping_builders import (
     _route_problem_mapping,
     _route_time_and_season_mappings,
 )
+from homeassistant.helpers.entity import EntityCategory
 
 
 def test_build_base_translation_mapping_shape() -> None:
@@ -201,3 +203,52 @@ def test_route_time_and_season_mappings_routes_expected_buckets() -> None:
     assert "schedule_wake" in time
     assert _route_time_and_season_mappings("setting_winter_mode", "R", sensor, time, select) is True
     assert "setting_winter_mode" in sensor
+
+
+def test_apply_diagnostic_binary_overrides_sets_binary_and_clears_conflicts() -> None:
+    binary = {}
+    switch = {"alarm": {"translation_key": "alarm"}}
+    select = {"s_1": {"translation_key": "s_1"}}
+
+    _apply_diagnostic_binary_overrides(
+        {"alarm", "s_1", "unknown"},
+        {"s_1", "normal"},
+        {"alarm", "s_1"},
+        binary,
+        switch,
+        select,
+    )
+
+    assert binary == {
+        "alarm": {
+            "translation_key": "alarm",
+            "register_type": "holding_registers",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+        },
+        "s_1": {
+            "translation_key": "s_1",
+            "register_type": "holding_registers",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+        },
+    }
+    assert switch == {}
+    assert select == {}
+
+
+def test_apply_diagnostic_binary_overrides_skips_when_not_translated_or_not_holding() -> None:
+    binary = {}
+    switch = {"e_1": {"translation_key": "e_1"}}
+    select = {"e_1": {"translation_key": "e_1"}}
+
+    _apply_diagnostic_binary_overrides(
+        {"e_1", "random"},
+        {"normal"},
+        {"alarm"},
+        binary,
+        switch,
+        select,
+    )
+
+    assert binary == {}
+    assert switch == {"e_1": {"translation_key": "e_1"}}
+    assert select == {"e_1": {"translation_key": "e_1"}}
