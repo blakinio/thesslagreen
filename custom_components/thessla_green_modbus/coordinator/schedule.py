@@ -180,6 +180,43 @@ class _CoordinatorScheduleMixin:
             attempt=attempt,
         )
 
+    def _resolve_write_definition(self, register_name: str) -> Any | None:
+        """Resolve writable register definition or log an error."""
+        try:
+            return _get_register_definition(register_name)
+        except KeyError:
+            _LOGGER.error("Unknown register name: %s", register_name)
+            return None
+
+    def _validate_multi_register_write_request(
+        self, start_address: int, values: list[int], require_single_request: bool
+    ) -> bool:
+        """Validate a multi-register write request before connection work."""
+        if not values:
+            _LOGGER.error("No values provided for multi-register write at %s", start_address)
+            return False
+        if require_single_request and len(values) > MAX_REGS_PER_REQUEST:
+            _LOGGER.error(
+                "Requested %s registers at %s exceeds maximum %s per request",
+                len(values),
+                start_address,
+                MAX_REGS_PER_REQUEST,
+            )
+            return False
+        return True
+
+    def _plan_multi_register_chunks(
+        self, start_address: int, values: list[int], require_single_request: bool
+    ) -> list[tuple[int, list[int]]]:
+        """Build chunk plan for multi-register writes."""
+        if require_single_request:
+            return [(start_address, values)]
+        return list(chunk_register_values(start_address, values, self.effective_batch))
+
+    def _write_response_ok(self, response: Any) -> bool:
+        """Return True when a Modbus write response indicates success."""
+        return response is not None and not response.isError()
+
     async def async_write_register(
         self,
         register_name: str,
@@ -199,10 +236,8 @@ class _CoordinatorScheduleMixin:
         async with self._write_lock:
             try:
                 original_value = value
-                try:
-                    definition = _get_register_definition(register_name)
-                except KeyError:
-                    _LOGGER.error("Unknown register name: %s", register_name)
+                definition = self._resolve_write_definition(register_name)
+                if definition is None:
                     return False
 
                 await self._ensure_connection()
@@ -248,7 +283,7 @@ class _CoordinatorScheduleMixin:
                             _LOGGER.error("Register %s is not writable", register_name)
                             return False
 
-                        if response is None or response.isError():
+                        if not self._write_response_ok(response):
                             if attempt == self.retry:
                                 _LOGGER.error(
                                     "Error writing to register %s: %s",
@@ -324,16 +359,9 @@ class _CoordinatorScheduleMixin:
     ) -> bool:
         """Write multiple holding registers in one Modbus request."""
 
-        if not values:
-            _LOGGER.error("No values provided for multi-register write at %s", start_address)
-            return False
-        if require_single_request and len(values) > MAX_REGS_PER_REQUEST:
-            _LOGGER.error(
-                "Requested %s registers at %s exceeds maximum %s per request",
-                len(values),
-                start_address,
-                MAX_REGS_PER_REQUEST,
-            )
+        if not self._validate_multi_register_write_request(
+            start_address, values, require_single_request
+        ):
             return False
         refresh_after_write = False
         async with self._write_lock:
@@ -344,22 +372,16 @@ class _CoordinatorScheduleMixin:
                 for attempt in range(1, self.retry + 1):
                     try:
                         success = True
-                        if require_single_request:
+                        response = None
+                        for chunk_start, chunk in self._plan_multi_register_chunks(
+                            start_address, values, require_single_request
+                        ):
                             response = await self._write_registers_payload(
-                                start_address, values, attempt
+                                chunk_start, chunk, attempt
                             )
-                            if response is None or response.isError():
+                            if not self._write_response_ok(response):
                                 success = False
-                        else:
-                            for _index, (chunk_start, chunk) in enumerate(
-                                chunk_register_values(start_address, values, self.effective_batch)
-                            ):
-                                response = await self._write_registers_payload(
-                                    chunk_start, chunk, attempt
-                                )
-                                if response is None or response.isError():
-                                    success = False
-                                    break
+                                break
                         if not success:
                             if attempt == self.retry:
                                 _LOGGER.error(

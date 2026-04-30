@@ -93,3 +93,28 @@ async def test_async_write_register_enum_invalid(coordinator, monkeypatch):
         await coordinator.async_write_register("mode", "invalid")
 
 
+def test_validate_multi_register_write_request_limits(coordinator):
+    """Reject empty writes and oversized single-request writes."""
+    assert (
+        coordinator._validate_multi_register_write_request(100, [], require_single_request=False)
+        is False
+    )
+    assert (
+        coordinator._validate_multi_register_write_request(
+            100,
+            list(range(1, 125)),
+            require_single_request=True,
+        )
+        is False
+    )
+
+
+def test_plan_multi_register_chunks_respects_single_request(coordinator):
+    """Single-request mode should avoid chunking."""
+    coordinator.effective_batch = 2
+    assert coordinator._plan_multi_register_chunks(200, [1, 2, 3], True) == [(200, [1, 2, 3])]
+    assert coordinator._plan_multi_register_chunks(200, [1, 2, 3], False) == [
+        (200, [1, 2]),
+        (202, [3]),
+    ]
+
