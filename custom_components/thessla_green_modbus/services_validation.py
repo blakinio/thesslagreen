@@ -107,3 +107,16 @@ def iter_modbus_parameter_writes(
         (f"{port_prefix}_parity", parity, PARITY_MAP, "Failed to set parity for %s"),
         (f"{port_prefix}_stop", stop_bits, STOP_MAP, "Failed to set stop bits for %s"),
     ]
+
+
+def filter_reset_value(normalize: Any, raw_filter_type: str) -> int:
+    """Map filter reset option payload to register value."""
+    return FILTER_TYPE_MAP[normalize(raw_filter_type)]
+
+
+def pressure_test_payload(now: Any) -> list[tuple[str, int]]:
+    """Build pressure-test register writes from current datetime."""
+    return [
+        ("pres_check_day_2", now.weekday()),
+        ("pres_check_time_2", now.hour * 100 + now.minute),
+    ]

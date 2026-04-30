@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from .modbus_exceptions import ConnectionException, ModbusException
 from .services_dispatch import (
     refresh_and_log_success,
+    write_device_name_chunks,
     write_mapped_optional_register,
     write_register_batch,
 )
@@ -22,21 +23,12 @@ from .services_schema import (
     SYNC_TIME_SCHEMA,
 )
 from .services_validation import (
-    FILTER_TYPE_MAP,
+    filter_reset_value,
     iter_modbus_parameter_writes,
     normalize_modbus_options,
+    pressure_test_payload,
     reset_settings_registers,
 )
-
-
-async def _write_device_name(coordinator: object, device_name: str, batch: int) -> bool:
-    chars_per_batch = batch * 2
-    for i in range(0, len(device_name), chars_per_batch):
-        chunk = device_name[i : i + chars_per_batch]
-        reg_offset = i // 2
-        if not await coordinator.async_write_register("device_name", chunk, refresh=False, offset=reg_offset):
-            return False
-    return True
 
 
 def _to_bcd(value: int) -> int:
@@ -55,7 +47,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
     """Register maintenance services."""
 
     async def reset_filters(call: ServiceCall) -> None:
-        filter_value = FILTER_TYPE_MAP[deps.normalize_option(call.data["filter_type"])]
+        filter_value = filter_reset_value(deps.normalize_option, call.data["filter_type"])
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
             if not await deps.write_register(coordinator, "filter_change", filter_value, entity_id, "reset filters"):
                 deps.logger.error("Failed to reset filters for %s", entity_id)
@@ -86,12 +78,9 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
 
     async def start_pressure_test(call: ServiceCall) -> None:
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
-            now = deps.dt_now()
-            day_of_week = now.weekday()
-            time_hhmm = now.hour * 100 + now.minute
             if not await write_register_batch(
                 coordinator,
-                [("pres_check_day_2", day_of_week), ("pres_check_time_2", time_hhmm)],
+                pressure_test_payload(deps.dt_now()),
                 entity_id,
                 "start pressure test",
                 deps.write_register,
@@ -135,7 +124,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                 if len(device_name) >= 16:
                     success = await coordinator.async_write_register("device_name", device_name, refresh=False)
                 else:
-                    success = await _write_device_name(
+                    success = await write_device_name_chunks(
                         coordinator,
                         device_name,
                         getattr(coordinator, "effective_batch", 2),

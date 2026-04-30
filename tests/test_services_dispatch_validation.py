@@ -8,6 +8,7 @@ import voluptuous as vol
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.services_dispatch import (
     refresh_and_log_success,
+    write_device_name_chunks,
     write_mapped_optional_register,
     write_optional_register,
     write_register,
@@ -16,8 +17,10 @@ from custom_components.thessla_green_modbus.services_dispatch import (
 )
 from custom_components.thessla_green_modbus.services_validation import (
     BAUD_MAP,
+    filter_reset_value,
     normalize_modbus_options,
     normalize_option,
+    pressure_test_payload,
     reset_settings_registers,
     validate_bypass_temperature_range,
     validate_gwc_temperature_range,
@@ -164,3 +167,23 @@ def test_reset_settings_registers_all_settings():
         ("hard_reset_settings", 1),
         ("hard_reset_schedule", 1),
     ]
+
+
+def test_filter_reset_value_uses_normalized_option():
+    assert filter_reset_value(normalize_option, "thessla_green_modbus.filter_type_cleanpad") == 3
+
+
+def test_pressure_test_payload_builds_day_and_time():
+    now = SimpleNamespace(weekday=lambda: 1, hour=9, minute=7)
+    assert pressure_test_payload(now) == [("pres_check_day_2", 1), ("pres_check_time_2", 907)]
+
+
+@pytest.mark.asyncio
+async def test_write_device_name_chunks_writes_offsets():
+    coordinator = SimpleNamespace(async_write_register=AsyncMock(return_value=True))
+    result = await write_device_name_chunks(coordinator, "ABCDEFGH", 2)
+
+    assert result is True
+    assert coordinator.async_write_register.await_count == 2
+    coordinator.async_write_register.assert_any_await("device_name", "ABCD", refresh=False, offset=0)
+    coordinator.async_write_register.assert_any_await("device_name", "EFGH", refresh=False, offset=2)
