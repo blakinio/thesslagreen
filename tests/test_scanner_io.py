@@ -124,3 +124,40 @@ async def test_read_holding_timeout_logging(caplog):
     assert any("Timeout reading holding 1" in msg for msg in warnings)
     errors = [r.message for r in caplog.records if r.levelno == logging.ERROR]
     assert any("Failed to read holding registers 1-1" in msg for msg in errors)
+
+
+async def test_read_holding_illegal_address_response_marks_unsupported():
+    """Holding illegal-address response should terminate immediately and cache failure."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3)
+    mock_client = AsyncMock()
+    error_response = MagicMock()
+    error_response.isError.return_value = True
+    error_response.exception_code = 2
+
+    with patch(
+        "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
+        AsyncMock(return_value=error_response),
+    ) as call_mock:
+        result = await scanner._read_holding(mock_client, 50, 1)
+
+    assert result is None
+    assert call_mock.await_count == 1
+    assert 50 in scanner._failed_holding
+
+
+async def test_read_input_skip_cache_marks_single_register_supported():
+    """Single-register input success with skip_cache should mark support."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
+    mock_client = AsyncMock()
+    ok_response = MagicMock()
+    ok_response.isError.return_value = False
+    ok_response.registers = [77]
+
+    with patch(
+        "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
+        AsyncMock(return_value=ok_response),
+    ):
+        result = await scanner._read_input(mock_client, 77, 1, skip_cache=True)
+
+    assert result == [77]
+    assert 77 not in scanner._failed_input

@@ -92,6 +92,68 @@ def _normalize_register_result(response: Any) -> list[int]:
     return cast(list[int], response.registers)
 
 
+def _process_register_response(
+    scanner: Any,
+    *,
+    response: Any,
+    register_type: str,
+    start: int,
+    end: int,
+    address: int,
+    count: int,
+    skip_cache: bool,
+) -> tuple[bool, list[int] | None]:
+    """Normalize and classify a read response.
+
+    Returns (done, payload):
+    - done=True,payload=<values|None> when caller should return immediately.
+    - done=False,payload=None when caller should continue retries.
+    """
+    if response is None:
+        return False, None
+
+    is_error, code = _validate_register_response(response)
+    if is_error:
+        _LOGGER.warning(
+            "Exception code %s while reading %s %d-%d",
+            code,
+            register_type.replace("_", " "),
+            start,
+            end,
+        )
+        if register_type == "input_registers" or code == 2:
+            _handle_error_response(
+                scanner,
+                register_type=register_type,
+                start=start,
+                end=end,
+                code=code,
+            )
+            return True, None
+        if count == 1:
+            track_holding_failure(scanner, count, address)
+            if address in scanner._failed_holding:
+                _handle_error_response(
+                    scanner,
+                    register_type="holding_registers",
+                    start=start,
+                    end=end,
+                    code=code or 0,
+                )
+                return True, None
+        return False, None
+
+    if skip_cache and count == 1:
+        if register_type == "input_registers":
+            scanner._mark_input_supported(address)
+        else:
+            scanner._mark_holding_supported(address)
+
+    if register_type == "holding_registers" and address in scanner._holding_failures:
+        del scanner._holding_failures[address]
+    return True, _normalize_register_result(response)
+
+
 def _handle_terminal_read_failure(scanner: Any, register_type: str, start: int, end: int) -> None:
     """Mark all addresses in a terminally failed read range."""
     _mark_failed_addresses(scanner, register_type, start, end)
@@ -174,28 +236,20 @@ async def read_input(
                     backoff=scanner.backoff,
                     backoff_jitter=scanner.backoff_jitter,
                 )
-            if response is not None:
-                is_error, code = _validate_register_response(response)
-                if is_error:
-                    _LOGGER.warning(
-                        "Exception code %s while reading input registers %d-%d",
-                        code,
-                        start,
-                        end,
-                    )
-                    _handle_error_response(
-                        scanner,
-                        register_type="input_registers",
-                        start=start,
-                        end=end,
-                        code=code,
-                    )
-                    return None
-                if skip_cache and count == 1:
-                    scanner._mark_input_supported(address)
-                registers = cast(list[int], response.registers)
-                _LOGGER.debug("Read input registers %d-%d: %s", start, end, registers)
-                return registers
+            done, payload = _process_register_response(
+                scanner,
+                response=response,
+                register_type="input_registers",
+                start=start,
+                end=end,
+                address=address,
+                count=count,
+                skip_cache=skip_cache,
+            )
+            if done:
+                if payload is not None:
+                    _LOGGER.debug("Read input registers %d-%d: %s", start, end, payload)
+                return payload
         except ModbusIOException as exc:
             log_scanner_retry(
                 operation=f"read_input:{start}-{end}",
@@ -325,41 +379,18 @@ async def read_holding(
                     backoff=scanner.backoff,
                     backoff_jitter=scanner.backoff_jitter,
                 )
-            if response is not None:
-                is_error, code = _validate_register_response(response)
-                if is_error:
-                    _LOGGER.warning(
-                        "Exception code %s while reading holding registers %d-%d",
-                        code,
-                        start,
-                        end,
-                    )
-                    if code == 2:
-                        _handle_error_response(
-                            scanner,
-                            register_type="holding_registers",
-                            start=start,
-                            end=end,
-                            code=code,
-                        )
-                        return None
-                    if count == 1:
-                        track_holding_failure(scanner, count, address)
-                        if address in scanner._failed_holding:
-                            _handle_error_response(
-                                scanner,
-                                register_type="holding_registers",
-                                start=start,
-                                end=end,
-                                code=code or 0,
-                            )
-                            return None
-                    continue
-                if skip_cache and count == 1:
-                    scanner._mark_holding_supported(address)
-                if address in scanner._holding_failures:
-                    del scanner._holding_failures[address]
-                return _normalize_register_result(response)
+            done, payload = _process_register_response(
+                scanner,
+                response=response,
+                register_type="holding_registers",
+                start=start,
+                end=end,
+                address=address,
+                count=count,
+                skip_cache=skip_cache,
+            )
+            if done:
+                return payload
         except TimeoutError:
             _LOGGER.warning(
                 "Timeout reading holding %d (attempt %d/%d)",
