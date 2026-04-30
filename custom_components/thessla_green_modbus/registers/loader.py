@@ -18,6 +18,12 @@ from .cache import (
     clear_cache as _clear_register_cache,
 )
 from .definition import ReadPlan
+from .loader_helpers import (
+    build_register_map,
+    filter_registers_by_function,
+    resolve_registers_path,
+    sort_registers,
+)
 from .parser import async_load_registers_from_file, load_registers_from_file
 from .read_planner import group_registers as _group_registers_impl
 from .read_planner import plan_group_reads as _plan_group_reads_impl
@@ -36,7 +42,7 @@ def get_registers_path() -> Path:
 
 def load_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
     """Return cached register definitions, reloading if file changed."""
-    path = Path(json_path) if json_path is not None else _REGISTERS_PATH
+    path = resolve_registers_path(_REGISTERS_PATH, json_path)
     file_hash = registers_sha256(path)
     cached = get_cached_file_info(path)
     if cached is None:
@@ -53,7 +59,7 @@ async def async_load_registers(
     hass: Any | None, json_path: Path | str | None = None
 ) -> list[RegisterDef]:
     """Return cached register definitions asynchronously."""
-    path = Path(json_path) if json_path is not None else _REGISTERS_PATH
+    path = resolve_registers_path(_REGISTERS_PATH, json_path)
     file_hash = await async_registers_sha256(hass, path)
     cached = get_cached_file_info(path)
     if cached is None:
@@ -73,7 +79,7 @@ def clear_cache() -> None:  # pragma: no cover
 
 def get_all_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
     """Return all known registers ordered by function and address."""
-    return sorted(load_registers(json_path), key=lambda r: (r.function, r.address))
+    return sort_registers(load_registers(json_path))
 
 
 async def async_get_all_registers(
@@ -81,13 +87,13 @@ async def async_get_all_registers(
 ) -> list[RegisterDef]:
     """Return all known registers asynchronously."""
     regs = await async_load_registers(hass, json_path)
-    return sorted(regs, key=lambda r: (r.function, r.address))
+    return sort_registers(regs)
 
 
 def get_registers_by_function(fn: str, json_path: Path | str | None = None) -> list[RegisterDef]:
     """Return registers for the given function code or name."""
     code = _normalise_function(fn)
-    return [r for r in load_registers(json_path) if r.function == code]
+    return filter_registers_by_function(load_registers(json_path), code)
 
 
 async def async_get_registers_by_function(
@@ -95,12 +101,12 @@ async def async_get_registers_by_function(
 ) -> list[RegisterDef]:
     """Return registers for given function code/name asynchronously."""
     code = _normalise_function(fn)
-    return [r for r in await async_load_registers(hass, json_path) if r.function == code]
+    return filter_registers_by_function(await async_load_registers(hass, json_path), code)
 
 
 @lru_cache(maxsize=1)
 def _register_map() -> dict[str, RegisterDef]:
-    return {r.name: r for r in load_registers()}
+    return build_register_map(load_registers())
 
 
 def get_register_definition(name: str) -> RegisterDef:
