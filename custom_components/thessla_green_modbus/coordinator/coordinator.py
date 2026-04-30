@@ -136,6 +136,9 @@ from .scan import (
     normalise_cached_register_name as _normalise_cached_register_name_impl,
 )
 from .scan import (
+    prepare_registers_for_setup as _prepare_registers_for_setup_impl,
+)
+from .scan import (
     store_scan_cache as _store_scan_cache_impl,
 )
 from .schedule import _CoordinatorScheduleMixin
@@ -530,21 +533,7 @@ class ThesslaGreenModbusCoordinator(
 
     async def _prepare_registers_for_setup(self) -> None:
         """Prepare register availability from full list, cache, or device scan."""
-        if self.force_full_register_list:
-            _LOGGER.info("Using full register list (skipping scan)")
-            self._load_full_register_list()
-            return
-
-        if not self.enable_device_scan:
-            cache = self._get_scan_cache_from_entry()
-            if cache and self._apply_scan_cache(cache):
-                _LOGGER.info("Using cached device scan results")
-                return
-            _LOGGER.info("Device scan disabled; falling back to full register list")
-            self._load_full_register_list()
-            return
-
-        await self._run_device_scan()
+        await _prepare_registers_for_setup_impl(self)
 
     def _get_scan_cache_from_entry(self) -> dict[str, Any]:
         """Return cached scan payload from config entry options."""

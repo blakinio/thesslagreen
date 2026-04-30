@@ -126,3 +126,22 @@ def store_scan_cache(coordinator: Any) -> None:
     options = dict(coordinator.entry.options)
     options["device_scan_cache"] = cache
     coordinator.hass.config_entries.async_update_entry(coordinator.entry, options=options)
+
+
+async def prepare_registers_for_setup(coordinator: Any) -> None:
+    """Prepare register availability from full list, cache, or device scan."""
+    if coordinator.force_full_register_list:
+        _LOGGER.info("Using full register list (skipping scan)")
+        coordinator._load_full_register_list()
+        return
+
+    if not coordinator.enable_device_scan:
+        cache = coordinator._get_scan_cache_from_entry()
+        if cache and coordinator._apply_scan_cache(cache):
+            _LOGGER.info("Using cached device scan results")
+            return
+        _LOGGER.info("Device scan disabled; falling back to full register list")
+        coordinator._load_full_register_list()
+        return
+
+    await coordinator._run_device_scan()
