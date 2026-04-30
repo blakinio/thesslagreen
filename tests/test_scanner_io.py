@@ -161,3 +161,26 @@ async def test_read_input_skip_cache_marks_single_register_supported():
 
     assert result == [77]
     assert 77 not in scanner._failed_input
+
+
+async def test_read_holding_cancelled_modbusio_stops_retry_loop():
+    """Cancelled ModbusIOException aborts holding retries immediately."""
+    scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3)
+    mock_client = AsyncMock()
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
+            AsyncMock(side_effect=ModbusIOException("request cancelled")),
+        ) as call_mock,
+        patch(
+            "custom_components.thessla_green_modbus.scanner.io_read.is_request_cancelled_error",
+            return_value=True,
+        ),
+        patch("asyncio.sleep", AsyncMock()) as sleep_mock,
+    ):
+        result = await scanner._read_holding(mock_client, 3, 1)
+
+    assert result is None
+    assert call_mock.await_count == 1
+    sleep_mock.assert_not_called()

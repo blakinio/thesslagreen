@@ -332,6 +332,71 @@ async def read_register_block(
     return results
 
 
+
+
+def _prepare_holding_read(scanner: Any, start: int, end: int, address: int, skip_cache: bool) -> bool:
+    """Return True when holding read should short-circuit as failed/unsupported."""
+    should_skip, skip_start, skip_end = _should_skip_holding_range(scanner, start, end, skip_cache)
+    if should_skip:
+        _handle_terminal_read_failure(scanner, "holding_registers", skip_start, skip_end)
+        return True
+
+    failures = scanner._holding_failures.get(address, 0)
+    if failures >= scanner.retry:
+        scanner.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
+        return True
+    return False
+
+
+def _handle_holding_read_exception(
+    scanner: Any,
+    exc: Exception,
+    *,
+    start: int,
+    end: int,
+    address: int,
+    count: int,
+    attempt: int,
+) -> tuple[bool, bool]:
+    """Handle holding read exception.
+
+    Returns (abort_transiently, stop_retries).
+    """
+    if isinstance(exc, TimeoutError):
+        _LOGGER.warning(
+            "Timeout reading holding %d (attempt %d/%d)",
+            address,
+            attempt,
+            scanner.retry,
+        )
+        track_holding_failure(scanner, count, address)
+        return True, False
+    if isinstance(exc, ModbusIOException):
+        if is_request_cancelled_error(exc):
+            _LOGGER.debug(
+                "Cancelled reading holding registers %d-%d on attempt %d/%d: %s",
+                start,
+                end,
+                attempt,
+                scanner.retry,
+                exc,
+            )
+            return True, True
+        track_holding_failure(scanner, count, address)
+        return False, False
+    if isinstance(exc, (ModbusException, ConnectionException)):
+        track_holding_failure(scanner, count, address)
+        return False, False
+    if isinstance(exc, OSError):
+        _LOGGER.error(
+            "Unexpected error reading holding %d on attempt %d: %s",
+            address,
+            attempt,
+            exc,
+            exc_info=True,
+        )
+        return False, True
+    raise exc
 async def read_holding(
     scanner: Any,
     client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
@@ -345,14 +410,7 @@ async def read_holding(
     start = address
     end = address + count - 1
 
-    should_skip, skip_start, skip_end = _should_skip_holding_range(scanner, start, end, skip_cache)
-    if should_skip:
-        _handle_terminal_read_failure(scanner, "holding_registers", skip_start, skip_end)
-        return None
-
-    failures = scanner._holding_failures.get(address, 0)
-    if failures >= scanner.retry:
-        scanner.failed_addresses["modbus_exceptions"]["holding_registers"].add(address)
+    if _prepare_holding_read(scanner, start, end, address, skip_cache):
         return None
 
     transport, client = resolve_transport_and_client(scanner, client)
@@ -391,41 +449,21 @@ async def read_holding(
             )
             if done:
                 return payload
-        except TimeoutError:
-            _LOGGER.warning(
-                "Timeout reading holding %d (attempt %d/%d)",
-                address,
-                attempt,
-                scanner.retry,
-            )
-            track_holding_failure(scanner, count, address)
-            aborted_transiently = True
-        except ModbusIOException as exc:
-            if is_request_cancelled_error(exc):
-                _LOGGER.debug(
-                    "Cancelled reading holding registers %d-%d on attempt %d/%d: %s",
-                    start,
-                    end,
-                    attempt,
-                    scanner.retry,
-                    exc,
-                )
-                aborted_transiently = True
-                break
-            track_holding_failure(scanner, count, address)
-        except (ModbusException, ConnectionException):
-            track_holding_failure(scanner, count, address)
         except asyncio.CancelledError:
             raise
-        except OSError as exc:
-            _LOGGER.error(
-                "Unexpected error reading holding %d on attempt %d: %s",
-                address,
-                attempt,
+        except (TimeoutError, ModbusIOException, ModbusException, ConnectionException, OSError) as exc:
+            aborted, stop = _handle_holding_read_exception(
+                scanner,
                 exc,
-                exc_info=True,
+                start=start,
+                end=end,
+                address=address,
+                count=count,
+                attempt=attempt,
             )
-            break
+            aborted_transiently = aborted_transiently or aborted
+            if stop:
+                break
 
         await _sleep_retry_backoff(
             backoff=scanner.backoff,
