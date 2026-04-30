@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 from typing import Any, cast
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as _dt_util
@@ -118,6 +117,7 @@ from .connection import (
     setup_client_with_retry as _setup_client_with_retry_impl,
 )
 from .io import _ModbusIOMixin
+from .lifecycle import async_setup as _async_setup_impl
 from .models import CoordinatorConfig
 from .retry import _PermanentModbusError
 from .scan import (
@@ -503,33 +503,7 @@ class ThesslaGreenModbusCoordinator(
 
     async def async_setup(self) -> bool:
         """Set up the coordinator by scanning the device."""
-        if self.config.connection_type == CONNECTION_TYPE_RTU:
-            endpoint = self.config.serial_port or "serial"
-        else:
-            endpoint = f"{self.config.host}:{self.config.port}"
-        _LOGGER.info(
-            "Setting up ThesslaGreen coordinator for %s via %s",
-            endpoint,
-            self.config.connection_type.upper(),
-        )
-
-        await self._prepare_registers_for_setup()
-
-        self._warn_missing_device_info()
-
-        # Pre-compute register groups for batch reading
-        self._compute_register_groups()
-
-        # Test initial connection
-        await self._test_connection()
-
-        # Ensure we clean up tasks when Home Assistant stops
-        if self._stop_listener is None and hasattr(self.hass, "bus"):
-            self._stop_listener = self.hass.bus.async_listen_once(
-                EVENT_HOMEASSISTANT_STOP, self._async_handle_stop
-            )
-
-        return True
+        return await _async_setup_impl(self)
 
     async def _prepare_registers_for_setup(self) -> None:
         """Prepare register availability from full list, cache, or device scan."""
