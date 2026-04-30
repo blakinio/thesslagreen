@@ -141,3 +141,34 @@ async def test_verify_connection_rtu_with_serial_port():
         pytest.raises(asyncio.CancelledError),
     ):
         await scanner.verify_connection()
+
+
+def test_build_verification_attempts_auto_uses_builder():
+    """AUTO mode should use scanner-provided auto-attempt builder."""
+    from custom_components.thessla_green_modbus.scanner import setup as scanner_setup
+
+    transport = object()
+    scanner = MagicMock()
+    scanner.connection_type = "tcp"
+    scanner.connection_mode = "auto"
+    scanner._build_auto_tcp_attempts = MagicMock(return_value=[("tcp", transport, 5.0)])
+
+    attempts = scanner_setup.build_verification_attempts(scanner)
+
+    assert attempts == [("tcp", transport, 5.0)]
+    scanner._build_auto_tcp_attempts.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_close_verification_transport_once_deduplicates():
+    """Transport close should run once when same object appears multiple times."""
+    from custom_components.thessla_green_modbus.scanner import setup as scanner_setup
+
+    transport = MagicMock()
+    transport.close = AsyncMock()
+    closed_ids: set[int] = set()
+
+    await scanner_setup.close_verification_transport_once(transport, closed_ids)
+    await scanner_setup.close_verification_transport_once(transport, closed_ids)
+
+    transport.close.assert_called_once()
