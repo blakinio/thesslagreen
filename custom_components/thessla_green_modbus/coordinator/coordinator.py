@@ -116,6 +116,15 @@ from .connection import (
 from .connection import (
     setup_client_with_retry as _setup_client_with_retry_impl,
 )
+from .connection_state import (
+    mark_connection_disconnected as _mark_connection_disconnected_impl,
+)
+from .connection_state import (
+    mark_connection_established as _mark_connection_established_impl,
+)
+from .connection_state import (
+    mark_connection_failure as _mark_connection_failure_impl,
+)
 from .io import _ModbusIOMixin
 from .lifecycle import async_setup as _async_setup_impl
 from .models import CoordinatorConfig
@@ -710,20 +719,26 @@ class ThesslaGreenModbusCoordinator(
                     client=self.client,
                 )
                 _LOGGER.debug("Modbus connection established")
-                self.offline_state = False
+                _mark_connection_established_impl(offline_state_setter=lambda value: setattr(self, "offline_state", value))
             except (ModbusException, ConnectionException) as exc:
-                self.statistics["connection_errors"] += 1
-                self.offline_state = True
+                _mark_connection_failure_impl(
+                    statistics=self.statistics,
+                    offline_state_setter=lambda value: setattr(self, "offline_state", value),
+                )
                 _LOGGER.exception("Failed to establish connection: %s", exc)
                 raise
             except TimeoutError as exc:
-                self.statistics["connection_errors"] += 1
-                self.offline_state = True
+                _mark_connection_failure_impl(
+                    statistics=self.statistics,
+                    offline_state_setter=lambda value: setattr(self, "offline_state", value),
+                )
                 _LOGGER.warning("Connection attempt timed out: %s", exc)
                 raise
             except OSError as exc:
-                self.statistics["connection_errors"] += 1
-                self.offline_state = True
+                _mark_connection_failure_impl(
+                    statistics=self.statistics,
+                    offline_state_setter=lambda value: setattr(self, "offline_state", value),
+                )
                 _LOGGER.exception("Unexpected error establishing connection: %s", exc)
                 raise
 
@@ -757,7 +772,9 @@ class ThesslaGreenModbusCoordinator(
             await self._close_client_connection()
 
         self.client = None
-        self.offline_state = True
+        _mark_connection_disconnected_impl(
+            offline_state_setter=lambda value: setattr(self, "offline_state", value)
+        )
         _LOGGER.debug("Disconnected from Modbus device")
 
     async def _close_client_connection(self) -> None:
