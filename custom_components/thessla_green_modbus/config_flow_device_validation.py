@@ -107,6 +107,21 @@ async def _maybe_close_scanner(scanner: Any | None) -> None:
             await close_result
 
 
+async def _run_scanner_validation(
+    *,
+    scanner: Any,
+    timeout: float,
+    run_scanner_call: Callable[[Callable[[], Any], float], Awaitable[Any]],
+) -> dict[str, Any]:
+    """Run connection verification and device scan."""
+    short_timeout = max(2, timeout)
+    verify_cb = getattr(scanner, "verify_connection", None)
+    if not callable(verify_cb):
+        raise AttributeError("verify_connection")
+    await run_scanner_call(verify_cb, short_timeout)
+    return _validate_scan_result(await run_scanner_call(scanner.scan_device, timeout))
+
+
 def _map_validation_exception(
     exc: BaseException,
     *,
@@ -158,6 +173,13 @@ def _map_validation_exception(
         logger.debug("Traceback:\n%s", traceback.format_exc())
         return CannotConnect("cannot_connect")
     return exc  # passthrough
+
+
+def _raise_if_unmapped(mapped: Exception, original: BaseException) -> None:
+    """Raise mapped exceptions, passthrough unknown ones untouched."""
+    if mapped is original:
+        raise original
+    raise mapped from original
 
 
 async def validate_input_impl(
@@ -215,6 +237,18 @@ async def validate_input_impl(
     capabilities_cls = capabilities_cls_override or module.DeviceCapabilities
 
     scanner: Any | None = None
+    handled_exceptions = (
+        ConnectionException,
+        ModbusIOException,
+        ModbusException,
+        AttributeError,
+        OSError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+        ImportError,
+        *timeout_exceptions,
+    )
     try:
         scanner = await run_with_retry(
             lambda: scanner_cls.create(
@@ -243,14 +277,10 @@ async def validate_input_impl(
             retries=default_retry,
             backoff=config_flow_backoff,
         )
-        short_timeout = max(2, params["timeout"])
-        verify_cb = getattr(scanner, "verify_connection", None)
-        if not callable(verify_cb):
-            raise AttributeError("verify_connection")
-        await run_scanner_call(verify_cb, short_timeout)
-
-        scan_result = _validate_scan_result(
-            await run_scanner_call(scanner.scan_device, params["timeout"])
+        scan_result = await _run_scanner_validation(
+            scanner=scanner,
+            timeout=params["timeout"],
+            run_scanner_call=run_scanner_call,
         )
 
         caps_dict = process_scan_capabilities(scan_result, capabilities_cls)
@@ -260,7 +290,7 @@ async def validate_input_impl(
         raise
     except CannotConnect:
         raise
-    except BaseException as exc:
+    except handled_exceptions as exc:
         mapped = _map_validation_exception(
             exc,
             is_request_cancelled_error=is_request_cancelled_error,
@@ -269,8 +299,6 @@ async def validate_input_impl(
             logger=logger,
             timeout_exceptions=timeout_exceptions,
         )
-        if mapped is exc:
-            raise
-        raise mapped from exc
+        _raise_if_unmapped(mapped, exc)
     finally:
         await _maybe_close_scanner(scanner)

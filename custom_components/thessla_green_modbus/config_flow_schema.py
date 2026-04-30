@@ -139,28 +139,27 @@ def _build_scan_option_fields(current_values: dict[str, Any]) -> dict[Any, Any]:
     }
 
 
-def build_connection_schema(
-    defaults: dict[str, Any],
+def _resolve_option_lists(
+    modbus_baud_rates: list[int] | None,
+    modbus_parity: list[str] | None,
+    modbus_stop_bits: list[str] | None,
+) -> tuple[list[int], list[str], list[str]]:
+    """Resolve optional selector lists to concrete lists."""
+    return (
+        modbus_baud_rates if modbus_baud_rates is not None else [],
+        modbus_parity if modbus_parity is not None else [],
+        modbus_stop_bits if modbus_stop_bits is not None else [],
+    )
+
+
+def _build_serial_defaults_and_validators(
+    current_values: dict[str, Any],
     *,
-    discovered_host: str | None = None,
-    modbus_baud_rates: list[int] | None = None,
-    modbus_parity: list[str] | None = None,
-    modbus_stop_bits: list[str] | None = None,
-) -> vol.Schema:
-    """Return schema for connection details with provided defaults."""
-    current_values = defaults or {}
-
-    resolved_defaults = _resolve_defaults(current_values, discovered_host)
-    connection_default = resolved_defaults["connection_default"]
-    host_default = resolved_defaults["host_default"]
-    port_default = resolved_defaults["port_default"]
-    slave_default = resolved_defaults["slave_default"]
-    serial_port_default = resolved_defaults["serial_port_default"]
-
-    baud_options = modbus_baud_rates if modbus_baud_rates is not None else []
-    parity_options = modbus_parity if modbus_parity is not None else []
-    stop_bits_options = modbus_stop_bits if modbus_stop_bits is not None else []
-
+    baud_options: list[int],
+    parity_options: list[str],
+    stop_bits_options: list[str],
+) -> dict[str, Any]:
+    """Build RTU defaults and validators for baud/parity/stop bits."""
     baud_default = _option_default(
         "modbus_baud_rate_",
         baud_options,
@@ -190,16 +189,52 @@ def build_connection_schema(
     if not stop_bits_options:
         stop_bits_default = str(stop_bits_default)
 
-    baud_validator: Any = (
-        vol.In(baud_options)
-        if baud_options
-        else vol.All(vol.Coerce(int), vol.Range(min=1200, max=230400))
+    return {
+        "baud_default": baud_default,
+        "parity_default": parity_default,
+        "stop_bits_default": stop_bits_default,
+        "baud_validator": (
+            vol.In(baud_options)
+            if baud_options
+            else vol.All(vol.Coerce(int), vol.Range(min=1200, max=230400))
+        ),
+        "parity_validator": (
+            vol.In(parity_options) if parity_options else vol.In(["none", "even", "odd"])
+        ),
+        "stop_bits_validator": (
+            vol.In(stop_bits_options) if stop_bits_options else vol.In(["1", "2"])
+        ),
+    }
+
+
+def build_connection_schema(
+    defaults: dict[str, Any],
+    *,
+    discovered_host: str | None = None,
+    modbus_baud_rates: list[int] | None = None,
+    modbus_parity: list[str] | None = None,
+    modbus_stop_bits: list[str] | None = None,
+) -> vol.Schema:
+    """Return schema for connection details with provided defaults."""
+    current_values = defaults or {}
+
+    resolved_defaults = _resolve_defaults(current_values, discovered_host)
+    connection_default = resolved_defaults["connection_default"]
+    host_default = resolved_defaults["host_default"]
+    port_default = resolved_defaults["port_default"]
+    slave_default = resolved_defaults["slave_default"]
+    serial_port_default = resolved_defaults["serial_port_default"]
+
+    baud_options, parity_options, stop_bits_options = _resolve_option_lists(
+        modbus_baud_rates,
+        modbus_parity,
+        modbus_stop_bits,
     )
-    parity_validator: Any = (
-        vol.In(parity_options) if parity_options else vol.In(["none", "even", "odd"])
-    )
-    stop_bits_validator: Any = (
-        vol.In(stop_bits_options) if stop_bits_options else vol.In(["1", "2"])
+    serial_defaults = _build_serial_defaults_and_validators(
+        current_values,
+        baud_options=baud_options,
+        parity_options=parity_options,
+        stop_bits_options=stop_bits_options,
     )
 
     data_schema: dict[Any, Any] = {
@@ -216,12 +251,12 @@ def build_connection_schema(
         data_schema.update(
             _build_rtu_fields(
                 serial_port_default,
-                baud_default=baud_default,
-                baud_validator=baud_validator,
-                parity_default=parity_default,
-                parity_validator=parity_validator,
-                stop_bits_default=stop_bits_default,
-                stop_bits_validator=stop_bits_validator,
+                baud_default=serial_defaults["baud_default"],
+                baud_validator=serial_defaults["baud_validator"],
+                parity_default=serial_defaults["parity_default"],
+                parity_validator=serial_defaults["parity_validator"],
+                stop_bits_default=serial_defaults["stop_bits_default"],
+                stop_bits_validator=serial_defaults["stop_bits_validator"],
             )
         )
 
