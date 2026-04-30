@@ -131,7 +131,7 @@ def test_process_register_value_sensor_unavailable_temperature():
     mock_def.enum = None
     mock_def.decode.return_value = 0
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
     ):
         result = coord._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
@@ -154,7 +154,7 @@ def test_process_register_value_sensor_unavailable_non_temperature():
     mock_def.enum = None
     mock_def.decode.return_value = 0
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
     ):
         result = coord._process_register_value(non_temp_reg, SENSOR_UNAVAILABLE)
@@ -174,7 +174,7 @@ async def test_async_write_register_multi_reg_offset_too_large():
     mock_def.address = 100
     mock_def.encode.return_value = [1, 2, 3]
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
     ):
         result = await coord.async_write_register("some_reg", [1, 2, 3], offset=1)
@@ -283,7 +283,7 @@ async def test_async_write_register_non_writable_function():
     mock_def.address = 100
     mock_def.encode.return_value = 1
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
     ):
         result = await coord.async_write_register("some_reg", 1)
@@ -361,7 +361,7 @@ async def test_async_write_register_multi_reg_non_int_values():
     transport.is_connected.return_value = True
     coord._transport = transport
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
     ):
         result = await coord.async_write_register("some_reg", ["bad", "x", "y"], offset=0)
@@ -380,7 +380,7 @@ async def test_async_write_register_offset_exceeds_length():
     transport.is_connected.return_value = True
     coord._transport = transport
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
     ):
         result = await coord.async_write_register("some_reg", 1, offset=2)
@@ -403,7 +403,7 @@ async def test_async_write_register_multi_reg_with_offset_via_transport():
     coord._transport = transport
     coord.async_request_refresh = AsyncMock()
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
     ):
         result = await coord.async_write_register("some_reg", 5, offset=1)
@@ -498,7 +498,7 @@ async def test_async_write_register_encoded_non_list():
     coord._transport = transport
     coord.async_request_refresh = AsyncMock()
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
     ):
         result = await coord.async_write_register("some_reg", 5, offset=0)

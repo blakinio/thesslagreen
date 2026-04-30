@@ -12,7 +12,7 @@ import custom_components.thessla_green_modbus.services_targets as services_targe
 
 def test_coordinator_package_public_api_is_minimal() -> None:
     """Coordinator package should expose only public coordinator entrypoints."""
-    assert set(coordinator.__all__) == {"CoordinatorConfig", "ThesslaGreenDeviceScanner", "ThesslaGreenModbusCoordinator", "get_register_definition"}
+    assert set(coordinator.__all__) == {"CoordinatorConfig", "ThesslaGreenModbusCoordinator"}
     for export_name in coordinator.__all__:
         assert hasattr(coordinator, export_name)
 

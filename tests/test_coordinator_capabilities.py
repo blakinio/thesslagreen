@@ -95,7 +95,7 @@ def test_compute_register_groups_safe_scan_key_error():
     coord.available_registers = {"holding_registers": {"mode"}}
     coord._register_maps = {"holding_registers": {"mode": 100}}
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         side_effect=KeyError("mode"),
     ):
         coord._compute_register_groups()
@@ -115,7 +115,7 @@ def test_compute_register_groups_non_safe_key_error():
     coord.available_registers = {"holding_registers": {"mode"}}
     coord._register_maps = {"holding_registers": {"mode": 100}}
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         side_effect=KeyError("mode"),
     ):
         coord._compute_register_groups()

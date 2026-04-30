@@ -74,6 +74,6 @@ def test_process_register_value_sensor_unavailable_temperature():
     mock_def.is_temperature.return_value = True
     mock_def.enum = None
     mock_def.decode.return_value = 0
-    with patch("custom_components.thessla_green_modbus.coordinator.get_register_definition", return_value=mock_def):
+    with patch("custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition", return_value=mock_def):
         result = coord._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
     assert result is None

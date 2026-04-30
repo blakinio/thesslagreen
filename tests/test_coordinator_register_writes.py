@@ -69,7 +69,7 @@ async def test_async_write_register_numeric_out_of_range(coordinator, monkeypatc
     coordinator._ensure_connection = AsyncMock()
     coordinator.client = MagicMock()
 
-    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+    import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
     reg = RegisterDef(function="03", address=0, name="num", access="rw", min=0, max=10)
     monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: reg)
@@ -84,7 +84,7 @@ async def test_async_write_register_enum_invalid(coordinator, monkeypatch):
     coordinator._ensure_connection = AsyncMock()
     coordinator.client = MagicMock()
 
-    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+    import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
     reg = RegisterDef(function="03", address=0, name="mode", access="rw", enum={0: "off", 1: "on"})
     monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: reg)

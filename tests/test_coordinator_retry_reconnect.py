@@ -214,7 +214,7 @@ async def test_async_write_register_multi_reg_chunk_error_last_attempt():
     coord._transport = transport
     coord.retry = 1
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
     ):
         result = await coord.async_write_register("some_reg", [1, 2])
@@ -333,7 +333,7 @@ async def test_async_write_register_multi_reg_chunk_error_retry():
     coord.retry = 2
     coord.async_request_refresh = AsyncMock()
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
     ):
         result = await coord.async_write_register("some_reg", [1, 2])

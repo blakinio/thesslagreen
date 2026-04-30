@@ -32,7 +32,7 @@ async def test_async_write_temporary_airflow():
     mock_def = MagicMock()
     mock_def.encode = MagicMock(return_value=1)
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
     ):
         result = await coord.async_write_temporary_airflow(50.0)
@@ -45,7 +45,7 @@ async def test_async_write_temporary_airflow_missing_register():
     """async_write_temporary_airflow returns False when registers unavailable (lines 2327-2329)."""
     coord = _make_coordinator()
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         side_effect=KeyError("cfg_mode_1"),
     ):
         result = await coord.async_write_temporary_airflow(50.0)
@@ -60,7 +60,7 @@ async def test_async_write_temporary_temperature():
     mock_def = MagicMock()
     mock_def.encode = MagicMock(return_value=1)
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
     ):
         result = await coord.async_write_temporary_temperature(22.0)
@@ -73,7 +73,7 @@ async def test_async_write_temporary_temperature_missing_register():
     """async_write_temporary_temperature returns False when registers unavailable (lines 2352-2354)."""
     coord = _make_coordinator()
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         side_effect=KeyError("cfg_mode_2"),
     ):
         result = await coord.async_write_temporary_temperature(22.0)
