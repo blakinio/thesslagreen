@@ -170,41 +170,10 @@ async def verify_connection(
         else:
             safe_holding.append(reg.address)
 
-    attempts: list[tuple[str | None, BaseModbusTransport, float]] = []
-    if scanner.connection_type == CONNECTION_TYPE_RTU:
-        if not scanner.serial_port:
-            raise ConnectionException("Serial port not configured")
-        parity = SERIAL_PARITY_MAP.get(scanner.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
-        stop_bits = SERIAL_STOP_BITS_MAP.get(
-            scanner.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
-        )
-        attempts.append(
-            (
-                None,
-                rtu_transport_cls(
-                    serial_port=scanner.serial_port,
-                    baudrate=scanner.baud_rate,
-                    parity=parity,
-                    stopbits=stop_bits,
-                    max_retries=scanner.retry,
-                    base_backoff=scanner.backoff,
-                    max_backoff=DEFAULT_MAX_BACKOFF,
-                    timeout=scanner.timeout,
-                ),
-                scanner.timeout,
-            )
-        )
-    elif scanner.connection_mode == CONNECTION_MODE_AUTO:
-        if hasattr(scanner, "_build_auto_tcp_attempts"):
-            attempts.extend(scanner._build_auto_tcp_attempts())
-        else:
-            attempts.extend(build_auto_tcp_attempts(scanner))
-    else:
-        mode = scanner.connection_mode or default_connection_mode(scanner.port)
-        if hasattr(scanner, "_build_tcp_transport"):
-            attempts.append((mode, scanner._build_tcp_transport(mode), scanner.timeout))
-        else:
-            attempts.append((mode, build_tcp_transport(scanner, mode), scanner.timeout))
+    attempts = build_verification_attempts(
+        scanner,
+        rtu_transport_cls=rtu_transport_cls,
+    )
 
     last_error: Exception | None = None
     closed_transports: set[int] = set()
@@ -251,28 +220,10 @@ async def verify_connection(
             return
         except asyncio.CancelledError:
             raise
-        except ModbusIOException as exc:
-            last_error = exc
-            if is_request_cancelled_error(exc):
-                _LOGGER.info("Modbus request cancelled during verify_connection.")
-                raise TimeoutError("Modbus request cancelled") from exc
-        except TimeoutError as exc:
-            last_error = exc
-            _LOGGER.warning("Timeout during verify_connection: %s", exc)
-        except (ConnectionException, ModbusException, OSError) as exc:
-            last_error = exc
+        except (ModbusIOException, TimeoutError, ConnectionException, ModbusException, OSError) as exc:
+            last_error = classify_verify_connection_exception(exc)
         finally:
-            try:
-                transport_id = id(transport)
-                if transport_id not in closed_transports:
-                    close_result = transport.close()
-                    if inspect.isawaitable(close_result):
-                        await close_result
-                    closed_transports.add(transport_id)
-            except (OSError, ConnectionException, ModbusIOException):
-                _LOGGER.warning(
-                    "Error closing Modbus transport during verify_connection", exc_info=True
-                )
+            await close_verification_transport_once(transport, closed_transports)
 
     if last_error:
         raise last_error
@@ -325,6 +276,80 @@ def build_auto_tcp_attempts(scanner: Any) -> list[tuple[str, BaseModbusTransport
             transport = build_tcp_transport(scanner, mode, timeout_override=timeout)
         attempts.append((mode, transport, timeout))
     return attempts
+
+
+def build_verification_attempts(
+    scanner: Any,
+    *,
+    rtu_transport_cls: Any = RtuModbusTransport,
+) -> list[tuple[str | None, BaseModbusTransport, float]]:
+    """Build ordered transport attempts for verify_connection."""
+    attempts: list[tuple[str | None, BaseModbusTransport, float]] = []
+    if scanner.connection_type == CONNECTION_TYPE_RTU:
+        if not scanner.serial_port:
+            raise ConnectionException("Serial port not configured")
+        parity = SERIAL_PARITY_MAP.get(scanner.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
+        stop_bits = SERIAL_STOP_BITS_MAP.get(
+            scanner.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
+        )
+        attempts.append(
+            (
+                None,
+                rtu_transport_cls(
+                    serial_port=scanner.serial_port,
+                    baudrate=scanner.baud_rate,
+                    parity=parity,
+                    stopbits=stop_bits,
+                    max_retries=scanner.retry,
+                    base_backoff=scanner.backoff,
+                    max_backoff=DEFAULT_MAX_BACKOFF,
+                    timeout=scanner.timeout,
+                ),
+                scanner.timeout,
+            )
+        )
+        return attempts
+
+    if scanner.connection_mode == CONNECTION_MODE_AUTO:
+        if hasattr(scanner, "_build_auto_tcp_attempts"):
+            return list(scanner._build_auto_tcp_attempts())
+        return list(build_auto_tcp_attempts(scanner))
+
+    mode = scanner.connection_mode or default_connection_mode(scanner.port)
+    if hasattr(scanner, "_build_tcp_transport"):
+        attempts.append((mode, scanner._build_tcp_transport(mode), scanner.timeout))
+    else:
+        attempts.append((mode, build_tcp_transport(scanner, mode), scanner.timeout))
+    return attempts
+
+
+def classify_verify_connection_exception(exc: Exception) -> Exception:
+    """Normalize verify-connection exceptions while preserving behavior."""
+    if isinstance(exc, ModbusIOException) and is_request_cancelled_error(exc):
+        _LOGGER.info("Modbus request cancelled during verify_connection.")
+        raise TimeoutError("Modbus request cancelled") from exc
+    if isinstance(exc, TimeoutError):
+        _LOGGER.warning("Timeout during verify_connection: %s", exc)
+    return exc
+
+
+async def close_verification_transport_once(
+    transport: BaseModbusTransport,
+    closed_transports: set[int],
+) -> None:
+    """Close verify_connection transport once, supporting sync/async close()."""
+    try:
+        transport_id = id(transport)
+        if transport_id in closed_transports:
+            return
+        close_result = transport.close()
+        if inspect.isawaitable(close_result):
+            await close_result
+        closed_transports.add(transport_id)
+    except (OSError, ConnectionException, ModbusIOException):
+        _LOGGER.warning(
+            "Error closing Modbus transport during verify_connection", exc_info=True
+        )
 
 
 async def async_close_connection(scanner: Any, async_maybe_await_close_fn: Any) -> None:
