@@ -158,6 +158,23 @@ def test_build_write_single_frame_structure():
     assert frame[1] == 6  # function code for write single register
 
 
+
+
+def test_validate_response_header_wrong_slave():
+    t = _make_raw_tcp()
+    with pytest.raises(ModbusIOException, match="slave ID"):
+        t._validate_response_header(bytes([2, 4]), slave_id=1, function=4)
+
+
+def test_validate_response_header_wrong_function():
+    t = _make_raw_tcp()
+    with pytest.raises(ModbusIOException, match="function code"):
+        t._validate_response_header(bytes([1, 3]), slave_id=1, function=4)
+
+
+def test_validate_response_header_exception_function_passthrough():
+    t = _make_raw_tcp()
+    assert t._validate_response_header(bytes([1, 0x84]), slave_id=1, function=4) == 0x84
 def test_build_write_multiple_frame_structure():
     """_build_write_multiple_frame produces correct write multiple frame."""
     from custom_components.thessla_green_modbus.modbus_transport import RawRtuOverTcpTransport
