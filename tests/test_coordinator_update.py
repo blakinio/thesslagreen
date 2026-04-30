@@ -6,6 +6,11 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+from custom_components.thessla_green_modbus.coordinator.capabilities import (
+    _clamp_percentage,
+    _coerce_bypass_open,
+    _flow_balance_status,
+)
 
 
 def _make_coordinator(**kwargs) -> ThesslaGreenModbusCoordinator:
@@ -52,6 +57,28 @@ def test_calculate_power_consumption_invalid_type_returns_none():
     coord = _make_coordinator()
     result = coord.calculate_power_consumption({"dac_supply": "bad", "dac_exhaust": 5.0})
     assert result is None
+
+
+def test_flow_balance_status_helper():
+    """flow balance helper should preserve existing status semantics."""
+    assert _flow_balance_status(9.99) == "balanced"
+    assert _flow_balance_status(10.0) == "supply_dominant"
+    assert _flow_balance_status(-10.0) == "exhaust_dominant"
+
+
+def test_clamp_percentage_helper():
+    """percentage helper should clamp values into 0-100."""
+    assert _clamp_percentage(-5.0) == 0.0
+    assert _clamp_percentage(42.5) == 42.5
+    assert _clamp_percentage(123.0) == 100.0
+
+
+def test_coerce_bypass_open_helper():
+    """bypass helper should only mark known open modes."""
+    assert _coerce_bypass_open(1) is True
+    assert _coerce_bypass_open(2) is True
+    assert _coerce_bypass_open(0) is False
+    assert _coerce_bypass_open("1") is False
 
 
 # ---------------------------------------------------------------------------
@@ -166,4 +193,3 @@ def test_post_process_data_naive_now_aware_last_ts():
         data = {"dac_supply": 3.0, "dac_exhaust": 3.0}
         result = coord._post_process_data(data)
     assert "estimated_power" in result
-
