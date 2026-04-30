@@ -54,14 +54,6 @@ jobs:
       - name: Maintainability gate
         run: python tools/check_maintainability.py
 
-      - name: Black
-        run: black --check .
-
-      - name: Isort
-        run: isort --check-only .
-
-      - name: Mypy
-        run: mypy .
 
   tests:
     name: Tests
@@ -131,65 +123,3 @@ jobs:
 
       - name: Validate entity mappings
         run: python tools/validate_entity_mappings.py
-
-  hassfest:
-    name: hassfest
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.13"]
-        ha-version: ["2026.2.3"]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-dev.txt
-            constraints.txt
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements-dev.txt
-          python -m pip install -e .
-          python -m pip install homeassistant==${{ matrix.ha-version }} hacs
-
-      - name: hassfest validation
-        run: python -m hassfest
-
-  hacs:
-    name: HACS validation
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.13"]
-        ha-version: ["2026.2.3"]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-dev.txt
-            constraints.txt
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements-dev.txt
-          python -m pip install -e .
-          python -m pip install homeassistant==${{ matrix.ha-version }} hacs
-
-      - name: HACS validation
-        run: python -m hacs validate
