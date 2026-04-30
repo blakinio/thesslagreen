@@ -130,7 +130,7 @@ async def test_async_write_temporary_airflow_uses_three_registers(monkeypatch):
         return SimpleNamespace(encode=lambda value: value)
 
     monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         fake_def,
     )
 
@@ -159,7 +159,7 @@ async def test_async_write_temporary_temperature_uses_three_registers(monkeypatc
         return SimpleNamespace(encode=lambda value: value)
 
     monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         fake_def,
     )
 
@@ -193,7 +193,7 @@ async def test_async_write_temporary_airflow_writes_three_registers(monkeypatch)
         return SimpleNamespace(encode=lambda value: value)
 
     monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         fake_def,
     )
 

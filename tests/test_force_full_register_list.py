@@ -42,7 +42,7 @@ async def _setup_coordinator():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.coordinator.ThesslaGreenDeviceScanner.create",
+            "custom_components.thessla_green_modbus.coordinator.coordinator.ThesslaGreenDeviceScanner.create",
             AsyncMock(return_value=scanner),
         ),
         patch.object(ThesslaGreenModbusCoordinator, "_test_connection", AsyncMock()),

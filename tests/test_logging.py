@@ -133,7 +133,7 @@ async def test_write_retries_logged(monkeypatch, caplog):
             return val
 
     monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.coordinator.get_register_definition",
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         lambda name: Def(),
     )
 
