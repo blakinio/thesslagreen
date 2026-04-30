@@ -159,14 +159,18 @@ class ThesslaGreenDeviceScanner(
             self.effective_batch = 1
         self.max_registers_per_request = self.effective_batch
 
-        resolved_type, resolved_mode = resolve_connection_settings(
-            connection_type, connection_mode, port
+        (
+            resolved_type,
+            resolved_mode,
+            resolved_fixed_mode,
+        ) = self._resolve_connection_configuration(
+            connection_type,
+            connection_mode,
+            port,
         )
         self.connection_type = resolved_type
         self.connection_mode = resolved_mode
-        self._resolved_connection_mode: str | None = (
-            resolved_mode if resolved_mode != CONNECTION_MODE_AUTO else None
-        )
+        self._resolved_connection_mode: str | None = resolved_fixed_mode
         self.serial_port = serial_port or DEFAULT_SERIAL_PORT
         try:
             self.baud_rate = int(baud_rate)
@@ -198,6 +202,19 @@ class ThesslaGreenDeviceScanner(
         """Pre-compute addresses of known missing registers for batch grouping."""
         scanner_setup.populate_known_missing_addresses(self)
         self._update_known_missing_addresses()
+
+    @staticmethod
+    def _resolve_connection_configuration(
+        connection_type: str,
+        connection_mode: str | None,
+        port: int,
+    ) -> tuple[str, str, str | None]:
+        """Resolve transport selection and cached fixed mode."""
+        resolved_type, resolved_mode = resolve_connection_settings(
+            connection_type, connection_mode, port
+        )
+        resolved_fixed_mode = resolved_mode if resolved_mode != CONNECTION_MODE_AUTO else None
+        return resolved_type, resolved_mode, resolved_fixed_mode
 
     def _update_known_missing_addresses(self) -> None:
         """Populate cached missing register addresses from known missing list."""
