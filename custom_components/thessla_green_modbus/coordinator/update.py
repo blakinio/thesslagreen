@@ -13,6 +13,7 @@ from pymodbus.exceptions import ModbusException
 from ..modbus_exceptions import ConnectionException
 from ..utils import utcnow as _utcnow
 from .errors import handle_update_error
+from .update_result import apply_success_result
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
@@ -41,20 +42,7 @@ async def run_update_cycle(
         if transport is None or not transport.is_connected():
             raise ConnectionException("Modbus transport is not connected")
 
-    coordinator.statistics["successful_reads"] += 1
-    coordinator.statistics["last_successful_update"] = _utcnow()
-    coordinator._consecutive_failures = 0
-    coordinator.offline_state = False
-
-    response_time = (_utcnow() - start_time).total_seconds()
-    coordinator.statistics["average_response_time"] = (
-        coordinator.statistics["average_response_time"]
-        * (coordinator.statistics["successful_reads"] - 1)
-        + response_time
-    ) / coordinator.statistics["successful_reads"]
-
-    _LOGGER.debug("Data update successful: %d values read in %.2fs", len(data), response_time)
-    return data
+    return apply_success_result(coordinator, start_time=start_time, data=data)
 
 
 async def async_update_data(coordinator: ThesslaGreenModbusCoordinator) -> dict[str, Any]:
