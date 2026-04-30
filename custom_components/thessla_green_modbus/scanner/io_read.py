@@ -191,6 +191,47 @@ def _should_skip_holding_range(scanner: Any, start: int, end: int, skip_cache: b
     return True, cached_failed_range[0], cached_failed_range[1]
 
 
+def _prepare_input_read(scanner: Any, start: int, end: int, skip_cache: bool) -> bool:
+    """Return True when input read should short-circuit as failed/unsupported."""
+    should_skip, skip_start, skip_end = _should_skip_input_range(scanner, start, end, skip_cache)
+    if not should_skip:
+        return False
+    if (skip_start, skip_end) != (start, end) and (skip_start, skip_end) not in scanner._input_skip_log_ranges:
+        _LOGGER.debug("Skipping cached failed input registers %d-%d", skip_start, skip_end)
+        scanner._input_skip_log_ranges.add((skip_start, skip_end))
+    _handle_terminal_read_failure(scanner, "input_registers", skip_start, skip_end)
+    return True
+
+
+def _handle_input_read_exception(
+    scanner: Any,
+    exc: Exception,
+    *,
+    start: int,
+    end: int,
+    address: int,
+    count: int,
+    attempt: int,
+) -> tuple[bool, bool]:
+    """Handle input read exception.
+
+    Returns (abort_transiently, stop_retries).
+    """
+    if isinstance(exc, ModbusIOException):
+        if _should_abort_input_exception(exc):
+            return True, True
+        track_input_failure(scanner, count, address)
+        return False, False
+    if isinstance(exc, TimeoutError):
+        return True, True
+    if isinstance(exc, OSError):
+        return False, True
+    if isinstance(exc, (ModbusException, ConnectionException)):
+        track_input_failure(scanner, count, address)
+        return False, False
+    raise exc
+
+
 async def read_input(
     scanner: Any,
     client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
@@ -204,12 +245,7 @@ async def read_input(
     start = address
     end = address + count - 1
 
-    should_skip, skip_start, skip_end = _should_skip_input_range(scanner, start, end, skip_cache)
-    if should_skip:
-        if (skip_start, skip_end) != (start, end) and (skip_start, skip_end) not in scanner._input_skip_log_ranges:
-            _LOGGER.debug("Skipping cached failed input registers %d-%d", skip_start, skip_end)
-            scanner._input_skip_log_ranges.add((skip_start, skip_end))
-        _handle_terminal_read_failure(scanner, "input_registers", skip_start, skip_end)
+    if _prepare_input_read(scanner, start, end, skip_cache):
         return None
 
     transport, client = resolve_transport_and_client(scanner, client)
@@ -258,10 +294,18 @@ async def read_input(
                 exc=exc,
                 backoff=scanner.backoff,
             )
-            if _should_abort_input_exception(exc):
-                aborted_transiently = True
+            aborted, stop = _handle_input_read_exception(
+                scanner,
+                exc,
+                start=start,
+                end=end,
+                address=address,
+                count=count,
+                attempt=attempt,
+            )
+            aborted_transiently = aborted_transiently or aborted
+            if stop:
                 break
-            track_input_failure(scanner, count, address)
         except (TimeoutError, OSError) as exc:
             log_scanner_retry(
                 operation=f"read_input:{start}-{end}",
@@ -270,8 +314,18 @@ async def read_input(
                 exc=exc,
                 backoff=scanner.backoff,
             )
-            aborted_transiently = isinstance(exc, TimeoutError)
-            break
+            aborted, stop = _handle_input_read_exception(
+                scanner,
+                exc,
+                start=start,
+                end=end,
+                address=address,
+                count=count,
+                attempt=attempt,
+            )
+            aborted_transiently = aborted_transiently or aborted
+            if stop:
+                break
         except (ModbusException, ConnectionException) as exc:
             log_scanner_retry(
                 operation=f"read_input:{start}-{end}",
@@ -280,7 +334,18 @@ async def read_input(
                 exc=exc,
                 backoff=scanner.backoff,
             )
-            track_input_failure(scanner, count, address)
+            aborted, stop = _handle_input_read_exception(
+                scanner,
+                exc,
+                start=start,
+                end=end,
+                address=address,
+                count=count,
+                attempt=attempt,
+            )
+            aborted_transiently = aborted_transiently or aborted
+            if stop:
+                break
 
         await _sleep_retry_backoff(
             backoff=scanner.backoff,
