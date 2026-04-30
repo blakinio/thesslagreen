@@ -12,6 +12,9 @@ from custom_components.thessla_green_modbus.registers.loader import get_register
 from custom_components.thessla_green_modbus.services import (
     async_setup_services,
 )
+from custom_components.thessla_green_modbus.services_handlers_maintenance import (
+    _maintenance_registrations,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -273,7 +276,19 @@ async def test_start_pressure_test_time_write_failure(monkeypatch):
     coord.async_request_refresh.assert_not_awaited()
 
 
+def test_maintenance_registrations_service_order_and_schema_count():
+    """Registration table keeps expected service names and size."""
+    names = [service for service, _schema in _maintenance_registrations()]
+    assert names == [
+        "reset_filters",
+        "reset_settings",
+        "start_pressure_test",
+        "set_modbus_parameters",
+        "set_device_name",
+        "sync_time",
+    ]
+
+
 # ---------------------------------------------------------------------------
 # set_modbus_parameters — parity/stop write failures (lines 779-780, 790-791)
 # ---------------------------------------------------------------------------
-
