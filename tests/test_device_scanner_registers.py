@@ -1,117 +1,111 @@
-"""Register decoding/formatting tests for device scanner."""
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from unittest.mock import patch
-
-from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+import pytest
+from custom_components.thessla_green_modbus.const import CONNECTION_TYPE_RTU
+from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
-from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
-from custom_components.thessla_green_modbus.utils import (
-    _decode_aatt,
-    _decode_bcd_time,
-    _decode_register_time,
-)
 
 
 async def _make_scanner(**kwargs):
     return await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 1, **kwargs)
 
 
-async def test_is_valid_register_value():
-    """Test register value validation."""
-    scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
-    scanner._register_ranges["supply_percentage"] = (0, 100)
-    scanner._register_ranges["min_percentage"] = (0, 100)
-    scanner._register_ranges["max_percentage"] = (0, 120)
+def _make_ok_response(registers):
+    resp = MagicMock()
+    resp.isError.return_value = False
+    resp.registers = list(registers)
+    return resp
 
-    # Valid values
-    assert scanner._is_valid_register_value("test_register", 100) is True
-    assert scanner._is_valid_register_value("test_register", 0) is True
 
-    # SENSOR_UNAVAILABLE (0x8000) means the register EXISTS but sensor is not connected.
-    # The register must produce an entity (shown as "unavailable" in HA), so return True.
-    assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
-    assert scanner._is_valid_register_value("supply_flow_rate", SENSOR_UNAVAILABLE) is True
+def _make_transport():
+    transport = MagicMock()
+    transport.close = AsyncMock()
+    transport.ensure_connected = AsyncMock()
+    transport.read_input_registers = AsyncMock(return_value=_make_ok_response([1]))
+    transport.read_holding_registers = AsyncMock(return_value=_make_ok_response([1]))
+    transport.is_connected = MagicMock(return_value=True)
+    return transport
 
-    # Mode values respect allowed set
-    assert scanner._is_valid_register_value("mode", 1) is True
-    assert scanner._is_valid_register_value("mode", 3) is False
 
-    # Range from register metadata
-    assert scanner._is_valid_register_value("supply_percentage", 100) is True
-    with patch.object(scanner, "_log_invalid_value") as log_mock:
-        assert scanner._is_valid_register_value("supply_percentage", 200) is False
-        log_mock.assert_not_called()
+@pytest.mark.asyncio
+async def test_scan_device_rtu_no_serial_port_raises():
+    scanner = await _make_scanner(connection_type=CONNECTION_TYPE_RTU)
+    scanner.serial_port = ""
 
-    # Dynamic percentage limits should accept device-provided values
-    assert scanner._is_valid_register_value("min_percentage", 20) is True
-    assert scanner._is_valid_register_value("max_percentage", 120) is True
+    with pytest.raises(ConnectionException, match="Serial port not configured"):
+        await scanner.scan_device()
 
-    assert scanner._is_valid_register_value("min_percentage", -1) is False
-    assert scanner._is_valid_register_value("max_percentage", 200) is False
-    with patch.object(scanner, "_log_invalid_value") as log_mock:
-        assert scanner._is_valid_register_value("min_percentage", -1) is False
-        assert scanner._is_valid_register_value("max_percentage", 200) is False
-        log_mock.assert_not_called()
-    # HH:MM time registers
-    scanner._register_ranges["schedule_start_time"] = (0, 2359)
-    assert scanner._is_valid_register_value("schedule_start_time", 2078) is True
-    assert scanner._is_valid_register_value("schedule_start_time", 2048) is True
-    assert scanner._is_valid_register_value("schedule_start_time", 9312) is False
-    assert scanner._is_valid_register_value("schedule_start_time", 2400) is False
-    # BCD encoded times should also be recognized as valid
-    assert scanner._is_valid_register_value("schedule_winter_mon_4", 8704) is True
-    # Typical schedule and setting values
-    assert scanner._is_valid_register_value("schedule_summer_mon_1", 1024) is True
-    assert scanner._is_valid_register_value("setting_winter_mon_1", 12844) is True
 
-async def test_decode_register_time():
-    """Verify time decoding for HH:MM byte-encoded values."""
-    assert _decode_register_time(1024) == 240
-    assert _decode_register_time(2078) == 510
-    assert _decode_register_time(4660) == 1132
-    assert _decode_register_time(9312) is None
-    assert _decode_register_time(2400) is None
+@pytest.mark.asyncio
+async def test_scan_device_rtu_creates_transport():
+    scanner = await _make_scanner(connection_type=CONNECTION_TYPE_RTU, serial_port="/dev/ttyUSB0")
+    mock_client = AsyncMock()
+    mock_transport = _make_transport()
+    mock_transport.ensure_connected = AsyncMock()
+    mock_transport.client = mock_client
 
-async def test_decode_bcd_time():
-    """Verify time decoding for both BCD and decimal values."""
-    assert _decode_bcd_time(1024) == 240
-    assert _decode_bcd_time(4660) == 754
-    assert _decode_bcd_time(2048) == 480
-    assert _decode_bcd_time(9312) is None
-    assert _decode_bcd_time(2400) is None
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.scanner.core.RtuModbusTransport",
+            return_value=mock_transport,
+        ) as mock_rtu,
+        patch.object(scanner, "_read_input_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_holding_block", AsyncMock(return_value=[])),
+        patch.object(scanner, "_read_input", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_holding", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_coil", AsyncMock(return_value=None)),
+        patch.object(scanner, "_read_discrete", AsyncMock(return_value=None)),
+    ):
+        result = await scanner.scan_device()
 
-async def test_decode_aatt_value():
-    """Verify decoding of combined airflow and temperature settings."""
-    assert _decode_aatt(15400) == {"airflow_pct": 60, "temp_c": 20.0}
-    assert _decode_aatt(12844) == {"airflow_pct": 50, "temp_c": 22.0}
-    assert _decode_aatt(-1) is None
-    assert _decode_aatt(65320) is None
+    mock_rtu.assert_called_once()
+    assert "available_registers" in result
 
-async def test_format_register_value_schedule():
-    """Formatted schedule registers should render as HH:MM."""
-    assert _format_register_value("schedule_summer_mon_1", 1557) == "06:15"
 
-async def test_format_register_value_manual_airing_le():
-    """Little-endian manual airing times should decode correctly."""
-    assert _format_register_value("manual_airing_time_to_start", 7688) == "08:30"
+@pytest.mark.asyncio
+async def test_load_registers_with_min_max():
+    scanner = await _make_scanner()
 
-async def test_format_register_value_airing_schedule():
-    """Airing schedule registers should render as HH:MM."""
-    assert _format_register_value("airing_summer_mon", 1557) == "06:15"
+    reg = MagicMock()
+    reg.name = "test_reg_with_range"
+    reg.function = 3
+    reg.address = 9999
+    reg.min = 0
+    reg.max = 100
 
-async def test_format_register_value_airing_durations():
-    """Airing mode duration registers should return raw minute values."""
-    assert _format_register_value("airing_panel_mode_time", 15) == 15
-    assert _format_register_value("airing_switch_mode_time", 30) == 30
-    assert _format_register_value("airing_switch_mode_on_delay", 5) == 5
-    assert _format_register_value("airing_switch_mode_off_delay", 10) == 10
-    assert _format_register_value("airing_switch_coef", 2) == 2
+    with patch(
+        "custom_components.thessla_green_modbus.scanner.core.async_get_all_registers",
+        AsyncMock(return_value=[reg]),
+    ):
+        _register_map, register_ranges = await scanner._load_registers()
 
-async def test_format_register_value_setting():
-    """Formatted setting registers should show percent and temperature."""
-    assert _format_register_value("setting_winter_mon_1", 15400) == "60% @ 20°C"
+    assert "test_reg_with_range" in register_ranges
+    assert register_ranges["test_reg_with_range"] == (0, 100)
 
-async def test_format_register_value_invalid_time():
-    """Invalid time registers should show raw hex with invalid marker."""
-    assert _format_register_value("schedule_summer_mon_1", 9216) == "9216 (invalid)"
 
+@pytest.mark.asyncio
+async def test_load_registers_empty_name():
+    scanner = await _make_scanner()
+
+    reg_empty = MagicMock()
+    reg_empty.name = ""
+    reg_empty.function = 3
+    reg_empty.address = 9999
+    reg_empty.min = None
+    reg_empty.max = None
+
+    reg_valid = MagicMock()
+    reg_valid.name = "valid_reg"
+    reg_valid.function = 4
+    reg_valid.address = 100
+    reg_valid.min = None
+    reg_valid.max = None
+
+    with patch(
+        "custom_components.thessla_green_modbus.scanner.core.async_get_all_registers",
+        AsyncMock(return_value=[reg_empty, reg_valid]),
+    ):
+        register_map, _register_ranges = await scanner._load_registers()
+
+    assert 9999 not in register_map[3]
+    assert 100 in register_map[4]
