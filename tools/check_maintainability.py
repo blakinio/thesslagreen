@@ -12,11 +12,11 @@ DEFAULT_MAX_FUNCTION_LINES = 260
 DEFAULT_SCAN_ROOTS = ("custom_components/thessla_green_modbus",)
 
 STRICT_PATH_LIMITS: dict[str, tuple[int, int]] = {
-    "custom_components/thessla_green_modbus/coordinator.py": (1200, 220),
+    "custom_components/thessla_green_modbus/coordinator/coordinator.py": (1200, 220),
     "custom_components/thessla_green_modbus/config_flow.py": (1000, 220),
     "custom_components/thessla_green_modbus/modbus_transport.py": (930, 210),
     "custom_components/thessla_green_modbus/registers/loader.py": (860, 210),
-    "custom_components/thessla_green_modbus/scanner/io.py": (820, 210),
+    "custom_components/thessla_green_modbus/scanner/io_read.py": (820, 210),
     "custom_components/thessla_green_modbus/scanner/core.py": (760, 210),
 }
 
