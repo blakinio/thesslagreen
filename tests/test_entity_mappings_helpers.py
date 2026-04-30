@@ -1,5 +1,7 @@
 """Direct tests for pure mapping-builder helper functions."""
 
+from types import SimpleNamespace
+
 from custom_components.thessla_green_modbus.mappings._mapping_builders import (
     _build_binary_toggle_mapping,
     _build_problem_binary_mapping,
@@ -10,7 +12,9 @@ from custom_components.thessla_green_modbus.mappings._mapping_builders import (
     _is_mapped_as_binary_source,
     _is_problem_register,
     _is_register_mapped_anywhere,
+    _is_unmappable_holding_register,
     _parse_info_states,
+    _route_enum_or_min_max_mapping,
 )
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
@@ -90,4 +94,94 @@ def test_build_select_mapping_shape() -> None:
         "translation_key": "mode",
         "states": {"auto": 0, "manual": 1},
         "register_type": "holding_registers",
+    }
+
+
+def test_is_unmappable_holding_register_checks_direct_and_binary_source() -> None:
+    all_maps = ({"mapped_reg": {"translation_key": "mapped_reg"}}, {})
+    binary = {"mapped_from_source": {"register": "source_reg", "bit": 1}}
+
+    assert _is_unmappable_holding_register("mapped_reg", all_maps, binary) is True
+    assert _is_unmappable_holding_register("source_reg", all_maps, binary) is True
+    assert _is_unmappable_holding_register("free_reg", all_maps, binary) is False
+
+
+def test_route_enum_or_min_max_mapping_routes_enum_to_switch() -> None:
+    reg = SimpleNamespace(enum={0: "off", 1: "on"}, extra=None)
+    sensor: dict[str, dict] = {}
+    number: dict[str, dict] = {}
+    binary: dict[str, dict] = {}
+    switch: dict[str, dict] = {}
+    select: dict[str, dict] = {}
+
+    _route_enum_or_min_max_mapping(
+        reg=reg,
+        register="enum_switch_reg",
+        access="RW",
+        min_val=None,
+        max_val=None,
+        unit=None,
+        info_text="",
+        scale=1,
+        step=1,
+        switch_keys={"enum_switch_reg"},
+        binary_keys={"enum_switch_reg"},
+        select_keys=set(),
+        number_keys=set(),
+        sensor_mappings=sensor,
+        number_mappings=number,
+        binary_mappings=binary,
+        switch_mappings=switch,
+        select_mappings=select,
+    )
+
+    assert switch["enum_switch_reg"] == {
+        "icon": "mdi:toggle-switch",
+        "register": "enum_switch_reg",
+        "register_type": "holding_registers",
+        "category": None,
+        "translation_key": "enum_switch_reg",
+    }
+    assert sensor == {}
+    assert number == {}
+    assert binary == {}
+    assert select == {}
+
+
+def test_route_enum_or_min_max_mapping_routes_min_max_to_number() -> None:
+    reg = SimpleNamespace(enum=None, extra=None)
+    sensor: dict[str, dict] = {}
+    number: dict[str, dict] = {}
+    binary: dict[str, dict] = {}
+    switch: dict[str, dict] = {}
+    select: dict[str, dict] = {}
+
+    _route_enum_or_min_max_mapping(
+        reg=reg,
+        register="number_reg",
+        access="RW",
+        min_val=0,
+        max_val=100,
+        unit="%",
+        info_text="",
+        scale=1,
+        step=5,
+        switch_keys=set(),
+        binary_keys=set(),
+        select_keys=set(),
+        number_keys={"number_reg"},
+        sensor_mappings=sensor,
+        number_mappings=number,
+        binary_mappings=binary,
+        switch_mappings=switch,
+        select_mappings=select,
+    )
+
+    assert number["number_reg"] == {
+        "unit": "%",
+        "icon": "mdi:percent-outline",
+        "min": 0,
+        "max": 100,
+        "step": 5,
+        "scale": 1,
     }

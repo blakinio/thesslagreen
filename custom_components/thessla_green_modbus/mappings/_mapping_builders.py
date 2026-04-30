@@ -241,6 +241,81 @@ def _route_min_max_mapping(
     return False
 
 
+def _is_unmappable_holding_register(
+    register: str,
+    all_mappings: tuple[dict[str, Any], ...],
+    binary_mappings: dict[str, Any],
+) -> bool:
+    """Return True when register should be skipped before classification."""
+    return _is_register_mapped_anywhere(register, all_mappings) or _is_mapped_as_binary_source(register, binary_mappings)
+
+
+def _route_enum_or_min_max_mapping(
+    reg: Any,
+    register: str,
+    access: str,
+    min_val: Any,
+    max_val: Any,
+    unit: Any,
+    info_text: str,
+    scale: Any,
+    step: Any,
+    switch_keys: set[str],
+    binary_keys: set[str],
+    select_keys: set[str],
+    number_keys: set[str],
+    sensor_mappings: dict[str, Any],
+    number_mappings: dict[str, Any],
+    binary_mappings: dict[str, Any],
+    switch_mappings: dict[str, Any],
+    select_mappings: dict[str, Any],
+) -> None:
+    """Route register classification to enum or min/max handlers."""
+    if reg.enum and not (reg.extra and reg.extra.get("bitmask")):
+        target, payload = _classify_enum_mapping(
+            register,
+            reg.enum,
+            access,
+            switch_keys,
+            binary_keys,
+            select_keys,
+        )
+        _route_enum_mapping(
+            target,
+            register,
+            payload,
+            sensor_mappings,
+            binary_mappings,
+            switch_mappings,
+            select_mappings,
+        )
+        return
+
+    target, payload = _classify_min_max_mapping(
+        register,
+        access,
+        min_val,
+        max_val,
+        info_text,
+        unit,
+        step,
+        scale,
+        switch_keys,
+        binary_keys,
+        select_keys,
+        number_keys,
+    )
+    _route_min_max_mapping(
+        target,
+        register,
+        payload,
+        number_mappings,
+        binary_mappings,
+        switch_mappings,
+        select_mappings,
+    )
+
+
 def _build_sensor_season_setting_mapping(register: str) -> dict[str, Any]:
     """Return read-only season setting mapping payload."""
     return {
@@ -581,9 +656,9 @@ def _extend_entity_mappings_from_registers() -> None:
         if reg.function != 3 or not reg.name:
             continue
         register, access, min_val, max_val, unit, info_text, scale, step = _register_context(reg)
-        if _is_register_mapped_anywhere(
+        if _is_unmappable_holding_register(
             register,
-            (
+            all_mappings=(
                 number_mappings,
                 sensor_mappings,
                 binary_mappings,
@@ -592,9 +667,8 @@ def _extend_entity_mappings_from_registers() -> None:
                 text_mappings,
                 time_mappings,
             ),
+            binary_mappings=binary_mappings,
         ):
-            continue
-        if _is_mapped_as_binary_source(register, binary_mappings):
             continue
 
         if _is_problem_register(register):
@@ -613,48 +687,25 @@ def _extend_entity_mappings_from_registers() -> None:
         ):
             continue
 
-        if reg.enum and not (reg.extra and reg.extra.get("bitmask")):
-            target, payload = _classify_enum_mapping(
-                register,
-                reg.enum,
-                access,
-                switch_keys,
-                binary_keys,
-                select_keys,
-            )
-            _route_enum_mapping(
-                target,
-                register,
-                payload,
-                sensor_mappings,
-                binary_mappings,
-                switch_mappings,
-                select_mappings,
-            )
-            continue
-
-        target, payload = _classify_min_max_mapping(
-            register,
-            access,
-            min_val,
-            max_val,
-            info_text,
-            unit,
-            step,
-            scale,
-            switch_keys,
-            binary_keys,
-            select_keys,
-            number_keys,
-        )
-        _route_min_max_mapping(
-            target,
-            register,
-            payload,
-            number_mappings,
-            binary_mappings,
-            switch_mappings,
-            select_mappings,
+        _route_enum_or_min_max_mapping(
+            reg=reg,
+            register=register,
+            access=access,
+            min_val=min_val,
+            max_val=max_val,
+            unit=unit,
+            info_text=info_text,
+            scale=scale,
+            step=step,
+            switch_keys=switch_keys,
+            binary_keys=binary_keys,
+            select_keys=select_keys,
+            number_keys=number_keys,
+            sensor_mappings=sensor_mappings,
+            number_mappings=number_mappings,
+            binary_mappings=binary_mappings,
+            switch_mappings=switch_mappings,
+            select_mappings=select_mappings,
         )
 
 
@@ -676,6 +727,7 @@ __all__ = [
     "_is_mapped_as_binary_source",
     "_is_problem_register",
     "_is_register_mapped_anywhere",
+    "_is_unmappable_holding_register",
     "_iter_bitmask_binary_entries",
     "_load_discrete_mappings",
     "_load_number_mappings",
@@ -684,6 +736,7 @@ __all__ = [
     "_resolve",
     "_resolve_parent_child_mappings",
     "_route_enum_mapping",
+    "_route_enum_or_min_max_mapping",
     "_route_min_max_mapping",
     "_route_problem_mapping",
     "_route_time_and_season_mappings",
