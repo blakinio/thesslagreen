@@ -153,6 +153,29 @@ def _diag_register_candidates(holding_regs: set[str]) -> set[str]:
     return diag_registers
 
 
+
+def _apply_diagnostic_binary_overrides(
+    diag_registers: set[str],
+    holding_regs: set[str],
+    binary_keys: set[str],
+    binary_configs: dict[str, dict[str, Any]],
+    switch_configs: dict[str, dict[str, Any]],
+    select_configs: dict[str, dict[str, Any]],
+) -> None:
+    """Force diagnostic registers into binary mappings and clear conflicting buckets."""
+    for reg in diag_registers:
+        if reg not in holding_regs and reg not in {"alarm", "error"}:
+            continue
+        if reg not in binary_keys:
+            continue
+        binary_configs[reg] = {
+            "translation_key": reg,
+            "register_type": "holding_registers",
+            "entity_category": EntityCategory.DIAGNOSTIC,
+        }
+        switch_configs.pop(reg, None)
+        select_configs.pop(reg, None)
+
 def _iter_bitmask_binary_entries(reg: Any) -> list[tuple[str, dict[str, Any]]]:
     """Build binary mapping entries derived from a bitmask register definition."""
     func_map = {
@@ -543,19 +566,14 @@ def _load_discrete_mappings() -> tuple[
                 cfg["states"] = states
                 select_configs[reg] = cfg
 
-    diag_registers = _diag_register_candidates(holding_regs)
-    for reg in diag_registers:
-        if reg not in holding_regs and reg not in {"alarm", "error"}:
-            continue
-        if reg not in binary_keys:
-            continue
-        binary_configs[reg] = {
-            "translation_key": reg,
-            "register_type": "holding_registers",
-            "entity_category": EntityCategory.DIAGNOSTIC,
-        }
-        switch_configs.pop(reg, None)
-        select_configs.pop(reg, None)
+    _apply_diagnostic_binary_overrides(
+        _diag_register_candidates(holding_regs),
+        holding_regs,
+        binary_keys,
+        binary_configs,
+        switch_configs,
+        select_configs,
+    )
 
     for reg in _get_all():
         if not reg.name:
@@ -656,6 +674,7 @@ def _extend_entity_mappings_from_registers() -> None:
 
 __all__ = [
     "_TIME_ENTITY_PREFIXES",
+    "_apply_diagnostic_binary_overrides",
     "_build_base_translation_mapping",
     "_build_problem_binary_mapping",
     "_build_season_setting_mapping",
