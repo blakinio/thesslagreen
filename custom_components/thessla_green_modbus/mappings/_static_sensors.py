@@ -15,6 +15,22 @@ from homeassistant.const import (
 )
 from homeassistant.helpers.entity import EntityCategory
 
+
+def _diagnostic_sensor_payload(
+    translation_key: str,
+    *,
+    icon: str = "mdi:information",
+    register_type: str = "input_registers",
+) -> dict[str, Any]:
+    """Build a standard diagnostic sensor payload."""
+    return {
+        "translation_key": translation_key,
+        "icon": icon,
+        "register_type": register_type,
+        "entity_category": EntityCategory.DIAGNOSTIC,
+    }
+
+
 SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # Temperature sensors (Input Registers)
     "outside_temperature": {
@@ -180,42 +196,16 @@ SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "unit": UnitOfTime.SECONDS,
         "register_type": "input_registers",
     },
-    "version_major": {
-        "translation_key": "version_major",
-        "icon": "mdi:information",
-        "register_type": "input_registers",
-        "entity_category": EntityCategory.DIAGNOSTIC,
-    },
-    "version_minor": {
-        "translation_key": "version_minor",
-        "icon": "mdi:information",
-        "register_type": "input_registers",
-        "entity_category": EntityCategory.DIAGNOSTIC,
-    },
-    "version_patch": {
-        "translation_key": "version_patch",
-        "icon": "mdi:information",
-        "register_type": "input_registers",
-        "entity_category": EntityCategory.DIAGNOSTIC,
-    },
-    "serial_number": {
-        "translation_key": "serial_number",
-        "icon": "mdi:barcode",
-        "register_type": "input_registers",
-        "entity_category": EntityCategory.DIAGNOSTIC,
-    },
-    "cf_version": {
-        "translation_key": "cf_version",
-        "icon": "mdi:information",
-        "register_type": "holding_registers",
-        "entity_category": EntityCategory.DIAGNOSTIC,
-    },
-    "exp_version": {
-        "translation_key": "exp_version",
-        "icon": "mdi:information-outline",
-        "register_type": "holding_registers",
-        "entity_category": EntityCategory.DIAGNOSTIC,
-    },
+    "version_major": _diagnostic_sensor_payload("version_major"),
+    "version_minor": _diagnostic_sensor_payload("version_minor"),
+    "version_patch": _diagnostic_sensor_payload("version_patch"),
+    "serial_number": _diagnostic_sensor_payload("serial_number", icon="mdi:barcode"),
+    "cf_version": _diagnostic_sensor_payload("cf_version", register_type="holding_registers"),
+    "exp_version": _diagnostic_sensor_payload(
+        "exp_version",
+        icon="mdi:information-outline",
+        register_type="holding_registers",
+    ),
     # Mode and status sensors
     "antifreeze_stage": {
         "translation_key": "antifreeze_stage",
