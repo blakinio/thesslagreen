@@ -25,10 +25,13 @@ sys.modules["custom_components.thessla_green_modbus.registers"] = types.SimpleNa
     get_registers_by_function=loader_stub.get_registers_by_function,
 )
 
+from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
 from custom_components.thessla_green_modbus.modbus_helpers import (
     _KWARG_CACHE,
     _SIG_CACHE,
+    _calculate_batch_size,
     _call_modbus,
+    _classify_modbus_exception,
     async_close_client,
     group_reads,
 )
@@ -319,6 +322,32 @@ def test_calculate_backoff_jitter_float():
 
     delay = _calculate_backoff_delay(base=1.0, attempt=2, jitter=0.5)
     assert delay >= 1.0
+
+
+def test_calculate_batch_size_prefers_count():
+    """Count keyword takes precedence for logging batch size."""
+    assert _calculate_batch_size({"count": 7, "values": [1, 2]}) == 7
+
+
+def test_calculate_batch_size_uses_values_length():
+    """Values length is used when count is absent."""
+    assert _calculate_batch_size({"values": [1, 2, 3]}) == 3
+
+
+def test_calculate_batch_size_defaults_to_one():
+    """Empty kwargs defaults to one request item."""
+    assert _calculate_batch_size({}) == 1
+
+
+def test_classify_modbus_exception_cancelled():
+    """Cancelled request exceptions are classified as cancelled."""
+    err = ModbusIOException("Request cancelled by remote peer")
+    assert _classify_modbus_exception(err) == "cancelled"
+
+
+def test_classify_modbus_exception_failed():
+    """Non-cancelled exceptions are classified as failed."""
+    assert _classify_modbus_exception(ValueError("bad")) == "failed"
 
 
 def test_calculate_backoff_no_jitter_zero_attempt():

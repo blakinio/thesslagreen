@@ -336,6 +336,36 @@ def _log_modbus_response(func_name: str, response: Any) -> None:
         _LOGGER.debug("Modbus response: %s", _mask_frame(encoded))
 
 
+def _calculate_batch_size(kwargs: dict[str, Any]) -> int:
+    """Calculate batch size metadata for request logging."""
+    return kwargs.get("count") or len(kwargs.get("values", [])) or 1
+
+
+def _classify_modbus_exception(err: Exception) -> str:
+    """Return exception class for Modbus call logging."""
+    if isinstance(err, ModbusIOException) and "request cancelled" in str(err).lower():
+        return "cancelled"
+    return "failed"
+
+
+async def _dispatch_modbus_call(
+    func: Callable[..., Awaitable[Any]],
+    positional: list[Any],
+    kwargs: dict[str, Any],
+    kwarg: str,
+    slave_id: int,
+    timeout: float | None,
+) -> Any:
+    """Dispatch a Modbus callable with optional external timeout."""
+
+    async def _invoke() -> Any:
+        return await _invoke_with_slave_kwarg(func, positional, kwargs, kwarg, slave_id)
+
+    if timeout is not None and _should_apply_external_timeout(func):
+        return await asyncio.wait_for(_invoke(), timeout=timeout)
+    return await _invoke()
+
+
 async def _call_modbus(
     func: Callable[..., Awaitable[Any]],
     slave_id: int,
@@ -363,7 +393,7 @@ async def _call_modbus(
     kwarg = _resolve_slave_kwarg(func, params, signature)
 
     func_name = getattr(func, "__name__", repr(func))
-    batch_size = kwargs.get("count") or len(kwargs.get("values", [])) or 1
+    batch_size = _calculate_batch_size(kwargs)
 
     delay = 0.0
     if apply_backoff:
@@ -401,14 +431,15 @@ async def _call_modbus(
         kwargs=kwargs,
     )
 
-    async def _invoke() -> Any:
-        return await _invoke_with_slave_kwarg(func, positional, kwargs, kwarg, slave_id)
-
     try:
-        if timeout is not None and _should_apply_external_timeout(func):
-            response = await asyncio.wait_for(_invoke(), timeout=timeout)
-        else:
-            response = await _invoke()
+        response = await _dispatch_modbus_call(
+            func=func,
+            positional=positional,
+            kwargs=kwargs,
+            kwarg=kwarg,
+            slave_id=slave_id,
+            timeout=timeout,
+        )
     except TimeoutError as err:
         _LOGGER.debug("Call to %s timed out on attempt %s/%s", func_name, attempt, max_attempts)
         raise TimeoutError("Modbus request timed out") from err
@@ -423,7 +454,8 @@ async def _call_modbus(
         TypeError,
         ValueError,
     ) as err:
-        if isinstance(err, ModbusIOException) and "request cancelled" in str(err).lower():
+        classification = _classify_modbus_exception(err)
+        if classification == "cancelled":
             _LOGGER.debug("Call to %s cancelled on attempt %s/%s", func_name, attempt, max_attempts)
         else:
             _LOGGER.debug("Call to %s failed on attempt %s/%s", func_name, attempt, max_attempts)
