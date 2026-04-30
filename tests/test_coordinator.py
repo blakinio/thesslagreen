@@ -157,7 +157,7 @@ async def test_async_write_multi_register_start(coordinator, monkeypatch):
     client.write_registers = AsyncMock(return_value=response)
     coordinator.client = client
 
-    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+    import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
     fake_def = RegisterDef(function=3, address=0, name="date_time_1", access="rw", length=4)
     monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
@@ -183,7 +183,7 @@ async def test_async_write_multi_register_with_offset(coordinator, monkeypatch):
     client.write_registers = AsyncMock(return_value=response)
     coordinator.client = client
 
-    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+    import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
     fake_def = RegisterDef(function=3, address=0, name="date_time_1", access="rw", length=4)
     monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
@@ -209,7 +209,7 @@ async def test_async_write_multi_register_non_start(coordinator, monkeypatch):
     client.write_register = AsyncMock()
     coordinator.client = client
 
-    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+    import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
     fake_def = RegisterDef(function=3, address=1, name="date_time_2", access="rw", length=1)
     monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
@@ -232,7 +232,7 @@ async def test_async_write_multi_register_wrong_length(coordinator, monkeypatch)
     client.write_registers = AsyncMock()
     coordinator.client = client
 
-    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+    import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
     fake_def = RegisterDef(function=3, address=0, name="date_time_1", access="rw", length=4)
     monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
@@ -267,7 +267,7 @@ async def test_async_write_register_chunks(coordinator, batch, expected_calls, m
     coordinator.client = client
     coordinator.async_request_refresh = AsyncMock()
 
-    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+    import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
     fake_def = SimpleNamespace(length=4, address=0, function=3, encode=lambda v: v)
     monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
@@ -294,7 +294,7 @@ async def test_async_write_register_truncates_over_limit(coordinator, monkeypatc
     coordinator.client = client
     coordinator.async_request_refresh = AsyncMock()
 
-    import custom_components.thessla_green_modbus.coordinator as coordinator_mod
+    import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
     fake_def = SimpleNamespace(length=20, address=0, function=3, encode=lambda v: v)
     monkeypatch.setattr(coordinator_mod, "get_register_definition", lambda _n: fake_def)
