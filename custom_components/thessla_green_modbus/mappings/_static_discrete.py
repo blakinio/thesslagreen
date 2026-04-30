@@ -6,6 +6,30 @@ from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
+
+def _select_payload(icon: str, translation_key: str, states: dict[str, int]) -> dict[str, Any]:
+    """Build a standard select entity mapping payload."""
+    return {
+        "icon": icon,
+        "translation_key": translation_key,
+        "states": states,
+        "register_type": "holding_registers",
+    }
+
+
+def _weekday_states() -> dict[str, int]:
+    """Return canonical weekday state map used by day selectors."""
+    return {
+        "monday": 0,
+        "tuesday": 1,
+        "wednesday": 2,
+        "thursday": 3,
+        "friday": 4,
+        "saturday": 5,
+        "sunday": 6,
+    }
+
+
 SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "mode": {
         "icon": "mdi:cog",
@@ -42,52 +66,16 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "states": {"mode_1": 1, "mode_2": 2, "mode_3": 3},
         "register_type": "holding_registers",
     },
-    "cfg_mode_1": {
-        "icon": "mdi:tune",
-        "translation_key": "cfg_mode_1",
-        "states": {"auto": 0, "manual": 1, "temporary": 2},
-        "register_type": "holding_registers",
-    },
-    "cfg_mode_2": {
-        "icon": "mdi:tune",
-        "translation_key": "cfg_mode_2",
-        "states": {"auto": 0, "manual": 1, "temporary": 2},
-        "register_type": "holding_registers",
-    },
+    "cfg_mode_1": _select_payload("mdi:tune", "cfg_mode_1", {"auto": 0, "manual": 1, "temporary": 2}),
+    "cfg_mode_2": _select_payload("mdi:tune", "cfg_mode_2", {"auto": 0, "manual": 1, "temporary": 2}),
     "configuration_mode": {
         "icon": "mdi:cog-outline",
         "translation_key": "configuration_mode",
         "states": {"normal": 0, "duct_filter_pressure": 47, "afc_filter_pressure": 65},
         "register_type": "holding_registers",
     },
-    "pres_check_day": {
-        "icon": "mdi:calendar-week",
-        "translation_key": "pres_check_day",
-        "states": {
-            "monday": 0,
-            "tuesday": 1,
-            "wednesday": 2,
-            "thursday": 3,
-            "friday": 4,
-            "saturday": 5,
-            "sunday": 6,
-        },
-        "register_type": "holding_registers",
-    },
-    "pres_check_day_4432": {
-        "icon": "mdi:calendar-week",
-        "translation_key": "pres_check_day_4432",
-        "states": {
-            "monday": 0,
-            "tuesday": 1,
-            "wednesday": 2,
-            "thursday": 3,
-            "friday": 4,
-            "saturday": 5,
-            "sunday": 6,
-        },
-        "register_type": "holding_registers",
-    },
+    "pres_check_day": _select_payload("mdi:calendar-week", "pres_check_day", _weekday_states()),
+    "pres_check_day_4432": _select_payload("mdi:calendar-week", "pres_check_day_4432", _weekday_states()),
     "access_level": {
         "icon": "mdi:account-key",
         "translation_key": "access_level",

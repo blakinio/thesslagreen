@@ -16,7 +16,15 @@ from custom_components.thessla_green_modbus.mappings._mapping_builders import (
     _parse_info_states,
     _route_enum_or_min_max_mapping,
 )
+from custom_components.thessla_green_modbus.mappings._static_discrete import (
+    _select_payload,
+    _weekday_states,
+)
+from custom_components.thessla_green_modbus.mappings._static_sensors import (
+    _diagnostic_sensor_payload,
+)
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.helpers.entity import EntityCategory
 
 
 def test_is_already_mapped_true_and_false() -> None:
@@ -184,4 +192,44 @@ def test_route_enum_or_min_max_mapping_routes_min_max_to_number() -> None:
         "max": 100,
         "step": 5,
         "scale": 1,
+    }
+
+
+def test_select_payload_shape() -> None:
+    assert _select_payload("mdi:tune", "cfg_mode_1", {"auto": 0, "manual": 1}) == {
+        "icon": "mdi:tune",
+        "translation_key": "cfg_mode_1",
+        "states": {"auto": 0, "manual": 1},
+        "register_type": "holding_registers",
+    }
+
+
+def test_weekday_states_values() -> None:
+    assert _weekday_states() == {
+        "monday": 0,
+        "tuesday": 1,
+        "wednesday": 2,
+        "thursday": 3,
+        "friday": 4,
+        "saturday": 5,
+        "sunday": 6,
+    }
+
+
+def test_diagnostic_sensor_payload_defaults_and_overrides() -> None:
+    assert _diagnostic_sensor_payload("version_major") == {
+        "translation_key": "version_major",
+        "icon": "mdi:information",
+        "register_type": "input_registers",
+        "entity_category": EntityCategory.DIAGNOSTIC,
+    }
+    assert _diagnostic_sensor_payload(
+        "exp_version",
+        icon="mdi:information-outline",
+        register_type="holding_registers",
+    ) == {
+        "translation_key": "exp_version",
+        "icon": "mdi:information-outline",
+        "register_type": "holding_registers",
+        "entity_category": EntityCategory.DIAGNOSTIC,
     }
