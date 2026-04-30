@@ -38,7 +38,7 @@ dev = [
     "isort>=5.13.0",
     "ruff>=0.6.0",
     "mypy>=1.10.0",
-    "pydantic>=2.0,<3",
+    "pydantic==2.12.2",
     "pre-commit>=3.7.0",
     "types-PyYAML>=6.0.12",
 ]
