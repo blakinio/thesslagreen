@@ -116,3 +116,14 @@ async def write_register_steps(
             logger.error(error_message, entity_id)
             return False
     return True
+
+
+async def write_device_name_chunks(coordinator: Any, device_name: str, batch: int) -> bool:
+    """Write a short device name in chunked register writes with offsets."""
+    chars_per_batch = batch * 2
+    for i in range(0, len(device_name), chars_per_batch):
+        chunk = device_name[i : i + chars_per_batch]
+        reg_offset = i // 2
+        if not await coordinator.async_write_register("device_name", chunk, refresh=False, offset=reg_offset):
+            return False
+    return True
