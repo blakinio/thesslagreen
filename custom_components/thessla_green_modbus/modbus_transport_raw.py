@@ -154,37 +154,50 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
             payload.extend([(value >> 8) & 0xFF, value & 0xFF])
         return _append_crc(bytes(payload))
 
-    async def _read_response(self, slave_id: int, function: int) -> bytes:
-        header = await self._read_exactly(2)
+    @staticmethod
+    def _validate_response_header(header: bytes, *, slave_id: int, function: int) -> int:
         resp_slave, resp_func = header
 
         if resp_slave != (slave_id & 0xFF):
             raise ModbusIOException("Unexpected slave ID in RTU response")
-
         if resp_func & 0x80:
-            exception_code = await self._read_exactly(1)
-            crc_bytes = await self._read_exactly(2)
-            payload = header + exception_code
-            self._validate_crc(payload, crc_bytes)
-            raise ModbusException(f"Modbus exception {exception_code[0]} for function {resp_func}")
-
+            return resp_func
         if resp_func != (function & 0xFF):
             raise ModbusIOException("Unexpected function code in RTU response")
+        return resp_func
 
-        if function in (3, 4):
-            byte_count_raw = await self._read_exactly(1)
-            byte_count = byte_count_raw[0]
-            data = await self._read_exactly(byte_count)
-            crc_bytes = await self._read_exactly(2)
-            payload = header + byte_count_raw + data
-            self._validate_crc(payload, crc_bytes)
-            return data
+    async def _read_exception_response(self, header: bytes, *, function: int) -> bytes:
+        exception_code = await self._read_exactly(1)
+        crc_bytes = await self._read_exactly(2)
+        payload = header + exception_code
+        self._validate_crc(payload, crc_bytes)
+        raise ModbusException(f"Modbus exception {exception_code[0]} for function {function}")
 
+    async def _read_register_data_response(self, header: bytes) -> bytes:
+        byte_count_raw = await self._read_exactly(1)
+        byte_count = byte_count_raw[0]
+        data = await self._read_exactly(byte_count)
+        crc_bytes = await self._read_exactly(2)
+        payload = header + byte_count_raw + data
+        self._validate_crc(payload, crc_bytes)
+        return data
+
+    async def _read_write_body_response(self, header: bytes) -> bytes:
         body = await self._read_exactly(4)
         crc_bytes = await self._read_exactly(2)
         payload = header + body
         self._validate_crc(payload, crc_bytes)
         return body
+
+    async def _read_response(self, slave_id: int, function: int) -> bytes:
+        header = await self._read_exactly(2)
+        resp_func = self._validate_response_header(header, slave_id=slave_id, function=function)
+
+        if resp_func & 0x80:
+            return await self._read_exception_response(header, function=resp_func)
+        if function in (3, 4):
+            return await self._read_register_data_response(header)
+        return await self._read_write_body_response(header)
 
     async def _send_frame(self, frame: bytes, slave_id: int, function: int) -> bytes:
         async with self._request_lock:
