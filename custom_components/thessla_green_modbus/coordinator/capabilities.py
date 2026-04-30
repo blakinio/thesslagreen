@@ -16,6 +16,23 @@ def _utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+def _clamp_percentage(value: float) -> float:
+    """Clamp a percentage value into the [0, 100] range."""
+    return max(0.0, min(100.0, value))
+
+
+def _flow_balance_status(balance: float) -> str:
+    """Return flow-balance status label for a computed balance value."""
+    if abs(balance) < 10:
+        return "balanced"
+    return "supply_dominant" if balance > 0 else "exhaust_dominant"
+
+
+def _coerce_bypass_open(raw_bypass: Any) -> bool:
+    """Return whether bypass mode indicates an open bypass damper."""
+    return raw_bypass in (1, 2)
+
+
 class _CoordinatorCapabilitiesMixin:
     """Capability and derived-value logic for the coordinator."""
 
@@ -151,8 +168,7 @@ class _CoordinatorCapabilitiesMixin:
         #     Note: this device exposes only 3 temperature sensors (TZ1, TN1, TP);
         #     the exhaust-outlet sensor TW is absent, so EN 308 η_exhaust and the
         #     Belgian mean-efficiency (η_epbd) cannot be computed.
-        bypass_raw = data.get("bypass_mode")
-        bypass_open = bypass_raw in (1, 2)
+        bypass_open = _coerce_bypass_open(data.get("bypass_mode"))
         if (
             all(
                 k in data
@@ -189,7 +205,7 @@ class _CoordinatorCapabilitiesMixin:
                         raw = (supply - outside) / (exhaust - outside)
 
                     efficiency = round(raw * 100, 1)
-                    data["calculated_efficiency"] = max(0.0, min(100.0, efficiency))
+                    data["calculated_efficiency"] = _clamp_percentage(efficiency)
                     data["heat_recovery_efficiency"] = data["calculated_efficiency"]
             except (ZeroDivisionError, TypeError, ValueError) as exc:
                 _LOGGER.debug("Could not calculate efficiency: %s", exc)
@@ -211,13 +227,7 @@ class _CoordinatorCapabilitiesMixin:
             try:
                 balance = float(data["supply_flow_rate"]) - float(data["exhaust_flow_rate"])
                 data["flow_balance"] = balance
-                data["flow_balance_status"] = (
-                    "balanced"
-                    if abs(balance) < 10
-                    else "supply_dominant"
-                    if balance > 0
-                    else "exhaust_dominant"
-                )
+                data["flow_balance_status"] = _flow_balance_status(balance)
             except (TypeError, ValueError) as exc:
                 _LOGGER.debug("Could not calculate flow balance: %s", exc)
         power = self.calculate_power_consumption(data)
