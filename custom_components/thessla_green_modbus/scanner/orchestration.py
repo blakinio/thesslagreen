@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import logging
 import time
 from typing import Any
@@ -21,6 +20,7 @@ from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOEx
 from ..modbus_helpers import group_reads as _group_reads
 from ..modbus_transport import RtuModbusTransport
 from ..scanner_device_info import DeviceCapabilities, ScannerDeviceInfo
+from . import custom_scan as scanner_custom_scan
 from .io import is_request_cancelled_error
 
 _LOGGER = logging.getLogger(__name__)
@@ -92,47 +92,6 @@ def _build_scan_result(scanner: Any, *, device: ScannerDeviceInfo, caps: DeviceC
         result["raw_registers"] = raw_registers
         result["total_addresses_scanned"] = len(raw_registers)
     return result
-
-
-def _uses_custom_scan_impl(scanner: Any) -> bool:
-    """Return True when scanner.scan is overridden outside scanner.core."""
-    scan_method = scanner.scan
-    base_scan = getattr(type(scanner), "scan", None)
-    return getattr(scan_method, "__func__", None) is not base_scan or getattr(
-        base_scan, "__module__", ""
-    ) != "custom_components.thessla_green_modbus.scanner.core"
-
-
-def _normalize_custom_scan_result(scanner: Any, scan_result: Any) -> dict[str, Any]:
-    """Normalize custom scan return shapes to a scan payload."""
-    if (
-        isinstance(scan_result, tuple)
-        and len(scan_result) >= 2
-        and isinstance(scan_result[0], ScannerDeviceInfo)
-        and isinstance(scan_result[1], DeviceCapabilities)
-    ):
-        device, caps = scan_result[0], scan_result[1]
-        unknown = scan_result[2] if len(scan_result) > 2 and isinstance(scan_result[2], dict) else {}
-        return {
-            "available_registers": {
-                k: sorted(v) for k, v in scanner.available_registers.items()
-            },
-            "device_info": device.as_dict(),
-            "capabilities": caps.as_dict(),
-            "register_count": sum(len(v) for v in scanner.available_registers.values()),
-            "unknown_registers": unknown,
-        }
-    if isinstance(scan_result, dict):
-        return scan_result
-    raise TypeError("scan() must return a dict")
-
-
-async def _run_custom_scan(scanner: Any) -> dict[str, Any]:
-    """Run overridden scan implementation and normalize result."""
-    scan_result: Any = scanner.scan()
-    if inspect.isawaitable(scan_result):
-        scan_result = await scan_result
-    return _normalize_custom_scan_result(scanner, scan_result)
 
 
 async def _auto_detect_tcp_transport(scanner: Any) -> None:
@@ -428,9 +387,9 @@ async def scan(scanner: Any) -> dict[str, Any]:
 
 async def scan_device(scanner: Any) -> dict[str, Any]:
     """Open the Modbus connection, perform a scan and close the client."""
-    if _uses_custom_scan_impl(scanner):
+    if scanner_custom_scan.uses_custom_scan_impl(scanner):
         try:
-            return await _run_custom_scan(scanner)
+            return await scanner_custom_scan.run_custom_scan(scanner)
         finally:
             await scanner.close()
     await _prepare_scan_transport(scanner)
