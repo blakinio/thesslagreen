@@ -101,3 +101,34 @@ Interpretation: the largest remaining production hotspots are coordinator orches
 
 - Full pytest: **passed** (4 skipped).
 - Maintainability gate: **passed**.
+
+## 9) Safe CI hardening plan (staged, non-disruptive)
+
+As of this audit, CI-required gates remain intentionally limited to Ruff linting, compile checks, register/reference comparison, maintainability checks, pytest+coverage, and entity mapping validation. The following staged plan can increase quality signal **without** re-introducing previously excluded blocking checks (`black`, `isort`, `mypy`, `hassfest`, HACS validation):
+
+### Stage A (documentation + local developer workflow only)
+
+1. Keep CI required jobs unchanged.
+2. Encourage local informational checks for:
+   - `ruff format --check custom_components tests tools`
+   - `ruff check --select I custom_components tests tools`
+3. Treat these as local feedback only until file churn drops; do not auto-format in broad sweep PRs.
+
+### Stage B (optional informational CI job, non-blocking)
+
+If desired, add a separate workflow job that runs the two checks above and is explicitly marked non-blocking (for example, `continue-on-error: true`). This job should:
+
+- avoid touching required branch protection gates,
+- avoid secrets and external services,
+- only report drift trend.
+
+### Stage C (targeted adoption after convergence)
+
+When `ruff format --check` and import-order checks are routinely clean on active files, enforce them incrementally by path or module group in small PRs, never as a one-shot repository-wide rewrite.
+
+### Current readiness snapshot
+
+- `ruff format --check custom_components tests tools`: **fails** currently (94 files would be reformatted).
+- `ruff check --select I custom_components tests tools`: **passes** currently.
+
+Conclusion: repository is ready for import-order enforcement (already clean), but not ready for mandatory format enforcement without a dedicated formatting campaign.
