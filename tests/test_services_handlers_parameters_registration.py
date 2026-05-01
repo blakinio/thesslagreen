@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 from custom_components.thessla_green_modbus.services_handler_deps import ServiceHandlerDeps
 from custom_components.thessla_green_modbus.services_handlers_parameters import (
+    _parameter_registrations,
     register_parameter_services,
 )
 from custom_components.thessla_green_modbus.services_schema import (
@@ -56,3 +57,29 @@ def test_register_parameter_services_preserves_order_and_schema() -> None:
     ]
     assert len(hass.services.calls) == len(expected)
     assert [(service, schema) for service, _handler, schema in hass.services.calls] == expected
+
+
+def test_parameter_registrations_service_names_and_order() -> None:
+    hass = SimpleNamespace(services=_Services())
+
+    registrations = _parameter_registrations(hass, _deps())
+
+    assert [service for service, _handler, _schema in registrations] == [
+        "set_bypass_parameters",
+        "set_gwc_parameters",
+        "set_air_quality_thresholds",
+        "set_temperature_curve",
+    ]
+
+
+def test_parameter_registrations_schema_binding() -> None:
+    hass = SimpleNamespace(services=_Services())
+
+    registrations = _parameter_registrations(hass, _deps())
+
+    assert [(service, schema) for service, _handler, schema in registrations] == [
+        ("set_bypass_parameters", SET_BYPASS_PARAMETERS_SCHEMA),
+        ("set_gwc_parameters", SET_GWC_PARAMETERS_SCHEMA),
+        ("set_air_quality_thresholds", SET_AIR_QUALITY_THRESHOLDS_SCHEMA),
+        ("set_temperature_curve", SET_TEMPERATURE_CURVE_SCHEMA),
+    ]
