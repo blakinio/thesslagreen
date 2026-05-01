@@ -13,7 +13,16 @@ from custom_components.thessla_green_modbus.services import (
     async_setup_services,
 )
 from custom_components.thessla_green_modbus.services_handlers_maintenance import (
+    _iter_maintenance_service_bindings,
     _maintenance_registrations,
+)
+from custom_components.thessla_green_modbus.services_schema import (
+    RESET_FILTERS_SCHEMA,
+    RESET_SETTINGS_SCHEMA,
+    SET_DEVICE_NAME_SCHEMA,
+    SET_MODBUS_PARAMETERS_SCHEMA,
+    START_PRESSURE_TEST_SCHEMA,
+    SYNC_TIME_SCHEMA,
 )
 
 # ---------------------------------------------------------------------------
@@ -286,6 +295,27 @@ def test_maintenance_registrations_service_order_and_schema_count():
         "set_modbus_parameters",
         "set_device_name",
         "sync_time",
+    ]
+
+
+def test_iter_maintenance_service_bindings_keeps_order_and_schema_binding():
+    """Service binding helper keeps registration order and uses matching handler names."""
+    handlers = {
+        "reset_filters": object(),
+        "reset_settings": object(),
+        "start_pressure_test": object(),
+        "set_modbus_parameters": object(),
+        "set_device_name": object(),
+        "sync_time": object(),
+    }
+
+    assert list(_iter_maintenance_service_bindings(handlers)) == [
+        ("reset_filters", RESET_FILTERS_SCHEMA, handlers["reset_filters"]),
+        ("reset_settings", RESET_SETTINGS_SCHEMA, handlers["reset_settings"]),
+        ("start_pressure_test", START_PRESSURE_TEST_SCHEMA, handlers["start_pressure_test"]),
+        ("set_modbus_parameters", SET_MODBUS_PARAMETERS_SCHEMA, handlers["set_modbus_parameters"]),
+        ("set_device_name", SET_DEVICE_NAME_SCHEMA, handlers["set_device_name"]),
+        ("sync_time", SYNC_TIME_SCHEMA, handlers["sync_time"]),
     ]
 
 

@@ -61,6 +61,12 @@ def _maintenance_registrations():
     ]
 
 
+def _iter_maintenance_service_bindings(handlers: dict[str, object]):
+    """Yield maintenance registration rows with bound handlers."""
+    for service, schema in _maintenance_registrations():
+        yield service, schema, handlers[service]
+
+
 async def _run_for_targets(
     hass: HomeAssistant,
     call: ServiceCall,
@@ -206,5 +212,5 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
         "set_device_name": set_device_name,
         "sync_time": sync_time,
     }
-    for service, schema in _maintenance_registrations():
-        hass.services.async_register(deps.domain, service, handlers[service], schema)
+    for service, schema, handler in _iter_maintenance_service_bindings(handlers):
+        hass.services.async_register(deps.domain, service, handler, schema)
