@@ -6,7 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
-from custom_components.thessla_green_modbus.scanner.io_read import _finalize_register_read_failure
+from custom_components.thessla_green_modbus.scanner.io_read import (
+    _build_register_chunks,
+    _extend_or_abort_register_results,
+    _finalize_register_read_failure,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -226,3 +230,22 @@ def test_finalize_register_read_failure_holding_non_aborted_marks_and_logs(caplo
 
     assert scanner.failed_addresses["modbus_exceptions"]["holding_registers"] == {10, 11, 12}
     assert "Failed to read holding registers 10-12 after 2 retries" in caplog.text
+
+
+def test_build_register_chunks_uses_effective_batch():
+    """Chunk construction should respect effective batch size boundaries."""
+    scanner = MagicMock()
+    scanner.effective_batch = 2
+    assert _build_register_chunks(scanner, 10, 5) == [(10, 2), (12, 2), (14, 1)]
+
+
+def test_extend_or_abort_register_results_handles_none_and_appends():
+    """Result helper should abort on None and append successful blocks."""
+    results = [1]
+    can_continue, payload = _extend_or_abort_register_results(results, None)
+    assert (can_continue, payload) == (False, None)
+    assert results == [1]
+
+    can_continue, payload = _extend_or_abort_register_results(results, [2, 3])
+    assert can_continue is True
+    assert payload == [1, 2, 3]

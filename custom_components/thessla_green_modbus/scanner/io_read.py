@@ -92,6 +92,21 @@ def _normalize_register_result(response: Any) -> list[int]:
     return cast(list[int], response.registers)
 
 
+def _build_register_chunks(scanner: Any, start: int, count: int) -> list[tuple[int, int]]:
+    """Build contiguous chunk plan for a register range."""
+    return list(chunk_register_range(start, count, scanner.effective_batch))
+
+
+def _extend_or_abort_register_results(
+    results: list[int], block: list[int] | None
+) -> tuple[bool, list[int] | None]:
+    """Append block values and indicate whether read batching should continue."""
+    if block is None:
+        return False, None
+    results.extend(block)
+    return True, results
+
+
 def _process_register_response(
     scanner: Any,
     *,
@@ -410,15 +425,15 @@ async def read_register_block(
 
     results: list[int] = []
     active_client = client or scanner._client
-    for chunk_start, chunk_count in chunk_register_range(start, count, scanner.effective_batch):
+    for chunk_start, chunk_count in _build_register_chunks(scanner, start, count):
         block = await (
             read_fn(chunk_start, chunk_count)
             if active_client is None
             else read_fn(active_client, chunk_start, chunk_count)
         )
-        if block is None:
+        can_continue, _ = _extend_or_abort_register_results(results, block)
+        if not can_continue:
             return None
-        results.extend(block)
     return results
 
 
