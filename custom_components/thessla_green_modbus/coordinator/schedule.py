@@ -77,6 +77,17 @@ class _CoordinatorScheduleMixin:
             attempt=attempt,
         )
 
+    async def _execute_multi_register_chunks(
+        self, chunks: list[tuple[int, list[int]]], attempt: int
+    ) -> tuple[Any, bool]:
+        """Execute a prepared list of multi-register write chunks."""
+        response = None
+        for chunk_start, chunk in chunks:
+            response = await self._write_registers_payload(chunk_start, chunk, attempt)
+            if not self._write_response_ok(response):
+                return response, False
+        return response, True
+
     def _encode_write_value(
         self,
         register_name: str,
@@ -371,17 +382,12 @@ class _CoordinatorScheduleMixin:
 
                 for attempt in range(1, self.retry + 1):
                     try:
-                        success = True
-                        response = None
-                        for chunk_start, chunk in self._plan_multi_register_chunks(
-                            start_address, values, require_single_request
-                        ):
-                            response = await self._write_registers_payload(
-                                chunk_start, chunk, attempt
-                            )
-                            if not self._write_response_ok(response):
-                                success = False
-                                break
+                        response, success = await self._execute_multi_register_chunks(
+                            self._plan_multi_register_chunks(
+                                start_address, values, require_single_request
+                            ),
+                            attempt,
+                        )
                         if not success:
                             if attempt == self.retry:
                                 _LOGGER.error(

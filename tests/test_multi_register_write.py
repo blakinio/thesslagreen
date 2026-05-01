@@ -82,6 +82,37 @@ async def test_async_write_registers_passes_attempt():
 
 
 @pytest.mark.asyncio
+async def test_async_write_registers_retries_from_first_chunk_after_chunk_error():
+    hass = MagicMock()
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass=hass,
+        host="localhost",
+        port=502,
+        slave_id=1,
+        name="test",
+        retry=2,
+    )
+    coordinator._ensure_connection = AsyncMock()
+    coordinator._disconnect = AsyncMock()
+    coordinator.effective_batch = 2
+
+    response_error = MagicMock()
+    response_error.isError.return_value = True
+    response_ok = MagicMock()
+    response_ok.isError.return_value = False
+    transport = MagicMock()
+    transport.is_connected.return_value = True
+    transport.write_registers = AsyncMock(
+        side_effect=[response_error, response_ok, response_ok]
+    )
+    coordinator._transport = transport
+
+    assert await coordinator.async_write_registers(100, [1, 2, 3]) is True
+    addresses = [call.args[1] for call in transport.write_registers.await_args_list]
+    assert addresses == [100, 100, 102]
+
+
+@pytest.mark.asyncio
 async def test_async_write_registers_single_request_override():
     """Temporary writes should bypass chunking to keep 3-register atomicity."""
     hass = MagicMock()
