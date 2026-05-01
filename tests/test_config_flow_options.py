@@ -8,6 +8,9 @@ from custom_components.thessla_green_modbus.config_flow import (
     ConfigFlow,
     OptionsFlow,
 )
+from custom_components.thessla_green_modbus.config_flow_options_form import (
+    build_options_form_payload,
+)
 from custom_components.thessla_green_modbus.const import (
     CONF_CONNECTION_TYPE,
     CONF_MAX_REGISTERS_PER_REQUEST,
@@ -145,3 +148,18 @@ async def test_options_flow_max_registers_per_request_validated():
     assert result["type"] == "form"
     assert result["errors"][CONF_MAX_REGISTERS_PER_REQUEST] == "max_registers_range"
 
+
+
+@pytest.mark.asyncio
+async def test_build_options_form_payload_includes_transport_placeholders():
+    """Options form payload builder returns schema and placeholders."""
+    data_schema, placeholders = build_options_form_payload(
+        {CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP, CONF_PORT: 502},
+        {},
+    )
+
+    schema_keys = {
+        key.schema if hasattr(key, "schema") else key for key in data_schema.schema
+    }
+    assert CONF_MAX_REGISTERS_PER_REQUEST in schema_keys
+    assert placeholders["transport_label"] in {"Modbus TCP", "Modbus TCP (Auto)", "Modbus TCP RTU"}
