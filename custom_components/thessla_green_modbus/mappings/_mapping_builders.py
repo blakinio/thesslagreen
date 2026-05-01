@@ -29,6 +29,9 @@ from ._mapping_classification import (
     classify_min_max_mapping as _classify_min_max_mapping,
 )
 from ._mapping_payloads import (
+    classify_discrete_holding_payload as _classify_discrete_holding_payload,
+)
+from ._mapping_payloads import (
     parse_info_states as _parse_info_states,
 )
 
@@ -509,20 +512,20 @@ def _load_discrete_mappings() -> tuple[
         if not states:
             continue
         access = (info.get("access") or "").upper()
-        cfg: dict[str, Any] = _build_base_translation_mapping(reg, "holding_registers")
-        if _is_binary_state_pair(states):
-            if "W" in access:
-                if reg in switch_keys:
-                    cfg["register"] = reg
-                    cfg.setdefault("icon", "mdi:toggle-switch")
-                    switch_configs[reg] = cfg
-                else:
-                    if reg in binary_keys:
-                        binary_configs[reg] = cfg
-        else:
-            if reg in select_keys:
-                cfg["states"] = states
-                select_configs[reg] = cfg
+        target, payload = _classify_discrete_holding_payload(
+            register=reg,
+            access=access,
+            states=states,
+            switch_keys=switch_keys,
+            binary_keys=binary_keys,
+            select_keys=select_keys,
+        )
+        if target == "switch" and payload:
+            switch_configs[reg] = payload
+        elif target == "binary" and payload:
+            binary_configs[reg] = payload
+        elif target == "select" and payload:
+            select_configs[reg] = payload
 
     _apply_diagnostic_binary_overrides(
         _diag_register_candidates(holding_regs),
@@ -638,6 +641,7 @@ __all__ = [
     "_build_season_setting_mapping",
     "_build_sensor_season_setting_mapping",
     "_build_time_like_mapping",
+    "_classify_discrete_holding_payload",
     "_classify_enum_mapping",
     "_classify_min_max_mapping",
     "_diag_register_candidates",
