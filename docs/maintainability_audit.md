@@ -29,30 +29,30 @@ Maintained gates intentionally exclude removed non-maintained checks (`black`, `
 
 ## 2) Largest files (by non-empty lines)
 
-1. `custom_components/thessla_green_modbus/coordinator/coordinator.py` (726)
-2. `custom_components/thessla_green_modbus/scanner/io_read.py` (639)
-3. `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (573)
+1. `custom_components/thessla_green_modbus/coordinator/coordinator.py` (712)
+2. `custom_components/thessla_green_modbus/scanner/io_read.py` (650)
+3. `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (560)
 4. `tests/test_entity_mappings.py` (526)
 5. `tests/test_coordinator.py` (502)
 6. `tests/test_modbus_helpers.py` (482)
 7. `tests/test_scanner_io_coverage.py` (472)
-8. `custom_components/thessla_green_modbus/scanner/core.py` (470)
-9. `custom_components/thessla_green_modbus/modbus_helpers.py` (456)
-10. `tests/test_register_decoders.py` (455)
-11. `custom_components/thessla_green_modbus/coordinator/schedule.py` (453)
-12. `custom_components/thessla_green_modbus/config_flow.py` (440)
-13. `custom_components/thessla_green_modbus/mappings/_static_discrete.py` (438)
-14. `custom_components/thessla_green_modbus/const.py` (428)
-15. `tests/test_entity_data_correctness.py` (427)
+8. `custom_components/thessla_green_modbus/coordinator/schedule.py` (472)
+9. `custom_components/thessla_green_modbus/scanner/core.py` (470)
+10. `custom_components/thessla_green_modbus/modbus_helpers.py` (456)
+11. `custom_components/thessla_green_modbus/mappings/_static_discrete.py` (438)
+12. `custom_components/thessla_green_modbus/const.py` (428)
+13. `custom_components/thessla_green_modbus/config_flow.py` (428)
+14. `tests/test_entity_data_correctness.py` (427)
+15. `tests/test_register_loader.py` (402)
 
 Interpretation: the largest remaining production hotspots are coordinator orchestration, scanner input-read path, and mapping-builder composition.
 
 ## 3) Largest classes
 
-1. `ThesslaGreenModbusCoordinator` in `coordinator/coordinator.py` (645)
-2. `_CoordinatorScheduleMixin` in `coordinator/schedule.py` (466)
+1. `ThesslaGreenModbusCoordinator` in `coordinator/coordinator.py` (628)
+2. `_CoordinatorScheduleMixin` in `coordinator/schedule.py` (489)
 3. `ThesslaGreenDeviceScanner` in `scanner/core.py` (441)
-4. `RawRtuOverTcpTransport` in `modbus_transport_raw.py` (298)
+4. `RawRtuOverTcpTransport` in `modbus_transport_raw.py` (308)
 5. `RegisterDef` in `registers/register_def.py` (268)
 6. `ThesslaGreenFan` in `fan.py` (254)
 7. `_CoordinatorCapabilitiesMixin` in `coordinator/capabilities.py` (230)
@@ -64,7 +64,7 @@ Interpretation: the largest remaining production hotspots are coordinator orches
 
 1. `register_maintenance_services` in `services_handlers_maintenance.py` (136)
 2. `read_input` in `scanner/io_read.py` (132)
-3. `async_write_register` in `coordinator/schedule.py` (131)
+3. `async_write_register` in `coordinator/schedule.py` (129)
 4. `run_full_scan` in `scanner/orchestration.py` (125)
 5. `validate_input_impl` in `config_flow_device_validation.py` (123)
 6. `_post_process_data` in `coordinator/capabilities.py` (120)
@@ -97,9 +97,9 @@ Interpretation: the largest remaining production hotspots are coordinator orches
 
 ## 7) Remaining production hotspots and recommended next PRs
 
-1. Continue splitting `custom_components/thessla_green_modbus/coordinator/coordinator.py` (726 non-empty lines) by isolating lifecycle/state transitions from update-cycle orchestration.
-2. Continue decomposition of `custom_components/thessla_green_modbus/scanner/io_read.py` (639 lines), prioritizing extraction of grouped-read planning and error normalization around `read_input`/`read_bit_registers`.
-3. Continue decomposition of `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (573 lines), focusing on domain/type-specific builders to reduce branch-heavy composition.
+1. Continue splitting `custom_components/thessla_green_modbus/coordinator/coordinator.py` (712 non-empty lines) by isolating lifecycle/state transitions from update-cycle orchestration.
+2. Continue decomposition of `custom_components/thessla_green_modbus/scanner/io_read.py` (650 lines), prioritizing extraction of grouped-read planning and error normalization around `read_input`/`read_bit_registers`.
+3. Continue decomposition of `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (560 lines), focusing on domain/type-specific builders to reduce branch-heavy composition.
 4. Reduce `custom_components/thessla_green_modbus/scanner/core.py` (470 lines) by separating scanner state initialization from runtime scan execution.
 5. Reduce `register_maintenance_services` (136 lines) by extracting schema binding, target resolution wiring, and registration loops into smaller helpers.
 
