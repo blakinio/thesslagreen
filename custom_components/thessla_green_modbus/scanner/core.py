@@ -19,8 +19,9 @@ from ..const import (
     DEFAULT_STOP_BITS,
     HOLDING_BATCH_BOUNDARIES,
     KNOWN_MISSING_REGISTERS,
-    SERIAL_PARITY_MAP,
-    SERIAL_STOP_BITS_MAP,
+)
+from ..const import (
+    SERIAL_STOP_BITS_MAP as _SERIAL_STOP_BITS_MAP,
 )
 from ..modbus_helpers import async_maybe_await_close
 from ..modbus_helpers import group_reads as _group_reads
@@ -38,13 +39,6 @@ from ..scanner_helpers import (
 from ..scanner_helpers import (
     SAFE_REGISTERS as _SAFE_REGISTERS,
 )
-from ..scanner_register_maps import (
-    COIL_REGISTERS,
-    DISCRETE_INPUT_REGISTERS,
-    HOLDING_REGISTERS,
-    INPUT_REGISTERS,
-    MULTI_REGISTER_SIZES,
-)
 from ..utils import (
     resolve_connection_settings,
 )
@@ -56,12 +50,19 @@ from . import register_map_runtime as scanner_register_map_runtime
 from . import registers as scanner_registers
 from . import selection as scanner_selection
 from . import setup as scanner_setup
+from . import state as scanner_state
 
 asdict = _dataclasses_asdict
 
 _LOGGER = logging.getLogger(__name__)
 REGISTER_DEFINITIONS = _register_maps.REGISTER_DEFINITIONS
+INPUT_REGISTERS = _register_maps.INPUT_REGISTERS
+HOLDING_REGISTERS = _register_maps.HOLDING_REGISTERS
+COIL_REGISTERS = _register_maps.COIL_REGISTERS
+DISCRETE_INPUT_REGISTERS = _register_maps.DISCRETE_INPUT_REGISTERS
+MULTI_REGISTER_SIZES = _register_maps.MULTI_REGISTER_SIZES
 SAFE_REGISTERS = _SAFE_REGISTERS
+SERIAL_STOP_BITS_MAP = _SERIAL_STOP_BITS_MAP
 __all__ = [
     "DeviceCapabilities",
     "ThesslaGreenDeviceScanner",
@@ -168,33 +169,25 @@ class ThesslaGreenDeviceScanner(
             connection_mode,
             port,
         )
-        self.connection_type = resolved_type
-        self.connection_mode = resolved_mode
-        self._resolved_connection_mode: str | None = resolved_fixed_mode
-        self.serial_port = serial_port or DEFAULT_SERIAL_PORT
-        try:
-            self.baud_rate = int(baud_rate)
-        except (TypeError, ValueError):
-            self.baud_rate = DEFAULT_BAUD_RATE
-        parity_norm = str(parity or DEFAULT_PARITY).lower()
-        if parity_norm not in SERIAL_PARITY_MAP:
-            parity_norm = DEFAULT_PARITY
-        self.parity = parity_norm
-        self.stop_bits = SERIAL_STOP_BITS_MAP.get(
-            stop_bits,
-            SERIAL_STOP_BITS_MAP.get(str(stop_bits), DEFAULT_STOP_BITS),
+        scanner_state.apply_connection_state(
+            self,
+            scanner_state.build_connection_state(
+                connection_type=resolved_type,
+                connection_mode=resolved_mode,
+                resolved_connection_mode=resolved_fixed_mode,
+                serial_port=serial_port,
+                baud_rate=baud_rate,
+                parity=parity,
+                stop_bits=stop_bits,
+            ),
         )
-        if self.stop_bits not in (1, 2):
-            self.stop_bits = DEFAULT_STOP_BITS
         self._hass = hass
 
         scanner_setup.initialize_runtime_collections(self, DeviceCapabilities)
-        self._input_register_map = INPUT_REGISTERS
-        self._holding_register_map = HOLDING_REGISTERS
-        self._coil_register_map = COIL_REGISTERS
-        self._discrete_input_register_map = DISCRETE_INPUT_REGISTERS
-        self._known_missing_registers = KNOWN_MISSING_REGISTERS
-        self._multi_register_sizes = MULTI_REGISTER_SIZES
+        scanner_state.apply_register_defaults(
+            self,
+            known_missing_registers=KNOWN_MISSING_REGISTERS,
+        )
 
         self._populate_known_missing_addresses()
 
