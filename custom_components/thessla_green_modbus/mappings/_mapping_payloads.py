@@ -50,3 +50,33 @@ def parse_info_states(info_text: str) -> dict[str, int]:
         except ValueError:
             continue
     return states
+
+
+def classify_discrete_holding_payload(
+    register: str,
+    access: str,
+    states: dict[str, int],
+    switch_keys: set[str],
+    binary_keys: set[str],
+    select_keys: set[str],
+) -> tuple[str | None, dict[str, Any] | None]:
+    """Classify discrete holding register payload into switch/binary/select buckets."""
+    cfg: dict[str, Any] = {
+        "translation_key": register,
+        "register_type": "holding_registers",
+    }
+
+    if len(states) == 2 and set(states.values()) == {0, 1}:
+        if "W" in access and register in switch_keys:
+            cfg["register"] = register
+            cfg.setdefault("icon", "mdi:toggle-switch")
+            return "switch", cfg
+        if register in binary_keys:
+            return "binary", cfg
+        return None, None
+
+    if register in select_keys:
+        cfg["states"] = states
+        return "select", cfg
+
+    return None, None

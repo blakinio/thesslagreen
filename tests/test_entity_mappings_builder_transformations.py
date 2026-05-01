@@ -16,6 +16,9 @@ from custom_components.thessla_green_modbus.mappings._mapping_builders import (
     _route_problem_mapping,
     _route_time_and_season_mappings,
 )
+from custom_components.thessla_green_modbus.mappings._mapping_payloads import (
+    classify_discrete_holding_payload,
+)
 from homeassistant.helpers.entity import EntityCategory
 
 
@@ -252,3 +255,50 @@ def test_apply_diagnostic_binary_overrides_skips_when_not_translated_or_not_hold
     assert binary == {}
     assert switch == {"e_1": {"translation_key": "e_1"}}
     assert select == {"e_1": {"translation_key": "e_1"}}
+
+
+def test_classify_discrete_holding_payload_routes_binary_switch_and_select() -> None:
+    target, payload = classify_discrete_holding_payload(
+        register="fan_enable",
+        access="RW",
+        states={"off": 0, "on": 1},
+        switch_keys={"fan_enable"},
+        binary_keys={"fan_enable"},
+        select_keys=set(),
+    )
+    assert target == "switch"
+    assert payload == {
+        "translation_key": "fan_enable",
+        "register_type": "holding_registers",
+        "register": "fan_enable",
+        "icon": "mdi:toggle-switch",
+    }
+
+    target, payload = classify_discrete_holding_payload(
+        register="filter_dirty",
+        access="R",
+        states={"off": 0, "on": 1},
+        switch_keys=set(),
+        binary_keys={"filter_dirty"},
+        select_keys=set(),
+    )
+    assert target == "binary"
+    assert payload == {
+        "translation_key": "filter_dirty",
+        "register_type": "holding_registers",
+    }
+
+    target, payload = classify_discrete_holding_payload(
+        register="mode",
+        access="RW",
+        states={"auto": 0, "manual": 1, "boost": 2},
+        switch_keys=set(),
+        binary_keys=set(),
+        select_keys={"mode"},
+    )
+    assert target == "select"
+    assert payload == {
+        "translation_key": "mode",
+        "register_type": "holding_registers",
+        "states": {"auto": 0, "manual": 1, "boost": 2},
+    }
