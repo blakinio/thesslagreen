@@ -41,3 +41,25 @@ def resolve_reauth_defaults(
 ) -> dict[str, Any]:
     """Build reauth defaults from config entry payloads."""
     return {**(entry_options or {}), **(entry_data or {})}
+
+
+def resolve_reauth_entry(hass: Any, context: dict[str, Any]) -> Any | None:
+    """Resolve current reauth config entry from flow context."""
+    if hass is None:
+        return None
+    entry_id = context.get("entry_id")
+    if not entry_id:
+        return None
+    return hass.config_entries.async_get_entry(entry_id)
+
+
+def initialize_reauth_state(
+    *,
+    active_entry_id: str | None,
+    entry: Any | None,
+    defaults: dict[str, Any],
+) -> tuple[bool, str | None, dict[str, Any]]:
+    """Return initialization state and normalized reauth state payload."""
+    if active_entry_id is None:
+        return True, (entry.entry_id if entry else None), dict(defaults)
+    return False, active_entry_id, dict(defaults)

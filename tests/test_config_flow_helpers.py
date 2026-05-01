@@ -19,7 +19,9 @@ from custom_components.thessla_green_modbus.config_flow_schema import (
 )
 from custom_components.thessla_green_modbus.config_flow_steps import (
     extract_discovered_state,
+    initialize_reauth_state,
     resolve_reauth_defaults,
+    resolve_reauth_entry,
 )
 from custom_components.thessla_green_modbus.errors import CannotConnect
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
@@ -314,6 +316,24 @@ def test_resolve_reauth_defaults_options_overridden_by_data():
     assert defaults == {"host": "from_data", "slave_id": 3, "deep_scan": True}
 
 
+def test_resolve_reauth_entry_without_hass_returns_none():
+    assert resolve_reauth_entry(None, {"entry_id": "x"}) is None
+
+
+def test_initialize_reauth_state_initializes_from_entry():
+    class Entry:
+        entry_id = "entry-1"
+
+    should_init, entry_id, defaults = initialize_reauth_state(
+        active_entry_id=None,
+        entry=Entry(),
+        defaults={"host": "10.0.0.10"},
+    )
+    assert should_init is True
+    assert entry_id == "entry-1"
+    assert defaults == {"host": "10.0.0.10"}
+
+
 def test_vol_invalid_no_path():
     """VOL_INVALID without explicit path should keep empty path."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -454,5 +474,4 @@ async def test_call_with_optional_timeout_sync_function():
 # ---------------------------------------------------------------------------
 # Pass 16 — lines 425-428: RTU validation success path
 # ---------------------------------------------------------------------------
-
 
