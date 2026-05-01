@@ -19,6 +19,7 @@ from .services_validation import BYPASS_MODE_MAP, GWC_MODE_MAP
 
 WriteStep = tuple[str, object | None, bool, str]
 ServiceHandler = Callable[[ServiceCall], object]
+Registration = tuple[str, ServiceHandler, vol.Schema]
 
 
 def _build_step_handler(
@@ -48,8 +49,10 @@ def _build_step_handler(
     return _handler
 
 
-def register_parameter_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
-    """Register parameter/configuration services."""
+def _parameter_registrations(
+    hass: HomeAssistant, deps: ServiceHandlerDeps
+) -> tuple[Registration, ...]:
+    """Build parameter service registrations with handlers and schemas."""
     set_bypass_parameters = _build_step_handler(
         hass,
         deps,
@@ -127,11 +130,15 @@ def register_parameter_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -
         ],
     )
 
-    registrations: tuple[tuple[str, ServiceHandler, vol.Schema], ...] = (
+    return (
         ("set_bypass_parameters", set_bypass_parameters, SET_BYPASS_PARAMETERS_SCHEMA),
         ("set_gwc_parameters", set_gwc_parameters, SET_GWC_PARAMETERS_SCHEMA),
         ("set_air_quality_thresholds", set_air_quality_thresholds, SET_AIR_QUALITY_THRESHOLDS_SCHEMA),
         ("set_temperature_curve", set_temperature_curve, SET_TEMPERATURE_CURVE_SCHEMA),
     )
-    for service_name, handler, schema in registrations:
+
+
+def register_parameter_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
+    """Register parameter/configuration services."""
+    for service_name, handler, schema in _parameter_registrations(hass, deps):
         hass.services.async_register(deps.domain, service_name, handler, schema)
