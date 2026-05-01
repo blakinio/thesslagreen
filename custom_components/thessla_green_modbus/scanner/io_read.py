@@ -159,6 +159,28 @@ def _handle_terminal_read_failure(scanner: Any, register_type: str, start: int, 
     _mark_failed_addresses(scanner, register_type, start, end)
 
 
+def _finalize_register_read_failure(
+    scanner: Any,
+    *,
+    register_type: str,
+    start: int,
+    end: int,
+    retry: int,
+    attempted_reads: int,
+    aborted_transiently: bool,
+) -> None:
+    """Finalize shared failure state/logging for input/holding read loops."""
+    kind = "input" if register_type == "input_registers" else "holding"
+    if aborted_transiently:
+        _log_read_abort(kind, start, end, attempted_reads, retry)
+        if register_type == "holding_registers":
+            _log_read_failure(kind, start, end, retry)
+        return
+
+    _log_read_failure(kind, start, end, retry)
+    _handle_terminal_read_failure(scanner, register_type, start, end)
+
+
 def _should_skip_input_range(scanner: Any, start: int, end: int, skip_cache: bool) -> tuple[bool, int, int]:
     """Return (skip, mark_start, mark_end) for unsupported/cached input ranges."""
     if skip_cache:
@@ -354,12 +376,15 @@ async def read_input(
             retry=scanner.retry,
         )
 
-    if aborted_transiently:
-        _log_read_abort("input", start, end, attempted_reads, scanner.retry)
-        return None
-
-    _handle_terminal_read_failure(scanner, "input_registers", start, end)
-    _log_read_failure("input", start, end, scanner.retry)
+    _finalize_register_read_failure(
+        scanner,
+        register_type="input_registers",
+        start=start,
+        end=end,
+        retry=scanner.retry,
+        attempted_reads=attempted_reads,
+        aborted_transiently=aborted_transiently,
+    )
     return None
 
 
@@ -537,13 +562,15 @@ async def read_holding(
             retry=scanner.retry,
         )
 
-    if aborted_transiently:
-        _log_read_abort("holding", start, end, attempted_reads, scanner.retry)
-        _log_read_failure("holding", start, end, scanner.retry)
-        return None
-
-    _log_read_failure("holding", start, end, scanner.retry)
-    _handle_terminal_read_failure(scanner, "holding_registers", start, end)
+    _finalize_register_read_failure(
+        scanner,
+        register_type="holding_registers",
+        start=start,
+        end=end,
+        retry=scanner.retry,
+        attempted_reads=attempted_reads,
+        aborted_transiently=aborted_transiently,
+    )
     return None
 
 
