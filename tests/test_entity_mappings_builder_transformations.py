@@ -16,6 +16,10 @@ from custom_components.thessla_green_modbus.mappings._mapping_builders import (
     _route_problem_mapping,
     _route_time_and_season_mappings,
 )
+from custom_components.thessla_green_modbus.mappings._mapping_discrete_loader import (
+    add_binary_mappings_for_boolean_registers,
+    classify_discrete_holding_registers,
+)
 from custom_components.thessla_green_modbus.mappings._mapping_payloads import (
     classify_discrete_holding_payload,
 )
@@ -301,4 +305,67 @@ def test_classify_discrete_holding_payload_routes_binary_switch_and_select() -> 
         "translation_key": "mode",
         "register_type": "holding_registers",
         "states": {"auto": 0, "manual": 1, "boost": 2},
+    }
+
+
+def test_add_binary_mappings_for_boolean_registers_filters_by_translation() -> None:
+    binary: dict[str, dict[str, object]] = {}
+    add_binary_mappings_for_boolean_registers(
+        binary_configs=binary,
+        registers={"reg_a", "reg_b"},
+        binary_keys={"reg_b"},
+        register_type="coil_registers",
+    )
+    assert binary == {"reg_b": {"translation_key": "reg_b", "register_type": "coil_registers"}}
+
+
+def test_classify_discrete_holding_registers_splits_targets() -> None:
+    info_by_reg = {
+        "fan_enable": {"unit": "0-off;1-on", "access": "RW"},
+        "filter_dirty": {"unit": "0-off;1-on", "access": "R"},
+        "mode": {"unit": "0-auto;1-manual;2-boost", "access": "RW"},
+        "skip": {"unit": None, "access": "RW"},
+    }
+
+    def _get_info(name: str):
+        return info_by_reg.get(name)
+
+    def _parse_states(unit: str | None):
+        if not unit:
+            return {}
+        out = {}
+        for part in unit.split(";"):
+            val, label = part.split("-", 1)
+            out[label] = int(val)
+        return out
+
+    binary, switch, select = classify_discrete_holding_registers(
+        holding_regs={"fan_enable", "filter_dirty", "mode", "skip"},
+        get_info=_get_info,
+        parse_states=_parse_states,
+        switch_keys={"fan_enable"},
+        binary_keys={"filter_dirty"},
+        select_keys={"mode"},
+    )
+
+    assert switch == {
+        "fan_enable": {
+            "translation_key": "fan_enable",
+            "register_type": "holding_registers",
+            "register": "fan_enable",
+            "icon": "mdi:toggle-switch",
+        }
+    }
+    assert binary == {
+        "filter_dirty": {
+            "translation_key": "filter_dirty",
+            "register_type": "holding_registers",
+        }
+    }
+    assert select == {
+        "mode": {
+            "translation_key": "mode",
+            "register_type": "holding_registers",
+            "states": {"auto": 0, "manual": 1, "boost": 2},
+        }
     }
