@@ -14,6 +14,7 @@ from custom_components.thessla_green_modbus.coordinator.connection import (
     build_tcp_transport,
     connect_direct_tcp_client,
     connect_transport_or_client,
+    ensure_connected_runtime,
     ensure_transport_selected,
     setup_client_with_retry,
 )
@@ -250,3 +251,73 @@ def test_connect_transport_or_client_with_transport() -> None:
 def test_connect_transport_or_client_requires_client_or_transport() -> None:
     with pytest.raises(ConnectionException):
         asyncio.run(connect_transport_or_client(transport=None, client=None))
+
+
+def test_ensure_connected_runtime_disconnects_before_reselect() -> None:
+    class _Transport:
+        def is_connected(self) -> bool:
+            return False
+
+    disconnected = {"called": False}
+    established = {"called": False}
+
+    async def _disconnect() -> None:
+        disconnected["called"] = True
+
+    async def _select() -> tuple[object, str]:
+        return object(), "tcp"
+
+    async def _connect(*, transport: object, client: object | None) -> object:
+        assert transport is not None
+        assert client is None
+        return object()
+
+    transport, client, mode = asyncio.run(
+        ensure_connected_runtime(
+            current_transport=_Transport(),
+            current_client=object(),
+            reconnect_client_if_needed_fn=lambda _client: asyncio.sleep(0, result=False),
+            disconnect_locked_fn=_disconnect,
+            get_runtime_state_fn=lambda: (None, None),
+            ensure_transport_selected_fn=_select,
+            connect_transport_or_client_fn=_connect,
+            mark_connection_established_fn=lambda: established.__setitem__("called", True),
+            mark_connection_failure_fn=lambda: None,
+            logger=logging.getLogger("test.ensure_connected_runtime"),
+        )
+    )
+    assert disconnected["called"] is True
+    assert established["called"] is True
+    assert transport is not None
+    assert client is not None
+    assert mode == "tcp"
+
+
+def test_ensure_connected_runtime_marks_failure_on_timeout() -> None:
+    failures = {"count": 0}
+
+    async def _select() -> tuple[object, str]:
+        return object(), "tcp"
+
+    async def _connect(*, transport: object, client: object | None) -> object:
+        raise TimeoutError("timed out")
+
+    with pytest.raises(TimeoutError):
+        asyncio.run(
+            ensure_connected_runtime(
+                current_transport=None,
+                current_client=None,
+                reconnect_client_if_needed_fn=lambda _client: asyncio.sleep(0, result=False),
+                disconnect_locked_fn=lambda: asyncio.sleep(0),
+                get_runtime_state_fn=lambda: (None, None),
+                ensure_transport_selected_fn=_select,
+                connect_transport_or_client_fn=_connect,
+                mark_connection_established_fn=lambda: None,
+                mark_connection_failure_fn=lambda: failures.__setitem__(
+                    "count", failures["count"] + 1
+                ),
+                logger=logging.getLogger("test.ensure_connected_runtime.error"),
+            )
+        )
+
+    assert failures["count"] == 1

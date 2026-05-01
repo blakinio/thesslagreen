@@ -219,3 +219,55 @@ async def connect_transport_or_client(
     if client is None:
         raise ConnectionException("Modbus transport is not available")
     return client
+
+
+async def ensure_connected_runtime(
+    *,
+    current_transport: BaseModbusTransport | None,
+    current_client: Any,
+    reconnect_client_if_needed_fn: Callable[[Any], Awaitable[bool]],
+    disconnect_locked_fn: Callable[[], Awaitable[None]],
+    get_runtime_state_fn: Callable[[], tuple[BaseModbusTransport | None, Any]],
+    ensure_transport_selected_fn: Callable[
+        [], Awaitable[tuple[BaseModbusTransport | None, str | None]]
+    ],
+    connect_transport_or_client_fn: Callable[..., Awaitable[Any]],
+    mark_connection_established_fn: Callable[[], None],
+    mark_connection_failure_fn: Callable[[], None],
+    logger: logging.Logger,
+) -> tuple[BaseModbusTransport | None, Any, str | None]:
+    """Orchestrate coordinator connection/reconnect transitions."""
+
+    if current_transport is not None and current_transport.is_connected():
+        return current_transport, current_client, None
+
+    if current_transport is None and current_client is not None:
+        if await reconnect_client_if_needed_fn(current_client):
+            return current_transport, current_client, None
+
+    if current_transport is not None or current_client is not None:
+        await disconnect_locked_fn()
+        current_transport, current_client = get_runtime_state_fn()
+
+    try:
+        selected_transport, selected_mode = await ensure_transport_selected_fn()
+        current_transport, current_client = get_runtime_state_fn()
+        if selected_transport is not None:
+            current_transport = selected_transport
+
+        current_client = await connect_transport_or_client_fn(
+            transport=current_transport,
+            client=current_client,
+        )
+        logger.debug("Modbus connection established")
+        mark_connection_established_fn()
+        return current_transport, current_client, selected_mode
+    except (ModbusException, ConnectionException):
+        mark_connection_failure_fn()
+        raise
+    except TimeoutError:
+        mark_connection_failure_fn()
+        raise
+    except OSError:
+        mark_connection_failure_fn()
+        raise
