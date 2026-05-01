@@ -1,6 +1,6 @@
 # Maintainability audit
 
-Date: 2026-04-30
+Date: 2026-05-01
 
 ## Inputs and checks
 
@@ -13,6 +13,9 @@ Executed:
 - `python tools/check_maintainability.py` *(passed)*
 - `pytest tests/ -q` *(passed; 4 skipped)*
 - `python tools/validate_entity_mappings.py` *(passed; 366 entities validated)*
+- `find custom_components/thessla_green_modbus -maxdepth 2 -name "coordinator.py" -print` *(passed; only canonical `coordinator/coordinator.py` exists)*
+- `rg "from homeassistant|import homeassistant" custom_components/thessla_green_modbus/core custom_components/thessla_green_modbus/transport custom_components/thessla_green_modbus/registers custom_components/thessla_green_modbus/scanner || true` *(passed; no matches)*
+- `rg "compat|shim|proxy|re-export|legacy" custom_components tests docs || true` *(informational; expected policy/test/docs references plus existing compatibility spots outside forbidden areas)*
 
 ## 1) CI status and maintained CI gates
 
@@ -26,59 +29,62 @@ Maintained gates intentionally exclude removed non-maintained checks (`black`, `
 
 ## 2) Largest files (by non-empty lines)
 
-1. `custom_components/thessla_green_modbus/coordinator/coordinator.py` (734)
-2. `custom_components/thessla_green_modbus/scanner/io_read.py` (613)
-3. `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (569)
+1. `custom_components/thessla_green_modbus/coordinator/coordinator.py` (726)
+2. `custom_components/thessla_green_modbus/scanner/io_read.py` (639)
+3. `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (573)
 4. `tests/test_entity_mappings.py` (526)
 5. `tests/test_coordinator.py` (502)
 6. `tests/test_modbus_helpers.py` (482)
-7. `tests/test_register_loader.py` (478)
-8. `custom_components/thessla_green_modbus/scanner/core.py` (477)
-9. `tests/test_scanner_io_coverage.py` (472)
-10. `custom_components/thessla_green_modbus/modbus_helpers.py` (456)
-11. `tests/test_register_decoders.py` (455)
-12. `custom_components/thessla_green_modbus/coordinator/schedule.py` (448)
+7. `tests/test_scanner_io_coverage.py` (472)
+8. `custom_components/thessla_green_modbus/scanner/core.py` (470)
+9. `custom_components/thessla_green_modbus/modbus_helpers.py` (456)
+10. `tests/test_register_decoders.py` (455)
+11. `custom_components/thessla_green_modbus/coordinator/schedule.py` (453)
+12. `custom_components/thessla_green_modbus/config_flow.py` (440)
 13. `custom_components/thessla_green_modbus/mappings/_static_discrete.py` (438)
-14. `custom_components/thessla_green_modbus/config_flow.py` (437)
-15. `custom_components/thessla_green_modbus/const.py` (428)
+14. `custom_components/thessla_green_modbus/const.py` (428)
+15. `tests/test_entity_data_correctness.py` (427)
 
 Interpretation: the largest remaining production hotspots are coordinator orchestration, scanner input-read path, and mapping-builder composition.
 
 ## 3) Largest classes
 
-1. `ThesslaGreenModbusCoordinator` in `coordinator/coordinator.py` (658)
-2. `_CoordinatorScheduleMixin` in `coordinator/schedule.py` (460)
-3. `ThesslaGreenDeviceScanner` in `scanner/core.py` (449)
-4. `RawRtuOverTcpTransport` in `modbus_transport_raw.py` (293)
+1. `ThesslaGreenModbusCoordinator` in `coordinator/coordinator.py` (645)
+2. `_CoordinatorScheduleMixin` in `coordinator/schedule.py` (466)
+3. `ThesslaGreenDeviceScanner` in `scanner/core.py` (441)
+4. `RawRtuOverTcpTransport` in `modbus_transport_raw.py` (298)
 5. `RegisterDef` in `registers/register_def.py` (268)
 6. `ThesslaGreenFan` in `fan.py` (254)
 7. `_CoordinatorCapabilitiesMixin` in `coordinator/capabilities.py` (230)
-8. `ConfigFlow` in `config_flow.py` (217)
+8. `ConfigFlow` in `config_flow.py` (218)
 9. `BaseModbusTransport` in `modbus_transport_base.py` (210)
 10. `ThesslaGreenBinarySensor` in `binary_sensor.py` (175)
 
 ## 4) Largest functions/methods
 
 1. `register_maintenance_services` in `services_handlers_maintenance.py` (136)
-2. `async_write_register` in `coordinator/schedule.py` (131)
-3. `read_input` in `scanner/io_read.py` (129)
+2. `read_input` in `scanner/io_read.py` (132)
+3. `async_write_register` in `coordinator/schedule.py` (131)
 4. `run_full_scan` in `scanner/orchestration.py` (125)
 5. `validate_input_impl` in `config_flow_device_validation.py` (123)
 6. `_post_process_data` in `coordinator/capabilities.py` (120)
 7. `read_with_retry` in `coordinator/retry.py` (106)
 8. `migrate_unique_id` in `const.py` (100)
-9. `_call_modbus` in `modbus_helpers.py` (97)
-10. `async_write_registers` in `coordinator/schedule.py` (96)
+9. `read_input_registers_optimized` in `_coordinator_read_batches.py` (100)
+10. `_call_modbus` in `modbus_helpers.py` (97)
 
-## 5) Completed refactors reflected in current dev state (latest merged batch #1481 and #1485-#1490)
+## 5) Completed refactors reflected in current dev state (merged PRs #1492-#1501)
 
-- **#1481 scanner orchestration helpers**: scan orchestration was further split into helper boundaries (`run_full_scan`, `scan_device`) and scanner phase transitions are now concentrated in orchestration modules.
-- **#1485 config flow validation result handling**: config-flow device validation now centralizes result-normalization and validation output handling to reduce conditional sprawl in flow entry points.
-- **#1486 modbus helper logic**: Modbus call/helper behavior was consolidated, reducing duplicated call/error-handling paths around `_call_modbus`.
-- **#1487 maintenance service handlers**: maintenance handler registration/use-cases were split into dedicated service handler modules; service complexity hotspot now sits in a smaller, isolated target (`register_maintenance_services`).
-- **#1488 mapping payload helpers**: mapping payload-building responsibilities were pushed into helpers, reducing repeated payload assembly logic across mapping paths.
-- **#1489 coordinator connection state**: coordinator connection-state transitions were clarified and localized in coordinator-side modules/mixins.
-- **#1490 scanner input read path**: scanner read-path handling was further segmented, with `scanner/io_read.py` now the explicit concentration point for input-read behavior.
+- **#1492 coordinator connection orchestration helper**: coordinator connection orchestration was moved toward helper boundaries, reducing branching pressure in main coordinator execution flow.
+- **#1493 multi-register chunk executor from coordinator schedule**: coordinator schedule gained clearer chunk-execution structure for multi-register writes.
+- **#1494 scanner core state helper**: scanner core state handling was split into dedicated helper logic, tightening core scan-path responsibilities.
+- **#1495 mapping builder branch complexity**: mapping builder branch paths were simplified, reducing complexity concentration in mapping composition.
+- **#1496 temperature sensor mapping module**: temperature-specific mapping concerns were moved into dedicated mapping module boundaries.
+- **#1497 exception-function classifier in `RawRtuOverTcpTransport`**: function-level exception classification in raw RTU-over-TCP transport was clarified and isolated.
+- **#1498 maintenance service registration helper**: maintenance registration flow was further extracted into helper-level structure.
+- **#1499 scanner I/O register read failure finalizer**: scanner read-failure finalization logic was isolated to standardize terminal failure handling in I/O reads.
+- **#1500 register test coverage split**: register-focused test coverage was split into clearer scope units to keep tests maintainable as production modules are decomposed.
+- **#1501 config-flow reauth helpers**: reauth flow behavior was extracted into helpers to reduce complexity in `config_flow.py` and align with layered flow constraints.
 
 ## 6) Current invariants and architectural constraints (verified)
 
@@ -91,11 +97,11 @@ Interpretation: the largest remaining production hotspots are coordinator orches
 
 ## 7) Remaining production hotspots and recommended next PRs
 
-1. Continue splitting `custom_components/thessla_green_modbus/coordinator/coordinator.py` (734 non-empty lines) by isolating coordinator lifecycle/state and orchestration edges into narrower modules.
-2. Continue decomposition of `custom_components/thessla_green_modbus/scanner/io_read.py` (613 lines), prioritizing extraction of retry/error normalization and grouped read batching helpers around `read_input`.
-3. Continue decomposition of `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (569 lines), focusing on domain-specific payload builders and branch reduction.
-4. Reduce `custom_components/thessla_green_modbus/scanner/core.py` (477 lines) by splitting setup/state bookkeeping from scanner runtime behavior.
-5. Reduce `register_maintenance_services` (136 lines) by extracting registration slices (service schema binding, target resolution wiring, and handler registration loops).
+1. Continue splitting `custom_components/thessla_green_modbus/coordinator/coordinator.py` (726 non-empty lines) by isolating lifecycle/state transitions from update-cycle orchestration.
+2. Continue decomposition of `custom_components/thessla_green_modbus/scanner/io_read.py` (639 lines), prioritizing extraction of grouped-read planning and error normalization around `read_input`/`read_bit_registers`.
+3. Continue decomposition of `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (573 lines), focusing on domain/type-specific builders to reduce branch-heavy composition.
+4. Reduce `custom_components/thessla_green_modbus/scanner/core.py` (470 lines) by separating scanner state initialization from runtime scan execution.
+5. Reduce `register_maintenance_services` (136 lines) by extracting schema binding, target resolution wiring, and registration loops into smaller helpers.
 
 ## 8) Validation outcome summary
 
