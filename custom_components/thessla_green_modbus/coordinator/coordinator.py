@@ -128,6 +128,8 @@ from .connection_state import (
 from .connection_state import (
     mark_connection_failure as _mark_connection_failure_impl,
 )
+from .disconnect import close_client_connection as _close_client_connection_impl
+from .disconnect import disconnect_locked as _disconnect_locked_impl
 from .io import _ModbusIOMixin
 from .lifecycle import async_setup as _async_setup_impl
 from .models import CoordinatorConfig
@@ -751,37 +753,20 @@ class ThesslaGreenModbusCoordinator(
     async def _disconnect_locked(self) -> None:
         """Disconnect from Modbus device without acquiring locks."""
 
-        if self._transport is not None:
-            try:
-                await self._transport.close()
-            except (ModbusException, ConnectionException):
-                _LOGGER.debug("Error disconnecting", exc_info=True)
-            except OSError:
-                _LOGGER.exception("Unexpected error disconnecting")
-        elif self.client is not None:
-            await self._close_client_connection()
-
-        self.client = None
-        _mark_connection_disconnected_impl(
-            offline_state_setter=lambda value: setattr(self, "offline_state", value)
+        await _disconnect_locked_impl(
+            transport=self._transport,
+            client=self.client,
+            close_client_connection_fn=_close_client_connection_impl,
+            mark_connection_disconnected_fn=lambda: _mark_connection_disconnected_impl(
+                offline_state_setter=lambda value: setattr(self, "offline_state", value)
+            ),
+            logger=_LOGGER,
         )
-        _LOGGER.debug("Disconnected from Modbus device")
+        self.client = None
 
     async def _close_client_connection(self) -> None:
         """Close client object safely for sync or async close implementations."""
-        try:
-            close = getattr(self.client, "close", None)
-            if callable(close):
-                if inspect.iscoroutinefunction(close):
-                    await close()
-                else:
-                    result = close()
-                    if inspect.isawaitable(result):
-                        await result
-        except (ModbusException, ConnectionException):
-            _LOGGER.debug("Error disconnecting", exc_info=True)
-        except OSError:
-            _LOGGER.exception("Unexpected error disconnecting")
+        await _close_client_connection_impl(client=self.client, logger=_LOGGER)
 
     async def _disconnect(self) -> None:
         """Disconnect from Modbus device."""
