@@ -118,3 +118,29 @@ def test_plan_multi_register_chunks_respects_single_request(coordinator):
         (202, [3]),
     ]
 
+
+
+def test_handle_write_response_failure_logs_retry(coordinator, caplog):
+    """Non-final failures should log retry and continue."""
+    caplog.set_level("INFO")
+    should_retry = coordinator._handle_write_response_failure(
+        is_final_attempt=False,
+        final_error_message="Error writing to register %s: %s",
+        retry_message="Retrying write to register mode",
+        error_args=("mode", "err"),
+    )
+    assert should_retry is True
+    assert "Retrying write to register mode" in caplog.text
+
+
+def test_handle_write_response_failure_logs_error(coordinator, caplog):
+    """Final failures should log error and stop."""
+    caplog.set_level("ERROR")
+    should_retry = coordinator._handle_write_response_failure(
+        is_final_attempt=True,
+        final_error_message="Error writing to register %s: %s",
+        retry_message="Retrying write to register mode",
+        error_args=("mode", "err"),
+    )
+    assert should_retry is False
+    assert "Error writing to register mode: err" in caplog.text
