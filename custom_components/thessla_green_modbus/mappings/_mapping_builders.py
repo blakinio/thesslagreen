@@ -28,8 +28,11 @@ from ._mapping_classification import (
 from ._mapping_classification import (
     classify_min_max_mapping as _classify_min_max_mapping,
 )
-from ._mapping_payloads import (
-    classify_discrete_holding_payload as _classify_discrete_holding_payload,
+from ._mapping_discrete_loader import (
+    add_binary_mappings_for_boolean_registers as _add_binary_mappings_for_boolean_registers,
+)
+from ._mapping_discrete_loader import (
+    classify_discrete_holding_registers as _classify_discrete_holding_registers,
 )
 from ._mapping_payloads import (
     parse_info_states as _parse_info_states,
@@ -495,37 +498,20 @@ def _load_discrete_mappings() -> tuple[
     discrete_regs = _discrete_regs()
     holding_regs = _holding_regs()
 
-    for reg in coil_regs:
-        if reg not in binary_keys:
-            continue
-        binary_configs[reg] = _build_base_translation_mapping(reg, "coil_registers")
-    for reg in discrete_regs:
-        if reg not in binary_keys:
-            continue
-        binary_configs[reg] = _build_base_translation_mapping(reg, "discrete_inputs")
+    _add_binary_mappings_for_boolean_registers(binary_configs, coil_regs, binary_keys, "coil_registers")
+    _add_binary_mappings_for_boolean_registers(binary_configs, discrete_regs, binary_keys, "discrete_inputs")
 
-    for reg in holding_regs:
-        info = _get_info(reg)
-        if not info:
-            continue
-        states = _parse(info.get("unit"))
-        if not states:
-            continue
-        access = (info.get("access") or "").upper()
-        target, payload = _classify_discrete_holding_payload(
-            register=reg,
-            access=access,
-            states=states,
-            switch_keys=switch_keys,
-            binary_keys=binary_keys,
-            select_keys=select_keys,
-        )
-        if target == "switch" and payload:
-            switch_configs[reg] = payload
-        elif target == "binary" and payload:
-            binary_configs[reg] = payload
-        elif target == "select" and payload:
-            select_configs[reg] = payload
+    holding_binary, holding_switch, holding_select = _classify_discrete_holding_registers(
+        holding_regs=holding_regs,
+        get_info=_get_info,
+        parse_states=_parse,
+        switch_keys=switch_keys,
+        binary_keys=binary_keys,
+        select_keys=select_keys,
+    )
+    binary_configs.update(holding_binary)
+    switch_configs.update(holding_switch)
+    select_configs.update(holding_select)
 
     _apply_diagnostic_binary_overrides(
         _diag_register_candidates(holding_regs),
@@ -635,13 +621,14 @@ def _extend_entity_mappings_from_registers() -> None:
 
 __all__ = [
     "_TIME_ENTITY_PREFIXES",
+    "_add_binary_mappings_for_boolean_registers",
     "_apply_diagnostic_binary_overrides",
     "_build_base_translation_mapping",
     "_build_problem_binary_mapping",
     "_build_season_setting_mapping",
     "_build_sensor_season_setting_mapping",
     "_build_time_like_mapping",
-    "_classify_discrete_holding_payload",
+    "_classify_discrete_holding_registers",
     "_classify_enum_mapping",
     "_classify_min_max_mapping",
     "_diag_register_candidates",
