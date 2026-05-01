@@ -36,16 +36,7 @@ from .config_flow_options import normalize_baud_rate as _normalize_baud_rate_imp
 from .config_flow_options import normalize_parity as _normalize_parity_impl
 from .config_flow_options import normalize_stop_bits as _normalize_stop_bits_impl
 from .config_flow_options import strip_translation_prefix as _strip_translation_prefix_impl
-from .config_flow_options_form import (
-    build_options_defaults as _build_options_defaults,
-)
-from .config_flow_options_form import (
-    build_options_description_placeholders as _build_options_description_placeholders,
-)
-from .config_flow_options_form import build_options_schema as _build_options_schema
-from .config_flow_options_form import (
-    build_transport_description as _build_transport_description,
-)
+from .config_flow_options_form import build_options_form_payload as _build_options_form_payload
 from .config_flow_payloads import caps_to_dict as _caps_to_dict_impl
 from .config_flow_payloads import normalize_connection_type as _normalize_connection_type_impl
 from .config_flow_reauth import process_reauth_submission as _process_reauth_submission_impl
@@ -511,9 +502,10 @@ class OptionsFlow(config_entries.OptionsFlow):
 
         entry_data = getattr(self.config_entry, "data", {}) or {}
         entry_options = getattr(self.config_entry, "options", {}) or {}
-        values = _build_options_defaults(entry_data, entry_options)
-        transport_label, transport_details = _build_transport_description(values)
-        data_schema = _build_options_schema(values)
+        data_schema, description_placeholders = _build_options_form_payload(
+            entry_data,
+            entry_options,
+        )
 
         # IMPORTANT: do NOT expose CONF_CONNECTION_MODE here (prevents duplicate GUI fields)
 
@@ -521,9 +513,5 @@ class OptionsFlow(config_entries.OptionsFlow):
             step_id="init",
             data_schema=data_schema,
             errors=errors,
-            description_placeholders=_build_options_description_placeholders(
-                values,
-                transport_label=transport_label,
-                transport_details=transport_details,
-            ),
+            description_placeholders=description_placeholders,
         )

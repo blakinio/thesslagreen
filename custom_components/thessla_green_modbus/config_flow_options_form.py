@@ -203,3 +203,17 @@ def build_options_description_placeholders(
         "transport_label": transport_label,
         "transport_details": transport_details,
     }
+
+
+def build_options_form_payload(
+    entry_data: dict[str, Any],
+    entry_options: dict[str, Any],
+) -> tuple[vol.Schema, dict[str, str]]:
+    """Build options form schema and description placeholders."""
+    values = build_options_defaults(entry_data, entry_options)
+    transport_label, transport_details = build_transport_description(values)
+    return build_options_schema(values), build_options_description_placeholders(
+        values,
+        transport_label=transport_label,
+        transport_details=transport_details,
+    )
