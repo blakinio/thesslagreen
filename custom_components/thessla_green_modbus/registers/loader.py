@@ -7,17 +7,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from .cache import (
-    async_registers_sha256,
-    get_cached_file_info,
-    get_cached_registers,
-    registers_sha256,
-    set_cached_registers,
-)
+from .cache import async_registers_sha256, registers_sha256
 from .cache import (
     clear_cache as _clear_register_cache,
 )
 from .definition import ReadPlan
+from .load_cache_helpers import async_resolve_cached_registers, resolve_cached_registers
 from .loader_helpers import (
     build_register_map,
     filter_registers_by_function,
@@ -44,15 +39,11 @@ def load_registers(json_path: Path | str | None = None) -> list[RegisterDef]:
     """Return cached register definitions, reloading if file changed."""
     path = resolve_registers_path(_REGISTERS_PATH, json_path)
     file_hash = registers_sha256(path)
-    cached = get_cached_file_info(path)
-    if cached is None:
-        raise RuntimeError(f"Missing cache metadata for register file: {path}")
-    mtime = cached[0]
-    regs = get_cached_registers(file_hash, mtime)
-    if regs is None:
-        regs = load_registers_from_file(path)
-        set_cached_registers(file_hash, mtime, regs)
-    return regs
+    return resolve_cached_registers(
+        path,
+        file_hash,
+        lambda: load_registers_from_file(path),
+    )
 
 
 async def async_load_registers(
@@ -61,15 +52,11 @@ async def async_load_registers(
     """Return cached register definitions asynchronously."""
     path = resolve_registers_path(_REGISTERS_PATH, json_path)
     file_hash = await async_registers_sha256(hass, path)
-    cached = get_cached_file_info(path)
-    if cached is None:
-        raise RuntimeError(f"Missing cache metadata for register file: {path}")
-    mtime = cached[0]
-    regs = get_cached_registers(file_hash, mtime)
-    if regs is None:
-        regs = await async_load_registers_from_file(hass, path)
-        set_cached_registers(file_hash, mtime, regs)
-    return regs
+    return await async_resolve_cached_registers(
+        path,
+        file_hash,
+        lambda: async_load_registers_from_file(hass, path),
+    )
 
 
 def clear_cache() -> None:  # pragma: no cover
