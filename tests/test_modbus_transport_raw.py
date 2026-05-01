@@ -175,6 +175,18 @@ def test_validate_response_header_wrong_function():
 def test_validate_response_header_exception_function_passthrough():
     t = _make_raw_tcp()
     assert t._validate_response_header(bytes([1, 0x84]), slave_id=1, function=4) == 0x84
+
+
+def test_is_exception_function_matches_request_function():
+    t = _make_raw_tcp()
+    assert t._is_exception_function(0x84, expected_function=4)
+    assert not t._is_exception_function(0x83, expected_function=4)
+
+
+def test_validate_response_header_rejects_mismatched_exception_function():
+    t = _make_raw_tcp()
+    with pytest.raises(ModbusIOException, match="function code"):
+        t._validate_response_header(bytes([1, 0x83]), slave_id=1, function=4)
 def test_build_write_multiple_frame_structure():
     """_build_write_multiple_frame produces correct write multiple frame."""
     from custom_components.thessla_green_modbus.modbus_transport import RawRtuOverTcpTransport
@@ -454,5 +466,4 @@ async def test_raw_tcp_write_registers_invalid_length():
         with patch.object(t, "ensure_connected", new=AsyncMock()):
             with pytest.raises(ModbusIOException, match="length"):
                 await t.write_registers(1, 100, values=[1, 2])
-
 

@@ -160,11 +160,16 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
 
         if resp_slave != (slave_id & 0xFF):
             raise ModbusIOException("Unexpected slave ID in RTU response")
-        if resp_func & 0x80:
-            return resp_func
-        if resp_func != (function & 0xFF):
+        if resp_func != (function & 0xFF) and not RawRtuOverTcpTransport._is_exception_function(
+            resp_func, expected_function=function
+        ):
             raise ModbusIOException("Unexpected function code in RTU response")
         return resp_func
+
+    @staticmethod
+    def _is_exception_function(resp_func: int, *, expected_function: int) -> bool:
+        """Return True when ``resp_func`` is a Modbus exception response for the request."""
+        return (resp_func & 0x80) != 0 and (resp_func & 0x7F) == (expected_function & 0xFF)
 
     async def _read_exception_response(self, header: bytes, *, function: int) -> bytes:
         exception_code = await self._read_exactly(1)
@@ -193,7 +198,7 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         header = await self._read_exactly(2)
         resp_func = self._validate_response_header(header, slave_id=slave_id, function=function)
 
-        if resp_func & 0x80:
+        if self._is_exception_function(resp_func, expected_function=function):
             return await self._read_exception_response(header, function=resp_func)
         if function in (3, 4):
             return await self._read_register_data_response(header)
