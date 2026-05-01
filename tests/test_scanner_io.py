@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
+from custom_components.thessla_green_modbus.scanner.io_read import _finalize_register_read_failure
 
 pytestmark = pytest.mark.asyncio
 
@@ -184,3 +185,44 @@ async def test_read_holding_cancelled_modbusio_stops_retry_loop():
     assert result is None
     assert call_mock.await_count == 1
     sleep_mock.assert_not_called()
+
+
+def test_finalize_register_read_failure_input_aborted_logs_abort_only(caplog):
+    """Input aborted transiently should not mark failed range or emit terminal failure."""
+    scanner = MagicMock()
+    scanner.failed_addresses = {"modbus_exceptions": {"input_registers": set(), "holding_registers": set()}}
+
+    with caplog.at_level(logging.WARNING):
+        _finalize_register_read_failure(
+            scanner,
+            register_type="input_registers",
+            start=4,
+            end=5,
+            retry=3,
+            attempted_reads=1,
+            aborted_transiently=True,
+        )
+
+    assert scanner.failed_addresses["modbus_exceptions"]["input_registers"] == set()
+    assert "Aborted reading input registers 4-5" in caplog.text
+    assert "Failed to read input registers 4-5" not in caplog.text
+
+
+def test_finalize_register_read_failure_holding_non_aborted_marks_and_logs(caplog):
+    """Holding terminal failure should mark full range and emit error log."""
+    scanner = MagicMock()
+    scanner.failed_addresses = {"modbus_exceptions": {"input_registers": set(), "holding_registers": set()}}
+
+    with caplog.at_level(logging.ERROR):
+        _finalize_register_read_failure(
+            scanner,
+            register_type="holding_registers",
+            start=10,
+            end=12,
+            retry=2,
+            attempted_reads=2,
+            aborted_transiently=False,
+        )
+
+    assert scanner.failed_addresses["modbus_exceptions"]["holding_registers"] == {10, 11, 12}
+    assert "Failed to read holding registers 10-12 after 2 retries" in caplog.text
