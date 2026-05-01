@@ -224,6 +224,31 @@ class _CoordinatorScheduleMixin:
             return [(start_address, values)]
         return list(chunk_register_values(start_address, values, self.effective_batch))
 
+
+    def _handle_write_response_failure(
+        self,
+        *,
+        is_final_attempt: bool,
+        final_error_message: str,
+        retry_message: str,
+        error_args: tuple[Any, ...],
+    ) -> bool:
+        """Handle write-response failure logging.
+
+        Returns True when caller should retry, False when operation must stop.
+        """
+        if is_final_attempt:
+            _LOGGER.error(final_error_message, *error_args)
+            return False
+        _LOGGER.info(retry_message)
+        return True
+
+    async def _finalize_write_result(self, refresh_after_write: bool) -> bool:
+        """Finish write operation with optional refresh."""
+        if refresh_after_write:
+            await _safe_request_refresh(self)
+        return True
+
     def _write_response_ok(self, response: Any) -> bool:
         """Return True when a Modbus write response indicates success."""
         return response is not None and not response.isError()
@@ -270,14 +295,14 @@ class _CoordinatorScheduleMixin:
                                     address, encoded_values, attempt
                                 )
                                 if not success:
-                                    if attempt == self.retry:
-                                        _LOGGER.error(
-                                            "Error writing to register %s: %s",
-                                            register_name,
-                                            response,
-                                        )
+                                    should_retry = self._handle_write_response_failure(
+                                        is_final_attempt=attempt == self.retry,
+                                        final_error_message="Error writing to register %s: %s",
+                                        retry_message=f"Retrying write to register {register_name}",
+                                        error_args=(register_name, response),
+                                    )
+                                    if not should_retry:
                                         return False
-                                    _LOGGER.info("Retrying write to register %s", register_name)
                                     continue
                             else:
                                 response = await self._write_holding_single(
@@ -295,14 +320,14 @@ class _CoordinatorScheduleMixin:
                             return False
 
                         if not self._write_response_ok(response):
-                            if attempt == self.retry:
-                                _LOGGER.error(
-                                    "Error writing to register %s: %s",
-                                    register_name,
-                                    response,
-                                )
+                            should_retry = self._handle_write_response_failure(
+                                is_final_attempt=attempt == self.retry,
+                                final_error_message="Error writing to register %s: %s",
+                                retry_message=f"Retrying write to register {register_name}",
+                                error_args=(register_name, response),
+                            )
+                            if not should_retry:
                                 return False
-                            _LOGGER.info("Retrying write to register %s", register_name)
                             continue
 
                         refresh_after_write = refresh
@@ -356,9 +381,7 @@ class _CoordinatorScheduleMixin:
                 _LOGGER.exception("Failed to write register %s", register_name)
                 return False
 
-        if refresh_after_write:
-            await _safe_request_refresh(self)
-        return True
+        return await self._finalize_write_result(refresh_after_write)
 
     async def async_write_registers(
         self,
@@ -389,14 +412,14 @@ class _CoordinatorScheduleMixin:
                             attempt,
                         )
                         if not success:
-                            if attempt == self.retry:
-                                _LOGGER.error(
-                                    "Error writing registers at %s: %s",
-                                    start_address,
-                                    response,
-                                )
+                            should_retry = self._handle_write_response_failure(
+                                is_final_attempt=attempt == self.retry,
+                                final_error_message="Error writing registers at %s: %s",
+                                retry_message=f"Retrying multi-register write at {start_address}",
+                                error_args=(start_address, response),
+                            )
+                            if not should_retry:
                                 return False
-                            _LOGGER.info("Retrying multi-register write at %s", start_address)
                             await self._disconnect()
                             continue
 
