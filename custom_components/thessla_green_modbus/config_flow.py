@@ -60,8 +60,10 @@ from .config_flow_runtime import (
 from .config_flow_runtime import run_with_retry as _run_with_retry_impl
 from .config_flow_schema import build_connection_schema as _build_connection_schema_impl
 from .config_flow_steps import extract_discovered_state as _extract_discovered_state_impl
+from .config_flow_steps import initialize_reauth_state as _initialize_reauth_state_impl
 from .config_flow_steps import merge_options_payload as _merge_options_payload_impl
 from .config_flow_steps import resolve_reauth_defaults as _resolve_reauth_defaults_impl
+from .config_flow_steps import resolve_reauth_entry as _resolve_reauth_entry_impl
 from .config_flow_steps import validate_options_submission as _validate_options_submission_impl
 from .config_flow_user_submit import process_user_submission as _process_user_submission_impl
 from .config_flow_validation import process_scan_capabilities as _process_scan_capabilities_impl
@@ -406,23 +408,24 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
     async def async_step_reauth(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle reauthentication by collecting updated connection details."""
         errors: dict[str, str] = {}
-        entry = None
-
-        if self.hass is not None:
-            entry_id = self.context.get("entry_id")
-            if entry_id:
-                entry = self.hass.config_entries.async_get_entry(entry_id)
+        entry = _resolve_reauth_entry_impl(self.hass, self.context)
 
         defaults: dict[str, Any] = {}
         if entry is not None:
             defaults = _resolve_reauth_defaults_impl(entry.data, entry.options)
 
-        if self._tg_flow_reauth_entry_id is None:
-            self._tg_flow_reauth_entry_id = entry.entry_id if entry else None
-            self._tg_flow_reauth_existing_data = defaults
+        should_initialize, reauth_entry_id, reauth_defaults = _initialize_reauth_state_impl(
+            active_entry_id=self._tg_flow_reauth_entry_id,
+            entry=entry,
+            defaults=defaults,
+        )
+
+        if should_initialize:
+            self._tg_flow_reauth_entry_id = reauth_entry_id
+            self._tg_flow_reauth_existing_data = reauth_defaults
             return self.async_show_form(
                 step_id="reauth",
-                data_schema=self._build_connection_schema(defaults),
+                data_schema=self._build_connection_schema(reauth_defaults),
                 errors=errors,
             )
 
