@@ -171,12 +171,22 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         """Return True when ``resp_func`` is a Modbus exception response for the request."""
         return (resp_func & 0x80) != 0 and (resp_func & 0x7F) == (expected_function & 0xFF)
 
+    @staticmethod
+    def _parse_exception_response_payload(payload: bytes, *, function: int) -> int:
+        """Validate and parse an exception response payload."""
+        if len(payload) != 3:
+            raise ModbusIOException("Invalid exception response payload length")
+        if payload[1] != (function & 0xFF):
+            raise ModbusIOException("Unexpected function code in exception RTU response")
+        return payload[2]
+
     async def _read_exception_response(self, header: bytes, *, function: int) -> bytes:
         exception_code = await self._read_exactly(1)
         crc_bytes = await self._read_exactly(2)
         payload = header + exception_code
         self._validate_crc(payload, crc_bytes)
-        raise ModbusException(f"Modbus exception {exception_code[0]} for function {function}")
+        parsed_exception = self._parse_exception_response_payload(payload, function=function)
+        raise ModbusException(f"Modbus exception {parsed_exception} for function {function}")
 
     async def _read_register_data_response(self, header: bytes) -> bytes:
         byte_count_raw = await self._read_exactly(1)
