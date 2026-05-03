@@ -1,5 +1,8 @@
 """Tests for extracted transformation helpers in mapping builders."""
 
+from custom_components.thessla_green_modbus.mappings._mapping_bitmask import (
+    iter_bitmask_binary_entries as _iter_bitmask_binary_entries,
+)
 from custom_components.thessla_green_modbus.mappings._mapping_builders import (
     _apply_diagnostic_binary_overrides,
     _build_base_translation_mapping,
@@ -8,7 +11,6 @@ from custom_components.thessla_green_modbus.mappings._mapping_builders import (
     _classify_min_max_mapping,
     _diag_register_candidates,
     _is_binary_state_pair,
-    _iter_bitmask_binary_entries,
     _register_context,
     _resolve_parent_child_mappings,
     _route_enum_mapping,

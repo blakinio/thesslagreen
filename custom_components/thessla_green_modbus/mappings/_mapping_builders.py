@@ -15,13 +15,14 @@ from ..const import (
     holding_registers,
 )
 from ..registers.loader import get_all_registers
-from ..utils import BCD_TIME_PREFIXES, _to_snake_case
+from ..utils import BCD_TIME_PREFIXES
 from ._helpers import (
     _get_register_info,
     _load_translation_keys,
     _number_translation_keys,
     _parse_states,
 )
+from ._mapping_bitmask import iter_bitmask_binary_entries as _iter_bitmask_binary_entries
 from ._mapping_classification import (
     classify_enum_mapping as _classify_enum_mapping,
 )
@@ -139,49 +140,6 @@ def _apply_diagnostic_binary_overrides(
         }
         switch_configs.pop(reg, None)
         select_configs.pop(reg, None)
-
-def _iter_bitmask_binary_entries(reg: Any) -> list[tuple[str, dict[str, Any]]]:
-    """Build binary mapping entries derived from a bitmask register definition."""
-    func_map = {
-        1: "coil_registers",
-        2: "discrete_inputs",
-        3: "holding_registers",
-        4: "input_registers",
-    }
-    register_type = func_map.get(reg.function)
-    if not register_type:
-        return []
-
-    bits = reg.bits or []
-    entries: list[tuple[str, dict[str, Any]]] = []
-    unnamed_bit = False
-    for idx, bit_def in enumerate(bits):
-        bit_name = bit_def.get("name") if isinstance(bit_def, dict) else (str(bit_def) if bit_def is not None else None)
-        if bit_name:
-            key = f"{reg.name}_{_to_snake_case(bit_name)}"
-            entries.append(
-                (
-                    key,
-                    {
-                        "translation_key": key,
-                        "register_type": register_type,
-                        "register": reg.name,
-                        "bit": 1 << idx,
-                    },
-                )
-            )
-        else:
-            unnamed_bit = True
-
-    if not bits or unnamed_bit:
-        entries.append(
-            (
-                reg.name,
-                {"translation_key": reg.name, "register_type": register_type, "bitmask": True},
-            )
-        )
-    return entries
-
 
 def _route_enum_mapping(
     target: str | None,
