@@ -123,3 +123,39 @@ jobs:
 
       - name: Validate entity mappings
         run: python tools/validate_entity_mappings.py
+
+  ruff-adoption-signal:
+    name: Ruff formatting/import-order signal (non-blocking)
+    runs-on: ubuntu-latest
+    needs: lint
+    continue-on-error: true
+    strategy:
+      matrix:
+        python-version: ["3.13"]
+        ha-version: ["2026.2.3"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            constraints.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+          python -m pip install -e .
+          python -m pip install homeassistant==${{ matrix.ha-version }} hacs
+
+      - name: Ruff import order (informational)
+        run: ruff check --select I custom_components tests tools
+
+      - name: Ruff format drift (informational)
+        run: ruff format --check custom_components tests tools

@@ -1,6 +1,6 @@
 # Refactor status (current)
 
-Last reviewed: 2026-05-01.
+Last reviewed: 2026-05-03.
 
 Related document:
 
@@ -41,3 +41,11 @@ Dedicated migration PR completed. Current canonical state:
 - Keep architecture docs aligned with real repository state.
 - Do not document unsupported devices or speculative features.
 - Do not create migration guides unless real migration code exists.
+
+## CI hardening status (safe staged adoption)
+
+- Required CI gates remain unchanged: lint, tests, and entity mappings validation.
+- A non-blocking informational CI job (`ruff-adoption-signal`) now reports:
+  - `ruff check --select I custom_components tests tools`
+  - `ruff format --check custom_components tests tools`
+- This preserves branch-protection stability while exposing formatting/import-order drift trends.

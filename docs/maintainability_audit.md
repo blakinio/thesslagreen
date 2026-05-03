@@ -1,6 +1,6 @@
 # Maintainability audit
 
-Date: 2026-05-01
+Date: 2026-05-03
 
 ## Inputs and checks
 
@@ -122,19 +122,19 @@ As of this audit, CI-required gates remain intentionally limited to Ruff linting
 
 ### Stage B (optional informational CI job, non-blocking)
 
-If desired, add a separate workflow job that runs the two checks above and is explicitly marked non-blocking (for example, `continue-on-error: true`). This job should:
+Implemented in CI as `ruff-adoption-signal`: a separate workflow job that runs the two checks above and is explicitly marked non-blocking via `continue-on-error: true`. This job:
 
 - avoid touching required branch protection gates,
 - avoid secrets and external services,
-- only report drift trend.
+- only reports drift trend.
 
 ### Stage C (targeted adoption after convergence)
 
 When `ruff format --check` and import-order checks are routinely clean on active files, enforce them incrementally by path or module group in small PRs, never as a one-shot repository-wide rewrite.
 
-### Current readiness snapshot
+### Current readiness snapshot (2026-05-03)
 
-- `ruff format --check custom_components tests tools`: **fails** currently (94 files would be reformatted).
+- `ruff format --check custom_components tests tools`: **fails** currently (99 files would be reformatted).
 - `ruff check --select I custom_components tests tools`: **passes** currently.
 
 Conclusion: repository is ready for import-order enforcement (already clean), but not ready for mandatory format enforcement without a dedicated formatting campaign.
