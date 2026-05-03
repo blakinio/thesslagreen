@@ -269,6 +269,38 @@ def _handle_input_read_exception(
     raise exc
 
 
+def _handle_input_attempt_exception(
+    scanner: Any,
+    exc: Exception,
+    *,
+    start: int,
+    end: int,
+    address: int,
+    count: int,
+    attempt: int,
+) -> tuple[bool, bool]:
+    """Log and normalize input-read attempt failures.
+
+    Returns (abort_transiently, stop_retries).
+    """
+    log_scanner_retry(
+        operation=f"read_input:{start}-{end}",
+        attempt=attempt,
+        max_attempts=scanner.retry,
+        exc=exc,
+        backoff=scanner.backoff,
+    )
+    return _handle_input_read_exception(
+        scanner,
+        exc,
+        start=start,
+        end=end,
+        address=address,
+        count=count,
+        attempt=attempt,
+    )
+
+
 async def read_input(
     scanner: Any,
     client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
@@ -324,14 +356,7 @@ async def read_input(
                     _LOGGER.debug("Read input registers %d-%d: %s", start, end, payload)
                 return payload
         except ModbusIOException as exc:
-            log_scanner_retry(
-                operation=f"read_input:{start}-{end}",
-                attempt=attempt,
-                max_attempts=scanner.retry,
-                exc=exc,
-                backoff=scanner.backoff,
-            )
-            aborted, stop = _handle_input_read_exception(
+            aborted, stop = _handle_input_attempt_exception(
                 scanner,
                 exc,
                 start=start,
@@ -344,14 +369,7 @@ async def read_input(
             if stop:
                 break
         except (TimeoutError, OSError) as exc:
-            log_scanner_retry(
-                operation=f"read_input:{start}-{end}",
-                attempt=attempt,
-                max_attempts=scanner.retry,
-                exc=exc,
-                backoff=scanner.backoff,
-            )
-            aborted, stop = _handle_input_read_exception(
+            aborted, stop = _handle_input_attempt_exception(
                 scanner,
                 exc,
                 start=start,
@@ -364,14 +382,7 @@ async def read_input(
             if stop:
                 break
         except (ModbusException, ConnectionException) as exc:
-            log_scanner_retry(
-                operation=f"read_input:{start}-{end}",
-                attempt=attempt,
-                max_attempts=scanner.retry,
-                exc=exc,
-                backoff=scanner.backoff,
-            )
-            aborted, stop = _handle_input_read_exception(
+            aborted, stop = _handle_input_attempt_exception(
                 scanner,
                 exc,
                 start=start,
