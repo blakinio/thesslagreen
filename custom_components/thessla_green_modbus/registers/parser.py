@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Any, cast
 
-from .cache import _async_executor
+from .parse_file_helpers import async_read_registers_json, read_registers_json
 from .register_def import RegisterDef
 from .schema import RegisterList, _normalise_function, _normalise_name
 
@@ -93,23 +93,10 @@ def register_from_parsed(parsed: Any) -> RegisterDef:
 
 def load_registers_from_file(path: Path) -> list[RegisterDef]:
     """Load and parse register definitions from file path."""
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError as err:  # pragma: no cover
-        raise RuntimeError(f"Register definition file missing: {path}") from err
-    except (OSError, TypeError, ValueError, json.JSONDecodeError) as err:  # pragma: no cover
-        raise RuntimeError(f"Failed to read register definitions from {path}") from err
-    return parse_registers(raw)
+    return parse_registers(read_registers_json(path))
 
 
 async def async_load_registers_from_file(hass: Any | None, path: Path) -> list[RegisterDef]:
     """Load and parse register definitions asynchronously."""
-    try:
-        raw_text = await _async_executor(hass, path.read_text, encoding="utf-8")
-        raw = json.loads(raw_text)
-    except FileNotFoundError as err:  # pragma: no cover
-        raise RuntimeError(f"Register definition file missing: {path}") from err
-    except (OSError, TypeError, ValueError, json.JSONDecodeError) as err:  # pragma: no cover
-        raise RuntimeError(f"Failed to read register definitions from {path}") from err
-    return parse_registers(raw)
+    return parse_registers(await async_read_registers_json(hass, path))
 
