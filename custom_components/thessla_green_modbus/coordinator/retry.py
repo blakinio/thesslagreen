@@ -141,6 +141,47 @@ async def disconnect_and_reconnect_for_retry(
     return None
 
 
+async def _handle_retry_exception(
+    owner: Any,
+    *,
+    register_type: str,
+    start_address: int,
+    attempt: int,
+    exc: Exception,
+    reconnect: bool,
+    timeout: bool = False,
+) -> Exception:
+    """Handle retryable read exception and return the most recent error."""
+    if attempt >= owner.retry:
+        raise exc
+
+    if reconnect:
+        reconnect_error = await disconnect_and_reconnect_for_retry(
+            owner,
+            register_type=register_type,
+            start_address=start_address,
+            attempt=attempt,
+        )
+        if reconnect_error is not None:
+            return reconnect_error
+
+    log_coordinator_retry(
+        operation=f"read:{register_type}:{start_address}",
+        attempt=attempt,
+        max_attempts=owner.retry,
+        exc=exc,
+        backoff=getattr(owner, "backoff", 0.0),
+    )
+    owner._log_read_retry(
+        register_type=register_type,
+        start_address=start_address,
+        attempt=attempt,
+        exc=exc,
+        timeout=timeout,
+    )
+    return exc
+
+
 async def read_with_retry(
     owner: Any,
     read_method: Any,
@@ -172,76 +213,33 @@ async def read_with_retry(
         except _PermanentModbusError:
             raise
         except TimeoutError as exc:
-            last_error = exc
-            if attempt >= owner.retry:
-                raise  # pragma: no cover
-            reconnect_error = await disconnect_and_reconnect_for_retry(
+            last_error = await _handle_retry_exception(
                 owner,
                 register_type=register_type,
                 start_address=start_address,
                 attempt=attempt,
-            )
-            if reconnect_error is not None:
-                last_error = reconnect_error
-                continue
-            log_coordinator_retry(
-                operation=f"read:{register_type}:{start_address}",
-                attempt=attempt,
-                max_attempts=owner.retry,
                 exc=exc,
-                backoff=getattr(owner, "backoff", 0.0),
-            )
-            owner._log_read_retry(
-                register_type=register_type,
-                start_address=start_address,
-                attempt=attempt,
-                exc=exc,
+                reconnect=True,
                 timeout=True,
             )
         except (ModbusIOException, ConnectionException, OSError) as exc:
-            last_error = exc
-            if attempt >= owner.retry:
-                raise
-            reconnect_error = await disconnect_and_reconnect_for_retry(
+            last_error = await _handle_retry_exception(
                 owner,
                 register_type=register_type,
                 start_address=start_address,
                 attempt=attempt,
-            )
-            if reconnect_error is not None:
-                last_error = reconnect_error
-                continue
-            log_coordinator_retry(
-                operation=f"read:{register_type}:{start_address}",
-                attempt=attempt,
-                max_attempts=owner.retry,
                 exc=exc,
-                backoff=getattr(owner, "backoff", 0.0),
-            )
-            owner._log_read_retry(
-                register_type=register_type,
-                start_address=start_address,
-                attempt=attempt,
-                exc=exc,
+                reconnect=True,
             )
         except ModbusException as exc:
-            last_error = exc
-            if attempt >= owner.retry:
-                raise
-            log_coordinator_retry(
-                operation=f"read:{register_type}:{start_address}",
-                attempt=attempt,
-                max_attempts=owner.retry,
-                exc=exc,
-                backoff=getattr(owner, "backoff", 0.0),
-            )
-            owner._log_read_retry(
+            last_error = await _handle_retry_exception(
+                owner,
                 register_type=register_type,
                 start_address=start_address,
                 attempt=attempt,
                 exc=exc,
+                reconnect=False,
             )
-            continue
     if last_error is not None:  # pragma: no cover
         raise last_error  # pragma: no cover
     raise ModbusException(
