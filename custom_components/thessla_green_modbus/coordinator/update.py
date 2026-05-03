@@ -14,6 +14,7 @@ from ..modbus_exceptions import ConnectionException
 from ..utils import utcnow as _utcnow
 from .errors import handle_update_error
 from .update_result import apply_success_result
+from .update_state import begin_update_cycle, finish_update_cycle
 
 if TYPE_CHECKING:
     from .coordinator import ThesslaGreenModbusCoordinator
@@ -49,12 +50,9 @@ async def async_update_data(coordinator: ThesslaGreenModbusCoordinator) -> dict[
     """Fetch data from device and handle failures consistently."""
     start_time = _utcnow()
 
-    if coordinator._update_in_progress:
-        _LOGGER.debug("Data update already running; skipping duplicate task")
-        return coordinator.data or {}
-
-    coordinator._update_in_progress = True
-    coordinator._failed_registers = set()
+    prepared_data = begin_update_cycle(coordinator)
+    if prepared_data is not None:
+        return prepared_data
 
     async with coordinator._write_lock:
         try:
@@ -92,4 +90,4 @@ async def async_update_data(coordinator: ThesslaGreenModbusCoordinator) -> dict[
                 use_helper=False,
             ) from exc
         finally:
-            coordinator._update_in_progress = False
+            finish_update_cycle(coordinator)
