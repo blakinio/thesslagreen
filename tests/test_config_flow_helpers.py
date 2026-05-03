@@ -18,6 +18,7 @@ from custom_components.thessla_green_modbus.config_flow_schema import (
     _build_serial_defaults_and_validators,
 )
 from custom_components.thessla_green_modbus.config_flow_steps import (
+    build_reauth_form_defaults,
     extract_discovered_state,
     initialize_reauth_state,
     resolve_reauth_defaults,
@@ -334,6 +335,22 @@ def test_initialize_reauth_state_initializes_from_entry():
     assert defaults == {"host": "10.0.0.10"}
 
 
+def test_build_reauth_form_defaults_prefers_user_input():
+    defaults = build_reauth_form_defaults(
+        user_input={"host": "from_user"},
+        existing_data={"host": "from_existing"},
+    )
+    assert defaults == {"host": "from_user"}
+
+
+def test_build_reauth_form_defaults_falls_back_to_existing():
+    defaults = build_reauth_form_defaults(
+        user_input=None,
+        existing_data={"host": "from_existing"},
+    )
+    assert defaults == {"host": "from_existing"}
+
+
 def test_vol_invalid_no_path():
     """VOL_INVALID without explicit path should keep empty path."""
     import custom_components.thessla_green_modbus.config_flow as cf_mod
@@ -474,4 +491,3 @@ async def test_call_with_optional_timeout_sync_function():
 # ---------------------------------------------------------------------------
 # Pass 16 — lines 425-428: RTU validation success path
 # ---------------------------------------------------------------------------
-

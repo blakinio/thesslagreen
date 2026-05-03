@@ -63,3 +63,12 @@ def initialize_reauth_state(
     if active_entry_id is None:
         return True, (entry.entry_id if entry else None), dict(defaults)
     return False, active_entry_id, dict(defaults)
+
+
+def build_reauth_form_defaults(
+    *,
+    user_input: dict[str, Any] | None,
+    existing_data: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Build defaults for rendering the reauth form."""
+    return dict(user_input or existing_data or {})

@@ -50,6 +50,7 @@ from .config_flow_runtime import (
 )
 from .config_flow_runtime import run_with_retry as _run_with_retry_impl
 from .config_flow_schema import build_connection_schema as _build_connection_schema_impl
+from .config_flow_steps import build_reauth_form_defaults as _build_reauth_form_defaults_impl
 from .config_flow_steps import extract_discovered_state as _extract_discovered_state_impl
 from .config_flow_steps import initialize_reauth_state as _initialize_reauth_state_impl
 from .config_flow_steps import merge_options_payload as _merge_options_payload_impl
@@ -436,7 +437,10 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
         return self.async_show_form(
             step_id="reauth",
             data_schema=self._build_connection_schema(
-                user_input or self._tg_flow_reauth_existing_data
+                _build_reauth_form_defaults_impl(
+                    user_input=user_input,
+                    existing_data=self._tg_flow_reauth_existing_data,
+                )
             ),
             errors=errors,
         )
