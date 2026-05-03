@@ -67,6 +67,25 @@ def _iter_maintenance_service_bindings(handlers: dict[str, object]):
         yield service, schema, handlers[service]
 
 
+def _maintenance_handlers(
+    reset_filters: object,
+    reset_settings: object,
+    start_pressure_test: object,
+    set_modbus_parameters: object,
+    set_device_name: object,
+    sync_time: object,
+) -> dict[str, object]:
+    """Return maintenance service handlers keyed by service name."""
+    return {
+        "reset_filters": reset_filters,
+        "reset_settings": reset_settings,
+        "start_pressure_test": start_pressure_test,
+        "set_modbus_parameters": set_modbus_parameters,
+        "set_device_name": set_device_name,
+        "sync_time": sync_time,
+    }
+
+
 async def _run_for_targets(
     hass: HomeAssistant,
     call: ServiceCall,
@@ -204,13 +223,13 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
 
         await _run_for_targets(hass, call, deps, _sync_time_for_target)
 
-    handlers = {
-        "reset_filters": reset_filters,
-        "reset_settings": reset_settings,
-        "start_pressure_test": start_pressure_test,
-        "set_modbus_parameters": set_modbus_parameters,
-        "set_device_name": set_device_name,
-        "sync_time": sync_time,
-    }
+    handlers = _maintenance_handlers(
+        reset_filters,
+        reset_settings,
+        start_pressure_test,
+        set_modbus_parameters,
+        set_device_name,
+        sync_time,
+    )
     for service, schema, handler in _iter_maintenance_service_bindings(handlers):
         hass.services.async_register(deps.domain, service, handler, schema)

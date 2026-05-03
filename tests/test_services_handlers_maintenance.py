@@ -14,6 +14,7 @@ from custom_components.thessla_green_modbus.services import (
 )
 from custom_components.thessla_green_modbus.services_handlers_maintenance import (
     _iter_maintenance_service_bindings,
+    _maintenance_handlers,
     _maintenance_registrations,
 )
 from custom_components.thessla_green_modbus.services_schema import (
@@ -297,6 +298,38 @@ def test_maintenance_registrations_service_order_and_schema_count():
         "sync_time",
     ]
 
+
+
+
+def test_maintenance_handlers_keys_stable_and_bound():
+    """Handler map helper returns expected keys and handler bindings."""
+    handlers = {name: object() for name in [
+        "reset_filters",
+        "reset_settings",
+        "start_pressure_test",
+        "set_modbus_parameters",
+        "set_device_name",
+        "sync_time",
+    ]}
+
+    bound = _maintenance_handlers(
+        handlers["reset_filters"],
+        handlers["reset_settings"],
+        handlers["start_pressure_test"],
+        handlers["set_modbus_parameters"],
+        handlers["set_device_name"],
+        handlers["sync_time"],
+    )
+
+    assert list(bound) == [
+        "reset_filters",
+        "reset_settings",
+        "start_pressure_test",
+        "set_modbus_parameters",
+        "set_device_name",
+        "sync_time",
+    ]
+    assert bound == handlers
 
 def test_iter_maintenance_service_bindings_keeps_order_and_schema_binding():
     """Service binding helper keeps registration order and uses matching handler names."""
