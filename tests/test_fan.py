@@ -239,3 +239,16 @@ def test_fan_write_register_not_in_available_skips(mock_coordinator):
     fan = ThesslaGreenFan(mock_coordinator)
     asyncio.run(fan._write_register("air_flow_rate_manual", 50))
     mock_coordinator.async_write_register.assert_not_called()
+
+
+def test_is_writable_holding_register_true(mock_coordinator):
+    """Helper reports True when a register is writable and discovered."""
+    fan = ThesslaGreenFan(mock_coordinator)
+    assert fan._is_writable_holding_register("air_flow_rate_manual") is True  # nosec B101
+
+
+def test_is_writable_holding_register_false_when_missing(mock_coordinator):
+    """Helper reports False when register was not discovered on the device."""
+    mock_coordinator.available_registers["holding_registers"].discard("air_flow_rate_manual")
+    fan = ThesslaGreenFan(mock_coordinator)
+    assert fan._is_writable_holding_register("air_flow_rate_manual") is False  # nosec B101

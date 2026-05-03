@@ -72,6 +72,13 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     """
 
     _MODE_MAP: ClassVar[dict[int, str]] = {0: "auto", 1: "manual", 2: "temporary"}
+    _FLOW_REGISTERS: ClassVar[tuple[str, ...]] = (
+        "supply_air_flow",
+        "supply_flow_rate",
+        "supply_percentage",
+        "air_flow_rate_manual",
+        "air_flow_rate_temporary_2",
+    )
 
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the fan entity."""
@@ -123,15 +130,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     def _get_current_flow_rate(self) -> float | None:
         """Get current flow rate from available registers."""
         # Priority order for reading current flow rate
-        flow_registers = [
-            "supply_air_flow",  # Supply air flow rate
-            "supply_flow_rate",  # CF measured supply flow rate
-            "supply_percentage",  # Supply air percentage
-            "air_flow_rate_manual",  # Manual flow rate setting
-            "air_flow_rate_temporary_2",  # Temporary flow rate setting
-        ]
-
-        for register in flow_registers:
+        for register in self._FLOW_REGISTERS:
             if register in self.coordinator.data:
                 value = self.coordinator.data[register]
                 if value is not None and isinstance(value, int | float):
@@ -148,8 +147,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         """Turn on the fan."""
         try:
             # First ensure system is on
-            holding_regs = self.coordinator.available_registers.get("holding_registers", set())
-            if "on_off_panel_mode" in holding_registers() and "on_off_panel_mode" in holding_regs:
+            if self._is_writable_holding_register("on_off_panel_mode"):
                 await self._write_register("on_off_panel_mode", 1)
 
             # Set flow rate
@@ -168,8 +166,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the fan."""
         try:
-            holding_regs = self.coordinator.available_registers.get("holding_registers", set())
-            if "on_off_panel_mode" in holding_registers() and "on_off_panel_mode" in holding_regs:
+            if self._is_writable_holding_register("on_off_panel_mode"):
                 # If system power control is available, use it to turn off
                 await self._write_register("on_off_panel_mode", 0)
                 self.coordinator.data["on_off_panel_mode"] = 0
@@ -181,7 +178,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                     if current_mode == "manual" or not current_mode
                     else "air_flow_rate_temporary_2"
                 )
-                if register in holding_registers() and register in holding_regs:
+                if self._is_writable_holding_register(register):
                     await self._write_register(register, 0)
                     self.coordinator.data[register] = 0
 
@@ -209,16 +206,11 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
             # Determine which register to write based on current mode
             current_mode = self._get_current_mode()
-            holding_regs = self.coordinator.available_registers.get("holding_registers", set())
-
             if current_mode == "manual" or not current_mode:
                 # Set manual mode and flow rate
-                if "mode" in holding_registers() and "mode" in holding_regs:
+                if self._is_writable_holding_register("mode"):
                     await self._write_register("mode", 1)  # Manual mode
-                if (
-                    "air_flow_rate_manual" in holding_registers()
-                    and "air_flow_rate_manual" in holding_regs
-                ):
+                if self._is_writable_holding_register("air_flow_rate_manual"):
                     await self._write_register("air_flow_rate_manual", actual_percentage)
             else:
                 # Temporary mode - must use 3-register write block
@@ -230,10 +222,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                         raise RuntimeError("Failed to write temporary airflow block")
                     await self.coordinator.async_request_refresh()
                     return
-                if (
-                    "air_flow_rate_temporary_2" in holding_registers()
-                    and "air_flow_rate_temporary_2" in holding_regs
-                ):
+                if self._is_writable_holding_register("air_flow_rate_temporary_2"):
                     await self._write_register("air_flow_rate_temporary_2", actual_percentage)
 
             _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
@@ -272,6 +261,12 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             offset=offset,
             refresh=refresh,
             include_offset=include_offset,
+        )
+
+    def _is_writable_holding_register(self, register_name: str) -> bool:
+        """Return True if a register is writable and available on this device."""
+        return register_name in holding_registers() and register_name in self.coordinator.available_registers.get(
+            "holding_registers", set()
         )
 
     @property
