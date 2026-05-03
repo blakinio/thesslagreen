@@ -144,3 +144,52 @@ def test_handle_write_response_failure_logs_error(coordinator, caplog):
     )
     assert should_retry is False
     assert "Error writing to register mode: err" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_handle_write_attempt_exception_timeout_disconnects_transport(coordinator, caplog):
+    """Timeout should disconnect transport, log warning, and request retry."""
+    coordinator.retry = 3
+    coordinator._transport = MagicMock()
+    coordinator._disconnect = AsyncMock()
+
+    caplog.set_level("WARNING")
+    should_retry = await coordinator._handle_write_attempt_exception(
+        register_name="mode",
+        attempt=1,
+        exc=TimeoutError("late"),
+        timed_out_message="Writing register %s timed out (attempt %d/%d)",
+        persistent_timeout_message="Persistent timeout writing register %s",
+        failed_message="Failed to write register %s",
+        retry_message="Retrying write to register %s after error: %s",
+        unexpected_message="Unexpected error writing register %s",
+    )
+
+    assert should_retry is True
+    coordinator._disconnect.assert_awaited_once()
+    assert "Writing register mode timed out (attempt 1/3)" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_handle_write_attempt_exception_final_modbus_failure(coordinator, caplog):
+    """Final Modbus/connection failure should stop retries."""
+    from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
+
+    coordinator.retry = 2
+    coordinator._disconnect = AsyncMock()
+    caplog.set_level("ERROR")
+
+    should_retry = await coordinator._handle_write_attempt_exception(
+        register_name="100",
+        attempt=2,
+        exc=ModbusException("boom"),
+        timed_out_message="Writing registers at %s timed out (attempt %d/%d)",
+        persistent_timeout_message="Persistent timeout writing registers at %s",
+        failed_message="Failed to write registers at %s",
+        retry_message="Retrying multi-register write at %s after error: %s",
+        unexpected_message="Unexpected error writing registers at %s",
+    )
+
+    assert should_retry is False
+    coordinator._disconnect.assert_awaited_once()
+    assert "Failed to write registers at 100" in caplog.text

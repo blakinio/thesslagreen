@@ -243,6 +243,53 @@ class _CoordinatorScheduleMixin:
         _LOGGER.info(retry_message)
         return True
 
+
+    async def _handle_write_attempt_exception(
+        self,
+        *,
+        register_name: str,
+        attempt: int,
+        exc: Exception,
+        timed_out_message: str,
+        persistent_timeout_message: str,
+        failed_message: str,
+        retry_message: str,
+        unexpected_message: str,
+    ) -> bool:
+        """Handle write attempt exception paths.
+
+        Returns True when caller should retry, False when operation must stop.
+        """
+        if isinstance(exc, (ModbusException, ConnectionException)):
+            await self._disconnect()
+            if attempt == self.retry:
+                _LOGGER.error(failed_message, register_name, exc_info=True)
+                return False
+            _LOGGER.info(retry_message, register_name, exc)
+            return True
+
+        if isinstance(exc, TimeoutError):
+            if self._transport is not None:
+                await self._disconnect()
+            _LOGGER.warning(
+                timed_out_message,
+                register_name,
+                attempt,
+                self.retry,
+                exc_info=True,
+            )
+            if attempt == self.retry:
+                _LOGGER.error(persistent_timeout_message, register_name)
+                return False
+            return True
+
+        if isinstance(exc, OSError):
+            await self._disconnect()
+            _LOGGER.exception(unexpected_message, register_name)
+            return False
+
+        raise exc
+
     async def _finalize_write_result(self, refresh_after_write: bool) -> bool:
         """Finish write operation with optional refresh."""
         if refresh_after_write:
@@ -340,42 +387,20 @@ class _CoordinatorScheduleMixin:
                             register_name,
                         )
                         break
-                    except (ModbusException, ConnectionException) as exc:
-                        await self._disconnect()
-                        if attempt == self.retry:
-                            _LOGGER.error(
-                                "Failed to write register %s",
-                                register_name,
-                                exc_info=True,
-                            )
-                            return False
-                        _LOGGER.info(
-                            "Retrying write to register %s after error: %s",
-                            register_name,
-                            exc,
+                    except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:
+                        should_retry = await self._handle_write_attempt_exception(
+                            register_name=register_name,
+                            attempt=attempt,
+                            exc=exc,
+                            timed_out_message="Writing register %s timed out (attempt %d/%d)",
+                            persistent_timeout_message="Persistent timeout writing register %s",
+                            failed_message="Failed to write register %s",
+                            retry_message="Retrying write to register %s after error: %s",
+                            unexpected_message="Unexpected error writing register %s",
                         )
-                        continue
-                    except TimeoutError:
-                        if self._transport is not None:
-                            await self._disconnect()
-                        _LOGGER.warning(
-                            "Writing register %s timed out (attempt %d/%d)",
-                            register_name,
-                            attempt,
-                            self.retry,
-                            exc_info=True,
-                        )
-                        if attempt == self.retry:
-                            _LOGGER.error(
-                                "Persistent timeout writing register %s",
-                                register_name,
-                            )
+                        if not should_retry:
                             return False
                         continue
-                    except OSError:
-                        await self._disconnect()
-                        _LOGGER.exception("Unexpected error writing register %s", register_name)
-                        return False
 
             except (ModbusException, ConnectionException):  # pragma: no cover - safety
                 _LOGGER.exception("Failed to write register %s", register_name)
@@ -430,42 +455,20 @@ class _CoordinatorScheduleMixin:
                             start_address,
                         )
                         break
-                    except (ModbusException, ConnectionException) as exc:
-                        await self._disconnect()
-                        if attempt == self.retry:
-                            _LOGGER.error(
-                                "Failed to write registers at %s",
-                                start_address,
-                                exc_info=True,
-                            )
-                            return False
-                        _LOGGER.info(
-                            "Retrying multi-register write at %s after error: %s",
-                            start_address,
-                            exc,
+                    except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:
+                        should_retry = await self._handle_write_attempt_exception(
+                            register_name=str(start_address),
+                            attempt=attempt,
+                            exc=exc,
+                            timed_out_message="Writing registers at %s timed out (attempt %d/%d)",
+                            persistent_timeout_message="Persistent timeout writing registers at %s",
+                            failed_message="Failed to write registers at %s",
+                            retry_message="Retrying multi-register write at %s after error: %s",
+                            unexpected_message="Unexpected error writing registers at %s",
                         )
-                        continue
-                    except TimeoutError:
-                        if self._transport is not None:
-                            await self._disconnect()
-                        _LOGGER.warning(
-                            "Writing registers at %s timed out (attempt %d/%d)",
-                            start_address,
-                            attempt,
-                            self.retry,
-                            exc_info=True,
-                        )
-                        if attempt == self.retry:
-                            _LOGGER.error(
-                                "Persistent timeout writing registers at %s",
-                                start_address,
-                            )
+                        if not should_retry:
                             return False
                         continue
-                    except OSError:
-                        await self._disconnect()
-                        _LOGGER.exception("Unexpected error writing registers at %s", start_address)
-                        return False
 
             except (ModbusException, ConnectionException):  # pragma: no cover - safety
                 _LOGGER.exception("Failed to write registers at %s", start_address)
