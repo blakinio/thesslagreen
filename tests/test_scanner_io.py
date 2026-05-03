@@ -10,6 +10,7 @@ from custom_components.thessla_green_modbus.scanner.io_read import (
     _build_register_chunks,
     _extend_or_abort_register_results,
     _finalize_register_read_failure,
+    _handle_input_attempt_exception,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -189,6 +190,40 @@ async def test_read_holding_cancelled_modbusio_stops_retry_loop():
     assert result is None
     assert call_mock.await_count == 1
     sleep_mock.assert_not_called()
+
+
+def test_handle_input_attempt_exception_logs_retry_and_delegates():
+    """Input-attempt helper should centralize retry logging and delegation."""
+    scanner = MagicMock(retry=3, backoff=0.1)
+    exc = TimeoutError("timeout")
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.scanner.io_read.log_scanner_retry"
+        ) as retry_log,
+        patch(
+            "custom_components.thessla_green_modbus.scanner.io_read._handle_input_read_exception",
+            return_value=(True, True),
+        ) as delegate,
+    ):
+        aborted, stop = _handle_input_attempt_exception(
+            scanner,
+            exc,
+            start=10,
+            end=11,
+            address=10,
+            count=2,
+            attempt=2,
+        )
+
+    assert (aborted, stop) == (True, True)
+    retry_log.assert_called_once_with(
+        operation="read_input:10-11",
+        attempt=2,
+        max_attempts=3,
+        exc=exc,
+        backoff=0.1,
+    )
+    delegate.assert_called_once()
 
 
 def test_finalize_register_read_failure_input_aborted_logs_abort_only(caplog):
