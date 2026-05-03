@@ -188,21 +188,21 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         parsed_exception = self._parse_exception_response_payload(payload, function=function)
         raise ModbusException(f"Modbus exception {parsed_exception} for function {function}")
 
-    async def _read_register_data_response(self, header: bytes) -> bytes:
-        byte_count_raw = await self._read_exactly(1)
-        byte_count = byte_count_raw[0]
-        data = await self._read_exactly(byte_count)
-        crc_bytes = await self._read_exactly(2)
-        payload = header + byte_count_raw + data
-        self._validate_crc(payload, crc_bytes)
-        return data
-
-    async def _read_write_body_response(self, header: bytes) -> bytes:
-        body = await self._read_exactly(4)
+    async def _read_response_payload(self, header: bytes, body_length: int) -> bytes:
+        body = await self._read_exactly(body_length)
         crc_bytes = await self._read_exactly(2)
         payload = header + body
         self._validate_crc(payload, crc_bytes)
         return body
+
+    async def _read_register_data_response(self, header: bytes) -> bytes:
+        byte_count_raw = await self._read_exactly(1)
+        byte_count = byte_count_raw[0]
+        data = await self._read_response_payload(header + byte_count_raw, byte_count)
+        return data
+
+    async def _read_write_body_response(self, header: bytes) -> bytes:
+        return await self._read_response_payload(header, 4)
 
     async def _read_response(self, slave_id: int, function: int) -> bytes:
         header = await self._read_exactly(2)

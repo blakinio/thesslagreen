@@ -217,6 +217,33 @@ def test_build_write_multiple_frame_structure():
     assert frame[1] == 16  # function code 0x10
 
 
+@pytest.mark.asyncio
+async def test_read_response_payload_reads_body_and_validates_crc():
+    t = _make_raw_tcp()
+    t._read_exactly = AsyncMock(side_effect=[b"\x10\x20", b"\xaa\xbb"])
+    t._validate_crc = MagicMock()
+
+    payload = await t._read_response_payload(b"\x01\x04", 2)
+
+    assert payload == b"\x10\x20"
+    t._read_exactly.assert_any_await(2)
+    t._read_exactly.assert_any_await(2)
+    t._validate_crc.assert_called_once_with(b"\x01\x04\x10\x20", b"\xaa\xbb")
+
+
+@pytest.mark.asyncio
+async def test_read_register_data_response_uses_payload_helper():
+    t = _make_raw_tcp()
+    t._read_exactly = AsyncMock(return_value=b"\x04")
+    t._read_response_payload = AsyncMock(return_value=b"\x00\x01\x00\x02")
+
+    payload = await t._read_register_data_response(b"\x01\x04")
+
+    assert payload == b"\x00\x01\x00\x02"
+    t._read_response_payload.assert_awaited_once_with(b"\x01\x04\x04", 4)
+
+
+
 # ---------------------------------------------------------------------------
 # _read_response paths
 # ---------------------------------------------------------------------------
