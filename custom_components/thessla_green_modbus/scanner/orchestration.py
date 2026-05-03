@@ -21,6 +21,7 @@ from ..modbus_helpers import group_reads as _group_reads
 from ..modbus_transport import RtuModbusTransport
 from ..scanner_device_info import DeviceCapabilities, ScannerDeviceInfo
 from . import custom_scan as scanner_custom_scan
+from .full_scan_phase import apply_word_register_block
 from .io import is_request_cancelled_error
 
 _LOGGER = logging.getLogger(__name__)
@@ -185,26 +186,15 @@ async def run_full_scan(
                 range(start, start + count)
             )
             continue
-        for offset in range(count):
-            addr = start + offset
-            if offset >= len(input_data):
-                if scanner._registers.get(4, {}).get(addr) is None:
-                    base = input_data[0] if input_data else start
-                    unknown_registers["input_registers"][addr] = int(base) + offset
-                continue
-            value = input_data[offset]
-            reg_name = scanner._registers.get(4, {}).get(addr)
-            if reg_name and scanner._is_valid_register_value(reg_name, value):
-                names = scanner._alias_names(4, addr)
-                if names:
-                    scanner.available_registers["input_registers"].update(names)
-                else:
-                    scanner.available_registers["input_registers"].add(reg_name)
-            else:
-                unknown_registers["input_registers"][addr] = value
-                if reg_name:
-                    scanner.failed_addresses["invalid_values"]["input_registers"].add(addr)
-                    scanner._log_invalid_value(reg_name, value)
+        apply_word_register_block(
+            scanner,
+            function=4,
+            register_group="input_registers",
+            start=start,
+            count=count,
+            data=input_data,
+            unknown_registers=unknown_registers,
+        )
 
     for start, count in _group_reads(
         range(holding_max + 1), max_block_size=scanner.effective_batch
@@ -220,26 +210,15 @@ async def run_full_scan(
                 range(start, start + count)
             )
             continue
-        for offset in range(count):
-            addr = start + offset
-            if offset >= len(holding_data):
-                if scanner._registers.get(3, {}).get(addr) is None:
-                    base = holding_data[0] if holding_data else start
-                    unknown_registers["holding_registers"][addr] = int(base) + offset
-                continue
-            value = holding_data[offset]
-            reg_name = scanner._registers.get(3, {}).get(addr)
-            if reg_name and scanner._is_valid_register_value(reg_name, value):
-                names = scanner._alias_names(3, addr)
-                if names:
-                    scanner.available_registers["holding_registers"].update(names)
-                else:
-                    scanner.available_registers["holding_registers"].add(reg_name)
-            else:
-                unknown_registers["holding_registers"][addr] = value
-                if reg_name:
-                    scanner.failed_addresses["invalid_values"]["holding_registers"].add(addr)
-                    scanner._log_invalid_value(reg_name, value)
+        apply_word_register_block(
+            scanner,
+            function=3,
+            register_group="holding_registers",
+            start=start,
+            count=count,
+            data=holding_data,
+            unknown_registers=unknown_registers,
+        )
 
     for start, count in _group_reads(range(coil_max + 1), max_block_size=scanner.effective_batch):
         scanned_registers["coil_registers"] += count
