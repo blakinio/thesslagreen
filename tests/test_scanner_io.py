@@ -12,6 +12,10 @@ from custom_components.thessla_green_modbus.scanner.io_read import (
     _finalize_register_read_failure,
     _handle_input_attempt_exception,
 )
+from custom_components.thessla_green_modbus.scanner.io_read_helpers import (
+    build_read_attempt_meta,
+    normalize_bit_read_result,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -284,3 +288,21 @@ def test_extend_or_abort_register_results_handles_none_and_appends():
     can_continue, payload = _extend_or_abort_register_results(results, [2, 3])
     assert can_continue is True
     assert payload == [1, 2, 3]
+
+
+def test_build_read_attempt_meta_sets_expected_range():
+    """Read-attempt metadata should normalize start/end from address/count."""
+    meta = build_read_attempt_meta(30, 4)
+    assert (meta.start, meta.end, meta.address, meta.count) == (30, 33, 30, 4)
+
+
+def test_normalize_bit_read_result_handles_error_and_success():
+    """Bit-result normalizer should filter errors and truncate to count."""
+    error_response = MagicMock()
+    error_response.isError.return_value = True
+    assert normalize_bit_read_result(error_response, 2) is None
+
+    ok_response = MagicMock()
+    ok_response.isError.return_value = False
+    ok_response.bits = [True, False, True]
+    assert normalize_bit_read_result(ok_response, 2) == [True, False]
