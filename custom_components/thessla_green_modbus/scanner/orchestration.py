@@ -147,51 +147,39 @@ async def run_full_scan(
     scanned_registers: dict[str, int],
 ) -> None:
     """Scan all registers up to max known address (full_register_scan mode)."""
-    for start, count in _group_reads(range(input_max + 1), max_block_size=scanner.effective_batch):
-        scanned_registers["input_registers"] += count
-        input_data = (
-            await scanner._read_input(scanner._client, start, count, skip_cache=True)
-            if scanner._client is not None
-            else await scanner._read_input(None, start, count, skip_cache=True)
-        )
-        if input_data is None:
-            scanner.failed_addresses["modbus_exceptions"]["input_registers"].update(
-                range(start, start + count)
+    async def _run_word_phase(max_addr: int, scan_key: str, func: int, read_fn: Any) -> None:
+        for start, count in _group_reads(range(max_addr + 1), max_block_size=scanner.effective_batch):
+            scanned_registers[scan_key] += count
+            data = await read_fn(start, count)
+            if data is None:
+                scanner.failed_addresses["modbus_exceptions"][scan_key].update(range(start, start + count))
+                continue
+            apply_word_register_block(
+                scanner,
+                function=func,
+                register_group=scan_key,
+                start=start,
+                count=count,
+                data=data,
+                unknown_registers=unknown_registers,
             )
-            continue
-        apply_word_register_block(
-            scanner,
-            function=4,
-            register_group="input_registers",
-            start=start,
-            count=count,
-            data=input_data,
-            unknown_registers=unknown_registers,
-        )
 
-    for start, count in _group_reads(
-        range(holding_max + 1), max_block_size=scanner.effective_batch
-    ):
-        scanned_registers["holding_registers"] += count
-        holding_data = (
-            await scanner._read_holding(scanner._client, start, count, skip_cache=True)
-            if scanner._client is not None
-            else await scanner._read_holding(None, start, count, skip_cache=True)
-        )
-        if holding_data is None:
-            scanner.failed_addresses["modbus_exceptions"]["holding_registers"].update(
-                range(start, start + count)
-            )
-            continue
-        apply_word_register_block(
-            scanner,
-            function=3,
-            register_group="holding_registers",
-            start=start,
-            count=count,
-            data=holding_data,
-            unknown_registers=unknown_registers,
-        )
+    await _run_word_phase(
+        input_max,
+        "input_registers",
+        4,
+        lambda start, count: scanner._read_input(
+            scanner._client if scanner._client is not None else None, start, count, skip_cache=True
+        ),
+    )
+    await _run_word_phase(
+        holding_max,
+        "holding_registers",
+        3,
+        lambda start, count: scanner._read_holding(
+            scanner._client if scanner._client is not None else None, start, count, skip_cache=True
+        ),
+    )
 
     for start, count in _group_reads(range(coil_max + 1), max_block_size=scanner.effective_batch):
         scanned_registers["coil_registers"] += count
