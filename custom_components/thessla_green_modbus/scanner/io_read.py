@@ -309,6 +309,104 @@ def _handle_input_attempt_exception(
     )
 
 
+async def _execute_word_read_attempt(
+    scanner: Any,
+    *,
+    transport: Any,
+    client: Any,
+    method_name: str,
+    address: int,
+    count: int,
+    attempt: int,
+) -> Any:
+    """Execute one word-register read attempt via transport or client fallback."""
+    if transport is not None:
+        return await getattr(transport, method_name)(scanner.slave_id, address, count=count)
+    return await _call_modbus_with_fallback(
+        scanner,
+        getattr(client, method_name),
+        scanner.slave_id,
+        address,
+        count=count,
+        attempt=attempt,
+        retry=scanner.retry,
+        timeout=scanner.timeout,
+        backoff=scanner.backoff,
+        backoff_jitter=scanner.backoff_jitter,
+    )
+
+
+async def _run_input_read_retry_loop(
+    scanner: Any,
+    *,
+    transport: Any,
+    client: Any,
+    address: int,
+    count: int,
+    start: int,
+    end: int,
+    skip_cache: bool,
+) -> list[int] | None:
+    """Run input read retry loop and finalize failure state when needed."""
+    attempted_reads = 0
+    aborted_transiently = False
+    for attempt in range(1, scanner.retry + 1):
+        attempted_reads = attempt
+        try:
+            response = await _execute_word_read_attempt(
+                scanner,
+                transport=transport,
+                client=client,
+                method_name="read_input_registers",
+                address=address,
+                count=count,
+                attempt=attempt,
+            )
+            done, payload = _process_register_response(
+                scanner,
+                response=response,
+                register_type="input_registers",
+                start=start,
+                end=end,
+                address=address,
+                count=count,
+                skip_cache=skip_cache,
+            )
+            if done:
+                if payload is not None:
+                    _LOGGER.debug("Read input registers %d-%d: %s", start, end, payload)
+                return payload
+        except (ModbusIOException, TimeoutError, OSError, ModbusException, ConnectionException) as exc:
+            aborted, stop = _handle_input_attempt_exception(
+                scanner,
+                exc,
+                start=start,
+                end=end,
+                address=address,
+                count=count,
+                attempt=attempt,
+            )
+            aborted_transiently = aborted_transiently or aborted
+            if stop:
+                break
+        await _sleep_retry_backoff(
+            backoff=scanner.backoff,
+            backoff_jitter=scanner.backoff_jitter,
+            attempt=attempt,
+            retry=scanner.retry,
+        )
+    _finalize_register_read_failure(
+        scanner,
+        register_type="input_registers",
+        start=start,
+        end=end,
+        retry=scanner.retry,
+        attempted_reads=attempted_reads,
+        aborted_transiently=aborted_transiently,
+    )
+    return None
+
+
 async def read_input(
     scanner: Any,
     client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
@@ -328,99 +426,16 @@ async def read_input(
 
     transport, client = resolve_transport_and_client(scanner, client)
 
-    attempted_reads = 0
-    aborted_transiently = False
-    for attempt in range(1, scanner.retry + 1):
-        attempted_reads = attempt
-        try:
-            if transport is not None:
-                response = await transport.read_input_registers(
-                    scanner.slave_id, address, count=count
-                )
-            else:
-                response = await _call_modbus_with_fallback(
-                    scanner,
-                    client.read_input_registers,
-                    scanner.slave_id,
-                    address,
-                    count=count,
-                    attempt=attempt,
-                    retry=scanner.retry,
-                    timeout=scanner.timeout,
-                    backoff=scanner.backoff,
-                    backoff_jitter=scanner.backoff_jitter,
-                )
-            done, payload = _process_register_response(
-                scanner,
-                response=response,
-                register_type="input_registers",
-                start=start,
-                end=end,
-                address=address,
-                count=count,
-                skip_cache=skip_cache,
-            )
-            if done:
-                if payload is not None:
-                    _LOGGER.debug("Read input registers %d-%d: %s", start, end, payload)
-                return payload
-        except ModbusIOException as exc:
-            aborted, stop = _handle_input_attempt_exception(
-                scanner,
-                exc,
-                start=start,
-                end=end,
-                address=address,
-                count=count,
-                attempt=attempt,
-            )
-            aborted_transiently = aborted_transiently or aborted
-            if stop:
-                break
-        except (TimeoutError, OSError) as exc:
-            aborted, stop = _handle_input_attempt_exception(
-                scanner,
-                exc,
-                start=start,
-                end=end,
-                address=address,
-                count=count,
-                attempt=attempt,
-            )
-            aborted_transiently = aborted_transiently or aborted
-            if stop:
-                break
-        except (ModbusException, ConnectionException) as exc:
-            aborted, stop = _handle_input_attempt_exception(
-                scanner,
-                exc,
-                start=start,
-                end=end,
-                address=address,
-                count=count,
-                attempt=attempt,
-            )
-            aborted_transiently = aborted_transiently or aborted
-            if stop:
-                break
-
-        await _sleep_retry_backoff(
-            backoff=scanner.backoff,
-            backoff_jitter=scanner.backoff_jitter,
-            attempt=attempt,
-            retry=scanner.retry,
-        )
-
-    _finalize_register_read_failure(
+    return await _run_input_read_retry_loop(
         scanner,
-        register_type="input_registers",
+        transport=transport,
+        client=client,
+        address=address,
+        count=count,
         start=start,
         end=end,
-        retry=scanner.retry,
-        attempted_reads=attempted_reads,
-        aborted_transiently=aborted_transiently,
+        skip_cache=skip_cache,
     )
-    return None
 
 
 async def read_register_block(
