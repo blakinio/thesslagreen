@@ -193,3 +193,33 @@ async def test_handle_write_attempt_exception_final_modbus_failure(coordinator, 
     assert should_retry is False
     coordinator._disconnect.assert_awaited_once()
     assert "Failed to write registers at 100" in caplog.text
+
+
+def test_handle_successful_single_register_write_with_refresh(coordinator, caplog):
+    """Single-register success helper should clear failure and request refresh."""
+    coordinator._clear_register_failure = MagicMock()
+    caplog.set_level("INFO")
+
+    refresh_after_write = coordinator._handle_successful_single_register_write(
+        register_name="mode",
+        original_value=1,
+        refresh=True,
+    )
+
+    assert refresh_after_write is True
+    coordinator._clear_register_failure.assert_called_once_with("mode")
+    assert "Successfully wrote 1 to register mode" in caplog.text
+
+
+def test_handle_successful_single_register_write_without_refresh(coordinator):
+    """Single-register success helper should preserve refresh=False."""
+    coordinator._clear_register_failure = MagicMock()
+
+    refresh_after_write = coordinator._handle_successful_single_register_write(
+        register_name="mode",
+        original_value=1,
+        refresh=False,
+    )
+
+    assert refresh_after_write is False
+    coordinator._clear_register_failure.assert_called_once_with("mode")

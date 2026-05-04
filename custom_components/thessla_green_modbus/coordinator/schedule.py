@@ -296,6 +296,24 @@ class _CoordinatorScheduleMixin:
             await _safe_request_refresh(self)
         return True
 
+    def _handle_successful_single_register_write(
+        self,
+        *,
+        register_name: str,
+        original_value: float | str | list[int] | tuple[int, ...],
+        refresh: bool,
+    ) -> bool:
+        """Apply common success side effects for single-register write path."""
+        # Successful write: remove from failed set so the next
+        # poll doesn't skip this register's chunk entirely.
+        self._clear_register_failure(register_name)
+        _LOGGER.info(
+            "Successfully wrote %s to register %s",
+            original_value,
+            register_name,
+        )
+        return refresh
+
     def _write_response_ok(self, response: Any) -> bool:
         """Return True when a Modbus write response indicates success."""
         return response is not None and not response.isError()
@@ -377,14 +395,10 @@ class _CoordinatorScheduleMixin:
                                 return False
                             continue
 
-                        refresh_after_write = refresh
-                        # Successful write: remove from failed set so the next
-                        # poll doesn't skip this register's chunk entirely.
-                        self._clear_register_failure(register_name)
-                        _LOGGER.info(
-                            "Successfully wrote %s to register %s",
-                            original_value,
-                            register_name,
+                        refresh_after_write = self._handle_successful_single_register_write(
+                            register_name=register_name,
+                            original_value=original_value,
+                            refresh=refresh,
                         )
                         break
                     except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:
