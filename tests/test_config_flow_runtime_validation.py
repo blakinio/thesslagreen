@@ -3,6 +3,7 @@
 import pytest
 from custom_components.thessla_green_modbus.config_flow_device_validation import (
     _build_validation_result,
+    _create_scanner,
     _require_verify_connection,
 )
 from custom_components.thessla_green_modbus.scanner.core import DeviceCapabilities
@@ -43,3 +44,50 @@ def test_build_validation_result_attaches_capabilities():
     assert payload["title"] == "Test Device"
     assert payload["device_info"] == {"model": "x"}
     assert payload["scan_result"]["capabilities"] == {"basic_control": True}
+
+
+@pytest.mark.asyncio
+async def test_create_scanner_uses_normalized_params():
+    recorded: dict[str, object] = {}
+
+    class _FakeScanner:
+        async def verify_connection(self):
+            return None
+
+        async def scan_device(self):
+            return {"device_info": {"model": "ok"}}
+
+    class _FakeScannerCls:
+        @staticmethod
+        async def create(**kwargs):
+            recorded.update(kwargs)
+            return _FakeScanner()
+
+    async def _run_with_retry(func, retries, backoff):
+        return await func()
+
+    scanner = await _create_scanner(
+        scanner_cls=_FakeScannerCls,
+        hass=object(),
+        params={
+            "host": "127.0.0.1",
+            "port": 502,
+            "slave_id": 10,
+            "timeout": 5.0,
+            "deep_scan": True,
+            "connection_type": "tcp",
+            "connection_mode": None,
+            "serial_port": None,
+            "baud_rate": None,
+            "parity": "N",
+            "stop_bits": 1,
+        },
+        default_retry=3,
+        config_flow_backoff=0.1,
+        run_with_retry=_run_with_retry,
+    )
+
+    assert scanner is not None
+    assert recorded["host"] == "127.0.0.1"
+    assert recorded["port"] == 502
+    assert recorded["slave_id"] == 10

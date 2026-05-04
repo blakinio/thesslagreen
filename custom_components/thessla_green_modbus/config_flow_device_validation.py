@@ -140,6 +140,39 @@ async def _run_scanner_validation(
     return _validate_scan_result(await run_scanner_call(scanner.scan_device, timeout))
 
 
+async def _create_scanner(
+    *,
+    scanner_cls: Any,
+    hass: Any,
+    params: dict[str, Any],
+    default_retry: int,
+    config_flow_backoff: float,
+    run_with_retry: Callable[[Callable[[], Awaitable[Any]], int, float], Awaitable[Any]],
+) -> Any:
+    """Create scanner instance using normalized connection parameters."""
+    return await run_with_retry(
+        lambda: scanner_cls.create(
+            host=params["host"],
+            port=params["port"],
+            slave_id=params["slave_id"],
+            timeout=params["timeout"],
+            retry=default_retry,
+            backoff=config_flow_backoff,
+            deep_scan=params["deep_scan"],
+            connection_type=params["connection_type"],
+            connection_mode=params["connection_mode"],
+            serial_port=params["serial_port"],
+            baud_rate=params["baud_rate"],
+            parity=params["parity"],
+            stop_bits=params["stop_bits"],
+            hass=hass,
+        ),
+        default_retry,
+        config_flow_backoff,
+    )
+
+
+
 def _map_validation_exception(
     exc: BaseException,
     *,
@@ -268,25 +301,13 @@ async def validate_input_impl(
         *timeout_exceptions,
     )
     try:
-        scanner = await run_with_retry(
-            lambda: scanner_cls.create(
-                host=params["host"],
-                port=params["port"],
-                slave_id=params["slave_id"],
-                timeout=params["timeout"],
-                retry=default_retry,
-                backoff=config_flow_backoff,
-                deep_scan=params["deep_scan"],
-                connection_type=params["connection_type"],
-                connection_mode=params["connection_mode"],
-                serial_port=params["serial_port"],
-                baud_rate=params["baud_rate"],
-                parity=params["parity"],
-                stop_bits=params["stop_bits"],
-                hass=hass,
-            ),
-            default_retry,
-            config_flow_backoff,
+        scanner = await _create_scanner(
+            scanner_cls=scanner_cls,
+            hass=hass,
+            params=params,
+            default_retry=default_retry,
+            config_flow_backoff=config_flow_backoff,
+            run_with_retry=run_with_retry,
         )
 
         run_scanner_call = _build_timeout_runner(
