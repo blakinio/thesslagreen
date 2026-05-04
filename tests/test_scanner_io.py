@@ -233,7 +233,9 @@ def test_handle_input_attempt_exception_logs_retry_and_delegates():
 def test_finalize_register_read_failure_input_aborted_logs_abort_only(caplog):
     """Input aborted transiently should not mark failed range or emit terminal failure."""
     scanner = MagicMock()
-    scanner.failed_addresses = {"modbus_exceptions": {"input_registers": set(), "holding_registers": set()}}
+    scanner.failed_addresses = {
+        "modbus_exceptions": {"input_registers": set(), "holding_registers": set()}
+    }
 
     with caplog.at_level(logging.WARNING):
         _finalize_register_read_failure(
@@ -254,7 +256,9 @@ def test_finalize_register_read_failure_input_aborted_logs_abort_only(caplog):
 def test_finalize_register_read_failure_holding_non_aborted_marks_and_logs(caplog):
     """Holding terminal failure should mark full range and emit error log."""
     scanner = MagicMock()
-    scanner.failed_addresses = {"modbus_exceptions": {"input_registers": set(), "holding_registers": set()}}
+    scanner.failed_addresses = {
+        "modbus_exceptions": {"input_registers": set(), "holding_registers": set()}
+    }
 
     with caplog.at_level(logging.ERROR):
         _finalize_register_read_failure(

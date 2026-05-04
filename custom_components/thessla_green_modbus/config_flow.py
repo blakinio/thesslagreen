@@ -411,7 +411,9 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
         if should_initialize:
             self._tg_flow_reauth_entry_id = reauth_entry_id
             self._tg_flow_reauth_existing_data = reauth_defaults
-            return self._show_connection_form(step_id="reauth", defaults=reauth_defaults, errors=errors)
+            return self._show_connection_form(
+                step_id="reauth", defaults=reauth_defaults, errors=errors
+            )
 
         if user_input is not None:
             info, submit_errors = await _process_reauth_submission_impl(

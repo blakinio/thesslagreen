@@ -79,12 +79,18 @@ def _build_connection_type_field(connection_default: str) -> dict[Any, Any]:
                 "selector": {
                     "select": {
                         "options": [
-                            {"value": CONNECTION_TYPE_TCP, "label": f"{DOMAIN}.connection_type_tcp"},
+                            {
+                                "value": CONNECTION_TYPE_TCP,
+                                "label": f"{DOMAIN}.connection_type_tcp",
+                            },
                             {
                                 "value": CONNECTION_TYPE_TCP_RTU,
                                 "label": f"{DOMAIN}.connection_type_tcp_rtu",
                             },
-                            {"value": CONNECTION_TYPE_RTU, "label": f"{DOMAIN}.connection_type_rtu"},
+                            {
+                                "value": CONNECTION_TYPE_RTU,
+                                "label": f"{DOMAIN}.connection_type_rtu",
+                            },
                         ]
                     }
                 }

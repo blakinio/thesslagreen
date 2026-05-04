@@ -1,7 +1,6 @@
 # mypy: ignore-errors
 """Split tests from test_services_handlers.py."""
 
-
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -110,6 +109,7 @@ async def test_set_airflow_schedule_basic(monkeypatch):
     assert "setting_summer_mon_1" in written
     assert not any(k.endswith("_period1_end") for k in written)
 
+
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_with_temperature(monkeypatch):
     """set_airflow_schedule writes temp register when provided."""
@@ -133,6 +133,7 @@ async def test_set_airflow_schedule_with_temperature(monkeypatch):
     written = [c.args[0] for c in coord.async_write_register.call_args_list]
     assert "schedule_summer_fri_2" in written
     assert "setting_summer_fri_2" in written
+
 
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_clamp_rate(monkeypatch):
@@ -160,6 +161,7 @@ async def test_set_airflow_schedule_clamp_rate(monkeypatch):
     assert setting_calls
     assert setting_calls[0].args[1] == (80 << 8)
 
+
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_write_failure(monkeypatch):
     """set_airflow_schedule aborts on write failure."""
@@ -185,6 +187,7 @@ async def test_set_airflow_schedule_write_failure(monkeypatch):
 # set_bypass_parameters
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_clamp_bad_min(monkeypatch):
     """_clamp_airflow_rate falls back to 0 when min_percentage is non-numeric."""
@@ -206,6 +209,7 @@ async def test_set_airflow_schedule_clamp_bad_min(monkeypatch):
     await handler(call)  # should not raise
     coord.async_request_refresh.assert_awaited_once()
 
+
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_clamp_bad_max(monkeypatch):
     """_clamp_airflow_rate falls back to 150 when max_percentage is non-numeric."""
@@ -226,6 +230,7 @@ async def test_set_airflow_schedule_clamp_bad_max(monkeypatch):
     )
     await handler(call)  # should not raise
     coord.async_request_refresh.assert_awaited_once()
+
 
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_clamp_inverted_bounds(monkeypatch):
@@ -258,6 +263,7 @@ async def test_set_airflow_schedule_clamp_inverted_bounds(monkeypatch):
 # set_special_mode — duration write failure (lines 361-366)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_setting_write_failure(monkeypatch):
     """set_airflow_schedule aborts when AATT setting write fails (2nd write)."""
@@ -279,6 +285,7 @@ async def test_set_airflow_schedule_setting_write_failure(monkeypatch):
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
+
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_start_write_failure(monkeypatch):
     """set_airflow_schedule aborts when start write fails (1st write)."""
@@ -299,6 +306,7 @@ async def test_set_airflow_schedule_start_write_failure(monkeypatch):
     )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
+
 
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_temp_write_failure(monkeypatch):
@@ -326,4 +334,3 @@ async def test_set_airflow_schedule_temp_write_failure(monkeypatch):
 # ---------------------------------------------------------------------------
 # set_bypass_parameters — min_temp write failure (lines 495-496)
 # ---------------------------------------------------------------------------
-

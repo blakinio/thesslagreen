@@ -18,11 +18,27 @@ class TestThesslaGreenClimate:
         coordinator = MagicMock()
         coordinator.host = "192.168.1.100"
         coordinator.slave_id = 10
-        coordinator.device_scan_result = {"device_info": {"device_name": "Test AirPack", "firmware": "4.85.0"}}
-        coordinator.available_registers = {"holding_registers": {"mode", "on_off_panel_mode", "air_flow_rate_manual"}}
-        coordinator.data = {"on_off_panel_mode": 1, "mode": 0, "supply_temperature": 22.0, "supply_percentage": 50, "air_flow_rate_manual": 60, "special_mode": 0}
+        coordinator.device_scan_result = {
+            "device_info": {"device_name": "Test AirPack", "firmware": "4.85.0"}
+        }
+        coordinator.available_registers = {
+            "holding_registers": {"mode", "on_off_panel_mode", "air_flow_rate_manual"}
+        }
+        coordinator.data = {
+            "on_off_panel_mode": 1,
+            "mode": 0,
+            "supply_temperature": 22.0,
+            "supply_percentage": 50,
+            "air_flow_rate_manual": 60,
+            "special_mode": 0,
+        }
         coordinator.async_write_register = AsyncMock(return_value=True)
-        coordinator._register_maps = {"input_registers": input_registers(), "holding_registers": holding_registers(), "coil_registers": coil_registers(), "discrete_inputs": discrete_input_registers()}
+        coordinator._register_maps = {
+            "input_registers": input_registers(),
+            "holding_registers": holding_registers(),
+            "coil_registers": coil_registers(),
+            "discrete_inputs": discrete_input_registers(),
+        }
         coordinator.async_request_refresh = AsyncMock()
         return coordinator
 
@@ -45,7 +61,12 @@ class TestThesslaGreenClimate:
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
         await climate.async_set_hvac_mode(HVACMode.FAN_ONLY)
-        mock_climate_coordinator.async_write_register.assert_has_calls([call("on_off_panel_mode", 1, refresh=False, offset=0), call("mode", 1, refresh=False, offset=0)])
+        mock_climate_coordinator.async_write_register.assert_has_calls(
+            [
+                call("on_off_panel_mode", 1, refresh=False, offset=0),
+                call("mode", 1, refresh=False, offset=0),
+            ]
+        )
         assert mock_climate_coordinator.async_write_register.call_count == 2
         mock_climate_coordinator.async_request_refresh.assert_called_once()
 
@@ -60,7 +81,12 @@ class TestThesslaGreenClimate:
         with caplog.at_level(logging.ERROR):
             await climate.async_set_hvac_mode(HVACMode.FAN_ONLY)
 
-        mock_climate_coordinator.async_write_register.assert_has_calls([call("on_off_panel_mode", 1, refresh=False, offset=0), call("on_off_panel_mode", 1, refresh=False, offset=0)])
+        mock_climate_coordinator.async_write_register.assert_has_calls(
+            [
+                call("on_off_panel_mode", 1, refresh=False, offset=0),
+                call("on_off_panel_mode", 1, refresh=False, offset=0),
+            ]
+        )
         assert mock_climate_coordinator.async_write_register.call_count == 2
         mock_climate_coordinator.async_request_refresh.assert_not_called()
         assert "Failed to enable device" in caplog.text

@@ -104,7 +104,9 @@ def _extra_state_attributes(data: dict[str, Any]) -> dict[str, Any]:
     return attrs
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+async def async_setup_entry(
+    hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+) -> None:
     coordinator: ThesslaGreenModbusCoordinator = config_entry.runtime_data
     if coordinator.capabilities.basic_control:
         entities = [ThesslaGreenClimate(coordinator)]
@@ -125,7 +127,11 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         self._attr_translation_key = "thessla_green_climate"
         self._attr_has_entity_name = True
         self._attr_supported_features = (
-            _FEATURE_TARGET_TEMPERATURE | _FEATURE_FAN_MODE | _FEATURE_PRESET_MODE | _FEATURE_TURN_ON | _FEATURE_TURN_OFF
+            _FEATURE_TARGET_TEMPERATURE
+            | _FEATURE_FAN_MODE
+            | _FEATURE_PRESET_MODE
+            | _FEATURE_TURN_ON
+            | _FEATURE_TURN_OFF
         )
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
         self._attr_precision = TEMPERATURE_STEP_C
@@ -161,7 +167,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
     @property
     def fan_mode(self) -> str | None:
-        airflow = self.coordinator.data.get("air_flow_rate_manual") or self.coordinator.data.get("air_flow_rate_temporary_2")
+        airflow = self.coordinator.data.get("air_flow_rate_manual") or self.coordinator.data.get(
+            "air_flow_rate_temporary_2"
+        )
         if not airflow:
             return None
         min_pct, max_pct = self._percentage_limits()
@@ -190,7 +198,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
     async def _write_register(self, register: str, value: Any, *, refresh: bool = False) -> Any:  # type: ignore[override]
         try:
-            return await self.coordinator.async_write_register(register, value, refresh=refresh, offset=0)
+            return await self.coordinator.async_write_register(
+                register, value, refresh=refresh, offset=0
+            )
         except TypeError:
             return await self.coordinator.async_write_register(register, value, refresh=refresh)
 
@@ -205,7 +215,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             if not power_on_success:
                 _LOGGER.error("Failed to enable device before setting HVAC mode to %s", hvac_mode)
                 return
-            success = await self._write_register("mode", HVAC_MODE_REVERSE_MAP.get(hvac_mode, 0), refresh=False)
+            success = await self._write_register(
+                "mode", HVAC_MODE_REVERSE_MAP.get(hvac_mode, 0), refresh=False
+            )
         if success:
             await self.coordinator.async_request_refresh()
         else:
@@ -217,7 +229,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             return
         coordinator_data = self.coordinator.data or {}
         if coordinator_data.get("mode") == 2:
-            success = await self.coordinator.async_write_temporary_temperature(float(temperature), refresh=False)
+            success = await self.coordinator.async_write_temporary_temperature(
+                float(temperature), refresh=False
+            )
             if success:
                 await self.coordinator.async_request_refresh()
             else:
@@ -225,7 +239,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             return
         success = True
         if "comfort_temperature" in holding_registers():
-            success = await self.coordinator.async_write_register("comfort_temperature", temperature, refresh=False, offset=0)
+            success = await self.coordinator.async_write_register(
+                "comfort_temperature", temperature, refresh=False, offset=0
+            )
         if success:
             success = await self._write_register("required_temperature", temperature, refresh=False)
         if success:
@@ -249,7 +265,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         success = await self._write_register("on_off_panel_mode", 1, refresh=False)
         if success:
-            success = await self._write_register("special_mode", _special_mode_from_preset(preset_mode), refresh=False)
+            success = await self._write_register(
+                "special_mode", _special_mode_from_preset(preset_mode), refresh=False
+            )
         if success:
             await self.coordinator.async_request_refresh()
         else:
@@ -267,8 +285,16 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
     @property
     def name(self) -> str:
-        scan_name = getattr(self.coordinator, "device_scan_result", {}).get("device_info", {}).get("device_name")
-        base = scan_name or getattr(self.coordinator, "device_name", getattr(self.coordinator, "_device_name", "ThesslaGreen"))
+        scan_name = (
+            getattr(self.coordinator, "device_scan_result", {})
+            .get("device_info", {})
+            .get("device_name")
+        )
+        base = scan_name or getattr(
+            self.coordinator,
+            "device_name",
+            getattr(self.coordinator, "_device_name", "ThesslaGreen"),
+        )
         return f"{base} Rekuperator"
 
     @property

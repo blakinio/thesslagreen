@@ -148,7 +148,10 @@ async def test_tcp_connect_tcp_rtu_framer_none():
     t = _make_tcp(connection_type=CONNECTION_TYPE_TCP_RTU)
 
     with (
-        patch("custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer", return_value=None),
+        patch(
+            "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
+            return_value=None,
+        ),
         pytest.raises(ConnectionException, match="RTU framer"),
     ):
         await t._connect()
@@ -164,7 +167,10 @@ async def test_tcp_connect_tcp_rtu_success():
     mock_client.connected = True
 
     with (
-        patch("custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer", return_value=mock_framer),
+        patch(
+            "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
+            return_value=mock_framer,
+        ),
         patch.object(t, "_build_tcp_client", return_value=mock_client),
     ):
         await t._connect()

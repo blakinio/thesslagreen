@@ -20,7 +20,11 @@ async def test_validate_input_retries_transient_failures():
     from custom_components.thessla_green_modbus.scanner.core import DeviceCapabilities
 
     data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, CONF_SLAVE_ID: 10, CONF_NAME: "Test"}
-    scan_result = {"device_info": {}, "available_registers": {}, "capabilities": DeviceCapabilities()}
+    scan_result = {
+        "device_info": {},
+        "available_registers": {},
+        "capabilities": DeviceCapabilities(),
+    }
     scanner_instance = SimpleNamespace(
         verify_connection=AsyncMock(side_effect=[ConnectionException("fail"), None]),
         scan_device=AsyncMock(side_effect=[ConnectionException("fail"), scan_result]),
@@ -28,7 +32,13 @@ async def test_validate_input_retries_transient_failures():
     )
     create_mock = AsyncMock(side_effect=[ConnectionException("fail"), scanner_instance])
     sleep_mock = AsyncMock()
-    with (patch("custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create", create_mock), patch("asyncio.sleep", sleep_mock)):
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
+            create_mock,
+        ),
+        patch("asyncio.sleep", sleep_mock),
+    ):
         result = await validate_input(None, data)
 
     assert result["scan_result"] == scan_result
@@ -38,7 +48,9 @@ async def test_validate_input_retries_transient_failures():
     assert [call.args[0] for call in sleep_mock.await_args_list] == [0.1, 0.1, 0.1]
 
 
-@pytest.mark.parametrize("exc,err_key", [(asyncio.TimeoutError, "timeout"), (ModbusIOException, "io_error")])
+@pytest.mark.parametrize(
+    "exc,err_key", [(asyncio.TimeoutError, "timeout"), (ModbusIOException, "io_error")]
+)
 @pytest.mark.asyncio
 async def test_validate_input_timeout_errors(exc, err_key):
     from custom_components.thessla_green_modbus.config_flow import CannotConnect, validate_input
@@ -51,7 +63,10 @@ async def test_validate_input_timeout_errors(exc, err_key):
         close=AsyncMock(),
     )
     with (
-        patch("custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create", AsyncMock(return_value=scanner_instance)),
+        patch(
+            "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
+            AsyncMock(return_value=scanner_instance),
+        ),
         patch("asyncio.sleep", AsyncMock()),
         pytest.raises(CannotConnect) as err,
     ):
@@ -73,7 +88,10 @@ async def test_validate_input_cancelled_timeout_suppresses_traceback(caplog):
         close=AsyncMock(),
     )
     with (
-        patch("custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create", AsyncMock(return_value=scanner_instance)),
+        patch(
+            "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
+            AsyncMock(return_value=scanner_instance),
+        ),
         patch("asyncio.sleep", AsyncMock()),
         caplog.at_level(logging.DEBUG),
         pytest.raises(CannotConnect) as err,
@@ -92,12 +110,17 @@ async def test_validate_input_cancelled_modbus_io_suppresses_traceback(caplog):
 
     data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, CONF_SLAVE_ID: 10, CONF_NAME: "Test"}
     scanner_instance = SimpleNamespace(
-        verify_connection=AsyncMock(side_effect=ModbusIOException("Request cancelled outside pymodbus.")),
+        verify_connection=AsyncMock(
+            side_effect=ModbusIOException("Request cancelled outside pymodbus.")
+        ),
         scan_device=AsyncMock(return_value={"capabilities": DeviceCapabilities()}),
         close=AsyncMock(),
     )
     with (
-        patch("custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create", AsyncMock(return_value=scanner_instance)),
+        patch(
+            "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
+            AsyncMock(return_value=scanner_instance),
+        ),
         patch("asyncio.sleep", AsyncMock()),
         caplog.at_level(logging.DEBUG),
         pytest.raises(CannotConnect) as err,

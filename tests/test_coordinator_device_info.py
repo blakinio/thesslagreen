@@ -58,13 +58,13 @@ def test_get_device_info_model_from_entry():
     info = coord.get_device_info()
     assert info["model"] == "Thessla Air 350"
 
+
 def test_compat_device_info_getattr_key_error():
     """_CompatDeviceInfo.__getattr__ raises AttributeError for missing key (lines 2552-2555)."""
     coord = _make_coordinator()
     info = coord.get_device_info()
     with pytest.raises(AttributeError):
         _ = info.nonexistent_attribute_xyz
-
 
 
 # Moved from test_coordinator.py

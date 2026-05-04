@@ -46,7 +46,6 @@ def _make_coordinator(**kwargs) -> ThesslaGreenModbusCoordinator:
 
 
 @pytest.mark.asyncio
-
 async def test_test_connection_modbus_io_cancelled_skips():
     """ModbusIOException with 'cancelled' message is swallowed (lines 1125-1130)."""
     coord = _make_coordinator()
@@ -60,6 +59,7 @@ async def test_test_connection_modbus_io_cancelled_skips():
     # Should not raise
     await coord._test_connection()
 
+
 async def test_test_connection_timeout_raises():
     """TimeoutError in _test_connection is re-raised (lines 1136-1138)."""
     coord = _make_coordinator()
@@ -68,6 +68,7 @@ async def test_test_connection_timeout_raises():
     with pytest.raises(TimeoutError):
         await coord._test_connection()
 
+
 async def test_test_connection_oserror_raises():
     """OSError in _test_connection is re-raised (lines 1139-1141)."""
     coord = _make_coordinator()
@@ -75,6 +76,7 @@ async def test_test_connection_oserror_raises():
 
     with pytest.raises(OSError):
         await coord._test_connection()
+
 
 async def test_test_connection_modbus_io_non_cancelled_raises():
     """Non-cancelled ModbusIOException is re-raised (lines 1131-1132)."""
@@ -89,6 +91,7 @@ async def test_test_connection_modbus_io_non_cancelled_raises():
     with pytest.raises(ModbusIOException):
         await coord._test_connection()
 
+
 async def test_test_connection_transport_none_raises():
     """ConnectionException when transport is None after _ensure_connection (line 1095)."""
     coord = _make_coordinator()
@@ -97,6 +100,7 @@ async def test_test_connection_transport_none_raises():
 
     with pytest.raises(ConnectionException):
         await coord._test_connection()
+
 
 async def test_test_connection_response_none_raises():
     """ConnectionException when read_input_registers returns None (lines 1105-1106)."""
@@ -110,6 +114,7 @@ async def test_test_connection_response_none_raises():
 
     with pytest.raises(ConnectionException):
         await coord._test_connection()
+
 
 async def test_test_connection_successful():
     """Full successful connection test (lines 1110-1124)."""
@@ -128,6 +133,7 @@ async def test_test_connection_successful():
     # Should complete without exception
     await coord._test_connection()
 
+
 async def test_test_connection_modbus_exception_raises():
     """ModbusException in _test_connection is re-raised (lines 1133-1135)."""
     coord = _make_coordinator()
@@ -140,6 +146,7 @@ async def test_test_connection_modbus_exception_raises():
 
     with pytest.raises(ModbusException):
         await coord._test_connection()
+
 
 async def test_async_write_register_modbus_exception_retry():
     """ModbusException during write → disconnect, retry, return False."""
@@ -155,6 +162,7 @@ async def test_async_write_register_modbus_exception_retry():
     result = await coord.async_write_register("mode", 1)
     assert result is False
     coord._disconnect.assert_called()
+
 
 async def test_async_write_register_error_response_retries():
     """Error response on non-last attempt → continues, then fails."""
@@ -172,6 +180,7 @@ async def test_async_write_register_error_response_retries():
     assert result is False
     assert transport.write_register.call_count == 2  # retried once
 
+
 async def test_test_connection_transport_not_connected():
     """transport.is_connected() False raises ConnectionException (line 1111)."""
     coord = _make_coordinator()
@@ -183,6 +192,7 @@ async def test_test_connection_transport_not_connected():
     coord._ensure_connection = AsyncMock()
     with pytest.raises(ConnectionException):
         await coord._test_connection()
+
 
 async def test_test_connection_basic_register_response_none():
     """Final read_input_registers returns None raises ConnectionException (line 1122)."""
@@ -197,6 +207,7 @@ async def test_test_connection_basic_register_response_none():
     coord._ensure_connection = AsyncMock()
     with pytest.raises(ConnectionException):
         await coord._test_connection()
+
 
 async def test_async_write_register_multi_reg_chunk_error_last_attempt():
     """Multi-reg chunk error on last attempt → False (lines 2068-2076)."""
@@ -220,6 +231,7 @@ async def test_async_write_register_multi_reg_chunk_error_last_attempt():
         result = await coord.async_write_register("some_reg", [1, 2])
     assert result is False
 
+
 async def test_async_write_register_timeout_last_attempt():
     """TimeoutError on last attempt → False."""
     coord = _make_coordinator()
@@ -232,6 +244,7 @@ async def test_async_write_register_timeout_last_attempt():
     coord.retry = 1
     result = await coord.async_write_register("mode", 1)
     assert result is False
+
 
 async def test_async_write_register_timeout_with_retry():
     """TimeoutError then success (line 2150 continue)."""
@@ -249,6 +262,7 @@ async def test_async_write_register_timeout_with_retry():
     result = await coord.async_write_register("mode", 1)
     assert result is True
 
+
 async def test_async_write_register_oserror():
     """OSError in write → False (lines 2151-2154)."""
     coord = _make_coordinator()
@@ -260,6 +274,7 @@ async def test_async_write_register_oserror():
     coord._disconnect = AsyncMock()
     result = await coord.async_write_register("mode", 1)
     assert result is False
+
 
 async def test_async_write_registers_batch_error_last_attempt():
     """Batch error on last attempt → False (lines 2253-2258)."""
@@ -276,6 +291,7 @@ async def test_async_write_registers_batch_error_last_attempt():
     result = await coord.async_write_registers(100, [1, 2])
     assert result is False
 
+
 async def test_async_write_registers_modbus_exception():
     """ModbusException → disconnect + False (lines 2270-2284)."""
     coord = _make_coordinator()
@@ -288,6 +304,7 @@ async def test_async_write_registers_modbus_exception():
     coord.retry = 1
     result = await coord.async_write_registers(100, [1, 2])
     assert result is False
+
 
 async def test_async_write_registers_timeout_error():
     """TimeoutError → False (lines 2285-2301)."""
@@ -302,6 +319,7 @@ async def test_async_write_registers_timeout_error():
     result = await coord.async_write_registers(100, [1, 2])
     assert result is False
 
+
 async def test_async_write_registers_oserror():
     """OSError → False (lines 2302-2305)."""
     coord = _make_coordinator()
@@ -313,6 +331,7 @@ async def test_async_write_registers_oserror():
     coord._disconnect = AsyncMock()
     result = await coord.async_write_registers(100, [1, 2])
     assert result is False
+
 
 async def test_async_write_register_multi_reg_chunk_error_retry():
     """Multi-reg chunk error retried → success (lines 2075-2076)."""
@@ -339,6 +358,7 @@ async def test_async_write_register_multi_reg_chunk_error_retry():
         result = await coord.async_write_register("some_reg", [1, 2])
     assert result is True
 
+
 async def test_async_write_registers_modbus_exception_retry():
     """ModbusException with retry → retries (lines 2279-2284)."""
     coord = _make_coordinator()
@@ -355,6 +375,7 @@ async def test_async_write_registers_modbus_exception_retry():
     result = await coord.async_write_registers(100, [1, 2])
     assert result is True
 
+
 async def test_async_write_registers_timeout_with_transport():
     """TimeoutError with transport disconnects (line 2287)."""
     coord = _make_coordinator()
@@ -370,6 +391,7 @@ async def test_async_write_registers_timeout_with_transport():
     coord.async_request_refresh = AsyncMock()
     result = await coord.async_write_registers(100, [1, 2])
     assert result is True
+
 
 async def test_async_write_registers_timeout_continue():
     """TimeoutError continue on non-last attempt (line 2301)."""

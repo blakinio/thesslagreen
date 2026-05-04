@@ -39,7 +39,6 @@ class AbortFlow(Exception):
 
 
 @pytest.mark.asyncio
-
 @pytest.mark.asyncio
 async def test_form_user_cannot_connect():
     """Test we handle cannot connect error."""
@@ -61,6 +60,7 @@ async def test_form_user_cannot_connect():
 
     assert result["type"] == "form"
     assert result["errors"] == {"base": "cannot_connect"}
+
 
 @pytest.mark.asyncio
 async def test_form_user_modbus_exception():
@@ -84,6 +84,7 @@ async def test_form_user_modbus_exception():
     assert result["type"] == "form"
     assert result["errors"] == {"base": "cannot_connect"}
 
+
 @pytest.mark.asyncio
 async def test_form_user_connection_exception():
     """Test Modbus connection error during user step."""
@@ -105,6 +106,7 @@ async def test_form_user_connection_exception():
 
     assert result["type"] == "form"
     assert result["errors"] == {"base": "cannot_connect"}
+
 
 @pytest.mark.asyncio
 async def test_form_user_attribute_error_scanner():
@@ -132,6 +134,7 @@ async def test_form_user_attribute_error_scanner():
     assert result["type"] == "form"
     assert result["errors"] == {"base": "missing_method"}
 
+
 @pytest.mark.asyncio
 async def test_form_user_invalid_auth():
     """Test we handle invalid auth error."""
@@ -153,6 +156,7 @@ async def test_form_user_invalid_auth():
 
     assert result["type"] == "form"
     assert result["errors"] == {"base": "invalid_auth"}
+
 
 @pytest.mark.asyncio
 async def test_form_user_invalid_value():
@@ -180,6 +184,7 @@ async def test_form_user_invalid_value():
     assert result["errors"] == {"base": "invalid_input"}
     logger_mock.error.assert_called_once()
 
+
 @pytest.mark.asyncio
 async def test_form_user_missing_key():
     """Test we handle missing key error."""
@@ -206,6 +211,7 @@ async def test_form_user_missing_key():
     assert result["errors"] == {"base": "invalid_input"}
     logger_mock.error.assert_called_once()
 
+
 @pytest.mark.asyncio
 async def test_form_user_unexpected_exception():
     """Test unexpected exceptions are raised."""
@@ -230,4 +236,3 @@ async def test_form_user_unexpected_exception():
             )
 
     logger_mock.exception.assert_not_called()
-

@@ -1,7 +1,6 @@
 # mypy: ignore-errors
 """Split tests from test_services_handlers.py."""
 
-
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -101,6 +100,7 @@ async def test_set_special_mode_basic(monkeypatch):
     coord.async_write_register.assert_called_once_with("special_mode", 1, refresh=False)
     coord.async_request_refresh.assert_awaited_once()
 
+
 @pytest.mark.asyncio
 async def test_set_special_mode_with_duration(monkeypatch):
     """set_special_mode writes duration register when available."""
@@ -116,6 +116,7 @@ async def test_set_special_mode_with_duration(monkeypatch):
     assert any(c.args[0] == "special_mode" for c in calls)
     assert any(c.args[0] == "boost_duration" for c in calls)
 
+
 @pytest.mark.asyncio
 async def test_set_special_mode_write_failure(monkeypatch):
     """set_special_mode stops if write fails."""
@@ -127,6 +128,7 @@ async def test_set_special_mode_write_failure(monkeypatch):
     await handler(call)
 
     coord.async_request_refresh.assert_not_awaited()
+
 
 @pytest.mark.asyncio
 async def test_set_special_mode_modbus_exception(monkeypatch):
@@ -144,6 +146,7 @@ async def test_set_special_mode_modbus_exception(monkeypatch):
 # ---------------------------------------------------------------------------
 # set_airflow_schedule
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_set_special_mode_duration_write_failure(monkeypatch):
@@ -164,4 +167,3 @@ async def test_set_special_mode_duration_write_failure(monkeypatch):
 # ---------------------------------------------------------------------------
 # set_airflow_schedule — specific step write failures (lines 439-440, 448-449, 459-460)
 # ---------------------------------------------------------------------------
-

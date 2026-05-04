@@ -30,7 +30,9 @@ from custom_components.thessla_green_modbus.services_validation import (
 
 @pytest.mark.asyncio
 async def test_write_register_handles_connection_exception():
-    coordinator = SimpleNamespace(async_write_register=AsyncMock(side_effect=ConnectionException("x")))
+    coordinator = SimpleNamespace(
+        async_write_register=AsyncMock(side_effect=ConnectionException("x"))
+    )
     logger = SimpleNamespace(error=AsyncMock(), info=AsyncMock())
 
     result = await write_register(coordinator, "reg", 1, "climate.a", "action", logger)
@@ -186,8 +188,12 @@ async def test_write_device_name_chunks_writes_offsets():
 
     assert result is True
     assert coordinator.async_write_register.await_count == 2
-    coordinator.async_write_register.assert_any_await("device_name", "ABCD", refresh=False, offset=0)
-    coordinator.async_write_register.assert_any_await("device_name", "EFGH", refresh=False, offset=2)
+    coordinator.async_write_register.assert_any_await(
+        "device_name", "ABCD", refresh=False, offset=0
+    )
+    coordinator.async_write_register.assert_any_await(
+        "device_name", "EFGH", refresh=False, offset=2
+    )
 
 
 def test_iter_air_quality_writes_builds_optional_steps_with_register_map():

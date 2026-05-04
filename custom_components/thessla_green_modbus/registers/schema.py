@@ -189,7 +189,9 @@ def _validate_enum_mapping(enum: dict[str, Any] | None) -> None:
             raise ValueError("enum values must be strings")
 
 
-def _validate_numeric_bounds(min_val: float | None, max_val: float | None, default: float | None) -> None:
+def _validate_numeric_bounds(
+    min_val: float | None, max_val: float | None, default: float | None
+) -> None:
     if min_val is not None and max_val is not None and min_val > max_val:
         raise ValueError("min greater than max")
     if default is not None:

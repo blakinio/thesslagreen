@@ -84,10 +84,6 @@ def mock_modbus_response():
     return response
 
 
-
-
-
-
 async def test_scan_device_success_static(mock_modbus_response):
     """Test successful device scan with predefined registers."""
     regs = {
@@ -132,19 +128,6 @@ async def test_scan_device_success_static(mock_modbus_response):
                 assert "mode" in result["available_registers"]["holding_registers"]
                 assert "power_supply_fans" in result["available_registers"]["coil_registers"]
                 assert "expansion" in result["available_registers"]["discrete_inputs"]
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 async def test_temperature_register_unavailable_skipped():
@@ -194,27 +177,6 @@ async def test_temperature_register_unavailable_kept():
             result = await scanner.scan_device()
 
     assert "outside_temperature" not in result["available_registers"]["input_registers"]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 async def test_scan_populates_device_name():

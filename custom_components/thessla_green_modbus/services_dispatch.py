@@ -161,6 +161,8 @@ async def write_device_name_chunks(coordinator: Any, device_name: str, batch: in
     for i in range(0, len(device_name), chars_per_batch):
         chunk = device_name[i : i + chars_per_batch]
         reg_offset = i // 2
-        if not await coordinator.async_write_register("device_name", chunk, refresh=False, offset=reg_offset):
+        if not await coordinator.async_write_register(
+            "device_name", chunk, refresh=False, offset=reg_offset
+        ):
             return False
     return True

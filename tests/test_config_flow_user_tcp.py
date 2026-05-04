@@ -21,6 +21,7 @@ DEFAULT_USER_INPUT = {
     CONF_NAME: "My Device",
 }
 
+
 @pytest.mark.parametrize("invalid_port", [0, 65536])
 @pytest.mark.asyncio
 async def test_form_user_port_out_of_range(invalid_port: int):
@@ -36,6 +37,7 @@ async def test_form_user_port_out_of_range(invalid_port: int):
     assert result["type"] == "form"
     assert result["errors"] == {CONF_PORT: "invalid_port"}
     create_mock.assert_not_called()
+
 
 @pytest.mark.parametrize(
     "slave_id,expected_error",
@@ -56,6 +58,7 @@ async def test_form_user_invalid_slave_id(slave_id: int, expected_error: str):
     assert result["errors"] == {CONF_SLAVE_ID: expected_error}
     create_mock.assert_not_called()
 
+
 @pytest.mark.asyncio
 async def test_form_user_invalid_domain():
     """Test invalid domain names produce a helpful error."""
@@ -70,6 +73,7 @@ async def test_form_user_invalid_domain():
     assert result["type"] == "form"
     assert result["errors"] == {CONF_HOST: "invalid_host"}
     create_mock.assert_not_called()
+
 
 @pytest.mark.asyncio
 async def test_form_user_invalid_ipv4():
@@ -87,4 +91,3 @@ async def test_form_user_invalid_ipv4():
     assert result["type"] == "form"
     assert result["errors"] == {CONF_HOST: "invalid_host"}
     create_mock.assert_not_called()
-

@@ -59,7 +59,10 @@ def _log_read_abort(kind: str, start: int, end: int, attempt: int, retry: int) -
         retry,
     )
 
-def _handle_error_response(scanner: Any, *, register_type: str, start: int, end: int, code: int | None) -> None:
+
+def _handle_error_response(
+    scanner: Any, *, register_type: str, start: int, end: int, code: int | None
+) -> None:
     """Record failed range and unsupported range hints from an exception response."""
     if register_type == "input_registers":
         scanner._failed_input.update(range(start, end + 1))
@@ -82,10 +85,9 @@ def _validate_register_response(response: Any) -> tuple[bool, int | None]:
 def _should_abort_input_exception(exc: Exception) -> bool:
     """Return True when input reads should stop retries immediately."""
     if isinstance(exc, ModbusIOException):
-        return (
-            classify_transport_error(exc).kind is ErrorKind.CANCELLED
-            or is_request_cancelled_error(exc)
-        )
+        return classify_transport_error(
+            exc
+        ).kind is ErrorKind.CANCELLED or is_request_cancelled_error(exc)
     return isinstance(exc, (TimeoutError, OSError))
 
 
@@ -229,7 +231,9 @@ def _finalize_register_read_failure(
     _handle_terminal_read_failure(scanner, register_type, start, end)
 
 
-def _should_skip_input_range(scanner: Any, start: int, end: int, skip_cache: bool) -> tuple[bool, int, int]:
+def _should_skip_input_range(
+    scanner: Any, start: int, end: int, skip_cache: bool
+) -> tuple[bool, int, int]:
     """Return (skip, mark_start, mark_end) for unsupported/cached input ranges."""
     if skip_cache:
         return False, start, end
@@ -245,7 +249,9 @@ def _should_skip_input_range(scanner: Any, start: int, end: int, skip_cache: boo
     return True, cached_failed_range[0], cached_failed_range[1]
 
 
-def _should_skip_holding_range(scanner: Any, start: int, end: int, skip_cache: bool) -> tuple[bool, int, int]:
+def _should_skip_holding_range(
+    scanner: Any, start: int, end: int, skip_cache: bool
+) -> tuple[bool, int, int]:
     """Return (skip, mark_start, mark_end) for unsupported/cached holding ranges."""
     if skip_cache:
         return False, start, end
@@ -266,7 +272,10 @@ def _prepare_input_read(scanner: Any, start: int, end: int, skip_cache: bool) ->
     should_skip, skip_start, skip_end = _should_skip_input_range(scanner, start, end, skip_cache)
     if not should_skip:
         return False
-    if (skip_start, skip_end) != (start, end) and (skip_start, skip_end) not in scanner._input_skip_log_ranges:
+    if (skip_start, skip_end) != (start, end) and (
+        skip_start,
+        skip_end,
+    ) not in scanner._input_skip_log_ranges:
         _LOGGER.debug("Skipping cached failed input registers %d-%d", skip_start, skip_end)
         scanner._input_skip_log_ranges.add((skip_start, skip_end))
     _handle_terminal_read_failure(scanner, "input_registers", skip_start, skip_end)
@@ -401,7 +410,13 @@ async def _run_input_read_retry_loop(
                 if payload is not None:
                     _LOGGER.debug("Read input registers %d-%d: %s", start, end, payload)
                 return payload
-        except (ModbusIOException, TimeoutError, OSError, ModbusException, ConnectionException) as exc:
+        except (
+            ModbusIOException,
+            TimeoutError,
+            OSError,
+            ModbusException,
+            ConnectionException,
+        ) as exc:
             aborted, stop = _handle_input_attempt_exception(
                 scanner,
                 exc,
@@ -497,9 +512,9 @@ async def read_register_block(
     return results
 
 
-
-
-def _prepare_holding_read(scanner: Any, start: int, end: int, address: int, skip_cache: bool) -> bool:
+def _prepare_holding_read(
+    scanner: Any, start: int, end: int, address: int, skip_cache: bool
+) -> bool:
     """Return True when holding read should short-circuit as failed/unsupported."""
     should_skip, skip_start, skip_end = _should_skip_holding_range(scanner, start, end, skip_cache)
     if should_skip:
@@ -562,6 +577,8 @@ def _handle_holding_read_exception(
         )
         return False, True
     raise exc
+
+
 async def read_holding(
     scanner: Any,
     client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
@@ -617,7 +634,13 @@ async def read_holding(
                 return payload
         except asyncio.CancelledError:
             raise
-        except (TimeoutError, ModbusIOException, ModbusException, ConnectionException, OSError) as exc:
+        except (
+            TimeoutError,
+            ModbusIOException,
+            ModbusException,
+            ConnectionException,
+            OSError,
+        ) as exc:
             aborted, stop = _handle_holding_read_exception(
                 scanner,
                 exc,

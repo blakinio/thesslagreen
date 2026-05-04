@@ -42,7 +42,6 @@ class AbortFlow(Exception):
 
 
 @pytest.mark.asyncio
-
 @pytest.mark.asyncio
 async def test_form_user():
     """Test we get the initial form."""
@@ -63,6 +62,7 @@ async def test_form_user():
     assert CONF_BAUD_RATE not in schema_keys
     assert CONF_PARITY not in schema_keys
     assert CONF_STOP_BITS not in schema_keys
+
 
 @pytest.mark.asyncio
 async def test_form_user_invalid_ipv6():
@@ -85,6 +85,7 @@ async def test_form_user_invalid_ipv6():
     assert result["type"] == "form"
     assert result["errors"] == {CONF_HOST: "invalid_host"}
     create_mock.assert_not_called()
+
 
 @pytest.mark.asyncio
 async def test_form_user_valid_ipv6():
@@ -125,6 +126,7 @@ async def test_form_user_valid_ipv6():
     assert result["type"] == "form"
     assert result["step_id"] == "confirm"
 
+
 @pytest.mark.asyncio
 async def test_form_user_valid_domain():
     """Test domain names are accepted."""
@@ -163,6 +165,7 @@ async def test_form_user_valid_domain():
 
     assert result["type"] == "form"
     assert result["step_id"] == "confirm"
+
 
 @pytest.mark.asyncio
 async def test_form_user_success():
@@ -234,6 +237,7 @@ async def test_form_user_success():
     assert result2["options"][CONF_DEEP_SCAN] is True
     assert result2["options"][CONF_MAX_REGISTERS_PER_REQUEST] == 5
 
+
 @pytest.mark.asyncio
 async def test_unique_id_sanitized():
     """Ensure unique ID replaces colons in host with hyphens."""
@@ -269,5 +273,3 @@ async def test_unique_id_sanitized():
         )
 
     mock_set_unique_id.assert_called_once_with("fe80--1:502:10")
-
-

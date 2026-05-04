@@ -282,8 +282,6 @@ def _build_entity_lookup() -> dict[str, tuple[str, str | None, int | None]]:
     return _ENTITY_LOOKUP
 
 
-
-
 def device_unique_id_prefix(
     serial_number: str | None,
     host: str,
@@ -292,6 +290,8 @@ def device_unique_id_prefix(
     """Return the device specific prefix used in entity unique IDs."""
 
     return _device_unique_id_prefix_impl(serial_number, host, port)
+
+
 def migrate_unique_id(
     unique_id: str,
     *,

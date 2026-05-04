@@ -1,7 +1,6 @@
 # mypy: ignore-errors
 """Split tests from test_services_handlers.py."""
 
-
 from __future__ import annotations
 
 import logging
@@ -114,6 +113,7 @@ async def test_log_level_manager_set_and_restore():
     mgr._restore_level_callback(None)
     assert mgr._undo_callback is None
 
+
 @pytest.mark.asyncio
 async def test_log_level_manager_cancel_previous():
     """Calling set_level twice cancels the previous undo callback."""
@@ -136,6 +136,7 @@ async def test_log_level_manager_cancel_previous():
 
     assert len(cancelled) == 1  # first undo was called
 
+
 @pytest.mark.asyncio
 async def test_log_level_manager_zero_duration():
     """set_level with duration=0 does not schedule a restore."""
@@ -151,6 +152,7 @@ async def test_log_level_manager_zero_duration():
 # ---------------------------------------------------------------------------
 # set_debug_logging
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_set_debug_logging(monkeypatch):
@@ -170,4 +172,3 @@ async def test_set_debug_logging(monkeypatch):
 # ---------------------------------------------------------------------------
 # set_special_mode
 # ---------------------------------------------------------------------------
-

@@ -152,9 +152,7 @@ def test_route_enum_mapping_routes_to_expected_bucket() -> None:
     select: dict[str, dict[str, object]] = {}
     payload = {"translation_key": "mode", "states": {"auto": 2}}
 
-    handled = _route_enum_mapping(
-        "select", "mode", payload, sensor, binary, switch, select
-    )
+    handled = _route_enum_mapping("select", "mode", payload, sensor, binary, switch, select)
     assert handled is True
     assert select == {"mode": payload}
     assert sensor == {}
@@ -169,9 +167,7 @@ def test_route_min_max_mapping_routes_to_expected_bucket() -> None:
     select: dict[str, dict[str, object]] = {}
     payload = {"unit": "%", "min": 0, "max": 100}
 
-    handled = _route_min_max_mapping(
-        "number", "speed", payload, number, binary, switch, select
-    )
+    handled = _route_min_max_mapping("number", "speed", payload, number, binary, switch, select)
     assert handled is True
     assert number == {"speed": payload}
     assert binary == {}

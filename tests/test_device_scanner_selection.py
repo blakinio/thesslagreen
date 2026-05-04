@@ -23,7 +23,9 @@ def _make_transport(*, input_response=None, holding_response=None):
     transport = MagicMock()
     transport.close = AsyncMock()
     transport.ensure_connected = AsyncMock()
-    transport.read_input_registers = AsyncMock(return_value=input_response or _make_ok_response([1]))
+    transport.read_input_registers = AsyncMock(
+        return_value=input_response or _make_ok_response([1])
+    )
     transport.read_holding_registers = AsyncMock(
         return_value=holding_response or _make_ok_response([1])
     )

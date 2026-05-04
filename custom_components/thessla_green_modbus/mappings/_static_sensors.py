@@ -35,6 +35,7 @@ def _diagnostic_sensor_payload(
 def _airflow_sensor_mappings() -> dict[str, dict[str, Any]]:
     return _airflow_sensor_mappings_impl()
 
+
 SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # Temperature sensors (Input Registers)
     **INPUT_TEMPERATURE_SENSOR_MAPPINGS,

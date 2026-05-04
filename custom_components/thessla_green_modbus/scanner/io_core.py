@@ -260,7 +260,6 @@ def _expand_cached_failed_range(
     return range_start, range_end
 
 
-
 __all__ = [
     "_call_modbus_with_fallback",
     "_expand_cached_failed_range",

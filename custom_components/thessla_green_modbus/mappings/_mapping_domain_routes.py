@@ -3,7 +3,16 @@ from __future__ import annotations
 from typing import Any
 
 
-def route_enum_mapping(target: str | None, register: str, payload: dict[str, Any] | None, *, sensor_mappings: dict[str, Any], binary_mappings: dict[str, Any], switch_mappings: dict[str, Any], select_mappings: dict[str, Any]) -> bool:
+def route_enum_mapping(
+    target: str | None,
+    register: str,
+    payload: dict[str, Any] | None,
+    *,
+    sensor_mappings: dict[str, Any],
+    binary_mappings: dict[str, Any],
+    switch_mappings: dict[str, Any],
+    select_mappings: dict[str, Any],
+) -> bool:
     if target == "switch":
         switch_mappings.setdefault(register, payload)
         return True
@@ -19,7 +28,16 @@ def route_enum_mapping(target: str | None, register: str, payload: dict[str, Any
     return False
 
 
-def route_min_max_mapping(target: str | None, register: str, payload: dict[str, Any] | None, *, number_mappings: dict[str, Any], binary_mappings: dict[str, Any], switch_mappings: dict[str, Any], select_mappings: dict[str, Any]) -> bool:
+def route_min_max_mapping(
+    target: str | None,
+    register: str,
+    payload: dict[str, Any] | None,
+    *,
+    number_mappings: dict[str, Any],
+    binary_mappings: dict[str, Any],
+    switch_mappings: dict[str, Any],
+    select_mappings: dict[str, Any],
+) -> bool:
     if target == "switch":
         switch_mappings.setdefault(register, payload)
         return True

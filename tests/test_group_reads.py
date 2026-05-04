@@ -31,7 +31,10 @@ def test_group_reads_respects_max_block_size(size):
 
 def test_plan_group_reads_merges_consecutive_addresses():
     regs = [RegisterDef("input", addr, f"r{addr}", "r") for addr in [0, 1, 2, 3, 10, 11, 12]]
-    assert planner_plan_group_reads(lambda: regs) == [ReadPlan("input", 0, 4), ReadPlan("input", 10, 3)]
+    assert planner_plan_group_reads(lambda: regs) == [
+        ReadPlan("input", 0, 4),
+        ReadPlan("input", 10, 3),
+    ]
 
 
 def test_plan_group_reads_respects_max_block_size():

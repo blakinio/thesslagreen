@@ -33,7 +33,12 @@ def _deps() -> ServiceHandlerDeps:
         logger=logging.getLogger(__name__),
         special_function_map={},
         day_to_device_key={},
-        air_quality_register_map={"co2_low": "co2_low", "co2_medium": "co2_medium", "co2_high": "co2_high", "humidity_target": "humidity_target"},
+        air_quality_register_map={
+            "co2_low": "co2_low",
+            "co2_medium": "co2_medium",
+            "co2_high": "co2_high",
+            "humidity_target": "humidity_target",
+        },
         iter_target_coordinators=lambda _h, _c: [],
         normalize_option=lambda value: value,
         clamp_airflow_rate=lambda value: value,

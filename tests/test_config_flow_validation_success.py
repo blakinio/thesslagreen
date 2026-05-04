@@ -16,11 +16,18 @@ async def test_validate_input_success():
     scanner_instance = AsyncMock()
     scanner_instance.scan_device.return_value = {
         "available_registers": {},
-        "device_info": {"device_name": "ThesslaGreen AirPack", "firmware": "1.0", "serial_number": "123"},
+        "device_info": {
+            "device_name": "ThesslaGreen AirPack",
+            "firmware": "1.0",
+            "serial_number": "123",
+        },
         "capabilities": {},
     }
     scanner_instance.verify_connection = AsyncMock()
-    with patch("custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create", AsyncMock(return_value=scanner_instance)):
+    with patch(
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
         result = await validate_input(None, data)
 
     assert result["title"] == "Test"
@@ -34,11 +41,18 @@ async def test_validate_input_valid_ipv6():
 
     data = {CONF_HOST: "fe80::1", CONF_PORT: 502, CONF_SLAVE_ID: 10, CONF_NAME: "Test"}
     scanner_instance = AsyncMock()
-    scanner_instance.scan_device.return_value = {"available_registers": {}, "device_info": {}, "capabilities": {}}
+    scanner_instance.scan_device.return_value = {
+        "available_registers": {},
+        "device_info": {},
+        "capabilities": {},
+    }
     scanner_instance.verify_connection = AsyncMock()
     scanner_instance.close = AsyncMock()
 
-    with patch("custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create", AsyncMock(return_value=scanner_instance)):
+    with patch(
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
         result = await validate_input(None, data)
 
     assert result["title"] == "Test"
@@ -51,11 +65,18 @@ async def test_validate_input_valid_domain():
 
     data = {CONF_HOST: "example.com", CONF_PORT: 502, CONF_SLAVE_ID: 10, CONF_NAME: "Test"}
     scanner_instance = AsyncMock()
-    scanner_instance.scan_device.return_value = {"available_registers": {}, "device_info": {}, "capabilities": {}}
+    scanner_instance.scan_device.return_value = {
+        "available_registers": {},
+        "device_info": {},
+        "capabilities": {},
+    }
     scanner_instance.verify_connection = AsyncMock()
     scanner_instance.close = AsyncMock()
 
-    with patch("custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create", AsyncMock(return_value=scanner_instance)):
+    with patch(
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
         result = await validate_input(None, data)
 
     assert result["title"] == "Test"
@@ -67,14 +88,21 @@ async def test_validate_input_uses_scan_device_and_closes():
     from custom_components.thessla_green_modbus.config_flow import validate_input
 
     data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, CONF_SLAVE_ID: 10, CONF_NAME: "Test"}
-    scan_result = {"device_info": {"device_name": "Device"}, "available_registers": {}, "capabilities": {}}
+    scan_result = {
+        "device_info": {"device_name": "Device"},
+        "available_registers": {},
+        "capabilities": {},
+    }
     scanner_instance = SimpleNamespace(
         scan_device=AsyncMock(return_value=scan_result),
         close=AsyncMock(),
         verify_connection=AsyncMock(),
     )
 
-    with patch("custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create", AsyncMock(return_value=scanner_instance)):
+    with patch(
+        "custom_components.thessla_green_modbus.scanner.core.ThesslaGreenDeviceScanner.create",
+        AsyncMock(return_value=scanner_instance),
+    ):
         result = await validate_input(None, data)
 
     assert isinstance(result["scan_result"], dict)

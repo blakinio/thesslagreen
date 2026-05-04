@@ -28,8 +28,12 @@ def _make_transport(
         transport.ensure_connected = AsyncMock(side_effect=ensure_side_effect)
     else:
         transport.ensure_connected = AsyncMock()
-    transport.read_input_registers = AsyncMock(return_value=input_response or _make_ok_response([1]))
-    transport.read_holding_registers = AsyncMock(return_value=holding_response or _make_ok_response([1]))
+    transport.read_input_registers = AsyncMock(
+        return_value=input_response or _make_ok_response([1])
+    )
+    transport.read_holding_registers = AsyncMock(
+        return_value=holding_response or _make_ok_response([1])
+    )
     transport.is_connected = MagicMock(return_value=True)
     return transport
 

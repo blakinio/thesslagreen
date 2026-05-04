@@ -33,6 +33,7 @@ DEFAULT_USER_INPUT = {
     CONF_NAME: "My Device",
 }
 
+
 @pytest.mark.asyncio
 async def test_form_user_rtu_requires_serial_port():
     """Modbus RTU requires a serial port path."""
@@ -55,6 +56,7 @@ async def test_form_user_rtu_requires_serial_port():
     assert result["type"] == "form"
     assert result["errors"] == {CONF_SERIAL_PORT: "invalid_serial_port"}
     create_mock.assert_not_called()
+
 
 @pytest.mark.asyncio
 async def test_form_user_rtu_invalid_baud_rate():
@@ -79,6 +81,7 @@ async def test_form_user_rtu_invalid_baud_rate():
     assert result["type"] == "form"
     assert result["errors"] == {CONF_BAUD_RATE: "invalid_baud_rate"}
     create_mock.assert_not_called()
+
 
 @pytest.mark.asyncio
 async def test_form_user_rtu_success_creates_serial_entry():
@@ -132,6 +135,7 @@ async def test_form_user_rtu_success_creates_serial_entry():
     assert data.get(CONF_HOST) == DEFAULT_USER_INPUT[CONF_HOST]
     assert data.get(CONF_PORT) == DEFAULT_USER_INPUT[CONF_PORT]
 
+
 @pytest.mark.asyncio
 async def test_form_user_tcp_rtu_success_creates_tcp_rtu_entry():
     """TCP RTU configuration should normalize to TCP with TCP RTU mode."""
@@ -179,4 +183,3 @@ async def test_form_user_tcp_rtu_success_creates_tcp_rtu_entry():
     assert data[CONF_CONNECTION_MODE] == CONNECTION_MODE_TCP_RTU
     assert data[CONF_HOST] == DEFAULT_USER_INPUT[CONF_HOST]
     assert data[CONF_PORT] == DEFAULT_USER_INPUT[CONF_PORT]
-

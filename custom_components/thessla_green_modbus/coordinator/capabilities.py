@@ -123,6 +123,7 @@ class _CoordinatorCapabilitiesMixin:
                 data["flow_balance_status"] = _flow_balance_status(balance)
             except (TypeError, ValueError) as exc:
                 _LOGGER.debug("Could not calculate flow balance: %s", exc)
+
     def _decode_device_clock(self, data: dict[str, Any]) -> str | None:
         """Decode device clock from packed BCD date/time registers."""
         raw_yymm = data.get("date_time")
@@ -243,9 +244,15 @@ class _CoordinatorCapabilitiesMixin:
         if not isinstance(last_ts, datetime):
             elapsed = 0.0
         else:
-            if getattr(now, "tzinfo", None) is not None and getattr(last_ts, "tzinfo", None) is None:
+            if (
+                getattr(now, "tzinfo", None) is not None
+                and getattr(last_ts, "tzinfo", None) is None
+            ):
                 last_ts = last_ts.replace(tzinfo=UTC)
-            elif getattr(now, "tzinfo", None) is None and getattr(last_ts, "tzinfo", None) is not None:
+            elif (
+                getattr(now, "tzinfo", None) is None
+                and getattr(last_ts, "tzinfo", None) is not None
+            ):
                 now = now.replace(tzinfo=UTC)
             elapsed = (now - last_ts).total_seconds()
         self._total_energy += power * elapsed / 3600000.0

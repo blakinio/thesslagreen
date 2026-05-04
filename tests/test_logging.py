@@ -70,9 +70,7 @@ async def test_read_retries_logged(monkeypatch, caplog):
             )()
 
     hass = core.HomeAssistant(tempfile.mkdtemp())
-    coord = ThesslaGreenModbusCoordinator.from_params(
-        hass, "host", 1, 1, "name", scan_interval=1
-    )
+    coord = ThesslaGreenModbusCoordinator.from_params(hass, "host", 1, 1, "name", scan_interval=1)
     coord.client = DummyClient()
     coord.retry = 2
     coord.available_registers["input_registers"] = {"reg0", "reg1"}
@@ -81,9 +79,7 @@ async def test_read_retries_logged(monkeypatch, caplog):
     coord._register_groups["input_registers"] = [(0, 2)]
     coord._process_register_value = lambda name, value: value
 
-    caplog.set_level(
-        logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus_helpers"
-    )
+    caplog.set_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus_helpers")
     data = await coord._read_input_registers_optimized()
     assert data == {"reg0": 1, "reg1": 1}
     assert any(
@@ -91,12 +87,9 @@ async def test_read_retries_logged(monkeypatch, caplog):
         for r in caplog.records
         if r.levelno == logging.WARNING
     )
-    assert any(
-        "attempt 1/2" in r.message for r in caplog.records if r.levelno == logging.WARNING
-    )
+    assert any("attempt 1/2" in r.message for r in caplog.records if r.levelno == logging.WARNING)
     assert (
-        sum(1 for r in caplog.records if r.levelno == logging.DEBUG and "batch=2" in r.message)
-        == 2
+        sum(1 for r in caplog.records if r.levelno == logging.DEBUG and "batch=2" in r.message) == 2
     )
 
 
@@ -138,9 +131,7 @@ async def test_write_retries_logged(monkeypatch, caplog):
     )
 
     hass = core.HomeAssistant(tempfile.mkdtemp())
-    coord = ThesslaGreenModbusCoordinator.from_params(
-        hass, "host", 1, 1, "name", scan_interval=1
-    )
+    coord = ThesslaGreenModbusCoordinator.from_params(hass, "host", 1, 1, "name", scan_interval=1)
     coord.client = DummyClient()
     coord.retry = 2
     monkeypatch.setattr(coord, "_ensure_connection", lambda: asyncio.sleep(0))

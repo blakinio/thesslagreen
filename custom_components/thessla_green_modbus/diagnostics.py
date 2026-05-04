@@ -141,12 +141,8 @@ async def async_get_config_entry_diagnostics(
     _setdefault_bulk(
         diagnostics,
         {
-            "registers_hash": await _run_executor_job(
-                hass, registers_sha256, get_registers_path()
-            ),
-            "total_registers_json": await _run_executor_job(
-                hass, lambda: len(get_all_registers())
-            ),
+            "registers_hash": await _run_executor_job(hass, registers_sha256, get_registers_path()),
+            "total_registers_json": await _run_executor_job(hass, lambda: len(get_all_registers())),
         },
     )
 

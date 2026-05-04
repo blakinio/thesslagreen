@@ -38,9 +38,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 _ensure_current_event_loop()
 
 
-
-
-
 @pytest.fixture
 def mock_config_entry():
     """Return a mock config entry."""

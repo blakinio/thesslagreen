@@ -15,14 +15,17 @@ def _make_ok_response(registers):
     resp.registers = list(registers)
     return resp
 
+
 def _make_bit_response(bits):
     resp = MagicMock()
     resp.isError.return_value = False
     resp.bits = list(bits)
     return resp
 
+
 async def _make_scanner(**kwargs):
     return await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 1, **kwargs)
+
 
 def _make_transport(
     *, raises_on_close=None, ensure_side_effect=None, input_response=None, holding_response=None
@@ -41,6 +44,7 @@ def _make_transport(
     t.is_connected = MagicMock(return_value=True)
     return t
 
+
 async def test_read_input_two_arg_count_none(caplog):
     """Lines 1878-1881: _read_input(address, count) — count=None path."""
     scanner = await _make_scanner(retry=1)
@@ -51,6 +55,7 @@ async def test_read_input_two_arg_count_none(caplog):
     result = await scanner._read_input(5, 1)
     assert result == [42]
 
+
 async def test_read_input_two_arg_int_address():
     """Lines 1882-1885: _read_input(int, count, count) — int address path."""
     scanner = await _make_scanner(retry=1)
@@ -60,6 +65,7 @@ async def test_read_input_two_arg_int_address():
 
     result = await scanner._read_input(5, 1, 1)
     assert result == [99]
+
 
 async def test_read_input_modbus_io_cancelled(caplog):
     """Lines 1983-1985: ModbusIOException with 'cancelled' aborts."""
@@ -80,6 +86,7 @@ async def test_read_input_modbus_io_cancelled(caplog):
     assert result is None
     assert "Aborted reading input registers" in caplog.text
 
+
 async def test_read_input_timeout_error(caplog):
     """Lines 1993-2003: TimeoutError aborts and logs warning."""
     scanner = await _make_scanner(retry=2)
@@ -97,6 +104,7 @@ async def test_read_input_timeout_error(caplog):
 
     assert result is None
     assert "Aborted reading input registers" in caplog.text
+
 
 async def test_read_input_oserror(caplog):
     """Lines 2004-2012: OSError causes break, not abort_transiently."""
@@ -117,6 +125,7 @@ async def test_read_input_oserror(caplog):
     # OSError breaks the loop but does NOT set aborted_transiently
     assert "Failed to read input registers" in caplog.text
 
+
 async def test_read_input_block_no_client():
     """Line 2075: when active_client=None, delegates to _read_input(chunk_start, chunk_count)."""
     scanner = await _make_scanner()
@@ -132,6 +141,7 @@ async def test_read_input_block_no_client():
     args = mock_ri.call_args[0]
     assert len(args) == 2  # (chunk_start, chunk_count), no client
 
+
 async def test_read_input_block_int_start():
     """Lines 2063-2066: int start path."""
     scanner = await _make_scanner()
@@ -141,6 +151,7 @@ async def test_read_input_block_int_start():
 
     result = await scanner._read_input_block(0, 1)
     assert result == [5]
+
 
 async def test_read_holding_block_no_client():
     """Lines 2105-2106: when active_client=None, delegates to _read_holding."""
@@ -155,6 +166,7 @@ async def test_read_holding_block_no_client():
     mock_rh.assert_called()
     args = mock_rh.call_args[0]
     assert len(args) == 2  # (chunk_start, chunk_count), no client
+
 
 async def test_read_holding_block_int_start():
     """Lines 2094-2097: int start path."""

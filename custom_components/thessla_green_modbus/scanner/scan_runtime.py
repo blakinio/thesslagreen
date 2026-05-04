@@ -49,9 +49,7 @@ def build_scan_result(
         "missing_registers": missing_registers,
         "failed_addresses": {
             "modbus_exceptions": {
-                k: sorted(v)
-                for k, v in scanner.failed_addresses["modbus_exceptions"].items()
-                if v
+                k: sorted(v) for k, v in scanner.failed_addresses["modbus_exceptions"].items() if v
             },
             "invalid_values": {
                 k: sorted(v) for k, v in scanner.failed_addresses["invalid_values"].items() if v

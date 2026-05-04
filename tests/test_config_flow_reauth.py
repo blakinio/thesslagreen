@@ -39,7 +39,6 @@ class AbortFlow(Exception):
 
 
 @pytest.mark.asyncio
-
 @pytest.mark.asyncio
 async def test_reauth_flow_success():
     """Successful reauthentication should update the existing entry."""
@@ -147,6 +146,7 @@ async def test_reauth_flow_success():
     assert manager.updated_options[CONF_MAX_REGISTERS_PER_REQUEST] == 5
     assert manager.reload_calls == 1
 
+
 @pytest.mark.asyncio
 async def test_reauth_flow_missing_entry_aborts():
     """Missing config entry during reauth confirm should abort."""
@@ -187,6 +187,7 @@ async def test_reauth_flow_missing_entry_aborts():
 
     assert result["type"] == "abort"
     assert result["reason"] == "reauth_entry_missing"
+
 
 @pytest.mark.asyncio
 async def test_reauth_flow_invalid_auth_error():
@@ -234,4 +235,3 @@ async def test_reauth_flow_invalid_auth_error():
     assert result["type"] == "form"
     assert result["step_id"] == "reauth"
     assert result["errors"] == {"base": "invalid_auth"}
-

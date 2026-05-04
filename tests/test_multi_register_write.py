@@ -102,9 +102,7 @@ async def test_async_write_registers_retries_from_first_chunk_after_chunk_error(
     response_ok.isError.return_value = False
     transport = MagicMock()
     transport.is_connected.return_value = True
-    transport.write_registers = AsyncMock(
-        side_effect=[response_error, response_ok, response_ok]
-    )
+    transport.write_registers = AsyncMock(side_effect=[response_error, response_ok, response_ok])
     coordinator._transport = transport
 
     assert await coordinator.async_write_registers(100, [1, 2, 3]) is True
