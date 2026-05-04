@@ -10,6 +10,7 @@ from custom_components.thessla_green_modbus.coordinator.capabilities import (
     _clamp_percentage,
     _coerce_bypass_open,
     _flow_balance_status,
+    _normalise_capability_flag,
 )
 
 
@@ -79,6 +80,13 @@ def test_coerce_bypass_open_helper():
     assert _coerce_bypass_open(2) is True
     assert _coerce_bypass_open(0) is False
     assert _coerce_bypass_open("1") is False
+
+
+def test_normalise_capability_flag_helper():
+    """Capability helper should coerce missing and truthy values predictably."""
+    assert _normalise_capability_flag(None) is False
+    assert _normalise_capability_flag(False) is False
+    assert _normalise_capability_flag(1) is True
 
 
 # ---------------------------------------------------------------------------
@@ -193,3 +201,13 @@ def test_post_process_data_naive_now_aware_last_ts():
         data = {"dac_supply": 3.0, "dac_exhaust": 3.0}
         result = coord._post_process_data(data)
     assert "estimated_power" in result
+
+
+def test_apply_capability_result_helper():
+    """Capability result helper applies value only when flag is enabled."""
+    coord = _make_coordinator()
+    data: dict[str, object] = {}
+    assert coord._apply_capability_result(data, "x", 1.0, None) is False
+    assert "x" not in data
+    assert coord._apply_capability_result(data, "x", 1.0, True) is True
+    assert data["x"] == 1.0

@@ -33,6 +33,11 @@ def _coerce_bypass_open(raw_bypass: Any) -> bool:
     return raw_bypass in (1, 2)
 
 
+def _normalise_capability_flag(raw_value: Any) -> bool:
+    """Normalise capability-like values to a strict boolean."""
+    return bool(raw_value) if raw_value is not None else False
+
+
 class _CoordinatorCapabilitiesMixin:
     """Capability and derived-value logic for the coordinator."""
 
@@ -51,6 +56,73 @@ class _CoordinatorCapabilitiesMixin:
         }
     )
     _MODEL_FLOW_TOLERANCE = 15
+
+    def _apply_capability_result(
+        self, data: dict[str, Any], key: str, value: Any, capability_flag: Any
+    ) -> bool:
+        """Apply a derived value only when a capability flag is enabled."""
+        if not _normalise_capability_flag(capability_flag):
+            return False
+        data[key] = value
+        return True
+
+    def _calculate_heat_recovery_efficiency(self, data: dict[str, Any]) -> float | None:
+        """Calculate heat recovery efficiency percentage if inputs allow it."""
+        bypass_open = _coerce_bypass_open(data.get("bypass_mode"))
+        if bypass_open:
+            return None
+        if not all(
+            k in data for k in ("outside_temperature", "supply_temperature", "exhaust_temperature")
+        ):
+            return None
+        outside = float(data["outside_temperature"])
+        supply = float(data["supply_temperature"])
+        exhaust = float(data["exhaust_temperature"])
+        if exhaust - outside < 5.0:
+            return None
+        q_supply = data.get("supply_flow_rate")
+        q_exhaust = data.get("exhaust_flow_rate")
+        if q_supply is not None and q_exhaust is not None:
+            q_s = float(q_supply)
+            q_e = float(q_exhaust)
+            q_min = min(q_s, q_e)
+            raw = (
+                (q_s * (supply - outside)) / (q_min * (exhaust - outside))
+                if q_min > 0
+                else (supply - outside) / (exhaust - outside)
+            )
+        else:
+            raw = (supply - outside) / (exhaust - outside)
+        return _clamp_percentage(round(raw * 100, 1))
+
+    def _apply_post_process_derived_values(self, data: dict[str, Any]) -> None:
+        """Apply grouped derived metrics to mutable coordinator data."""
+        try:
+            efficiency = self._calculate_heat_recovery_efficiency(data)
+            if self._apply_capability_result(
+                data, "calculated_efficiency", efficiency, efficiency is not None
+            ):
+                data["heat_recovery_efficiency"] = data["calculated_efficiency"]
+        except (ZeroDivisionError, TypeError, ValueError) as exc:
+            _LOGGER.debug("Could not calculate efficiency: %s", exc)
+
+        if all(
+            k in data for k in ("supply_flow_rate", "outside_temperature", "supply_temperature")
+        ):
+            try:
+                flow = float(data["supply_flow_rate"])
+                delta_t = float(data["supply_temperature"]) - float(data["outside_temperature"])
+                data["heat_recovery_power"] = round(max(0.0, 0.335 * flow * delta_t), 1)
+            except (TypeError, ValueError) as exc:
+                _LOGGER.debug("Could not calculate heat recovery power: %s", exc)
+
+        if "supply_flow_rate" in data and "exhaust_flow_rate" in data:
+            try:
+                balance = float(data["supply_flow_rate"]) - float(data["exhaust_flow_rate"])
+                data["flow_balance"] = balance
+                data["flow_balance_status"] = _flow_balance_status(balance)
+            except (TypeError, ValueError) as exc:
+                _LOGGER.debug("Could not calculate flow balance: %s", exc)
     def _decode_device_clock(self, data: dict[str, Any]) -> str | None:
         """Decode device clock from packed BCD date/time registers."""
         raw_yymm = data.get("date_time")
@@ -168,68 +240,7 @@ class _CoordinatorCapabilitiesMixin:
         #     Note: this device exposes only 3 temperature sensors (TZ1, TN1, TP);
         #     the exhaust-outlet sensor TW is absent, so EN 308 η_exhaust and the
         #     Belgian mean-efficiency (η_epbd) cannot be computed.
-        bypass_open = _coerce_bypass_open(data.get("bypass_mode"))
-        if (
-            all(
-                k in data
-                for k in ["outside_temperature", "supply_temperature", "exhaust_temperature"]
-            )
-            and not bypass_open
-        ):
-            try:
-                outside = float(data["outside_temperature"])
-                supply = float(data["supply_temperature"])
-                exhaust = float(data["exhaust_temperature"])
-
-                # Heat recovery only makes sense in heating mode:
-                # outside must be colder than the room (exhaust > outside).
-                # In summer/freecooling the bypass should be open, but if the
-                # bypass register hasn't caught up yet, skip gracefully.
-                # EN 308 also requires ΔT ≥ 5 K for a statistically reliable
-                # measurement; below that threshold sensor noise dominates.
-                _MIN_DELTA_T = 5.0
-                if exhaust - outside >= _MIN_DELTA_T:
-                    q_supply = data.get("supply_flow_rate")
-                    q_exhaust = data.get("exhaust_flow_rate")
-                    if q_supply is not None and q_exhaust is not None:
-                        q_s = float(q_supply)
-                        q_e = float(q_exhaust)
-                        q_min = min(q_s, q_e)
-                        if q_min > 0:
-                            # ASHRAE 84 thermodynamic effectiveness (ε-NTU)
-                            raw = (q_s * (supply - outside)) / (q_min * (exhaust - outside))
-                        else:
-                            raw = (supply - outside) / (exhaust - outside)
-                    else:
-                        # EN 308 η_supply — 3-sensor fallback
-                        raw = (supply - outside) / (exhaust - outside)
-
-                    efficiency = round(raw * 100, 1)
-                    data["calculated_efficiency"] = _clamp_percentage(efficiency)
-                    data["heat_recovery_efficiency"] = data["calculated_efficiency"]
-            except (ZeroDivisionError, TypeError, ValueError) as exc:
-                _LOGGER.debug("Could not calculate efficiency: %s", exc)
-
-        # Calculate heat recovery power: P[W] = ρ·Cp·Q·ΔT
-        # ρ=1.2 kg/m³, Cp=1005 J/(kg·K) → coefficient = 1.2*1005/3600 ≈ 0.335 W/(m³/h·K)
-        if all(
-            k in data for k in ["supply_flow_rate", "outside_temperature", "supply_temperature"]
-        ):
-            try:
-                flow = float(data["supply_flow_rate"])
-                delta_t = float(data["supply_temperature"]) - float(data["outside_temperature"])
-                data["heat_recovery_power"] = round(max(0.0, 0.335 * flow * delta_t), 1)
-            except (TypeError, ValueError) as exc:
-                _LOGGER.debug("Could not calculate heat recovery power: %s", exc)
-
-        # Calculate flow balance
-        if "supply_flow_rate" in data and "exhaust_flow_rate" in data:
-            try:
-                balance = float(data["supply_flow_rate"]) - float(data["exhaust_flow_rate"])
-                data["flow_balance"] = balance
-                data["flow_balance_status"] = _flow_balance_status(balance)
-            except (TypeError, ValueError) as exc:
-                _LOGGER.debug("Could not calculate flow balance: %s", exc)
+        self._apply_post_process_derived_values(data)
         power = self.calculate_power_consumption(data)
         if power is not None:
             data["estimated_power"] = power
