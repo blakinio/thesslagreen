@@ -101,6 +101,47 @@ def _build_base_translation_mapping(register: str, register_type: str) -> dict[s
     return {"translation_key": register, "register_type": register_type}
 
 
+def _should_skip_number_mapping(
+    register: str,
+    *,
+    info: dict[str, Any],
+    reg: Any,
+    sensor_maps: dict[str, Any],
+    select_maps: dict[str, Any],
+    switch_maps: dict[str, Any],
+    number_translation_keys: set[str],
+    parse_states: Any,
+) -> bool:
+    """Return True when *register* cannot be represented as a number entity."""
+    if register in sensor_maps and "W" not in (info.get("access") or ""):
+        return True
+    if register in select_maps or register in switch_maps:
+        return True
+    if register.startswith("date_time"):
+        return True
+    if re.match(r"[sef](?:_|\d)", register) or register in {"alarm", "error"}:
+        return True
+    if any(register.startswith(prefix) for prefix in BCD_TIME_PREFIXES):
+        return True
+    if register.startswith(("setting_summer_", "setting_winter_")):
+        return True
+    if parse_states(info.get("unit")):
+        return True
+    if reg.enum and not (reg.extra and reg.extra.get("bitmask")):
+        return True
+    return register not in number_translation_keys
+
+
+def _build_number_mapping_payload(info: dict[str, Any]) -> dict[str, Any]:
+    """Build number mapping payload from register info metadata."""
+    cfg: dict[str, Any] = {"unit": info.get("unit"), "step": info.get("step", 1), "scale": info.get("scale", 1)}
+    if info.get("min") is not None:
+        cfg["min"] = info["min"]
+    if info.get("max") is not None:
+        cfg["max"] = info["max"]
+    return cfg
+
+
 def _is_binary_state_pair(states: dict[str, int]) -> bool:
     """Return True when parsed states represent a 0/1 pair."""
     return len(states) == 2 and set(states.values()) == {0, 1}
@@ -264,38 +305,19 @@ def _load_number_mappings() -> dict[str, dict[str, Any]]:
         if not info:
             continue
 
-        if register in sensor_maps and "W" not in (info.get("access") or ""):
-            continue
-        if register in select_maps:
-            continue
-        if register in switch_maps:
-            continue
-        if register.startswith("date_time"):
-            continue
-        if re.match(r"[sef](?:_|\d)", register) or register in {"alarm", "error"}:
-            continue
-        if any(register.startswith(prefix) for prefix in BCD_TIME_PREFIXES):
-            continue
-        if register.startswith(("setting_summer_", "setting_winter_")):
-            continue
-        if _parse(info.get("unit")):
-            continue
-        if reg.enum and not (reg.extra and reg.extra.get("bitmask")):
-            continue
-        if register not in _num_trans():
+        if _should_skip_number_mapping(
+            register,
+            info=info,
+            reg=reg,
+            sensor_maps=sensor_maps,
+            select_maps=select_maps,
+            switch_maps=switch_maps,
+            number_translation_keys=_num_trans(),
+            parse_states=_parse,
+        ):
             continue
 
-        cfg: dict[str, Any] = {
-            "unit": info.get("unit"),
-            "step": info.get("step", 1),
-            "scale": info.get("scale", 1),
-        }
-        if info.get("min") is not None:
-            cfg["min"] = info["min"]
-        if info.get("max") is not None:
-            cfg["max"] = info["max"]
-
-        number_configs[register] = cfg
+        number_configs[register] = _build_number_mapping_payload(info)
 
     for register, override in num_overrides.items():
         number_configs.setdefault(register, {}).update(override)
