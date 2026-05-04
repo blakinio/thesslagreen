@@ -33,18 +33,8 @@ def _build_step_handler(
     """Create a parameter handler based on write steps."""
 
     async def _handler(call: ServiceCall) -> None:
-        steps = step_builder(call)
-        for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
-            if not await write_register_steps(
-                coordinator,
-                steps,
-                entity_id,
-                context,
-                deps.write_register,
-                deps.logger,
-            ):
-                continue
-            await refresh_and_log_success(coordinator, deps.logger, success_log, entity_id)
+        steps = list(step_builder(call))
+        await _run_parameter_steps(hass, call, deps, steps, context, success_log)
 
     return _handler
 
@@ -132,6 +122,28 @@ def _parameter_registrations(
         ("set_air_quality_thresholds", set_air_quality_thresholds, SET_AIR_QUALITY_THRESHOLDS_SCHEMA),
         ("set_temperature_curve", set_temperature_curve, SET_TEMPERATURE_CURVE_SCHEMA),
     )
+
+
+async def _run_parameter_steps(
+    hass: HomeAssistant,
+    call: ServiceCall,
+    deps: ServiceHandlerDeps,
+    steps: list[WriteStep],
+    context: str,
+    success_log: str,
+) -> None:
+    """Run shared write/refresh flow for parameter handlers."""
+    for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
+        if not await write_register_steps(
+            coordinator,
+            steps,
+            entity_id,
+            context,
+            deps.write_register,
+            deps.logger,
+        ):
+            continue
+        await refresh_and_log_success(coordinator, deps.logger, success_log, entity_id)
 
 
 def register_parameter_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:

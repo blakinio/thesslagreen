@@ -110,12 +110,42 @@ async def write_register_steps(
     Optional values are skipped when ``value`` is ``None``.
     """
     for register_name, value, optional, error_message in steps:
-        if optional and value is None:
+        if not _should_write_step(optional, value):
             continue
-        if not await write_register_func(coordinator, register_name, value, entity_id, action):
-            logger.error(error_message, entity_id)
+        if not await _perform_step_write(
+            coordinator,
+            register_name,
+            value,
+            entity_id,
+            action,
+            error_message,
+            write_register_func,
+            logger,
+        ):
             return False
     return True
+
+
+def _should_write_step(optional: bool, value: object) -> bool:
+    """Return whether a write step should be executed."""
+    return not (optional and value is None)
+
+
+async def _perform_step_write(
+    coordinator: Any,
+    register_name: str,
+    value: object,
+    entity_id: str,
+    action: str,
+    error_message: str,
+    write_register_func: Any,
+    logger: Any,
+) -> bool:
+    """Execute one write step with common error translation."""
+    if await write_register_func(coordinator, register_name, value, entity_id, action):
+        return True
+    logger.error(error_message, entity_id)
+    return False
 
 
 async def write_device_name_chunks(coordinator: Any, device_name: str, batch: int) -> bool:
