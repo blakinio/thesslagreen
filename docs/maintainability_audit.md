@@ -1,6 +1,6 @@
 # Maintainability audit
 
-Date: 2026-05-03
+Date: 2026-05-04
 
 ## Inputs and checks
 
@@ -30,48 +30,48 @@ Maintained gates intentionally exclude removed non-maintained checks (`black`, `
 ## 2) Largest files (by non-empty lines)
 
 1. `custom_components/thessla_green_modbus/coordinator/coordinator.py` (712)
-2. `custom_components/thessla_green_modbus/scanner/io_read.py` (650)
-3. `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (560)
-4. `tests/test_entity_mappings.py` (526)
+2. `custom_components/thessla_green_modbus/scanner/io_read.py` (658)
+3. `tests/test_entity_mappings.py` (526)
+4. `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (522)
 5. `tests/test_coordinator.py` (502)
-6. `tests/test_modbus_helpers.py` (482)
-7. `tests/test_scanner_io_coverage.py` (472)
-8. `custom_components/thessla_green_modbus/coordinator/schedule.py` (472)
-9. `custom_components/thessla_green_modbus/scanner/core.py` (470)
-10. `custom_components/thessla_green_modbus/modbus_helpers.py` (456)
-11. `custom_components/thessla_green_modbus/mappings/_static_discrete.py` (438)
-12. `custom_components/thessla_green_modbus/const.py` (428)
-13. `custom_components/thessla_green_modbus/config_flow.py` (428)
-14. `tests/test_entity_data_correctness.py` (427)
-15. `tests/test_register_loader.py` (402)
+6. `tests/test_scanner_io_coverage.py` (472)
+7. `custom_components/thessla_green_modbus/scanner/core.py` (470)
+8. `custom_components/thessla_green_modbus/coordinator/schedule.py` (469)
+9. `custom_components/thessla_green_modbus/modbus_helpers.py` (456)
+10. `custom_components/thessla_green_modbus/mappings/_static_discrete.py` (438)
+11. `custom_components/thessla_green_modbus/config_flow.py` (432)
+12. `tests/test_register_loader.py` (402)
+13. `tools/translate_register_descriptions.py` (397)
+14. `custom_components/thessla_green_modbus/scanner/setup.py` (389)
+15. `custom_components/thessla_green_modbus/scanner/registers.py` (379)
 
-Interpretation: the largest remaining production hotspots are coordinator orchestration, scanner input-read path, and mapping-builder composition.
+Interpretation: the largest remaining production hotspots are coordinator orchestration, scanner input-read path, scanner core flow, and mapping-builder composition.
 
 ## 3) Largest classes
 
 1. `ThesslaGreenModbusCoordinator` in `coordinator/coordinator.py` (628)
-2. `_CoordinatorScheduleMixin` in `coordinator/schedule.py` (489)
+2. `_CoordinatorScheduleMixin` in `coordinator/schedule.py` (492)
 3. `ThesslaGreenDeviceScanner` in `scanner/core.py` (441)
 4. `RawRtuOverTcpTransport` in `modbus_transport_raw.py` (308)
 5. `RegisterDef` in `registers/register_def.py` (268)
-6. `ThesslaGreenFan` in `fan.py` (254)
+6. `ThesslaGreenFan` in `fan.py` (249)
 7. `_CoordinatorCapabilitiesMixin` in `coordinator/capabilities.py` (230)
-8. `ConfigFlow` in `config_flow.py` (218)
+8. `ConfigFlow` in `config_flow.py` (221)
 9. `BaseModbusTransport` in `modbus_transport_base.py` (210)
 10. `ThesslaGreenBinarySensor` in `binary_sensor.py` (175)
 
 ## 4) Largest functions/methods
 
 1. `register_maintenance_services` in `services_handlers_maintenance.py` (136)
-2. `read_input` in `scanner/io_read.py` (132)
-3. `async_write_register` in `coordinator/schedule.py` (129)
-4. `run_full_scan` in `scanner/orchestration.py` (125)
+2. `read_input` in `scanner/io_read.py` (111)
+3. `async_write_register` in `coordinator/schedule.py` (107)
+4. `run_full_scan` in `scanner/orchestration.py` (103)
 5. `validate_input_impl` in `config_flow_device_validation.py` (123)
 6. `_post_process_data` in `coordinator/capabilities.py` (120)
-7. `read_with_retry` in `coordinator/retry.py` (106)
-8. `migrate_unique_id` in `const.py` (100)
-9. `read_input_registers_optimized` in `_coordinator_read_batches.py` (100)
-10. `_call_modbus` in `modbus_helpers.py` (97)
+7. `read_input_registers_optimized` in `_coordinator_read_batches.py` (100)
+8. `_call_modbus` in `modbus_helpers.py` (97)
+9. `scan` in `scanner/orchestration.py` (92)
+10. `__init__` in `scanner/core.py` (91)
 
 ## 5) Completed refactors reflected in current dev state (merged PRs #1492-#1501)
 
@@ -98,8 +98,8 @@ Interpretation: the largest remaining production hotspots are coordinator orches
 ## 7) Remaining production hotspots and recommended next PRs
 
 1. Continue splitting `custom_components/thessla_green_modbus/coordinator/coordinator.py` (712 non-empty lines) by isolating lifecycle/state transitions from update-cycle orchestration.
-2. Continue decomposition of `custom_components/thessla_green_modbus/scanner/io_read.py` (650 lines), prioritizing extraction of grouped-read planning and error normalization around `read_input`/`read_bit_registers`.
-3. Continue decomposition of `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (560 lines), focusing on domain/type-specific builders to reduce branch-heavy composition.
+2. Continue decomposition of `custom_components/thessla_green_modbus/scanner/io_read.py` (658 lines), prioritizing extraction of grouped-read planning and error normalization around `read_input`/`read_bit_registers`.
+3. Continue decomposition of `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (522 lines), focusing on domain/type-specific builders to reduce branch-heavy composition.
 4. Reduce `custom_components/thessla_green_modbus/scanner/core.py` (470 lines) by separating scanner state initialization from runtime scan execution.
 5. Reduce `register_maintenance_services` (136 lines) by extracting schema binding, target resolution wiring, and registration loops into smaller helpers.
 
@@ -132,7 +132,7 @@ Implemented in CI as `ruff-adoption-signal`: a separate workflow job that runs t
 
 When `ruff format --check` and import-order checks are routinely clean on active files, enforce them incrementally by path or module group in small PRs, never as a one-shot repository-wide rewrite.
 
-### Current readiness snapshot (2026-05-03)
+### Current readiness snapshot (2026-05-04)
 
 - `ruff format --check custom_components tests tools`: **fails** currently (99 files would be reformatted).
 - `ruff check --select I custom_components tests tools`: **passes** currently.
