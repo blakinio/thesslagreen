@@ -8,7 +8,7 @@ Related document:
 
 ## Scope and direction
 
-The project is in an incremental refactor toward layered architecture:
+The project remains in incremental layered refactor:
 
 - HA layer (platforms, flows, services, diagnostics)
 - coordinator (HA adapter)
@@ -19,7 +19,7 @@ The project is in an incremental refactor toward layered architecture:
 
 ## Hard constraints
 
-The following constraints are active and must be preserved:
+The following constraints remain active and must be preserved:
 
 1. No legacy modules.
 2. No compatibility shims.
@@ -27,25 +27,42 @@ The following constraints are active and must be preserved:
 4. No proxy modules.
 5. `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant.
 
-## Coordinator migration status
+## Current invariant verification snapshot (2026-05-04)
 
-Dedicated migration PR completed. Current canonical state:
+- Top-level `custom_components/thessla_green_modbus/coordinator.py`: **absent**.
+- Canonical coordinator module: `custom_components/thessla_green_modbus/coordinator/coordinator.py`.
+- HA imports in `core/transport/registers/scanner`: **none detected**.
+- Entity mapping validation: **passes** (`OK: 366 entities validated`).
+- Maintainability gate: **passes**.
+- Full test suite (`pytest tests/ -q`): **passes** (4 skipped).
 
-- `custom_components/thessla_green_modbus/coordinator/` exists and is the coordinator package.
-- `custom_components/thessla_green_modbus/coordinator/coordinator.py` is the coordinator implementation module inside the package.
-- `custom_components/thessla_green_modbus/coordinator.py` has been removed.
-- Imports must target canonical package modules directly (no compatibility shims/proxies/re-export-only modules).
+## Latest cleanup-batch outcome
+
+- Maintained CI required gates currently pass (lint + tests + entity mappings).
+- Fresh metrics still identify coordinator/scanner/mapping-builder concentration as remaining hotspots.
+- Import-order lint signal is clean.
+- Formatting drift remains significant (`ruff format --check`: 108 files would be reformatted).
+
+## Remaining hotspots (next PR queue)
+
+1. Coordinator decomposition (`coordinator/coordinator.py`, `coordinator/schedule.py`).
+2. Scanner read-path decomposition (`scanner/io_read.py`, `scanner/core.py`).
+3. Mapping builder decomposition (`mappings/_mapping_builders.py`).
+4. Config-flow validation branch extraction (`config_flow_device_validation.py`).
+5. Large test module splits (`tests/test_coordinator.py`, scanner/config-flow mega suites).
+
+## CI hardening status
+
+- Required now: `ruff check`, compileall, register-reference compare, maintainability check, pytest+coverage, entity mappings validation.
+- Informational/non-required now: `ruff check --select I` (clean), `ruff format --check` (drift present).
+- Not currently required: `black`, `isort`, `mypy`, `hassfest`, HACS validation.
 
 ## Documentation policy for refactor work
 
-- Keep architecture docs aligned with real repository state.
-- Do not document unsupported devices or speculative features.
-- Do not create migration guides unless real migration code exists.
-
-## CI hardening status (safe staged adoption)
-
-- Required CI gates remain unchanged: lint, tests, and entity mappings validation.
-- A non-blocking informational CI job (`ruff-adoption-signal`) now reports:
-  - `ruff check --select I custom_components tests tools`
-  - `ruff format --check custom_components tests tools`
-- This preserves branch-protection stability while exposing formatting/import-order drift trends.
+- Keep architecture docs aligned with current repository state.
+- Do not document speculative capabilities as completed.
+- Keep readiness claims split across:
+  1. maintainability/refactor readiness,
+  2. CI readiness,
+  3. release/HACS readiness,
+  4. real device validation evidence.

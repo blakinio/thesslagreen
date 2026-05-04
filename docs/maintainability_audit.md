@@ -6,135 +6,122 @@ Date: 2026-05-04
 
 Executed:
 
-- `python -m pip install -q -r requirements-dev.txt` *(passed; pip warning about root user)*
+- `python -m pip install -q -r requirements-dev.txt` *(passed; pip warning about root user and pip upgrade notice)*
 - `ruff check custom_components tests tools` *(passed)*
+- `ruff check --select I custom_components tests tools` *(passed)*
+- `ruff format --check custom_components tests tools || true` *(informational; failed with `108 files would be reformatted`)*
 - `python -m compileall -q custom_components/thessla_green_modbus tests tools` *(passed)*
-- `python tools/compare_registers_with_reference.py` *(passed; reports 62 extra integration entries and 242 name mismatches to verify with vendor)*
-- `python tools/check_maintainability.py` *(passed)*
+- `python tools/compare_registers_with_reference.py` *(passed; informational output: 62 extras and 242 name mismatches)*
+- `python tools/check_maintainability.py` *(passed; `Maintainability gate passed.`)*
 - `pytest tests/ -q` *(passed; 4 skipped)*
-- `python tools/validate_entity_mappings.py` *(passed; 366 entities validated)*
-- `find custom_components/thessla_green_modbus -maxdepth 2 -name "coordinator.py" -print` *(passed; only canonical `coordinator/coordinator.py` exists)*
+- `python tools/validate_entity_mappings.py` *(passed; `OK: 366 entities validated`)*
+- `find custom_components/thessla_green_modbus -maxdepth 2 -name "coordinator.py" -print` *(informational; found only `coordinator/coordinator.py`, i.e. package implementation module)*
 - `rg "from homeassistant|import homeassistant" custom_components/thessla_green_modbus/core custom_components/thessla_green_modbus/transport custom_components/thessla_green_modbus/registers custom_components/thessla_green_modbus/scanner || true` *(passed; no matches)*
-- `rg "compat|shim|proxy|re-export|legacy" custom_components tests docs || true` *(informational; expected policy/test/docs references plus existing compatibility spots outside forbidden areas)*
+- `rg "compat|shim|proxy|re-export|legacy" custom_components tests docs || true` *(informational; matches include policy/docs/tests text plus known legacy-compat references outside the forbidden invariants)*
 
-## 1) CI status and maintained CI gates
+## 1) Current CI gates
 
-The repository CI workflow (`.github/workflows/ci.yaml`) currently enforces three jobs:
+Current required CI workflow gates remain:
 
-1. **Lint**: dependency install, `ruff check custom_components tests tools`, `python -m compileall -q custom_components/thessla_green_modbus tests tools`, `python tools/compare_registers_with_reference.py`, and `python tools/check_maintainability.py`.
-2. **Tests**: `pytest --cov --cov-report=xml --cov-report=term -q` plus Codecov upload.
-3. **Entity mappings validation**: `python tools/validate_entity_mappings.py`.
+1. **Lint gate**: `ruff check`, `compileall`, register-reference compare, maintainability check.
+2. **Test gate**: `pytest --cov --cov-report=xml --cov-report=term -q` (+ coverage upload).
+3. **Entity mappings gate**: `python tools/validate_entity_mappings.py`.
 
-Maintained gates intentionally exclude removed non-maintained checks (`black`, `isort`, `mypy`, `hassfest`, and HACS validation).
+Non-required tools status in this audit window:
 
-## 2) Largest files (by non-empty lines)
+- `black`: not configured as a required gate.
+- `isort`: not configured as a required gate.
+- `mypy`: not configured as a required gate.
+- `hassfest`: not configured as a required gate.
+- HACS validation: not configured as a required gate.
+
+## 2) Fresh metrics snapshot
+
+### Largest files (non-empty lines)
 
 1. `custom_components/thessla_green_modbus/coordinator/coordinator.py` (711)
-2. `custom_components/thessla_green_modbus/scanner/io_read.py` (671)
-3. `tests/test_entity_mappings.py` (526)
-4. `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (522)
+2. `custom_components/thessla_green_modbus/scanner/io_read.py` (684)
+3. `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (514)
+4. `custom_components/thessla_green_modbus/coordinator/schedule.py` (503)
 5. `tests/test_coordinator.py` (502)
-6. `tests/test_scanner_io_coverage.py` (472)
+6. `custom_components/thessla_green_modbus/modbus_helpers.py` (498)
 7. `custom_components/thessla_green_modbus/scanner/core.py` (470)
-8. `custom_components/thessla_green_modbus/coordinator/schedule.py` (482)
-9. `custom_components/thessla_green_modbus/modbus_helpers.py` (474)
-10. `custom_components/thessla_green_modbus/mappings/_static_discrete.py` (438)
-11. `custom_components/thessla_green_modbus/config_flow.py` (432)
-12. `tests/test_register_loader.py` (402)
-13. `tools/translate_register_descriptions.py` (397)
-14. `custom_components/thessla_green_modbus/scanner/setup.py` (389)
-15. `custom_components/thessla_green_modbus/scanner/registers.py` (379)
+8. `custom_components/thessla_green_modbus/mappings/_static_discrete.py` (438)
+9. `custom_components/thessla_green_modbus/config_flow.py` (432)
+10. `tests/test_register_loader.py` (402)
 
-Interpretation: the largest remaining production hotspots are coordinator orchestration, scanner input-read path, scanner core flow, and mapping-builder composition.
-
-## 3) Largest classes
+### Largest classes (AST span)
 
 1. `ThesslaGreenModbusCoordinator` in `coordinator/coordinator.py` (625)
-2. `_CoordinatorScheduleMixin` in `coordinator/schedule.py` (506)
+2. `_CoordinatorScheduleMixin` in `coordinator/schedule.py` (528)
 3. `ThesslaGreenDeviceScanner` in `scanner/core.py` (441)
-4. `RawRtuOverTcpTransport` in `modbus_transport_raw.py` (308)
+4. `RawRtuOverTcpTransport` in `modbus_transport_raw.py` (334)
 5. `RegisterDef` in `registers/register_def.py` (268)
 6. `ThesslaGreenFan` in `fan.py` (249)
-7. `_CoordinatorCapabilitiesMixin` in `coordinator/capabilities.py` (236)
+7. `_CoordinatorCapabilitiesMixin` in `coordinator/capabilities.py` (223)
 8. `ConfigFlow` in `config_flow.py` (221)
 9. `BaseModbusTransport` in `modbus_transport_base.py` (210)
 10. `ThesslaGreenBinarySensor` in `binary_sensor.py` (175)
 
-## 4) Largest functions/methods
+### Largest functions (AST span)
 
-1. `register_maintenance_services` in `services_handlers_maintenance.py` (136)
-2. `read_input` in `scanner/io_read.py` (111)
-3. `async_write_register` in `coordinator/schedule.py` (103)
-4. `run_full_scan` in `scanner/orchestration.py` (103)
-5. `validate_input_impl` in `config_flow_device_validation.py` (111)
-6. `read_input_registers_optimized` in `_coordinator_read_batches.py` (100)
-7. `async_setup_entry` in `sensor.py` (98)
-8. `_call_modbus` in `modbus_helpers.py` (90)
-9. `scan` in `scanner/orchestration.py` (83)
-10. `scan_firmware_info` in `scanner/firmware.py` (85)
+1. `register_maintenance_services` in `services_handlers_maintenance.py` (128)
+2. `validate_input_impl` in `config_flow_device_validation.py` (111)
+3. `_call_modbus` in `modbus_helpers.py` (106)
+4. `read_input_registers_optimized` in `_coordinator_read_batches.py` (100)
+5. `async_setup_entry` in `sensor.py` (98)
+6. `read_bit_registers` in `scanner/io_read.py` (94)
+7. `run_full_scan` in `scanner/orchestration.py` (91)
+8. `scan` in `scanner/orchestration.py` (83)
+9. `_extend_entity_mappings_from_registers` in `mappings/_mapping_builders.py` (83)
+10. `async_write_register` in `coordinator/schedule.py` (81)
 
-## 5) Completed refactors reflected in current dev state (merged PRs #1492-#1501)
+## 3) Completed refactor batch status
 
-- **#1492 coordinator connection orchestration helper**: coordinator connection orchestration was moved toward helper boundaries, reducing branching pressure in main coordinator execution flow.
-- **#1493 multi-register chunk executor from coordinator schedule**: coordinator schedule gained clearer chunk-execution structure for multi-register writes.
-- **#1494 scanner core state helper**: scanner core state handling was split into dedicated helper logic, tightening core scan-path responsibilities.
-- **#1495 mapping builder branch complexity**: mapping builder branch paths were simplified, reducing complexity concentration in mapping composition.
-- **#1496 temperature sensor mapping module**: temperature-specific mapping concerns were moved into dedicated mapping module boundaries.
-- **#1497 exception-function classifier in `RawRtuOverTcpTransport`**: function-level exception classification in raw RTU-over-TCP transport was clarified and isolated.
-- **#1498 maintenance service registration helper**: maintenance registration flow was further extracted into helper-level structure.
-- **#1499 scanner I/O register read failure finalizer**: scanner read-failure finalization logic was isolated to standardize terminal failure handling in I/O reads.
-- **#1500 register test coverage split**: register-focused test coverage was split into clearer scope units to keep tests maintainable as production modules are decomposed.
-- **#1501 config-flow reauth helpers**: reauth flow behavior was extracted into helpers to reduce complexity in `config_flow.py` and align with layered flow constraints.
+The latest cleanup batch is reflected in current structure and checks (maintainability + full tests + entity mapping validation all pass). The previously tracked cleanup items (#1492-#1501 in project history) remain consistent with current codebase shape, and no rollback indicators were found in this audit run.
 
-## 6) Current invariants and architectural constraints (verified)
+## 4) Remaining production hotspots
 
-- `coordinator/` is canonical.
-- Top-level `custom_components/thessla_green_modbus/coordinator.py` is absent and must remain absent.
-- No compatibility shims.
-- No proxy modules.
-- No re-export-only modules.
-- `core/`, `transport/`, `registers/`, and `scanner/` do not import Home Assistant.
+1. `coordinator/coordinator.py` and `_CoordinatorScheduleMixin` remain the largest coordinator hotspots.
+2. Scanner path still concentrates complexity in `scanner/io_read.py` and `scanner/core.py`.
+3. Mapping composition remains concentrated in `mappings/_mapping_builders.py`.
+4. `config_flow.py` + `config_flow_device_validation.py` still carry large flow/validation paths.
+5. Service registration remains top-heavy in `register_maintenance_services`.
 
-## 7) Remaining production hotspots and recommended next PRs
+## 5) Remaining test hotspots
 
-1. Continue splitting `custom_components/thessla_green_modbus/coordinator/coordinator.py` (711 non-empty lines) by isolating lifecycle/state transitions from update-cycle orchestration.
-2. Continue decomposition of `custom_components/thessla_green_modbus/scanner/io_read.py` (671 lines), prioritizing extraction of grouped-read planning and error normalization around `read_input`/`read_bit_registers`.
-3. Continue decomposition of `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` (522 lines), focusing on domain/type-specific builders to reduce branch-heavy composition.
-4. Reduce `custom_components/thessla_green_modbus/scanner/core.py` (470 lines) by separating scanner state initialization from runtime scan execution.
-5. Reduce `register_maintenance_services` (136 lines) by extracting schema binding, target resolution wiring, and registration loops into smaller helpers.
+Largest tests by file size still include `tests/test_coordinator.py`, `tests/test_register_loader.py`, and other large scanner/config-flow suites. Next cleanup should continue splitting broad integration-heavy files into narrower behavior-focused suites.
 
-## 8) Validation outcome summary
+## 6) Next recommended PRs
 
-- Full pytest: **passed** (4 skipped).
-- Maintainability gate: **passed**.
+1. Split coordinator update-cycle and lifecycle orchestration out of `coordinator/coordinator.py`.
+2. Extract grouped-read planning/error normalization helpers from `scanner/io_read.py`.
+3. Decompose `_mapping_builders.py` by domain/entity family.
+4. Isolate config-flow runtime validation branches from `validate_input_impl`.
+5. Split `register_maintenance_services` into schema wiring, handler factories, and registration loops.
+6. Break large coordinator/scanner tests into focused sub-suites mirroring production-module boundaries.
 
-## 9) Safe CI hardening plan (staged, non-disruptive)
+## 7) CI hardening status
 
-As of this audit, CI-required gates remain intentionally limited to Ruff linting, compile checks, register/reference comparison, maintainability checks, pytest+coverage, and entity mapping validation. The following staged plan can increase quality signal **without** re-introducing previously excluded blocking checks (`black`, `isort`, `mypy`, `hassfest`, HACS validation):
+- `ruff check`: **pass**.
+- `ruff import-order signal` (`ruff check --select I`): **pass**.
+- `ruff format drift count`: **108 files would be reformatted**.
+- `black`: **not a current required gate**.
+- `isort`: **not a current required gate**.
+- `mypy`: **not a current required gate**.
+- `hassfest`: **not a current required gate**.
+- `HACS`: **not a current required gate**.
 
-### Stage A (documentation + local developer workflow only)
+## 8) Preserved invariants (audit status)
 
-1. Keep CI required jobs unchanged.
-2. Encourage local informational checks for:
-   - `ruff format --check custom_components tests tools`
-   - `ruff check --select I custom_components tests tools`
-3. Treat these as local feedback only until file churn drops; do not auto-format in broad sweep PRs.
+- No top-level `custom_components/thessla_green_modbus/coordinator.py` file.
+- No Home Assistant imports under `core/`, `transport/`, `registers/`, `scanner/`.
+- Entity mappings validation passes (`OK: 366 entities validated`).
+- Architectural policy still requires no compatibility shims/proxy modules/re-export-only modules; however, informational grep still reports compatibility-related references and shim code paths that should be addressed in follow-up cleanup PRs.
 
-### Stage B (optional informational CI job, non-blocking)
+## 9) Readiness summary
 
-Implemented in CI as `ruff-adoption-signal`: a separate workflow job that runs the two checks above and is explicitly marked non-blocking via `continue-on-error: true`. This job:
-
-- avoid touching required branch protection gates,
-- avoid secrets and external services,
-- only reports drift trend.
-
-### Stage C (targeted adoption after convergence)
-
-When `ruff format --check` and import-order checks are routinely clean on active files, enforce them incrementally by path or module group in small PRs, never as a one-shot repository-wide rewrite.
-
-### Current readiness snapshot (2026-05-04)
-
-- `ruff format --check custom_components tests tools`: **fails** currently (99 files would be reformatted).
-- `ruff check --select I custom_components tests tools`: **passes** currently.
-
-Conclusion: repository is ready for import-order enforcement (already clean), but not ready for mandatory format enforcement without a dedicated formatting campaign.
+1. **Maintainability/refactor readiness**: good incremental progress; maintainability gate passes, but large hotspots remain.
+2. **CI readiness**: required gates are passing.
+3. **Release/HACS readiness**: not fully evidenced in this audit because hassfest/HACS checks are not active gates.
+4. **Real device validation status**: not proven by this document; compare script signals vendor-name mismatches/extras as informational and requires device/vendor confirmation.
