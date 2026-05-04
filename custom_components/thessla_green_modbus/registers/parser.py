@@ -29,12 +29,14 @@ except (AttributeError, TypeError) as err:  # pragma: no cover
 
 def parse_registers(raw: Any) -> list[RegisterDef]:
     """Parse raw register definition data into RegisterDef objects."""
+    return [register_from_parsed(parsed) for parsed in _parse_schema_items(raw)]
+
+
+def _parse_schema_items(raw: Any) -> list[Any]:
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
     if hasattr(RegisterList, "model_validate"):
-        parsed_items = RegisterList.model_validate(items).registers
-    else:  # pragma: no cover
-        parsed_items = RegisterList.parse_obj(items).registers
-    return [register_from_parsed(parsed) for parsed in parsed_items]
+        return cast(list[Any], RegisterList.model_validate(items).registers)
+    return cast(list[Any], RegisterList.parse_obj(items).registers)  # pragma: no cover
 
 
 def normalise_enum_map(
@@ -99,4 +101,3 @@ def load_registers_from_file(path: Path) -> list[RegisterDef]:
 async def async_load_registers_from_file(hass: Any | None, path: Path) -> list[RegisterDef]:
     """Load and parse register definitions asynchronously."""
     return parse_registers(await async_read_registers_json(hass, path))
-
