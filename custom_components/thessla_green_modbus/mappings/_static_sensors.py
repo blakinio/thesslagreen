@@ -15,6 +15,8 @@ from homeassistant.const import (
 )
 from homeassistant.helpers.entity import EntityCategory
 
+from ._static_sensor_groups import airflow_sensor_mappings as _airflow_sensor_mappings_impl
+from ._static_sensor_groups import diagnostic_sensor_payload as _diagnostic_sensor_payload_impl
 from ._static_sensor_temperatures import (
     HOLDING_TEMPERATURE_SENSOR_MAPPINGS,
     INPUT_TEMPERATURE_SENSOR_MAPPINGS,
@@ -27,52 +29,11 @@ def _diagnostic_sensor_payload(
     icon: str = "mdi:information",
     register_type: str = "input_registers",
 ) -> dict[str, Any]:
-    """Build a standard diagnostic sensor payload."""
-    return {
-        "translation_key": translation_key,
-        "icon": icon,
-        "register_type": register_type,
-        "entity_category": EntityCategory.DIAGNOSTIC,
-    }
+    return _diagnostic_sensor_payload_impl(translation_key, icon=icon, register_type=register_type)
 
 
 def _airflow_sensor_mappings() -> dict[str, dict[str, Any]]:
-    """Return static airflow-related sensor mappings."""
-    return {
-        "supply_flow_rate": {
-            "translation_key": "supply_flow_rate_m3h",
-            "icon": "mdi:fan-plus",
-            "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
-            "state_class": SensorStateClass.MEASUREMENT,
-            "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-            "register_type": "input_registers",
-        },
-        "exhaust_flow_rate": {
-            "translation_key": "exhaust_flow_rate_m3h",
-            "icon": "mdi:fan-minus",
-            "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
-            "state_class": SensorStateClass.MEASUREMENT,
-            "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-            "register_type": "input_registers",
-        },
-        "supply_air_flow": {
-            "translation_key": "supply_air_flow",
-            "icon": "mdi:fan-plus",
-            "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
-            "state_class": SensorStateClass.MEASUREMENT,
-            "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-            "register_type": "holding_registers",
-        },
-        "exhaust_air_flow": {
-            "translation_key": "exhaust_air_flow",
-            "icon": "mdi:fan-minus",
-            "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
-            "state_class": SensorStateClass.MEASUREMENT,
-            "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-            "register_type": "holding_registers",
-        },
-    }
-
+    return _airflow_sensor_mappings_impl()
 
 SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # Temperature sensors (Input Registers)

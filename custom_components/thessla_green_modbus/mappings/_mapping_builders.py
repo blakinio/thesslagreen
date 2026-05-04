@@ -35,6 +35,8 @@ from ._mapping_discrete_loader import (
 from ._mapping_discrete_loader import (
     classify_discrete_holding_registers as _classify_discrete_holding_registers,
 )
+from ._mapping_domain_routes import route_enum_mapping as _route_enum_mapping_impl
+from ._mapping_domain_routes import route_min_max_mapping as _route_min_max_mapping_impl
 from ._mapping_payloads import (
     parse_info_states as _parse_info_states,
 )
@@ -141,6 +143,8 @@ def _apply_diagnostic_binary_overrides(
         switch_configs.pop(reg, None)
         select_configs.pop(reg, None)
 
+
+
 def _route_enum_mapping(
     target: str | None,
     register: str,
@@ -150,20 +154,15 @@ def _route_enum_mapping(
     switch_mappings: dict[str, Any],
     select_mappings: dict[str, Any],
 ) -> bool:
-    """Apply enum-classification result to mapping stores and return handled state."""
-    if target == "switch":
-        switch_mappings.setdefault(register, payload)
-        return True
-    if target == "binary":
-        binary_mappings.setdefault(register, payload)
-        return True
-    if target == "select":
-        select_mappings.setdefault(register, payload)
-        return True
-    if target == "sensor":
-        sensor_mappings.setdefault(register, payload)
-        return True
-    return False
+    return _route_enum_mapping_impl(
+        target,
+        register,
+        payload,
+        sensor_mappings=sensor_mappings,
+        binary_mappings=binary_mappings,
+        switch_mappings=switch_mappings,
+        select_mappings=select_mappings,
+    )
 
 
 def _route_min_max_mapping(
@@ -175,22 +174,15 @@ def _route_min_max_mapping(
     switch_mappings: dict[str, Any],
     select_mappings: dict[str, Any],
 ) -> bool:
-    """Apply min/max-classification result to mapping stores and return handled state."""
-    if target == "switch":
-        switch_mappings.setdefault(register, payload)
-        return True
-    if target == "binary":
-        binary_mappings.setdefault(register, payload)
-        return True
-    if target == "select":
-        select_mappings.setdefault(register, payload)
-        return True
-    if target == "number":
-        number_mappings.setdefault(register, payload)
-        return True
-    return False
-
-
+    return _route_min_max_mapping_impl(
+        target,
+        register,
+        payload,
+        number_mappings=number_mappings,
+        binary_mappings=binary_mappings,
+        switch_mappings=switch_mappings,
+        select_mappings=select_mappings,
+    )
 def _is_unmappable_holding_register(
     register: str,
     all_mappings: tuple[dict[str, Any], ...],
