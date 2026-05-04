@@ -31,6 +31,8 @@ from .services_validation import (
     reset_settings_registers,
 )
 
+ServiceAction = Callable[[str, object], Awaitable[bool]]
+
 
 def _to_bcd(value: int) -> int:
     return ((value // 10) << 4) | (value % 10)
@@ -118,11 +120,26 @@ async def _run_for_targets(
     hass: HomeAssistant,
     call: ServiceCall,
     deps: ServiceHandlerDeps,
-    action: Callable[[str, object], Awaitable[bool]],
+    action: ServiceAction,
 ) -> None:
     """Run a maintenance action for each targeted coordinator."""
     for entity_id, coordinator in _iter_targets(hass, call, deps):
         await action(entity_id, coordinator)
+
+
+async def _write_then_refresh(
+    *,
+    coordinator: object,
+    entity_id: str,
+    deps: ServiceHandlerDeps,
+    success_message: str,
+    success_args: tuple[object, ...],
+    write_flow: Callable[[], Awaitable[bool]],
+) -> bool:
+    """Execute target write flow and common refresh/success logging."""
+    if not await write_flow():
+        return False
+    return await _run_with_success_log(coordinator, deps, success_message, *success_args)
 
 
 def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
@@ -131,10 +148,20 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
     async def reset_filters(call: ServiceCall) -> None:
         filter_value = filter_reset_value(deps.normalize_option, call.data["filter_type"])
         async def _reset_filters_for_target(entity_id: str, coordinator: object) -> bool:
-            if not await deps.write_register(coordinator, "filter_change", filter_value, entity_id, "reset filters"):
-                deps.logger.error("Failed to reset filters for %s", entity_id)
-                return False
-            return await _run_with_success_log(coordinator, deps, "Reset filters for %s", entity_id)
+            async def _write_flow() -> bool:
+                if not await deps.write_register(coordinator, "filter_change", filter_value, entity_id, "reset filters"):
+                    deps.logger.error("Failed to reset filters for %s", entity_id)
+                    return False
+                return True
+
+            return await _write_then_refresh(
+                coordinator=coordinator,
+                entity_id=entity_id,
+                deps=deps,
+                success_message="Reset filters for %s",
+                success_args=(entity_id,),
+                write_flow=_write_flow,
+            )
 
         await _run_for_targets(hass, call, deps, _reset_filters_for_target)
 
@@ -143,20 +170,25 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
         registers = reset_settings_registers(reset_type)
 
         async def _reset_settings_for_target(entity_id: str, coordinator: object) -> bool:
-            if not await write_register_batch(
-                coordinator,
-                registers,
-                entity_id,
-                "reset settings",
-                deps.write_register,
-                deps.logger,
-                {
-                    "hard_reset_settings": "Failed to reset user settings for %s",
-                    "hard_reset_schedule": "Failed to reset schedule settings for %s",
-                },
-            ):
-                return False
-            return await _run_with_success_log(coordinator, deps, "Reset settings (%s) for %s", reset_type, entity_id)
+            return await _write_then_refresh(
+                coordinator=coordinator,
+                entity_id=entity_id,
+                deps=deps,
+                success_message="Reset settings (%s) for %s",
+                success_args=(reset_type, entity_id),
+                write_flow=lambda: write_register_batch(
+                    coordinator,
+                    registers,
+                    entity_id,
+                    "reset settings",
+                    deps.write_register,
+                    deps.logger,
+                    {
+                        "hard_reset_settings": "Failed to reset user settings for %s",
+                        "hard_reset_schedule": "Failed to reset schedule settings for %s",
+                    },
+                ),
+            )
 
         await _run_for_targets(hass, call, deps, _reset_settings_for_target)
 

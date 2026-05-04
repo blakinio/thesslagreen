@@ -391,11 +391,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
                 return await self.async_step_confirm()
             errors.update(submit_errors)
 
-        return self.async_show_form(
-            step_id="user",
-            data_schema=self._build_connection_schema(user_input or {}),
-            errors=errors,
-        )
+        return self._show_connection_form(step_id="user", defaults=user_input or {}, errors=errors)
 
     async def async_step_reauth(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle reauthentication by collecting updated connection details."""
@@ -415,11 +411,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
         if should_initialize:
             self._tg_flow_reauth_entry_id = reauth_entry_id
             self._tg_flow_reauth_existing_data = reauth_defaults
-            return self.async_show_form(
-                step_id="reauth",
-                data_schema=self._build_connection_schema(reauth_defaults),
-                errors=errors,
-            )
+            return self._show_connection_form(step_id="reauth", defaults=reauth_defaults, errors=errors)
 
         if user_input is not None:
             info, submit_errors = await _process_reauth_submission_impl(
@@ -434,14 +426,26 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
                 return await self.async_step_reauth_confirm()
             errors.update(submit_errors)
 
-        return self.async_show_form(
+        return self._show_connection_form(
             step_id="reauth",
-            data_schema=self._build_connection_schema(
-                _build_reauth_form_defaults_impl(
-                    user_input=user_input,
-                    existing_data=self._tg_flow_reauth_existing_data,
-                )
+            defaults=_build_reauth_form_defaults_impl(
+                user_input=user_input,
+                existing_data=self._tg_flow_reauth_existing_data,
             ),
+            errors=errors,
+        )
+
+    def _show_connection_form(
+        self,
+        *,
+        step_id: str,
+        defaults: dict[str, Any],
+        errors: dict[str, str],
+    ) -> ConfigFlowResult:
+        """Render connection-input form for user and reauth steps."""
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=self._build_connection_schema(defaults),
             errors=errors,
         )
 

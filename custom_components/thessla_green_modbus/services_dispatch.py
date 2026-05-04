@@ -109,9 +109,7 @@ async def write_register_steps(
     Each step is ``(register_name, value, optional, error_message)``.
     Optional values are skipped when ``value`` is ``None``.
     """
-    for register_name, value, optional, error_message in steps:
-        if not _should_write_step(optional, value):
-            continue
+    for register_name, value, _optional, error_message in _iter_executable_steps(steps):
         if not await _perform_step_write(
             coordinator,
             register_name,
@@ -124,6 +122,15 @@ async def write_register_steps(
         ):
             return False
     return True
+
+
+def _iter_executable_steps(
+    steps: list[tuple[str, object, bool, str]],
+):
+    """Yield only write steps that should be executed."""
+    for register_name, value, optional, error_message in steps:
+        if _should_write_step(optional, value):
+            yield register_name, value, optional, error_message
 
 
 def _should_write_step(optional: bool, value: object) -> bool:

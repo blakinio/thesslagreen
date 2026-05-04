@@ -33,10 +33,15 @@ def _build_step_handler(
     """Create a parameter handler based on write steps."""
 
     async def _handler(call: ServiceCall) -> None:
-        steps = list(step_builder(call))
+        steps = _normalize_steps(step_builder(call))
         await _run_parameter_steps(hass, call, deps, steps, context, success_log)
 
     return _handler
+
+
+def _normalize_steps(steps: Sequence[WriteStep]) -> list[WriteStep]:
+    """Normalize a write-step sequence into a concrete list."""
+    return list(steps)
 
 
 def _parameter_registrations(
