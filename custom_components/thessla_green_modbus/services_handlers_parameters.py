@@ -15,7 +15,7 @@ from .services_schema import (
     SET_GWC_PARAMETERS_SCHEMA,
     SET_TEMPERATURE_CURVE_SCHEMA,
 )
-from .services_validation import BYPASS_MODE_MAP, GWC_MODE_MAP
+from .services_validation import BYPASS_MODE_MAP, GWC_MODE_MAP, iter_air_quality_writes
 
 WriteStep = tuple[str, object | None, bool, str]
 ServiceHandler = Callable[[ServiceCall], object]
@@ -95,17 +95,13 @@ def _parameter_registrations(
         ],
     )
 
-    async def set_air_quality_thresholds(call: ServiceCall) -> None:
-        for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
-            success = True
-            for param in ["co2_low", "co2_medium", "co2_high", "humidity_target"]:
-                value = call.data.get(param)
-                if value is not None and not await deps.write_register(coordinator, deps.air_quality_register_map[param], value, entity_id, "set air quality thresholds"):
-                    deps.logger.error("Failed to set %s for %s", param, entity_id)
-                    success = False
-                    break
-            if success:
-                await refresh_and_log_success(coordinator, deps.logger, "Set air quality thresholds for %s", entity_id)
+    set_air_quality_thresholds = _build_step_handler(
+        hass,
+        deps,
+        context="set air quality thresholds",
+        success_log="Set air quality thresholds for %s",
+        step_builder=lambda call: list(iter_air_quality_writes(call.data, deps.air_quality_register_map)),
+    )
 
     set_temperature_curve = _build_step_handler(
         hass,
