@@ -11,11 +11,16 @@ from custom_components.thessla_green_modbus.registers.register_def import Regist
 
 
 def _add_desc(reg: dict) -> dict:
-    return {**reg, "description": reg.get("description", "desc"), "description_en": reg.get("description_en", "desc")}
+    return {
+        **reg,
+        "description": reg.get("description", "desc"),
+        "description_en": reg.get("description_en", "desc"),
+    }
 
 
 def _write(path: Path, regs: list[dict]) -> None:
     path.write_text(json.dumps({"registers": [_add_desc(r) for r in regs]}))
+
 
 def test_example_register_mapping() -> None:
     """Verify example registers map to expected addresses."""
@@ -30,6 +35,7 @@ def test_example_register_mapping() -> None:
     assert addr("03", "mode") == 4208
     assert addr("04", "outside_temperature") == 16
 
+
 def test_enum_multiplier_resolution_handling() -> None:
     """Ensure optional register metadata is preserved."""
 
@@ -42,6 +48,7 @@ def test_enum_multiplier_resolution_handling() -> None:
     assert required.multiplier == 0.5
     assert required.resolution == 0.5
     assert required.decode(45) == 22.5
+
 
 def test_default_multiplier_resolution(tmp_path) -> None:
     """Omitted multiplier/resolution fields default to 1."""
@@ -59,6 +66,7 @@ def test_default_multiplier_resolution(tmp_path) -> None:
     loaded = load_registers_from_file(path)[0]
     assert loaded.multiplier == 1
     assert loaded.resolution == 1
+
 
 def test_multi_register_metadata() -> None:
     """Registers spanning multiple words expose length and type info."""
@@ -78,6 +86,7 @@ def test_multi_register_metadata() -> None:
     assert serial.length == 6
     assert serial.extra["encoding"] == "ascii"
 
+
 def test_decode_multi_register_string() -> None:
     """Multi-register strings decode without applying scaling."""
     reg = RegisterDef(
@@ -93,6 +102,7 @@ def test_decode_multi_register_string() -> None:
     raw = [16706, 17220, 17664]  # "ABCDE"
     assert reg.decode(raw) == "ABCDE"
 
+
 def test_decode_multi_register_string_with_non_ascii_bytes() -> None:
     """String decode should tolerate non-ASCII bytes without raising."""
     reg = RegisterDef(
@@ -105,6 +115,7 @@ def test_decode_multi_register_string_with_non_ascii_bytes() -> None:
     )
     raw = [0x5445, 0xDF00]  # "TE" + 0xDF + NUL
     assert reg.decode(raw) == "TE�"
+
 
 def test_decode_multi_register_number_scaled_once() -> None:
     """Numeric multi-register values apply multiplier/resolution exactly once."""
@@ -121,6 +132,7 @@ def test_decode_multi_register_number_scaled_once() -> None:
     raw = [0, 1]
     assert reg.decode(raw) == 10
 
+
 def test_decode_bitmask_ignores_scaling() -> None:
     """Bitmask registers return labels without scaling the raw value."""
     reg = RegisterDef(
@@ -134,6 +146,7 @@ def test_decode_bitmask_ignores_scaling() -> None:
         resolution=1,
     )
     assert reg.decode(5) == ["A", "C"]
+
 
 def test_function_aliases() -> None:
     """Aliases with spaces/underscores should resolve to correct functions."""

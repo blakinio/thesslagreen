@@ -144,7 +144,6 @@ async def _write_then_refresh(
     return await _run_with_success_log(coordinator, deps, success_message, *success_args)
 
 
-
 def _build_reset_filters_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
     async def reset_filters(call: ServiceCall) -> None:
         filter_value = filter_reset_value(deps.normalize_option, call.data["filter_type"])

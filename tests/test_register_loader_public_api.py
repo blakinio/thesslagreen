@@ -11,11 +11,16 @@ from custom_components.thessla_green_modbus.registers.loader import (
 
 
 def _add_desc(reg: dict) -> dict:
-    return {**reg, "description": reg.get("description", "desc"), "description_en": reg.get("description_en", "desc")}
+    return {
+        **reg,
+        "description": reg.get("description", "desc"),
+        "description_en": reg.get("description_en", "desc"),
+    }
 
 
 def _write(path: Path, regs: list[dict]) -> None:
     path.write_text(json.dumps({"registers": [_add_desc(r) for r in regs]}))
+
 
 def test_register_file_sorted() -> None:
     """Ensure register JSON is sorted and loader preserves ordering."""
@@ -24,6 +29,7 @@ def test_register_file_sorted() -> None:
     regs = data["registers"]
     keys = [(str(r["function"]), int(r["address_dec"])) for r in regs]
     assert keys == sorted(keys)
+
 
 def test_get_all_registers_sorted(tmp_path) -> None:
     """get_all_registers should order registers by function then address."""
@@ -56,6 +62,7 @@ def test_get_all_registers_sorted(tmp_path) -> None:
     ordered = get_all_registers(path)
     keys = [(r.function, r.address) for r in ordered]
     assert keys == sorted(keys)
+
 
 def test_loader_all_has_no_private_cache_names() -> None:
     """loader.__all__ should only expose public API names."""

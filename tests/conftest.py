@@ -13,7 +13,6 @@ import pytest
 pytest_plugins = ("tests.helpers_register_loader",)
 
 
-
 def _ensure_current_event_loop() -> asyncio.AbstractEventLoop:
     """Ensure a main-thread event loop exists for PHCC/pytest-asyncio startup.
 
