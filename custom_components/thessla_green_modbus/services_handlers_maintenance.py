@@ -144,9 +144,8 @@ async def _write_then_refresh(
     return await _run_with_success_log(coordinator, deps, success_message, *success_args)
 
 
-def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
-    """Register maintenance services."""
 
+def _build_reset_filters_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
     async def reset_filters(call: ServiceCall) -> None:
         filter_value = filter_reset_value(deps.normalize_option, call.data["filter_type"])
 
@@ -202,17 +201,6 @@ def _build_reset_settings_handler(hass: HomeAssistant, deps: ServiceHandlerDeps)
         await _run_for_targets(hass, call, deps, _reset_settings_for_target)
 
     return reset_settings
-
-
-async def _run_for_targets(
-    hass: HomeAssistant,
-    call: ServiceCall,
-    deps: ServiceHandlerDeps,
-    action: Callable[[str, object], Awaitable[bool]],
-) -> None:
-    """Run a maintenance action for each targeted coordinator."""
-    for entity_id, coordinator in _iter_targets(hass, call, deps):
-        await action(entity_id, coordinator)
 
 
 def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
