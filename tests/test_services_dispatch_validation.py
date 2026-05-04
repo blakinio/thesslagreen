@@ -18,6 +18,7 @@ from custom_components.thessla_green_modbus.services_dispatch import (
 from custom_components.thessla_green_modbus.services_validation import (
     BAUD_MAP,
     filter_reset_value,
+    iter_air_quality_writes,
     normalize_modbus_options,
     normalize_option,
     pressure_test_payload,
@@ -187,3 +188,22 @@ async def test_write_device_name_chunks_writes_offsets():
     assert coordinator.async_write_register.await_count == 2
     coordinator.async_write_register.assert_any_await("device_name", "ABCD", refresh=False, offset=0)
     coordinator.async_write_register.assert_any_await("device_name", "EFGH", refresh=False, offset=2)
+
+
+def test_iter_air_quality_writes_builds_optional_steps_with_register_map():
+    steps = iter_air_quality_writes(
+        {"co2_low": 500, "co2_medium": None, "co2_high": 1000, "humidity_target": 45},
+        {
+            "co2_low": "co2_low_reg",
+            "co2_medium": "co2_medium_reg",
+            "co2_high": "co2_high_reg",
+            "humidity_target": "humidity_target_reg",
+        },
+    )
+
+    assert steps == [
+        ("co2_low_reg", 500, True, "Failed to set co2_low for %s"),
+        ("co2_medium_reg", None, True, "Failed to set co2_medium for %s"),
+        ("co2_high_reg", 1000, True, "Failed to set co2_high for %s"),
+        ("humidity_target_reg", 45, True, "Failed to set humidity_target for %s"),
+    ]

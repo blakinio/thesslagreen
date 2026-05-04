@@ -109,6 +109,18 @@ def iter_modbus_parameter_writes(
     ]
 
 
+
+def iter_air_quality_writes(
+    data: dict[str, Any],
+    register_map: dict[str, str],
+) -> list[tuple[str, object | None, bool, str]]:
+    """Build optional write steps for air quality thresholds."""
+    fields = ("co2_low", "co2_medium", "co2_high", "humidity_target")
+    return [
+        (register_map[field], data.get(field), True, f"Failed to set {field} for %s")
+        for field in fields
+    ]
+
 def filter_reset_value(normalize: Any, raw_filter_type: str) -> int:
     """Map filter reset option payload to register value."""
     return FILTER_TYPE_MAP[normalize(raw_filter_type)]
