@@ -318,6 +318,50 @@ class _CoordinatorScheduleMixin:
         """Return True when a Modbus write response indicates success."""
         return response is not None and not response.isError()
 
+    async def _execute_single_register_write_attempt(
+        self,
+        *,
+        definition: Any,
+        register_name: str,
+        address: int,
+        encoded_values: list[int] | None,
+        scalar_value: Any,
+        attempt: int,
+    ) -> tuple[Any, bool]:
+        """Execute one write attempt and return (response, success)."""
+        if definition.function == 3:
+            response = await self._write_holding_attempt(
+                address=address,
+                encoded_values=encoded_values,
+                scalar_value=scalar_value,
+                attempt=attempt,
+            )
+        elif definition.function == 1:
+            response = await self._call_modbus(
+                self._get_client_method("write_coil"),
+                address=address,
+                value=bool(scalar_value),
+                attempt=attempt,
+            )
+        else:
+            _LOGGER.error("Register %s is not writable", register_name)
+            return None, False
+        return response, self._write_response_ok(response)
+
+    async def _write_holding_attempt(
+        self,
+        *,
+        address: int,
+        encoded_values: list[int] | None,
+        scalar_value: Any,
+        attempt: int,
+    ) -> Any:
+        """Write holding register(s) for one attempt and return response."""
+        if encoded_values is not None:
+            response, _success = await self._write_holding_multi(address, encoded_values, attempt)
+            return response
+        return await self._write_holding_single(address, scalar_value, attempt)
+
     async def async_write_register(
         self,
         register_name: str,
@@ -354,37 +398,15 @@ class _CoordinatorScheduleMixin:
 
                 for attempt in range(1, self.retry + 1):
                     try:
-                        if definition.function == 3:
-                            if encoded_values is not None:
-                                response, success = await self._write_holding_multi(
-                                    address, encoded_values, attempt
-                                )
-                                if not success:
-                                    should_retry = self._handle_write_response_failure(
-                                        is_final_attempt=attempt == self.retry,
-                                        final_error_message="Error writing to register %s: %s",
-                                        retry_message=f"Retrying write to register {register_name}",
-                                        error_args=(register_name, response),
-                                    )
-                                    if not should_retry:
-                                        return False
-                                    continue
-                            else:
-                                response = await self._write_holding_single(
-                                    address, scalar_value, attempt
-                                )
-                        elif definition.function == 1:
-                            response = await self._call_modbus(
-                                self._get_client_method("write_coil"),
-                                address=address,
-                                value=bool(scalar_value),
-                                attempt=attempt,
-                            )
-                        else:
-                            _LOGGER.error("Register %s is not writable", register_name)
-                            return False
-
-                        if not self._write_response_ok(response):
+                        response, success = await self._execute_single_register_write_attempt(
+                            definition=definition,
+                            register_name=register_name,
+                            address=address,
+                            encoded_values=encoded_values,
+                            scalar_value=scalar_value,
+                            attempt=attempt,
+                        )
+                        if not success:
                             should_retry = self._handle_write_response_failure(
                                 is_final_attempt=attempt == self.retry,
                                 final_error_message="Error writing to register %s: %s",
