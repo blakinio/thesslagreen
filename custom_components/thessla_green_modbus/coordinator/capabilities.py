@@ -217,54 +217,43 @@ class _CoordinatorCapabilitiesMixin:
 
     def _post_process_data(self, data: dict[str, Any]) -> dict[str, Any]:
         """Post-process data to calculate derived values."""
+        self._apply_serial_number_state(data)
+        self._apply_post_process_derived_values(data)
+        self._apply_power_and_energy_estimates(data)
+        self._apply_device_clock(data)
+        return data
+
+    def _apply_serial_number_state(self, data: dict[str, Any]) -> None:
+        """Expose known device serial number in coordinator data."""
         # Expose the full serial number (assembled from 6 registers by the scanner)
         # as a sensor value so the serial_number entity has a meaningful state.
         device_serial = (self.device_info or {}).get("serial_number")
         if device_serial and device_serial != "Unknown":
             data["serial_number"] = device_serial
 
-        # Calculate heat recovery efficiency.
-        # bypass_mode register 4330: 0=inactive (HX active), 1=freeheating, 2=freecooling.
-        # Both freeheating and freecooling open the bypass damper, routing air
-        # around the heat exchanger, so any temperature-based efficiency formula
-        # yields a meaningless result — skip for both active states.
-        #
-        # Formula selection (per EN 308 / ASHRAE Standard 84):
-        #   • With flow rates: thermodynamic effectiveness ε (ASHRAE 84 ε-NTU):
-        #       ε = Q_supply × (T_supply − T_outside) / (Q_min × (T_exhaust − T_outside))
-        #     where Q_min = min(Q_supply, Q_exhaust).
-        #     Correctly bounded [0, 1] even for unbalanced flows.
-        #   • Without flow rates: EN 308 supply-side temperature efficiency η_supply
-        #     (3-sensor formula, valid when flows are approximately balanced):
-        #       η = (T_supply − T_outside) / (T_exhaust − T_outside)
-        #     Note: this device exposes only 3 temperature sensors (TZ1, TN1, TP);
-        #     the exhaust-outlet sensor TW is absent, so EN 308 η_exhaust and the
-        #     Belgian mean-efficiency (η_epbd) cannot be computed.
-        self._apply_post_process_derived_values(data)
+    def _apply_power_and_energy_estimates(self, data: dict[str, Any]) -> None:
+        """Apply power estimate and accumulate total energy."""
         power = self.calculate_power_consumption(data)
-        if power is not None:
-            data["estimated_power"] = power
-            data["electrical_power"] = power
-            now = _utcnow()
-            last_ts = self._last_power_timestamp
-            if not isinstance(last_ts, datetime):
-                elapsed = 0.0
-            else:
-                if (
-                    getattr(now, "tzinfo", None) is not None
-                    and getattr(last_ts, "tzinfo", None) is None
-                ):
-                    last_ts = last_ts.replace(tzinfo=UTC)
-                elif (
-                    getattr(now, "tzinfo", None) is None
-                    and getattr(last_ts, "tzinfo", None) is not None
-                ):
-                    now = now.replace(tzinfo=UTC)
-                elapsed = (now - last_ts).total_seconds()
-            self._total_energy += power * elapsed / 3600000.0
-            data["total_energy"] = self._total_energy
-            self._last_power_timestamp = now
+        if power is None:
+            return
+        data["estimated_power"] = power
+        data["electrical_power"] = power
+        now = _utcnow()
+        last_ts = self._last_power_timestamp
+        if not isinstance(last_ts, datetime):
+            elapsed = 0.0
+        else:
+            if getattr(now, "tzinfo", None) is not None and getattr(last_ts, "tzinfo", None) is None:
+                last_ts = last_ts.replace(tzinfo=UTC)
+            elif getattr(now, "tzinfo", None) is None and getattr(last_ts, "tzinfo", None) is not None:
+                now = now.replace(tzinfo=UTC)
+            elapsed = (now - last_ts).total_seconds()
+        self._total_energy += power * elapsed / 3600000.0
+        data["total_energy"] = self._total_energy
+        self._last_power_timestamp = now
 
+    def _apply_device_clock(self, data: dict[str, Any]) -> None:
+        """Decode and store device clock when valid."""
         # Decode device clock from BCD registers 0-3
         try:
             device_clock = self._decode_device_clock(data)
@@ -272,5 +261,3 @@ class _CoordinatorCapabilitiesMixin:
                 data["device_clock"] = device_clock
         except (TypeError, ValueError, AttributeError) as exc:
             _LOGGER.debug("Failed to decode device clock: %s", exc)
-
-        return data
