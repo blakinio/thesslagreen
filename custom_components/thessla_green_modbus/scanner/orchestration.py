@@ -19,8 +19,9 @@ from ..const import (
 from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from ..modbus_helpers import group_reads as _group_reads
 from ..modbus_transport import RtuModbusTransport
-from ..scanner_device_info import DeviceCapabilities, ScannerDeviceInfo
+from ..scanner_device_info import ScannerDeviceInfo
 from . import custom_scan as scanner_custom_scan
+from . import scan_runtime
 from .full_scan_phase import apply_word_register_block
 from .io import is_request_cancelled_error
 
@@ -65,34 +66,6 @@ async def _accumulate_raw_registers(scanner: Any) -> dict[int, int]:
         for offset, value in enumerate(data):
             raw_registers[start + offset] = value
     return raw_registers
-
-
-def _build_scan_result(scanner: Any, *, device: ScannerDeviceInfo, caps: DeviceCapabilities, available_registers: dict[str, set[str]], unknown_registers: dict[str, dict[int, Any]], scanned_registers: dict[str, int], scan_blocks: dict[str, list[tuple[int, int]]], missing_registers: dict[str, dict[str, int]], scan_started: float, raw_registers: dict[int, int]) -> dict[str, Any]:
-    """Assemble the scan result payload."""
-    result: dict[str, Any] = {
-        "available_registers": available_registers,
-        "device_info": device.as_dict(),
-        "capabilities": caps.as_dict(),
-        "register_count": sum(len(v) for v in available_registers.values()),
-        "scan_blocks": scan_blocks,
-        "unknown_registers": unknown_registers,
-        "scanned_registers": scanned_registers,
-        "missing_registers": missing_registers,
-        "failed_addresses": {
-            "modbus_exceptions": {k: sorted(v) for k, v in scanner.failed_addresses["modbus_exceptions"].items() if v},
-            "invalid_values": {k: sorted(v) for k, v in scanner.failed_addresses["invalid_values"].items() if v},
-        },
-        "resolved_connection_mode": scanner._resolved_connection_mode,
-        "scan_stats": {
-            "total_attempts": sum(scanned_registers.values()),
-            "successful_reads": sum(len(v) for v in available_registers.values()),
-            "scan_duration": max(0.0001, time.monotonic() - scan_started),
-        },
-    }
-    if scanner.deep_scan:
-        result["raw_registers"] = raw_registers
-        result["total_addresses_scanned"] = len(raw_registers)
-    return result
 
 
 async def _auto_detect_tcp_transport(scanner: Any) -> None:
@@ -337,19 +310,10 @@ async def scan(scanner: Any) -> dict[str, Any]:
         input_registers, holding_registers, coil_registers, discrete_registers
     )
 
-    if missing_registers:
-        details = []
-        for reg_type, regs in missing_registers.items():
-            formatted = ", ".join(
-                f"{name}={addr}" for name, addr in sorted(regs.items(), key=lambda item: item[1])
-            )
-            details.append(f"{reg_type}: {formatted}")
-        _LOGGER.warning(
-            "The following registers were not found during scan: %s", "; ".join(details)
-        )
+    scan_runtime.log_missing_registers(missing_registers)
 
     available_registers = {key: set(value) for key, value in scanner.available_registers.items()}
-    return _build_scan_result(
+    return scan_runtime.build_scan_result(
         scanner,
         device=device,
         caps=caps,
