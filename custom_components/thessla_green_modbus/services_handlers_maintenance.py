@@ -86,6 +86,34 @@ def _maintenance_handlers(
     }
 
 
+async def _run_with_success_log(
+    coordinator: object,
+    deps: ServiceHandlerDeps,
+    success_message: str,
+    *args: object,
+) -> bool:
+    """Refresh and emit success message for a completed target action."""
+    await refresh_and_log_success(coordinator, deps.logger, success_message, *args)
+    return True
+
+
+def _register_maintenance_service(
+    hass: HomeAssistant,
+    deps: ServiceHandlerDeps,
+    service: str,
+    schema: object,
+    handler: object,
+) -> None:
+    """Register one maintenance service with schema."""
+    hass.services.async_register(deps.domain, service, handler, schema)
+
+
+def _register_maintenance_bindings(hass: HomeAssistant, deps: ServiceHandlerDeps, handlers: dict[str, object]) -> None:
+    """Finalize maintenance registration loop preserving order."""
+    for service, schema, handler in _iter_maintenance_service_bindings(handlers):
+        _register_maintenance_service(hass, deps, service, schema, handler)
+
+
 async def _run_for_targets(
     hass: HomeAssistant,
     call: ServiceCall,
@@ -106,8 +134,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
             if not await deps.write_register(coordinator, "filter_change", filter_value, entity_id, "reset filters"):
                 deps.logger.error("Failed to reset filters for %s", entity_id)
                 return False
-            await refresh_and_log_success(coordinator, deps.logger, "Reset filters for %s", entity_id)
-            return True
+            return await _run_with_success_log(coordinator, deps, "Reset filters for %s", entity_id)
 
         await _run_for_targets(hass, call, deps, _reset_filters_for_target)
 
@@ -129,10 +156,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                 },
             ):
                 return False
-            await refresh_and_log_success(
-                coordinator, deps.logger, "Reset settings (%s) for %s", reset_type, entity_id
-            )
-            return True
+            return await _run_with_success_log(coordinator, deps, "Reset settings (%s) for %s", reset_type, entity_id)
 
         await _run_for_targets(hass, call, deps, _reset_settings_for_target)
 
@@ -151,8 +175,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                 },
             ):
                 return False
-            await refresh_and_log_success(coordinator, deps.logger, "Started pressure test for %s", entity_id)
-            return True
+            return await _run_with_success_log(coordinator, deps, "Started pressure test for %s", entity_id)
 
         await _run_for_targets(hass, call, deps, _start_pressure_test_for_target)
 
@@ -174,8 +197,7 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                     deps.logger,
                 ):
                     return False
-            await refresh_and_log_success(coordinator, deps.logger, "Set Modbus parameters for %s", entity_id)
-            return True
+            return await _run_with_success_log(coordinator, deps, "Set Modbus parameters for %s", entity_id)
 
         await _run_for_targets(hass, call, deps, _set_modbus_parameters_for_target)
 
@@ -197,10 +219,9 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
             except (ModbusException, ConnectionException) as err:
                 deps.logger.error("Failed to set device name for %s: %s", entity_id, err)
                 return False
-            await refresh_and_log_success(
-                coordinator, deps.logger, "Set device name to '%s' for %s", device_name, entity_id
+            return await _run_with_success_log(
+                coordinator, deps, "Set device name to '%s' for %s", device_name, entity_id
             )
-            return True
 
         await _run_for_targets(hass, call, deps, _set_device_name_for_target)
 
@@ -231,5 +252,4 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
         set_device_name,
         sync_time,
     )
-    for service, schema, handler in _iter_maintenance_service_bindings(handlers):
-        hass.services.async_register(deps.domain, service, handler, schema)
+    _register_maintenance_bindings(hass, deps, handlers)
