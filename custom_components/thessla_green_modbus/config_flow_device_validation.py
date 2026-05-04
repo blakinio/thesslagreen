@@ -140,6 +140,30 @@ async def _run_scanner_validation(
     return _validate_scan_result(await run_scanner_call(scanner.scan_device, timeout))
 
 
+async def _run_full_scan(
+    *,
+    scanner: Any,
+    params: dict[str, Any],
+    default_retry: int,
+    config_flow_backoff: float,
+    run_with_retry: Callable[[Callable[[], Awaitable[Any]], int, float], Awaitable[Any]],
+    call_with_optional_timeout: Callable[[Callable[[], Any], float], Awaitable[Any]],
+) -> dict[str, Any]:
+    """Run complete scanner validation scan for an existing scanner."""
+    run_scanner_call = _build_timeout_runner(
+        run_with_retry=run_with_retry,
+        call_with_optional_timeout=call_with_optional_timeout,
+        retries=default_retry,
+        backoff=config_flow_backoff,
+    )
+    scan_result = await _run_scanner_validation(
+        scanner=scanner,
+        timeout=params["timeout"],
+        run_scanner_call=run_scanner_call,
+    )
+    return scan_result
+
+
 async def _create_scanner(
     *,
     scanner_cls: Any,
@@ -361,17 +385,13 @@ async def _execute_validation_flow(
             config_flow_backoff=config_flow_backoff,
             run_with_retry=run_with_retry,
         )
-
-        run_scanner_call = _build_timeout_runner(
+        scan_result = await _run_full_scan(
+            scanner=scanner,
+            params=params,
+            default_retry=default_retry,
+            config_flow_backoff=config_flow_backoff,
             run_with_retry=run_with_retry,
             call_with_optional_timeout=call_with_optional_timeout,
-            retries=default_retry,
-            backoff=config_flow_backoff,
-        )
-        scan_result = await _run_scanner_validation(
-            scanner=scanner,
-            timeout=params["timeout"],
-            run_scanner_call=run_scanner_call,
         )
 
         return _build_validation_result(
