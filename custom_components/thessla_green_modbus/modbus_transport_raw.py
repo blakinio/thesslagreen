@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from typing import Any
 
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
@@ -21,6 +22,11 @@ from .modbus_transport_base import (
 
 class RawRtuOverTcpTransport(BaseModbusTransport):
     """RTU-over-TCP transport that sends raw Modbus RTU frames over TCP."""
+
+    @dataclass(frozen=True, slots=True)
+    class _ResponseHeader:
+        slave: int
+        function: int
 
     def __init__(
         self,
@@ -155,8 +161,22 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         return _append_crc(bytes(payload))
 
     @staticmethod
-    def _validate_response_header(header: bytes, *, slave_id: int, function: int) -> int:
-        resp_slave, resp_func = header
+    def _parse_response_header(header: bytes) -> _ResponseHeader:
+        if len(header) != 2:
+            raise ModbusIOException("Invalid RTU response header length")
+        return RawRtuOverTcpTransport._ResponseHeader(slave=header[0], function=header[1])
+
+    @staticmethod
+    def _validate_response_header(
+        header: bytes | _ResponseHeader, *, slave_id: int, function: int
+    ) -> int:
+        parsed = (
+            RawRtuOverTcpTransport._parse_response_header(header)
+            if isinstance(header, bytes)
+            else header
+        )
+        resp_slave = parsed.slave
+        resp_func = parsed.function
 
         if resp_slave != (slave_id & 0xFF):
             raise ModbusIOException("Unexpected slave ID in RTU response")
@@ -180,12 +200,16 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
             raise ModbusIOException("Unexpected function code in exception RTU response")
         return payload[2]
 
+    @staticmethod
+    def _validate_exception_frame(payload: bytes, crc_bytes: bytes, *, function: int) -> int:
+        RawRtuOverTcpTransport._validate_crc(payload, crc_bytes)
+        return RawRtuOverTcpTransport._parse_exception_response_payload(payload, function=function)
+
     async def _read_exception_response(self, header: bytes, *, function: int) -> bytes:
         exception_code = await self._read_exactly(1)
         crc_bytes = await self._read_exactly(2)
         payload = header + exception_code
-        self._validate_crc(payload, crc_bytes)
-        parsed_exception = self._parse_exception_response_payload(payload, function=function)
+        parsed_exception = self._validate_exception_frame(payload, crc_bytes, function=function)
         raise ModbusException(f"Modbus exception {parsed_exception} for function {function}")
 
     async def _read_response_payload(self, header: bytes, body_length: int) -> bytes:
@@ -205,14 +229,17 @@ class RawRtuOverTcpTransport(BaseModbusTransport):
         return await self._read_response_payload(header, 4)
 
     async def _read_response(self, slave_id: int, function: int) -> bytes:
-        header = await self._read_exactly(2)
-        resp_func = self._validate_response_header(header, slave_id=slave_id, function=function)
+        raw_header = await self._read_exactly(2)
+        parsed_header = self._parse_response_header(raw_header)
+        resp_func = self._validate_response_header(
+            parsed_header, slave_id=slave_id, function=function
+        )
 
         if self._is_exception_function(resp_func, expected_function=function):
-            return await self._read_exception_response(header, function=resp_func)
+            return await self._read_exception_response(raw_header, function=resp_func)
         if function in (3, 4):
-            return await self._read_register_data_response(header)
-        return await self._read_write_body_response(header)
+            return await self._read_register_data_response(raw_header)
+        return await self._read_write_body_response(raw_header)
 
     async def _send_frame(self, frame: bytes, slave_id: int, function: int) -> bytes:
         async with self._request_lock:

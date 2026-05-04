@@ -8,6 +8,7 @@ import logging
 import random
 import weakref
 from collections.abc import Awaitable, Callable, Iterable
+from dataclasses import dataclass
 from typing import Any
 
 from . import const
@@ -341,6 +342,15 @@ def _calculate_batch_size(kwargs: dict[str, Any]) -> int:
     return kwargs.get("count") or len(kwargs.get("values", [])) or 1
 
 
+@dataclass(frozen=True, slots=True)
+class _PreparedCall:
+    positional: list[Any]
+    kwarg: str
+    func_name: str
+    batch_size: int
+    delay: float
+
+
 def _prepare_modbus_call(
     func: Callable[..., Awaitable[Any]],
     args: tuple[Any, ...],
@@ -421,48 +431,60 @@ async def _call_modbus(
         apply_backoff=apply_backoff,
     )
 
-    if delay > 0:
+    prepared = _PreparedCall(positional, kwarg, func_name, batch_size, delay)
+    if prepared.delay > 0:
         _LOGGER.debug(
-            "Delaying %.3fs before attempt %s/%s of %s", delay, attempt, max_attempts, func_name
+            "Delaying %.3fs before attempt %s/%s of %s",
+            prepared.delay,
+            attempt,
+            max_attempts,
+            prepared.func_name,
         )
         try:
-            await asyncio.sleep(delay)
+            await asyncio.sleep(prepared.delay)
         except asyncio.CancelledError:
             _LOGGER.debug(
-                "Sleep cancelled before calling %s attempt %s/%s", func_name, attempt, max_attempts
+                "Sleep cancelled before calling %s attempt %s/%s",
+                prepared.func_name,
+                attempt,
+                max_attempts,
             )
             raise
 
     _LOGGER.debug(
         "Calling %s on slave %s (batch=%s attempt %s/%s)",
-        func_name,
+        prepared.func_name,
         slave_id,
-        batch_size,
+        prepared.batch_size,
         attempt,
         max_attempts,
     )
 
     _log_modbus_request(
-        func_name=func_name,
+        func_name=prepared.func_name,
         slave_id=slave_id,
-        positional=positional,
+        positional=prepared.positional,
         kwargs=kwargs,
     )
 
     try:
         response = await _dispatch_modbus_call(
             func=func,
-            positional=positional,
+            positional=prepared.positional,
             kwargs=kwargs,
-            kwarg=kwarg,
+            kwarg=prepared.kwarg,
             slave_id=slave_id,
             timeout=timeout,
         )
     except TimeoutError as err:
-        _LOGGER.debug("Call to %s timed out on attempt %s/%s", func_name, attempt, max_attempts)
+        _LOGGER.debug(
+            "Call to %s timed out on attempt %s/%s", prepared.func_name, attempt, max_attempts
+        )
         raise TimeoutError("Modbus request timed out") from err
     except asyncio.CancelledError:
-        _LOGGER.debug("Call to %s cancelled on attempt %s/%s", func_name, attempt, max_attempts)
+        _LOGGER.debug(
+            "Call to %s cancelled on attempt %s/%s", prepared.func_name, attempt, max_attempts
+        )
         raise
     except (
         AttributeError,
@@ -474,12 +496,16 @@ async def _call_modbus(
     ) as err:
         classification = _classify_modbus_exception(err)
         if classification == "cancelled":
-            _LOGGER.debug("Call to %s cancelled on attempt %s/%s", func_name, attempt, max_attempts)
+            _LOGGER.debug(
+                "Call to %s cancelled on attempt %s/%s", prepared.func_name, attempt, max_attempts
+            )
         else:
-            _LOGGER.debug("Call to %s failed on attempt %s/%s", func_name, attempt, max_attempts)
+            _LOGGER.debug(
+                "Call to %s failed on attempt %s/%s", prepared.func_name, attempt, max_attempts
+            )
         raise
 
-    _log_modbus_response(func_name, response)
+    _log_modbus_response(prepared.func_name, response)
     return response
 
 
