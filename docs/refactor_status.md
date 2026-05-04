@@ -34,27 +34,29 @@ The following constraints remain active and must be preserved:
 - HA imports in `core/transport/registers/scanner`: **none detected**.
 - Entity mapping validation: **passes** (`OK: 366 entities validated`).
 - Maintainability gate: **passes**.
-- Full test suite (`pytest tests/ -q`): **passes** (4 skipped).
+- Full test suite (`pytest tests/ -q`): **fails** (69 failed, 1801 passed, 4 skipped).
+- Lint gate (`ruff check custom_components tests tools`): **fails** (`F811` + `F821` in `services_handlers_maintenance.py`).
 
 ## Latest cleanup-batch outcome
 
-- Maintained CI required gates currently pass (lint + tests + entity mappings).
-- Fresh metrics still identify coordinator/scanner/mapping-builder concentration as remaining hotspots.
-- Import-order lint signal is clean.
-- Formatting drift remains significant (`ruff format --check`: 108 files would be reformatted).
+- This audit run did **not** confirm a fully green post-cleanup state.
+- Regressions are currently concentrated in maintenance service registration (`register_maintenance_services` duplication / missing symbol), causing both lint and test failures.
+- Maintainability and entity-mapping checks remain green.
 
 ## Remaining hotspots (next PR queue)
 
-1. Coordinator decomposition (`coordinator/coordinator.py`, `coordinator/schedule.py`).
-2. Scanner read-path decomposition (`scanner/io_read.py`, `scanner/core.py`).
-3. Mapping builder decomposition (`mappings/_mapping_builders.py`).
-4. Config-flow validation branch extraction (`config_flow_device_validation.py`).
-5. Large test module splits (`tests/test_coordinator.py`, scanner/config-flow mega suites).
+1. **Gate-recovery first:** fix maintenance service registration regression so required CI gates are green again.
+2. Coordinator decomposition (`coordinator/coordinator.py`, `coordinator/schedule.py`).
+3. Scanner read-path decomposition (`scanner/io_read.py`, `scanner/core.py`).
+4. Mapping builder decomposition (`mappings/_mapping_builders.py`).
+5. Config-flow validation branch extraction (`config_flow_device_validation.py`).
+6. Large test module splits after gate recovery (`tests/test_coordinator.py`, scanner/config-flow suites).
 
 ## CI hardening status
 
 - Required now: `ruff check`, compileall, register-reference compare, maintainability check, pytest+coverage, entity mappings validation.
-- Informational/non-required now: `ruff check --select I` (clean), `ruff format --check` (drift present).
+- Current state in this audit: `compileall`, register compare, maintainability, entity mappings are green; `ruff check` and `pytest` are red.
+- Informational/non-required now: `ruff check --select I` (not re-run after lint failure), `ruff format --check` (drift not refreshed in this run; last known 108 files).
 - Not currently required: `black`, `isort`, `mypy`, `hassfest`, HACS validation.
 
 ## Documentation policy for refactor work
