@@ -36,42 +36,49 @@ def _diagnostic_sensor_payload(
     }
 
 
+def _airflow_sensor_mappings() -> dict[str, dict[str, Any]]:
+    """Return static airflow-related sensor mappings."""
+    return {
+        "supply_flow_rate": {
+            "translation_key": "supply_flow_rate_m3h",
+            "icon": "mdi:fan-plus",
+            "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+            "register_type": "input_registers",
+        },
+        "exhaust_flow_rate": {
+            "translation_key": "exhaust_flow_rate_m3h",
+            "icon": "mdi:fan-minus",
+            "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+            "register_type": "input_registers",
+        },
+        "supply_air_flow": {
+            "translation_key": "supply_air_flow",
+            "icon": "mdi:fan-plus",
+            "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+            "register_type": "holding_registers",
+        },
+        "exhaust_air_flow": {
+            "translation_key": "exhaust_air_flow",
+            "icon": "mdi:fan-minus",
+            "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
+            "state_class": SensorStateClass.MEASUREMENT,
+            "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
+            "register_type": "holding_registers",
+        },
+    }
+
+
 SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # Temperature sensors (Input Registers)
     **INPUT_TEMPERATURE_SENSOR_MAPPINGS,
     # Air flow sensors
-    "supply_flow_rate": {
-        "translation_key": "supply_flow_rate_m3h",
-        "icon": "mdi:fan-plus",
-        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "input_registers",
-    },
-    "exhaust_flow_rate": {
-        "translation_key": "exhaust_flow_rate_m3h",
-        "icon": "mdi:fan-minus",
-        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "input_registers",
-    },
-    "supply_air_flow": {
-        "translation_key": "supply_air_flow",
-        "icon": "mdi:fan-plus",
-        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "holding_registers",
-    },
-    "exhaust_air_flow": {
-        "translation_key": "exhaust_air_flow",
-        "icon": "mdi:fan-minus",
-        "device_class": SensorDeviceClass.VOLUME_FLOW_RATE,
-        "state_class": SensorStateClass.MEASUREMENT,
-        "unit": UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
-        "register_type": "holding_registers",
-    },
+    **_airflow_sensor_mappings(),
     # Percentage sensors
     "supply_percentage": {
         "translation_key": "supply_percentage",

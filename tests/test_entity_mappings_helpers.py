@@ -29,6 +29,7 @@ from custom_components.thessla_green_modbus.mappings._static_discrete import (
     _weekday_states,
 )
 from custom_components.thessla_green_modbus.mappings._static_sensors import (
+    _airflow_sensor_mappings,
     _diagnostic_sensor_payload,
 )
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
@@ -240,4 +241,41 @@ def test_diagnostic_sensor_payload_defaults_and_overrides() -> None:
         "icon": "mdi:information-outline",
         "register_type": "holding_registers",
         "entity_category": EntityCategory.DIAGNOSTIC,
+    }
+
+
+def test_airflow_sensor_mappings_payload_stability() -> None:
+    assert _airflow_sensor_mappings() == {
+        "supply_flow_rate": {
+            "translation_key": "supply_flow_rate_m3h",
+            "icon": "mdi:fan-plus",
+            "device_class": "volume_flow_rate",
+            "state_class": "measurement",
+            "unit": "m³/h",
+            "register_type": "input_registers",
+        },
+        "exhaust_flow_rate": {
+            "translation_key": "exhaust_flow_rate_m3h",
+            "icon": "mdi:fan-minus",
+            "device_class": "volume_flow_rate",
+            "state_class": "measurement",
+            "unit": "m³/h",
+            "register_type": "input_registers",
+        },
+        "supply_air_flow": {
+            "translation_key": "supply_air_flow",
+            "icon": "mdi:fan-plus",
+            "device_class": "volume_flow_rate",
+            "state_class": "measurement",
+            "unit": "m³/h",
+            "register_type": "holding_registers",
+        },
+        "exhaust_air_flow": {
+            "translation_key": "exhaust_air_flow",
+            "icon": "mdi:fan-minus",
+            "device_class": "volume_flow_rate",
+            "state_class": "measurement",
+            "unit": "m³/h",
+            "register_type": "holding_registers",
+        },
     }
