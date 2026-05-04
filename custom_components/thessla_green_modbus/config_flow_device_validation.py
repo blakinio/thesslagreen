@@ -265,9 +265,8 @@ async def validate_input_impl(
     timeout_exceptions: tuple[type[BaseException], ...],
 ) -> dict[str, Any]:
     """Validate user-provided connection data and return scan payload."""
-
-    params = _normalize_connection_params(
-        data,
+    params = _normalize_validation_inputs(
+        data=data,
         normalize_connection_type=normalize_connection_type,
         validate_slave_id=validate_slave_id,
         validate_tcp_config=validate_tcp_config,
@@ -282,11 +281,64 @@ async def validate_input_impl(
         default_stop_bits=default_stop_bits,
         connection_type_tcp=connection_type_tcp,
     )
+    scanner_cls, capabilities_cls = await _resolve_runtime_classes(
+        hass=hass,
+        load_scanner_module=load_scanner_module,
+        scanner_cls_override=scanner_cls_override,
+        capabilities_cls_override=capabilities_cls_override,
+    )
+    return await _execute_validation_flow(
+        hass=hass,
+        params=params,
+        scanner_cls=scanner_cls,
+        capabilities_cls=capabilities_cls,
+        run_with_retry=run_with_retry,
+        call_with_optional_timeout=call_with_optional_timeout,
+        process_scan_capabilities=process_scan_capabilities,
+        is_request_cancelled_error=is_request_cancelled_error,
+        classify_os_error=classify_os_error,
+        should_log_timeout_traceback=should_log_timeout_traceback,
+        logger=logger,
+        default_retry=default_retry,
+        config_flow_backoff=config_flow_backoff,
+        timeout_exceptions=timeout_exceptions,
+    )
 
+
+def _normalize_validation_inputs(**kwargs: Any) -> dict[str, Any]:
+    return _normalize_connection_params(**kwargs)
+
+
+async def _resolve_runtime_classes(
+    *,
+    hass: Any,
+    load_scanner_module: Callable[[Any], Awaitable[Any]],
+    scanner_cls_override: Any,
+    capabilities_cls_override: Any,
+) -> tuple[Any, Any]:
     module = await load_scanner_module(hass)
-    scanner_cls = scanner_cls_override or module.ThesslaGreenDeviceScanner
-    capabilities_cls = capabilities_cls_override or module.DeviceCapabilities
+    return (
+        scanner_cls_override or module.ThesslaGreenDeviceScanner,
+        capabilities_cls_override or module.DeviceCapabilities,
+    )
 
+async def _execute_validation_flow(
+    *,
+    hass: Any,
+    params: dict[str, Any],
+    scanner_cls: Any,
+    capabilities_cls: Any,
+    run_with_retry: Callable[[Callable[[], Awaitable[Any]], int, float], Awaitable[Any]],
+    call_with_optional_timeout: Callable[[Callable[[], Any], float], Awaitable[Any]],
+    process_scan_capabilities: Callable[[dict[str, Any], type], dict[str, Any]],
+    is_request_cancelled_error: Callable[[ModbusIOException], bool],
+    classify_os_error: Callable[[OSError], str],
+    should_log_timeout_traceback: Callable[[BaseException], bool],
+    logger: Any,
+    default_retry: int,
+    config_flow_backoff: float,
+    timeout_exceptions: tuple[type[BaseException], ...],
+) -> dict[str, Any]:
     scanner: Any | None = None
     handled_exceptions = (
         ConnectionException,

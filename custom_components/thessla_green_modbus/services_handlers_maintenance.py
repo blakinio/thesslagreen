@@ -114,30 +114,24 @@ def _register_maintenance_bindings(hass: HomeAssistant, deps: ServiceHandlerDeps
         _register_maintenance_service(hass, deps, service, schema, handler)
 
 
-async def _run_for_targets(
-    hass: HomeAssistant,
-    call: ServiceCall,
-    deps: ServiceHandlerDeps,
-    action: Callable[[str, object], Awaitable[bool]],
-) -> None:
-    """Run a maintenance action for each targeted coordinator."""
-    for entity_id, coordinator in _iter_targets(hass, call, deps):
-        await action(entity_id, coordinator)
-
-
-def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
-    """Register maintenance services."""
-
+def _build_reset_filters_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
     async def reset_filters(call: ServiceCall) -> None:
         filter_value = filter_reset_value(deps.normalize_option, call.data["filter_type"])
+
         async def _reset_filters_for_target(entity_id: str, coordinator: object) -> bool:
-            if not await deps.write_register(coordinator, "filter_change", filter_value, entity_id, "reset filters"):
+            if not await deps.write_register(
+                coordinator, "filter_change", filter_value, entity_id, "reset filters"
+            ):
                 deps.logger.error("Failed to reset filters for %s", entity_id)
                 return False
             return await _run_with_success_log(coordinator, deps, "Reset filters for %s", entity_id)
 
         await _run_for_targets(hass, call, deps, _reset_filters_for_target)
 
+    return reset_filters
+
+
+def _build_reset_settings_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
     async def reset_settings(call: ServiceCall) -> None:
         reset_type = deps.normalize_option(call.data["reset_type"])
         registers = reset_settings_registers(reset_type)
@@ -159,6 +153,25 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
             return await _run_with_success_log(coordinator, deps, "Reset settings (%s) for %s", reset_type, entity_id)
 
         await _run_for_targets(hass, call, deps, _reset_settings_for_target)
+
+    return reset_settings
+
+
+async def _run_for_targets(
+    hass: HomeAssistant,
+    call: ServiceCall,
+    deps: ServiceHandlerDeps,
+    action: Callable[[str, object], Awaitable[bool]],
+) -> None:
+    """Run a maintenance action for each targeted coordinator."""
+    for entity_id, coordinator in _iter_targets(hass, call, deps):
+        await action(entity_id, coordinator)
+
+
+def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
+    """Register maintenance services."""
+    reset_filters = _build_reset_filters_handler(hass, deps)
+    reset_settings = _build_reset_settings_handler(hass, deps)
 
     async def start_pressure_test(call: ServiceCall) -> None:
         async def _start_pressure_test_for_target(entity_id: str, coordinator: object) -> bool:
