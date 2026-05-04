@@ -1,6 +1,6 @@
 # Refactor status (current)
 
-Last reviewed: 2026-05-03.
+Last reviewed: 2026-05-04.
 
 Related document:
 
