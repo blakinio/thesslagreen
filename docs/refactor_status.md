@@ -31,44 +31,43 @@ The following constraints remain active and must be preserved:
 
 - Top-level `custom_components/thessla_green_modbus/coordinator.py`: **absent**.
 - Canonical coordinator module: `custom_components/thessla_green_modbus/coordinator/coordinator.py`.
-- HA imports in `core/transport/registers/scanner`: **none detected**.
-- Entity mapping validation: **passes** (`OK: 366 entities validated`).
-- Maintainability gate: **passes**.
-- Full test suite (`pytest tests/ -q`): **fails** (69 failed, 1801 passed, 4 skipped, 3 errors).
-- Lint gate (`ruff check custom_components tests tools`): **fails** (`F811` + `F821` in `services_handlers_maintenance.py`).
+- HA imports in `core/transport/registers/scanner`: **none detected** by grep.
+- Compatibility grep (`compat|shim|proxy|re-export|legacy`): informational matches present in docs/tests/comments/known compatibility code references.
 
-## Latest cleanup-batch outcome
+## Required gate status snapshot (2026-05-04)
 
-Documented latest cleanup-oriented releases in `CHANGELOG.md`:
+- `ruff check custom_components tests tools`: **pass**.
+- `python -m compileall -q custom_components/thessla_green_modbus tests tools`: **pass**.
+- `python tools/compare_registers_with_reference.py`: **pass** (informational: 62 extras, 242 name mismatches).
+- `python tools/check_maintainability.py`: **pass**.
+- `pytest tests/ -q`: **fail** (`ModuleNotFoundError: pytest_homeassistant_custom_component`).
+- `python tools/validate_entity_mappings.py`: **fail** (`ModuleNotFoundError: pydantic`).
 
-- 2.7.0 — Dead fallback & pragma cleanup
-- 2.6.0 — Dead fallback cleanup
-- 2.5.1 — Config flow cleanup
+Because two required gates fail in this environment, the repo cannot be declared fully green under maintained gates from this run.
 
-Current audit state is **not** fully green post-cleanup because required lint/test gates are red.
+## Non-required tool status
 
-## Remaining hotspots (next PR queue)
+- `black`: not executed.
+- `isort`: not executed.
+- `mypy`: not executed.
+- `hassfest`: not executed.
+- `HACS`: not executed.
+- `ruff format --check`: **7 files drift**.
 
-1. **Gate-recovery first:** fix maintenance service registration regression (`register_maintenance_services` duplication and missing handler symbol).
-2. Resolve register-loader fixture errors in `tests/test_register_loader_errors.py` if still failing after step 1.
-3. Coordinator decomposition (`coordinator/coordinator.py`, `coordinator/schedule.py`).
-4. Scanner read-path decomposition (`scanner/io_read.py`, `scanner/core.py`).
-5. Mapping builder decomposition (`mappings/_mapping_builders.py`).
-6. Config-flow validation branch extraction (`config_flow_device_validation.py`).
+## Remaining hotspots (current queue)
 
-## CI hardening status
+1. Coordinator size/branching (`coordinator/coordinator.py`, `coordinator/schedule.py`).
+2. Scanner read/orchestration complexity (`scanner/io_read.py`, `scanner/core.py`).
+3. Mapping build complexity (`mappings/_mapping_builders.py`).
+4. Config-flow/device validation complexity (`config_flow.py`, `config_flow_device_validation.py`).
 
-- Required now: `ruff check`, compileall, register-reference compare, maintainability check, pytest+coverage, entity mappings validation.
-- Current state in this audit: compileall, register compare, maintainability, entity mappings are green; `ruff check` and `pytest` are red.
-- Informational/non-required now: `ruff check --select I` is green; `ruff format --check` reports 5-file drift.
-- Not currently required: `black`, `isort`, `mypy`, `hassfest`, HACS validation.
+## Readiness caveats
 
-## Documentation policy for refactor work
+- **Release/HACS readiness:** not claimable (HACS validation not executed).
+- **Real-device readiness:** not claimable from this verification run; no new on-device evidence captured.
 
-- Keep architecture docs aligned with current repository state.
-- Do not document speculative capabilities as completed.
-- Keep readiness claims split across:
-  1. maintainability/refactor readiness,
-  2. CI readiness,
-  3. release/HACS readiness,
-  4. real device validation evidence.
+## Next recommended PRs
+
+1. Gate recovery: make the verification environment reliably install `pytest_homeassistant_custom_component` and `pydantic`, then rerun required maintained gates.
+2. Optional formatting-only PR for `ruff format` drift (7 files) after required gates pass.
+3. Continue focused decomposition PRs for the largest coordinator/scanner/mapping/config-flow hotspots.
