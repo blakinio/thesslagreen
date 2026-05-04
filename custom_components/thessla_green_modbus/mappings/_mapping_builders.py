@@ -23,12 +23,8 @@ from ._helpers import (
     _parse_states,
 )
 from ._mapping_bitmask import iter_bitmask_binary_entries as _iter_bitmask_binary_entries
-from ._mapping_classification import (
-    classify_enum_mapping as _classify_enum_mapping,
-)
-from ._mapping_classification import (
-    classify_min_max_mapping as _classify_min_max_mapping,
-)
+from ._mapping_classification import classify_enum_mapping as _classify_enum_mapping
+from ._mapping_classification import classify_min_max_mapping as _classify_min_max_mapping
 from ._mapping_discrete_loader import (
     add_binary_mappings_for_boolean_registers as _add_binary_mappings_for_boolean_registers,
 )
@@ -37,18 +33,18 @@ from ._mapping_discrete_loader import (
 )
 from ._mapping_domain_routes import route_enum_mapping as _route_enum_mapping_impl
 from ._mapping_domain_routes import route_min_max_mapping as _route_min_max_mapping_impl
+from ._mapping_extend_common import (
+    is_problem_register as _is_problem_register,
+)
+from ._mapping_extend_common import (
+    is_unmappable_holding_register as _is_unmappable_holding_register,
+)
+from ._mapping_extend_common import register_context as _register_context
+from ._mapping_extend_routes import TIME_ENTITY_PREFIXES as _TIME_ENTITY_PREFIXES
+from ._mapping_extend_routes import route_enum_or_min_max as _route_enum_or_min_max_mapping
+from ._mapping_extend_routes import route_time_and_season as _route_time_and_season_mappings
 from ._mapping_payloads import (
     parse_info_states as _parse_info_states,
-)
-
-_TIME_ENTITY_PREFIXES = (
-    "schedule_",
-    "pres_check_time",
-    "airing_summer_",
-    "airing_winter_",
-    "manual_airing_time_to_start",
-    "start_gwc_regen",
-    "stop_gwc_regen",
 )
 
 
@@ -60,11 +56,6 @@ def _is_already_mapped(register: str, mappings: dict[str, dict[str, Any]]) -> bo
 def _is_mapped_as_binary_source(register: str, binary_mappings: dict[str, dict[str, Any]]) -> bool:
     """Return True if a binary mapping references *register* as its source register."""
     return any(v.get("register") == register for v in binary_mappings.values())
-
-
-def _is_problem_register(register: str) -> bool:
-    """Return True for diagnostic/problem registers handled as binary sensors."""
-    return register in {"alarm", "error"} or register.startswith(("s_", "e_", "f_"))
 
 
 def _is_register_mapped_anywhere(register: str, mappings: tuple[dict[str, Any], ...]) -> bool:
@@ -82,26 +73,20 @@ def _build_problem_binary_mapping(register: str) -> dict[str, Any]:
     }
 
 
+
+
 def _build_time_like_mapping(register: str) -> dict[str, Any]:
-    """Return standard mapping payload for time-like register entities."""
-    return {
-        "translation_key": register,
-        "icon": "mdi:clock-outline",
-        "register_type": "holding_registers",
-    }
+    return {"translation_key": register, "icon": "mdi:clock-outline", "register_type": "holding_registers"}
 
 
 def _build_season_setting_mapping(register: str) -> dict[str, Any]:
-    """Return standard mapping payload for seasonal settings."""
     from ..schedule_helpers import PERCENT_10_SELECT_STATES
 
-    return {
-        "translation_key": register,
-        "icon": "mdi:fan",
-        "register_type": "holding_registers",
-        "states": PERCENT_10_SELECT_STATES,
-    }
+    return {"translation_key": register, "icon": "mdi:fan", "register_type": "holding_registers", "states": PERCENT_10_SELECT_STATES}
 
+
+def _build_sensor_season_setting_mapping(register: str) -> dict[str, Any]:
+    return {"translation_key": register, "icon": "mdi:fan", "register_type": "holding_registers"}
 
 def _build_base_translation_mapping(register: str, register_type: str) -> dict[str, Any]:
     """Return minimal mapping payload with translation key and register type."""
@@ -183,134 +168,12 @@ def _route_min_max_mapping(
         switch_mappings=switch_mappings,
         select_mappings=select_mappings,
     )
-def _is_unmappable_holding_register(
-    register: str,
-    all_mappings: tuple[dict[str, Any], ...],
-    binary_mappings: dict[str, Any],
-) -> bool:
-    """Return True when register should be skipped before classification."""
-    return _is_register_mapped_anywhere(register, all_mappings) or _is_mapped_as_binary_source(register, binary_mappings)
-
-
-def _route_enum_or_min_max_mapping(
-    reg: Any,
-    register: str,
-    access: str,
-    min_val: Any,
-    max_val: Any,
-    unit: Any,
-    info_text: str,
-    scale: Any,
-    step: Any,
-    switch_keys: set[str],
-    binary_keys: set[str],
-    select_keys: set[str],
-    number_keys: set[str],
-    sensor_mappings: dict[str, Any],
-    number_mappings: dict[str, Any],
-    binary_mappings: dict[str, Any],
-    switch_mappings: dict[str, Any],
-    select_mappings: dict[str, Any],
-) -> None:
-    """Route register classification to enum or min/max handlers."""
-    if reg.enum and not (reg.extra and reg.extra.get("bitmask")):
-        target, payload = _classify_enum_mapping(
-            register,
-            reg.enum,
-            access,
-            switch_keys,
-            binary_keys,
-            select_keys,
-        )
-        _route_enum_mapping(
-            target,
-            register,
-            payload,
-            sensor_mappings,
-            binary_mappings,
-            switch_mappings,
-            select_mappings,
-        )
-        return
-
-    target, payload = _classify_min_max_mapping(
-        register,
-        access,
-        min_val,
-        max_val,
-        info_text,
-        unit,
-        step,
-        scale,
-        switch_keys,
-        binary_keys,
-        select_keys,
-        number_keys,
-    )
-    _route_min_max_mapping(
-        target,
-        register,
-        payload,
-        number_mappings,
-        binary_mappings,
-        switch_mappings,
-        select_mappings,
-    )
-
-
-def _build_sensor_season_setting_mapping(register: str) -> dict[str, Any]:
-    """Return read-only season setting mapping payload."""
-    return {
-        "translation_key": register,
-        "icon": "mdi:fan",
-        "register_type": "holding_registers",
-    }
-
-
-def _register_context(reg: Any) -> tuple[str, str, Any, Any, Any, str, Any, Any]:
-    """Return normalized register fields used by mapping classifiers."""
-    return (
-        reg.name,
-        (reg.access or "").upper(),
-        reg.min,
-        reg.max,
-        reg.unit,
-        reg.information or "",
-        reg.multiplier or 1,
-        reg.resolution or (reg.multiplier or 1),
-    )
-
-
 def _route_problem_mapping(register: str, binary_keys: set[str], binary_mappings: dict[str, Any]) -> bool:
     """Route problem register to binary mappings when translation exists."""
     if register not in binary_keys:
         return False
     binary_mappings.setdefault(register, _build_problem_binary_mapping(register))
     return True
-
-
-def _route_time_and_season_mappings(
-    register: str,
-    access: str,
-    sensor_mappings: dict[str, Any],
-    time_mappings: dict[str, Any],
-    select_mappings: dict[str, Any],
-) -> bool:
-    """Route BCD-time and season-setting registers to dedicated mapping buckets."""
-    if any(register.startswith(prefix) for prefix in BCD_TIME_PREFIXES):
-        if register.startswith(_TIME_ENTITY_PREFIXES) and "W" in access:
-            time_mappings.setdefault(register, _build_time_like_mapping(register))
-        else:
-            sensor_mappings.setdefault(register, _build_time_like_mapping(register))
-        return True
-
-    if register.startswith(("setting_summer_", "setting_winter_")):
-        if "W" in access:
-            select_mappings.setdefault(register, _build_season_setting_mapping(register))
-        else:
-            sensor_mappings.setdefault(register, _build_sensor_season_setting_mapping(register))
-        return True
-    return False
 
 
 def _resolve_parent_child_mappings(parent: Any) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
