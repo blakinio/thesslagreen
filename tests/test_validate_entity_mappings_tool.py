@@ -14,9 +14,7 @@ def test_validate_unique_ids_detects_duplicates() -> None:
 
     errors = tool._validate_unique_ids(entity_mappings)
 
-    assert errors == [
-        "ERROR: duplicate unique_id 'dup' in domain 'sensor' for 'a' and 'b'"
-    ]
+    assert errors == ["ERROR: duplicate unique_id 'dup' in domain 'sensor' for 'a' and 'b'"]
 
 
 def test_validate_register_references_ignores_synthetic_registers() -> None:
@@ -34,6 +32,4 @@ def test_validate_register_references_ignores_synthetic_registers() -> None:
         synthetic_registers={"device_clock"},
     )
 
-    assert errors == [
-        "ERROR: register 'missing' used by 'sensor.c' missing from register schema"
-    ]
+    assert errors == ["ERROR: register 'missing' used by 'sensor.c' missing from register schema"]

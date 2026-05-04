@@ -17,12 +17,14 @@ DEFAULT_USER_INPUT = {
     CONF_NAME: "My Device",
 }
 
+
 class AbortFlow(Exception):
     """Mock AbortFlow to simulate Home Assistant aborts."""
 
     def __init__(self, reason: str) -> None:
         super().__init__(reason)
         self.reason = reason
+
 
 @pytest.mark.parametrize(
     "registers,expected_note",
@@ -69,6 +71,7 @@ async def test_async_step_confirm_auto_detected_note(registers, expected_note):
     assert result["step_id"] == "confirm"
     assert result["description_placeholders"]["auto_detected_note"] == translations[expected_note]
 
+
 @pytest.mark.asyncio
 async def test_async_step_confirm_capabilities_only_bool():
     """Ensure capabilities list includes only boolean fields."""
@@ -102,6 +105,7 @@ async def test_async_step_confirm_capabilities_only_bool():
     assert "Expansion Module" in placeholders["capabilities_list"]
     assert "Temperature Sensors" not in placeholders["capabilities_list"]
     assert placeholders["capabilities_count"] == "1"
+
 
 @pytest.mark.asyncio
 async def test_confirm_step_aborts_on_existing_entry():
@@ -196,4 +200,3 @@ async def test_confirm_step_aborts_on_existing_entry():
         with pytest.raises(AbortFlow) as err:
             await flow2.async_step_confirm({})
         assert err.value.reason == "already_configured"
-

@@ -14,6 +14,7 @@ def test_load_discrete_mappings_skips_coils_not_in_translations(monkeypatch):
     binary, _, _ = em._load_discrete_mappings()
     assert "unknown_coil_xyz_p8" not in binary
 
+
 def test_load_discrete_mappings_skips_discrete_inputs_not_in_translations(monkeypatch):
     """Discrete-input registers without a translation key are skipped (line 389)."""
     original_discrete = em.discrete_input_registers
@@ -25,6 +26,7 @@ def test_load_discrete_mappings_skips_discrete_inputs_not_in_translations(monkey
 
     binary, _, _ = em._load_discrete_mappings()
     assert "unknown_discrete_xyz_p8" not in binary
+
 
 def test_load_discrete_mappings_skips_holding_regs_without_info(monkeypatch):
     """Holding registers absent from info cache are skipped (line 399)."""
@@ -38,6 +40,7 @@ def test_load_discrete_mappings_skips_holding_regs_without_info(monkeypatch):
     assert "unknown_holding_xyz_p8" not in binary
     assert "unknown_holding_xyz_p8" not in switch
     assert "unknown_holding_xyz_p8" not in select
+
 
 def test_load_discrete_mappings_bitmask_no_name_skipped(monkeypatch):
     """Bitmask register with empty name is skipped entirely (line 447)."""
@@ -56,6 +59,7 @@ def test_load_discrete_mappings_bitmask_no_name_skipped(monkeypatch):
     # The nameless register's bit must not appear
     assert "_flag_a" not in binary
 
+
 def test_load_discrete_mappings_bitmask_invalid_function_skipped(monkeypatch):
     """Bitmask register with unrecognised function code is skipped (line 452)."""
     reg = RegisterDef(
@@ -72,6 +76,7 @@ def test_load_discrete_mappings_bitmask_invalid_function_skipped(monkeypatch):
     binary, _, _ = em._load_discrete_mappings()
     assert "weird_bitmask_p8_flag_b" not in binary
     assert "weird_bitmask_p8" not in binary
+
 
 def test_load_discrete_mappings_bitmask_string_bit_definition(monkeypatch):
     """Non-dict bit definition (plain string) is handled via str() path (line 460)."""
@@ -93,6 +98,7 @@ def test_load_discrete_mappings_bitmask_string_bit_definition(monkeypatch):
     assert "stat_bitmask_p8" in binary
     assert binary["stat_bitmask_p8"].get("bitmask") is True
 
+
 def test_load_discrete_mappings_bitmask_unnamed_bit_generic_config(monkeypatch):
     """Unnamed bits trigger generic bitmask fallback config (lines 471, 474-483)."""
     reg = RegisterDef(
@@ -112,6 +118,7 @@ def test_load_discrete_mappings_bitmask_unnamed_bit_generic_config(monkeypatch):
     # None bit triggers generic bitmask fallback
     assert "error_bitmask_p8" in binary
     assert binary["error_bitmask_p8"].get("bitmask") is True
+
 
 def test_load_discrete_creates_switch_for_writable_2state_in_switch_keys(monkeypatch):
     """2-state writable register in switch_keys → switch config (lines 403-410)."""
@@ -147,6 +154,7 @@ def test_load_discrete_creates_switch_for_writable_2state_in_switch_keys(monkeyp
     assert "sw_reg_p9" in switch
     assert switch["sw_reg_p9"]["register"] == "sw_reg_p9"
 
+
 def test_load_discrete_creates_binary_for_writable_2state_not_in_switch_keys(monkeypatch):
     """2-state writable register NOT in switch_keys but in binary_keys → binary (lines 411-413)."""
     monkeypatch.setattr(em, "holding_registers", lambda: {"bin_reg_p9": 1})
@@ -179,6 +187,7 @@ def test_load_discrete_creates_binary_for_writable_2state_not_in_switch_keys(mon
     )
     binary, _, _ = em._load_discrete_mappings()
     assert "bin_reg_p9" in binary
+
 
 def test_load_discrete_creates_select_for_multistate_register(monkeypatch):
     """Multi-state register in select_keys → select config (lines 414-417)."""
@@ -214,6 +223,7 @@ def test_load_discrete_creates_select_for_multistate_register(monkeypatch):
     assert "sel_reg_p9" in select
     assert "states" in select["sel_reg_p9"]
 
+
 def test_load_discrete_skips_diag_register_not_in_holding_on_second_check(monkeypatch):
     """Diagnostic register absent from holding_registers on second check is skipped (line 427)."""
     call_count = [0]
@@ -239,6 +249,7 @@ def test_load_discrete_skips_diag_register_not_in_holding_on_second_check(monkey
     binary, _, _ = em._load_discrete_mappings()
     assert "s_1" not in binary
 
+
 def test_load_discrete_skips_diag_register_not_in_binary_keys(monkeypatch):
     """Diagnostic register in holding but missing from binary_keys is skipped (line 429)."""
     monkeypatch.setattr(em, "holding_registers", lambda: {"s_1_p9": 1})
@@ -257,6 +268,7 @@ def test_load_discrete_skips_diag_register_not_in_binary_keys(monkeypatch):
     )
     binary, _, _ = em._load_discrete_mappings()
     assert "s_1_p9" not in binary
+
 
 def test_load_discrete_bitmask_empty_bits_list_creates_generic_config(monkeypatch):
     """Bitmask register with empty bits list creates generic config (line 483)."""

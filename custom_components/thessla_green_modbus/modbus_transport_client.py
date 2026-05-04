@@ -26,7 +26,7 @@ else:  # pragma: no cover
 
 
 def _shim_attr(name: str, default: Any) -> Any:
-    shim = sys.modules.get('custom_components.thessla_green_modbus.modbus_transport')
+    shim = sys.modules.get("custom_components.thessla_green_modbus.modbus_transport")
     if shim is None:
         return default
     return getattr(shim, name, default)
@@ -290,7 +290,6 @@ class RtuModbusTransport(_ClientBackedTransport):
         )
         await self._connect_client(endpoint=self.serial_port)
         _LOGGER.debug("RTU Modbus connection established on %s", self.serial_port)
-
 
 
 __all__ = [

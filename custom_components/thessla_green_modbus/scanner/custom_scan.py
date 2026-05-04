@@ -12,9 +12,11 @@ def uses_custom_scan_impl(scanner: Any) -> bool:
     """Return True when scanner.scan is overridden outside scanner.core."""
     scan_method = scanner.scan
     base_scan = getattr(type(scanner), "scan", None)
-    return getattr(scan_method, "__func__", None) is not base_scan or getattr(
-        base_scan, "__module__", ""
-    ) != "custom_components.thessla_green_modbus.scanner.core"
+    return (
+        getattr(scan_method, "__func__", None) is not base_scan
+        or getattr(base_scan, "__module__", "")
+        != "custom_components.thessla_green_modbus.scanner.core"
+    )
 
 
 def normalize_custom_scan_result(scanner: Any, scan_result: Any) -> dict[str, Any]:
@@ -26,7 +28,9 @@ def normalize_custom_scan_result(scanner: Any, scan_result: Any) -> dict[str, An
         and isinstance(scan_result[1], DeviceCapabilities)
     ):
         device, caps = scan_result[0], scan_result[1]
-        unknown = scan_result[2] if len(scan_result) > 2 and isinstance(scan_result[2], dict) else {}
+        unknown = (
+            scan_result[2] if len(scan_result) > 2 and isinstance(scan_result[2], dict) else {}
+        )
         return {
             "available_registers": {k: sorted(v) for k, v in scanner.available_registers.items()},
             "device_info": device.as_dict(),

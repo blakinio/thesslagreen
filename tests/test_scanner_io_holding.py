@@ -14,14 +14,17 @@ def _make_ok_response(registers):
     resp.registers = list(registers)
     return resp
 
+
 def _make_bit_response(bits):
     resp = MagicMock()
     resp.isError.return_value = False
     resp.bits = list(bits)
     return resp
 
+
 async def _make_scanner(**kwargs):
     return await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 1, **kwargs)
+
 
 def _make_transport(
     *, raises_on_close=None, ensure_side_effect=None, input_response=None, holding_response=None
@@ -40,6 +43,7 @@ def _make_transport(
     t.is_connected = MagicMock(return_value=True)
     return t
 
+
 async def test_read_holding_two_arg_count_none():
     """Lines 2129-2132: _read_holding(address, count) — count=None path."""
     scanner = await _make_scanner(retry=1)
@@ -50,6 +54,7 @@ async def test_read_holding_two_arg_count_none():
     result = await scanner._read_holding(5, 1)
     assert result == [55]
 
+
 async def test_read_holding_two_arg_int_address():
     """Lines 2133-2136: _read_holding(int, count, count) — int address path."""
     scanner = await _make_scanner(retry=1)
@@ -59,6 +64,7 @@ async def test_read_holding_two_arg_int_address():
 
     result = await scanner._read_holding(5, 1, 1)
     assert result == [77]
+
 
 async def test_read_holding_cancelled_error_reraises():
     """Lines 2286-2293: asyncio.CancelledError is re-raised."""
@@ -74,6 +80,7 @@ async def test_read_holding_cancelled_error_reraises():
         pytest.raises(asyncio.CancelledError),
     ):
         await scanner._read_holding(mock_client, 0, 1)
+
 
 async def test_read_holding_oserror_breaks(caplog):
     """Lines 2294-2302: OSError breaks retry loop."""

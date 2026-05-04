@@ -110,7 +110,9 @@ def _register_maintenance_service(
     hass.services.async_register(deps.domain, service, handler, schema)
 
 
-def _register_maintenance_bindings(hass: HomeAssistant, deps: ServiceHandlerDeps, handlers: dict[str, object]) -> None:
+def _register_maintenance_bindings(
+    hass: HomeAssistant, deps: ServiceHandlerDeps, handlers: dict[str, object]
+) -> None:
     """Finalize maintenance registration loop preserving order."""
     for service, schema, handler in _iter_maintenance_service_bindings(handlers):
         _register_maintenance_service(hass, deps, service, schema, handler)
@@ -150,7 +152,9 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
 
         async def _reset_filters_for_target(entity_id: str, coordinator: object) -> bool:
             async def _write_flow() -> bool:
-                if not await deps.write_register(coordinator, "filter_change", filter_value, entity_id, "reset filters"):
+                if not await deps.write_register(
+                    coordinator, "filter_change", filter_value, entity_id, "reset filters"
+                ):
                     deps.logger.error("Failed to reset filters for %s", entity_id)
                     return False
                 return True
@@ -231,12 +235,16 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                 },
             ):
                 return False
-            return await _run_with_success_log(coordinator, deps, "Started pressure test for %s", entity_id)
+            return await _run_with_success_log(
+                coordinator, deps, "Started pressure test for %s", entity_id
+            )
 
         await _run_for_targets(hass, call, deps, _start_pressure_test_for_target)
 
     async def set_modbus_parameters(call: ServiceCall) -> None:
-        port, baud_rate, parity, stop_bits = normalize_modbus_options(deps.normalize_option, call.data)
+        port, baud_rate, parity, stop_bits = normalize_modbus_options(
+            deps.normalize_option, call.data
+        )
 
         async def _set_modbus_parameters_for_target(entity_id: str, coordinator: object) -> bool:
             writes = iter_modbus_parameter_writes(port, baud_rate, parity, stop_bits)
@@ -253,16 +261,21 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                     deps.logger,
                 ):
                     return False
-            return await _run_with_success_log(coordinator, deps, "Set Modbus parameters for %s", entity_id)
+            return await _run_with_success_log(
+                coordinator, deps, "Set Modbus parameters for %s", entity_id
+            )
 
         await _run_for_targets(hass, call, deps, _set_modbus_parameters_for_target)
 
     async def set_device_name(call: ServiceCall) -> None:
         device_name = call.data["device_name"]
+
         async def _set_device_name_for_target(entity_id: str, coordinator: object) -> bool:
             try:
                 if len(device_name) >= 16:
-                    success = await coordinator.async_write_register("device_name", device_name, refresh=False)
+                    success = await coordinator.async_write_register(
+                        "device_name", device_name, refresh=False
+                    )
                 else:
                     success = await write_device_name_chunks(
                         coordinator,
@@ -291,7 +304,11 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
                     refresh=False,
                 )
                 if success:
-                    deps.logger.info("Synced device clock to %s for %s", now.strftime("%Y-%m-%d %H:%M:%S"), entity_id)
+                    deps.logger.info(
+                        "Synced device clock to %s for %s",
+                        now.strftime("%Y-%m-%d %H:%M:%S"),
+                        entity_id,
+                    )
                 else:
                     deps.logger.error("Failed to sync clock for %s", entity_id)
             except (ModbusException, ConnectionException) as err:

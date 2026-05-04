@@ -88,24 +88,18 @@ class TestThesslaGreenModbusCoordinator:
     def test_signed_value_processing(self, coordinator_data):
         assert coordinator_data._process_register_value("outside_temperature", 205) == 20.5
         assert (
-            coordinator_data._process_register_value(
-                "outside_temperature", SENSOR_UNAVAILABLE
-            )
+            coordinator_data._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
             is None
         )
         assert (
-            coordinator_data._process_register_value(
-                "heating_temperature", SENSOR_UNAVAILABLE
-            )
+            coordinator_data._process_register_value("heating_temperature", SENSOR_UNAVAILABLE)
             is None
         )
         assert coordinator_data._process_register_value("outside_temperature", 65486) == -5.0
         assert coordinator_data._process_register_value("supply_temperature", 65511) == -2.5
         assert coordinator_data._process_register_value("supply_flow_rate", 65436) == -100
         assert (
-            coordinator_data._process_register_value(
-                "exhaust_flow_rate", SENSOR_UNAVAILABLE
-            )
+            coordinator_data._process_register_value("exhaust_flow_rate", SENSOR_UNAVAILABLE)
             == SENSOR_UNAVAILABLE
         )
 

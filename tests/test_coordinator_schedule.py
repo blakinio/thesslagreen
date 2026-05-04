@@ -116,5 +116,3 @@ def test_process_register_value_schedule_hh_mm_invalid():
     with patch.object(rp, "get_register_definitions", return_value={"schedule_on_1": mock_def}):
         result = coord._process_register_value("schedule_on_1", 999)
     assert result == "ab:cd"  # returned unchanged after ValueError
-
-

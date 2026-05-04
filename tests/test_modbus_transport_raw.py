@@ -158,8 +158,6 @@ def test_build_write_single_frame_structure():
     assert frame[1] == 6  # function code for write single register
 
 
-
-
 def test_validate_response_header_wrong_slave():
     t = _make_raw_tcp()
     with pytest.raises(ModbusIOException, match="slave ID"):
@@ -241,7 +239,6 @@ async def test_read_register_data_response_uses_payload_helper():
 
     assert payload == b"\x00\x01\x00\x02"
     t._read_response_payload.assert_awaited_once_with(b"\x01\x04\x04", 4)
-
 
 
 # ---------------------------------------------------------------------------
@@ -476,8 +473,6 @@ async def test_raw_tcp_read_input_registers_invalid_byte_count():
 # ---------------------------------------------------------------------------
 # TcpModbusTransport._connect — TCP-RTU TypeError on _build_tcp_client
 # ---------------------------------------------------------------------------
-
-
 
 
 # ---------------------------------------------------------------------------

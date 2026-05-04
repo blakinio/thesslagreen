@@ -22,4 +22,3 @@ def test_domain_error_hierarchy() -> None:
 def test_invalid_auth_message_detection() -> None:
     assert is_invalid_auth_error(Exception("Invalid password"))
     assert not is_invalid_auth_error(Exception("socket timeout"))
-

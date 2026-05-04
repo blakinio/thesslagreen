@@ -1,7 +1,6 @@
 # mypy: ignore-errors
 """Split tests from test_services_handlers.py."""
 
-
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -110,6 +109,7 @@ async def test_set_modbus_parameters_baud_rate(monkeypatch):
     assert written["uart_0_baud"] == 1  # 9600 → index 1
     coord.async_request_refresh.assert_awaited_once()
 
+
 @pytest.mark.asyncio
 async def test_set_modbus_parameters_all_params(monkeypatch):
     """set_modbus_parameters writes baud, parity and stop_bits."""
@@ -134,6 +134,7 @@ async def test_set_modbus_parameters_all_params(monkeypatch):
     assert "uart_1_stop" in written
     assert written["uart_1_parity"] == 1  # even
 
+
 @pytest.mark.asyncio
 async def test_set_modbus_parameters_write_failure(monkeypatch):
     """set_modbus_parameters aborts on write failure."""
@@ -156,6 +157,7 @@ async def test_set_modbus_parameters_write_failure(monkeypatch):
 # set_device_name
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_set_modbus_parameters_parity_write_failure(monkeypatch):
     """set_modbus_parameters aborts when parity write fails (2nd write)."""
@@ -174,6 +176,7 @@ async def test_set_modbus_parameters_parity_write_failure(monkeypatch):
     )
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
+
 
 @pytest.mark.asyncio
 async def test_set_modbus_parameters_stop_write_failure(monkeypatch):
@@ -200,6 +203,7 @@ async def test_set_modbus_parameters_stop_write_failure(monkeypatch):
 # set_device_name — write_result=False paths (lines 811-812, 827-829)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_set_device_name_short(monkeypatch):
     """set_device_name with short name uses chunked writes."""
@@ -211,6 +215,7 @@ async def test_set_device_name_short(monkeypatch):
     await handler(call)
 
     coord.async_request_refresh.assert_awaited_once()
+
 
 @pytest.mark.asyncio
 async def test_set_device_name_long(monkeypatch):
@@ -227,6 +232,7 @@ async def test_set_device_name_long(monkeypatch):
     )
     coord.async_request_refresh.assert_awaited_once()
 
+
 @pytest.mark.asyncio
 async def test_set_device_name_long_write_failure(monkeypatch):
     """set_device_name with 16+ chars aborts on write error."""
@@ -238,6 +244,7 @@ async def test_set_device_name_long_write_failure(monkeypatch):
     call = _make_call({"entity_id": ["climate.dev"], "device_name": "ABCDEFGHIJKLMNOP"})
     await handler(call)  # should not raise
     coord.async_request_refresh.assert_not_awaited()
+
 
 @pytest.mark.asyncio
 async def test_set_device_name_short_write_failure(monkeypatch):
@@ -256,6 +263,7 @@ async def test_set_device_name_short_write_failure(monkeypatch):
 # refresh_device_data
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_set_device_name_long_write_result_false(monkeypatch):
     """set_device_name with 16+ chars aborts when write returns False."""
@@ -267,6 +275,7 @@ async def test_set_device_name_long_write_result_false(monkeypatch):
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
+
 @pytest.mark.asyncio
 async def test_set_device_name_short_write_result_false(monkeypatch):
     """set_device_name with short name aborts when a chunk write returns False."""
@@ -277,4 +286,3 @@ async def test_set_device_name_short_write_result_false(monkeypatch):
     call = _make_call({"entity_id": ["climate.dev"], "device_name": "HELLO"})
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
-

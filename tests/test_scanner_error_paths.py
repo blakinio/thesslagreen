@@ -23,10 +23,14 @@ async def _make_scanner(**kwargs):
     return await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 1, **kwargs)
 
 
-def _make_transport(*, raises_on_close=None, ensure_side_effect=None, input_response=None, holding_response=None):
+def _make_transport(
+    *, raises_on_close=None, ensure_side_effect=None, input_response=None, holding_response=None
+):
     t = MagicMock()
     t.close = AsyncMock(side_effect=raises_on_close) if raises_on_close else AsyncMock()
-    t.ensure_connected = AsyncMock(side_effect=ensure_side_effect) if ensure_side_effect else AsyncMock()
+    t.ensure_connected = (
+        AsyncMock(side_effect=ensure_side_effect) if ensure_side_effect else AsyncMock()
+    )
     t.read_input_registers = AsyncMock(return_value=input_response or _make_ok_response([1]))
     t.read_holding_registers = AsyncMock(return_value=holding_response or _make_ok_response([1]))
     t.is_connected = MagicMock(return_value=True)
@@ -142,5 +146,3 @@ async def test_verify_connection_transport_close_exception_in_finally(caplog):
                 await scanner.verify_connection()
 
     assert "Error closing Modbus transport during verify_connection" in caplog.text
-
-

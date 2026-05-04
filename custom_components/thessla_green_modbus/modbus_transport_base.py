@@ -286,7 +286,6 @@ class BaseModbusTransport(ABC):
         """Write multiple holding registers."""
 
 
-
 __all__ = [
     "_MAX_READ_REGISTERS",
     "_MAX_SLAVE_ID",

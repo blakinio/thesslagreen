@@ -72,27 +72,9 @@ async def test_disconnect_locked_with_client_sync_close_awaitable():
     assert coord.client is None
 
 
-
-
-
-
 # ---------------------------------------------------------------------------
 # Group T — status_overview / performance_stats / get_diagnostic_data (2419-2522)
 # ---------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -159,5 +141,3 @@ async def test_async_write_registers_no_transport_no_client():
     coord.client = None
     result = await coord.async_write_registers(100, [1, 2])
     assert result is False
-
-

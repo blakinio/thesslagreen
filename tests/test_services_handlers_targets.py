@@ -1,7 +1,6 @@
 # mypy: ignore-errors
 """Split tests from test_services_handlers.py."""
 
-
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -104,6 +103,7 @@ async def test_refresh_device_data(monkeypatch):
 # get_unknown_registers
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_get_unknown_registers(monkeypatch):
     """get_unknown_registers fires event with unknown_registers data."""
@@ -125,6 +125,7 @@ async def test_get_unknown_registers(monkeypatch):
 # ---------------------------------------------------------------------------
 # scan_all_registers
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_scan_all_registers(monkeypatch):
@@ -157,6 +158,7 @@ async def test_scan_all_registers(monkeypatch):
     assert result["climate.dev"]["summary"]["register_count"] == 10
     assert coord.device_scan_result == scan_result
 
+
 @pytest.mark.asyncio
 async def test_scan_all_registers_no_coordinator(monkeypatch):
     """scan_all_registers returns None when no coordinator found."""
@@ -178,6 +180,7 @@ async def test_scan_all_registers_no_coordinator(monkeypatch):
 # async_unload_services
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_async_unload_services():
     """async_unload_services removes all registered services."""
@@ -192,6 +195,7 @@ async def test_async_unload_services():
 # _get_coordinator_from_entity_id
 # ---------------------------------------------------------------------------
 
+
 def test_get_coordinator_returns_none_for_unknown_entity():
     """_get_coordinator_from_entity_id returns None if entity not in registry."""
     hass = SimpleNamespace()
@@ -201,6 +205,7 @@ def test_get_coordinator_returns_none_for_unknown_entity():
 
     result = _get_coordinator_from_entity_id(hass, "sensor.unknown")
     assert result is None
+
 
 def test_get_coordinator_returns_none_no_registry():
     """_get_coordinator_from_entity_id returns None if no entity_registry attr."""
@@ -214,6 +219,7 @@ def test_get_coordinator_returns_none_no_registry():
 # ---------------------------------------------------------------------------
 # _extract_entity_ids — line 121 (no entity_id key)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_service_no_entity_id_is_noop(monkeypatch):
@@ -232,4 +238,3 @@ async def test_service_no_entity_id_is_noop(monkeypatch):
 # ---------------------------------------------------------------------------
 # _clamp_airflow_rate edge cases (lines 292-293, 296-297, 301)
 # ---------------------------------------------------------------------------
-

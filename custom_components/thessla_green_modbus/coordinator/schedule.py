@@ -57,9 +57,7 @@ class _CoordinatorScheduleMixin:
         if transport is None and self.client is None:
             raise ConnectionException("Modbus client is not connected")
 
-    async def _write_registers_payload(
-        self, address: int, values: list[int], attempt: int
-    ) -> Any:
+    async def _write_registers_payload(self, address: int, values: list[int], attempt: int) -> Any:
         """Write a holding-register payload via client, transport, or fallback call."""
         payload = [int(v) for v in values]
         if self._transport is None and self.client is not None:
@@ -225,7 +223,6 @@ class _CoordinatorScheduleMixin:
             return [(start_address, values)]
         return list(chunk_register_values(start_address, values, self.effective_batch))
 
-
     def _handle_write_response_failure(
         self,
         *,
@@ -243,7 +240,6 @@ class _CoordinatorScheduleMixin:
             return False
         _LOGGER.info(retry_message)
         return True
-
 
     async def _handle_write_attempt_exception(
         self,

@@ -141,4 +141,3 @@ async def test_stop_bits_map_returns_out_of_range():
     ):
         scanner = await _make_scanner(stop_bits=1)
     assert scanner.stop_bits == DEFAULT_STOP_BITS
-

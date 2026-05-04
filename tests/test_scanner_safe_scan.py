@@ -20,6 +20,7 @@ async def test_safe_scan_group_registers():
 # Group K: scan() raises ConnectionException without transport/client
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_scan_skip_known_missing_input_register():
     """Line 1302-1303: skip_known_missing=True skips 'compilation_days'."""
@@ -35,6 +36,7 @@ async def test_scan_skip_known_missing_input_register():
     # compilation_days should not appear in missing registers (was skipped)
     missing = result.get("missing_registers", {}).get("input_registers", {})
     assert "compilation_days" not in missing
+
 
 @pytest.mark.asyncio
 async def test_scan_input_batch_fail_probe_success():
@@ -72,6 +74,7 @@ async def test_scan_input_batch_fail_probe_success():
         result = await scanner.scan()
 
     assert "available_registers" in result
+
 
 @pytest.mark.asyncio
 async def test_scan_input_batch_fail_probe_fail(caplog):
@@ -111,6 +114,7 @@ async def test_scan_input_batch_fail_probe_fail(caplog):
 # Group P: Holding batch failure recovery (lines 1368-1410)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_scan_holding_batch_fail_probe_success():
     """Lines 1373-1400: holding batch fails, probe succeeds."""
@@ -148,6 +152,7 @@ async def test_scan_holding_batch_fail_probe_success():
 # Group Q: deep_scan=True (line 1548)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_scan_input_probe_always_fails(caplog):
     """Line 1325: batch fails, individual probe returns falsy → warning."""
@@ -173,6 +178,7 @@ async def test_scan_input_probe_always_fails(caplog):
 # ---------------------------------------------------------------------------
 # Lines 1339-1340: input probe returns invalid value
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_scan_input_probe_returns_invalid_value():
@@ -221,6 +227,7 @@ async def test_scan_input_probe_returns_invalid_value():
 # Line 1357: holding scan skips UART-optional registers
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_scan_holding_skips_uart_optional_registers():
     """Line 1357: scan_uart_settings=False skips UART optional registers."""
@@ -253,6 +260,7 @@ async def test_scan_holding_skips_uart_optional_registers():
 # Lines 1362-1363: holding multi-register (MULTI_REGISTER_SIZES > 1)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_scan_holding_multiregister_alias():
     """Lines 1362-1363: duplicate holding address merges names into one entry."""
@@ -277,6 +285,7 @@ async def test_scan_holding_multiregister_alias():
 # ---------------------------------------------------------------------------
 # Lines 1371-1372: holding TypeError fallback in batch read
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_scan_holding_type_error_fallback():
@@ -310,6 +319,7 @@ async def test_scan_holding_type_error_fallback():
 # ---------------------------------------------------------------------------
 # Lines 1384, 1398-1399: holding probe addr not in map / invalid probe value
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_scan_holding_probe_addr_not_in_info():
@@ -348,6 +358,7 @@ async def test_scan_holding_probe_addr_not_in_info():
         sc.MULTI_REGISTER_SIZES.clear()
         sc.MULTI_REGISTER_SIZES.update(original_multi)
 
+
 @pytest.mark.asyncio
 async def test_scan_holding_probe_invalid_value():
     """Lines 1398-1399: batch fails, probe returns invalid value → tracking."""
@@ -380,6 +391,7 @@ async def test_scan_holding_probe_invalid_value():
 # ---------------------------------------------------------------------------
 # Lines 1389-1390: TypeError in holding probe → fallback
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_scan_holding_probe_type_error_fallback():

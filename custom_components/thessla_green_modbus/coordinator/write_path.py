@@ -17,7 +17,9 @@ class SingleWritePlan:
     original_value: float | str | list[int] | tuple[int, ...]
 
 
-async def run_single_write_attempts(coordinator: Any, definition: Any, plan: SingleWritePlan, refresh: bool) -> tuple[bool, bool]:
+async def run_single_write_attempts(
+    coordinator: Any, definition: Any, plan: SingleWritePlan, refresh: bool
+) -> tuple[bool, bool]:
     """Execute retry loop for single-register write."""
     refresh_after_write = False
     for attempt in range(1, coordinator.retry + 1):

@@ -30,6 +30,7 @@ def _iter_mapping_entries(entity_mappings: dict[str, dict[str, dict[str, Any]]])
 def _ensure_homeassistant_importable() -> None:
     try:
         import homeassistant.const  # noqa: F401
+
         return
     except ModuleNotFoundError:
         with suppress(Exception):
@@ -85,7 +86,9 @@ def _load_validation_inputs() -> tuple[object, dict[str, Any], dict[str, Any], s
     return mappings_mod, en, pl, register_names
 
 
-def _collect_domain_keys(entity_mappings: dict[str, dict[str, dict[str, Any]]]) -> dict[str, set[str]]:
+def _collect_domain_keys(
+    entity_mappings: dict[str, dict[str, dict[str, Any]]],
+) -> dict[str, set[str]]:
     domain_keys: dict[str, set[str]] = {}
     for domain, entries in entity_mappings.items():
         keys: set[str] = set()
@@ -109,9 +112,13 @@ def _validate_translations(
     for domain, key, definition in _iter_mapping_entries(entity_mappings):
         tkey = definition.get("translation_key", key)
         if tkey not in en_entities.get(domain, {}):
-            errors.append(f"ERROR: entity '{domain}.{tkey}' in entity_mappings missing from en.json")
+            errors.append(
+                f"ERROR: entity '{domain}.{tkey}' in entity_mappings missing from en.json"
+            )
         if tkey not in pl_entities.get(domain, {}):
-            errors.append(f"ERROR: entity '{domain}.{tkey}' in entity_mappings missing from pl.json")
+            errors.append(
+                f"ERROR: entity '{domain}.{tkey}' in entity_mappings missing from pl.json"
+            )
 
     for lang, entities in (("en", en_entities), ("pl", pl_entities)):
         for domain, domain_map in entities.items():
@@ -132,7 +139,9 @@ def _validate_translations(
 
 
 def _validate_register_references(
-    entity_mappings: dict[str, dict[str, dict[str, Any]]], register_names: set[str], synthetic_registers: set[str]
+    entity_mappings: dict[str, dict[str, dict[str, Any]]],
+    register_names: set[str],
+    synthetic_registers: set[str],
 ) -> list[str]:
     errors: list[str] = []
     for domain, key, definition in _iter_mapping_entries(entity_mappings):
@@ -230,9 +239,13 @@ def main() -> int:
 
     errors: list[str] = []
     errors.extend(
-        _validate_translations(entity_mappings, en_entities, pl_entities, ignored_orphan_translations)
+        _validate_translations(
+            entity_mappings, en_entities, pl_entities, ignored_orphan_translations
+        )
     )
-    errors.extend(_validate_register_references(entity_mappings, register_names, synthetic_registers))
+    errors.extend(
+        _validate_register_references(entity_mappings, register_names, synthetic_registers)
+    )
     standalone_errors, standalone_mapping_keys = _validate_standalone_mappings(
         mappings_mod, en_entities, pl_entities, register_names, synthetic_registers
     )
@@ -242,7 +255,9 @@ def main() -> int:
     if _report_errors(errors):
         return 1
 
-    validated_count = sum(len(entries) for entries in entity_mappings.values()) + len(standalone_mapping_keys)
+    validated_count = sum(len(entries) for entries in entity_mappings.values()) + len(
+        standalone_mapping_keys
+    )
     print(f"OK: {validated_count} entities validated")
     return 0
 

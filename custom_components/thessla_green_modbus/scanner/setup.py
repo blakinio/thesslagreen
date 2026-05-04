@@ -220,7 +220,13 @@ async def verify_connection(
             return
         except asyncio.CancelledError:
             raise
-        except (ModbusIOException, TimeoutError, ConnectionException, ModbusException, OSError) as exc:
+        except (
+            ModbusIOException,
+            TimeoutError,
+            ConnectionException,
+            ModbusException,
+            OSError,
+        ) as exc:
             last_error = classify_verify_connection_exception(exc)
         finally:
             await close_verification_transport_once(transport, closed_transports)
@@ -347,9 +353,7 @@ async def close_verification_transport_once(
             await close_result
         closed_transports.add(transport_id)
     except (OSError, ConnectionException, ModbusIOException):
-        _LOGGER.warning(
-            "Error closing Modbus transport during verify_connection", exc_info=True
-        )
+        _LOGGER.warning("Error closing Modbus transport during verify_connection", exc_info=True)
 
 
 async def async_close_connection(scanner: Any, async_maybe_await_close_fn: Any) -> None:

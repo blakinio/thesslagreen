@@ -89,7 +89,9 @@ def apply_connection_state(scanner: Any, state: ScannerConnectionState) -> None:
     scanner.stop_bits = state.stop_bits
 
 
-def apply_register_defaults(scanner: Any, *, known_missing_registers: dict[str, dict[str, Any]]) -> None:
+def apply_register_defaults(
+    scanner: Any, *, known_missing_registers: dict[str, dict[str, Any]]
+) -> None:
     """Apply default scanner register maps and known-missing metadata."""
     scanner._input_register_map = INPUT_REGISTERS
     scanner._holding_register_map = HOLDING_REGISTERS

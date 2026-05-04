@@ -99,5 +99,3 @@ def test_parse_states_skips_empty_parts():
 
     states = _parse_states("0 - off;;1 - on")
     assert states == {"off": 0, "on": 1}
-
-

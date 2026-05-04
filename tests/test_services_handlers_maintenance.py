@@ -1,7 +1,6 @@
 # mypy: ignore-errors
 """Split tests from test_services_handlers.py."""
 
-
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -111,6 +110,7 @@ async def test_reset_filters_basic(monkeypatch):
     coord.async_write_register.assert_called_once_with("filter_change", 2, refresh=False)
     coord.async_request_refresh.assert_awaited_once()
 
+
 @pytest.mark.asyncio
 async def test_reset_filters_write_failure(monkeypatch):
     """reset_filters aborts when write fails."""
@@ -127,6 +127,7 @@ async def test_reset_filters_write_failure(monkeypatch):
 # reset_settings
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_reset_settings_user(monkeypatch):
     """reset_settings(user_settings) writes hard_reset_settings."""
@@ -142,6 +143,7 @@ async def test_reset_settings_user(monkeypatch):
     assert "hard_reset_schedule" not in written
     coord.async_request_refresh.assert_awaited_once()
 
+
 @pytest.mark.asyncio
 async def test_reset_settings_schedule(monkeypatch):
     """reset_settings(schedule_settings) writes hard_reset_schedule."""
@@ -155,6 +157,7 @@ async def test_reset_settings_schedule(monkeypatch):
     written = [c.args[0] for c in coord.async_write_register.call_args_list]
     assert "hard_reset_settings" not in written
     assert "hard_reset_schedule" in written
+
 
 @pytest.mark.asyncio
 async def test_reset_settings_all(monkeypatch):
@@ -174,6 +177,7 @@ async def test_reset_settings_all(monkeypatch):
 # ---------------------------------------------------------------------------
 # start_pressure_test
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_start_pressure_test_basic(monkeypatch):
@@ -198,6 +202,7 @@ async def test_start_pressure_test_basic(monkeypatch):
     assert "pres_check_day_2" in written
     assert "pres_check_time_2" in written
     coord.async_request_refresh.assert_awaited_once()
+
 
 @pytest.mark.asyncio
 async def test_start_pressure_test_write_failure(monkeypatch):
@@ -224,6 +229,7 @@ async def test_start_pressure_test_write_failure(monkeypatch):
 # set_modbus_parameters
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_reset_settings_user_write_failure(monkeypatch):
     """reset_settings(user_settings) aborts on write failure."""
@@ -235,6 +241,7 @@ async def test_reset_settings_user_write_failure(monkeypatch):
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
+
 @pytest.mark.asyncio
 async def test_reset_settings_schedule_write_failure(monkeypatch):
     """reset_settings(schedule_settings) aborts on write failure."""
@@ -245,6 +252,7 @@ async def test_reset_settings_schedule_write_failure(monkeypatch):
     call = _make_call({"entity_id": ["climate.dev"], "reset_type": "schedule_settings"})
     await handler(call)
     coord.async_request_refresh.assert_not_awaited()
+
 
 @pytest.mark.asyncio
 async def test_reset_settings_all_first_write_failure(monkeypatch):
@@ -263,6 +271,7 @@ async def test_reset_settings_all_first_write_failure(monkeypatch):
 # ---------------------------------------------------------------------------
 # start_pressure_test — time write failure (lines 722-723)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_start_pressure_test_time_write_failure(monkeypatch):
@@ -299,18 +308,19 @@ def test_maintenance_registrations_service_order_and_schema_count():
     ]
 
 
-
-
 def test_maintenance_handlers_keys_stable_and_bound():
     """Handler map helper returns expected keys and handler bindings."""
-    handlers = {name: object() for name in [
-        "reset_filters",
-        "reset_settings",
-        "start_pressure_test",
-        "set_modbus_parameters",
-        "set_device_name",
-        "sync_time",
-    ]}
+    handlers = {
+        name: object()
+        for name in [
+            "reset_filters",
+            "reset_settings",
+            "start_pressure_test",
+            "set_modbus_parameters",
+            "set_device_name",
+            "sync_time",
+        ]
+    }
 
     bound = _maintenance_handlers(
         handlers["reset_filters"],
@@ -330,6 +340,7 @@ def test_maintenance_handlers_keys_stable_and_bound():
         "sync_time",
     ]
     assert bound == handlers
+
 
 def test_iter_maintenance_service_bindings_keeps_order_and_schema_binding():
     """Service binding helper keeps registration order and uses matching handler names."""

@@ -66,8 +66,12 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "states": {"mode_1": 1, "mode_2": 2, "mode_3": 3},
         "register_type": "holding_registers",
     },
-    "cfg_mode_1": _select_payload("mdi:tune", "cfg_mode_1", {"auto": 0, "manual": 1, "temporary": 2}),
-    "cfg_mode_2": _select_payload("mdi:tune", "cfg_mode_2", {"auto": 0, "manual": 1, "temporary": 2}),
+    "cfg_mode_1": _select_payload(
+        "mdi:tune", "cfg_mode_1", {"auto": 0, "manual": 1, "temporary": 2}
+    ),
+    "cfg_mode_2": _select_payload(
+        "mdi:tune", "cfg_mode_2", {"auto": 0, "manual": 1, "temporary": 2}
+    ),
     "configuration_mode": {
         "icon": "mdi:cog-outline",
         "translation_key": "configuration_mode",
@@ -75,7 +79,9 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "register_type": "holding_registers",
     },
     "pres_check_day": _select_payload("mdi:calendar-week", "pres_check_day", _weekday_states()),
-    "pres_check_day_4432": _select_payload("mdi:calendar-week", "pres_check_day_4432", _weekday_states()),
+    "pres_check_day_4432": _select_payload(
+        "mdi:calendar-week", "pres_check_day_4432", _weekday_states()
+    ),
     "access_level": {
         "icon": "mdi:account-key",
         "translation_key": "access_level",

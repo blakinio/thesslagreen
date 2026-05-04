@@ -73,20 +73,28 @@ def _build_problem_binary_mapping(register: str) -> dict[str, Any]:
     }
 
 
-
-
 def _build_time_like_mapping(register: str) -> dict[str, Any]:
-    return {"translation_key": register, "icon": "mdi:clock-outline", "register_type": "holding_registers"}
+    return {
+        "translation_key": register,
+        "icon": "mdi:clock-outline",
+        "register_type": "holding_registers",
+    }
 
 
 def _build_season_setting_mapping(register: str) -> dict[str, Any]:
     from ..schedule_helpers import PERCENT_10_SELECT_STATES
 
-    return {"translation_key": register, "icon": "mdi:fan", "register_type": "holding_registers", "states": PERCENT_10_SELECT_STATES}
+    return {
+        "translation_key": register,
+        "icon": "mdi:fan",
+        "register_type": "holding_registers",
+        "states": PERCENT_10_SELECT_STATES,
+    }
 
 
 def _build_sensor_season_setting_mapping(register: str) -> dict[str, Any]:
     return {"translation_key": register, "icon": "mdi:fan", "register_type": "holding_registers"}
+
 
 def _build_base_translation_mapping(register: str, register_type: str) -> dict[str, Any]:
     """Return minimal mapping payload with translation key and register type."""
@@ -103,7 +111,6 @@ def _diag_register_candidates(holding_regs: set[str]) -> set[str]:
     diag_registers = {"alarm", "error"}
     diag_registers.update(reg for reg in holding_regs if re.match(r"[se](?:_|\d)", reg))
     return diag_registers
-
 
 
 def _apply_diagnostic_binary_overrides(
@@ -127,7 +134,6 @@ def _apply_diagnostic_binary_overrides(
         }
         switch_configs.pop(reg, None)
         select_configs.pop(reg, None)
-
 
 
 def _route_enum_mapping(
@@ -168,7 +174,11 @@ def _route_min_max_mapping(
         switch_mappings=switch_mappings,
         select_mappings=select_mappings,
     )
-def _route_problem_mapping(register: str, binary_keys: set[str], binary_mappings: dict[str, Any]) -> bool:
+
+
+def _route_problem_mapping(
+    register: str, binary_keys: set[str], binary_mappings: dict[str, Any]
+) -> bool:
     """Route problem register to binary mappings when translation exists."""
     if register not in binary_keys:
         return False
@@ -176,7 +186,17 @@ def _route_problem_mapping(register: str, binary_keys: set[str], binary_mappings
     return True
 
 
-def _resolve_parent_child_mappings(parent: Any) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+def _resolve_parent_child_mappings(
+    parent: Any,
+) -> tuple[
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+]:
     """Return mutable mapping dictionaries from parent module."""
 
     def _maps(name: str) -> dict[str, Any]:
@@ -311,8 +331,12 @@ def _load_discrete_mappings() -> tuple[
     discrete_regs = _discrete_regs()
     holding_regs = _holding_regs()
 
-    _add_binary_mappings_for_boolean_registers(binary_configs, coil_regs, binary_keys, "coil_registers")
-    _add_binary_mappings_for_boolean_registers(binary_configs, discrete_regs, binary_keys, "discrete_inputs")
+    _add_binary_mappings_for_boolean_registers(
+        binary_configs, coil_regs, binary_keys, "coil_registers"
+    )
+    _add_binary_mappings_for_boolean_registers(
+        binary_configs, discrete_regs, binary_keys, "discrete_inputs"
+    )
 
     holding_binary, holding_switch, holding_select = _classify_discrete_holding_registers(
         holding_regs=holding_regs,
@@ -429,7 +453,6 @@ def _extend_entity_mappings_from_registers() -> None:
             switch_mappings=switch_mappings,
             select_mappings=select_mappings,
         )
-
 
 
 __all__ = [

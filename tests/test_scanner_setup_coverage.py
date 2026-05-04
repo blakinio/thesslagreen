@@ -33,8 +33,12 @@ def _make_transport(
         transport.ensure_connected = AsyncMock(side_effect=ensure_side_effect)
     else:
         transport.ensure_connected = AsyncMock()
-    transport.read_input_registers = AsyncMock(return_value=input_response or _make_ok_response([1]))
-    transport.read_holding_registers = AsyncMock(return_value=holding_response or _make_ok_response([1]))
+    transport.read_input_registers = AsyncMock(
+        return_value=input_response or _make_ok_response([1])
+    )
+    transport.read_holding_registers = AsyncMock(
+        return_value=holding_response or _make_ok_response([1])
+    )
     transport.is_connected = MagicMock(return_value=True)
     return transport
 
@@ -51,6 +55,7 @@ def test_ensure_pymodbus_import_fails():
     ):
         # Must not raise
         attach_pymodbus_client_module()
+
 
 async def test_async_setup_load_registers_returns_plain_dict():
     """Lines 594-595: _async_setup when _load_registers returns a plain dict (not tuple)."""
@@ -69,6 +74,7 @@ async def test_async_setup_load_registers_returns_plain_dict():
     assert scanner._registers == plain_dict
     assert scanner._register_ranges == {}
 
+
 async def test_verify_connection_tcp_explicit_mode():
     """Lines 795-796: else branch in verify_connection with connection_mode=tcp."""
 
@@ -80,6 +86,7 @@ async def test_verify_connection_tcp_explicit_mode():
             await scanner.verify_connection()
 
     fake_transport.ensure_connected.assert_called_once()
+
 
 async def test_verify_connection_safe_holding_with_patched_definitions():
     """Lines 766, 824-829: safe_holding populated when REGISTER_DEFINITIONS has holding reg."""
@@ -118,12 +125,14 @@ async def test_verify_connection_safe_holding_with_patched_definitions():
 
     fake_transport.read_holding_registers.assert_called()
 
+
 async def test_verify_connection_rtu_no_serial_port_raises():
     """Line 771: RTU path in verify_connection raises when serial_port is empty."""
     scanner = await _make_scanner(connection_type=CONNECTION_TYPE_RTU, serial_port="")
 
     with pytest.raises(ConnectionException, match="Serial port not configured"):
         await scanner.verify_connection()
+
 
 async def test_verify_connection_rtu_with_serial_port():
     """Lines 770, 772-776: RTU path in verify_connection creates RtuModbusTransport."""

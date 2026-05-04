@@ -70,7 +70,9 @@ def normalize_option(value: str) -> str:
     return value
 
 
-def normalize_modbus_options(normalize: Any, data: dict[str, Any]) -> tuple[str, str | None, str | None, str | None]:
+def normalize_modbus_options(
+    normalize: Any, data: dict[str, Any]
+) -> tuple[str, str | None, str | None, str | None]:
     """Normalize set_modbus_parameters payload options."""
     port = normalize(data["port"])
     baud_rate = data.get("baud_rate")
@@ -109,7 +111,6 @@ def iter_modbus_parameter_writes(
     ]
 
 
-
 def iter_air_quality_writes(
     data: dict[str, Any],
     register_map: dict[str, str],
@@ -120,6 +121,7 @@ def iter_air_quality_writes(
         (register_map[field], data.get(field), True, f"Failed to set {field} for %s")
         for field in fields
     ]
+
 
 def filter_reset_value(normalize: Any, raw_filter_type: str) -> int:
     """Map filter reset option payload to register value."""

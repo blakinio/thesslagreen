@@ -39,6 +39,7 @@ def test_calculate_power_consumption_basic():
     assert isinstance(result, float)
     assert result > 0
 
+
 def test_calculate_power_consumption_with_heater_and_cooler():
     """Heater and cooler voltages contribute to power (lines 1876-1879)."""
     coord = _make_coordinator()
@@ -47,11 +48,13 @@ def test_calculate_power_consumption_with_heater_and_cooler():
     assert result is not None
     assert result > 0
 
+
 def test_calculate_power_consumption_missing_keys_returns_none():
     """KeyError on missing dac_supply/exhaust returns None (lines 1861-1862)."""
     coord = _make_coordinator()
     result = coord.calculate_power_consumption({})
     assert result is None
+
 
 def test_calculate_power_consumption_invalid_type_returns_none():
     """TypeError on non-numeric values returns None."""
@@ -93,6 +96,7 @@ def test_normalise_capability_flag_helper():
 # Group O — _post_process_data branches (lines 1883-1925)
 # ---------------------------------------------------------------------------
 
+
 def test_post_process_data_zero_division_error():
     """ZeroDivisionError when exhaust == outside is caught silently (lines 1894-1898)."""
     coord = _make_coordinator()
@@ -104,6 +108,7 @@ def test_post_process_data_zero_division_error():
     result = coord._post_process_data(data)
     # Should not raise; calculated_efficiency is absent
     assert "calculated_efficiency" not in result
+
 
 def test_post_process_data_efficiency_calculated():
     """Heat recovery efficiency is calculated when temperatures differ."""
@@ -117,6 +122,7 @@ def test_post_process_data_efficiency_calculated():
     assert "calculated_efficiency" in result
     assert 0 <= result["calculated_efficiency"] <= 100
 
+
 def test_post_process_data_flow_balance():
     """Flow balance is calculated from supply and exhaust flow rates."""
     coord = _make_coordinator()
@@ -125,6 +131,7 @@ def test_post_process_data_flow_balance():
     assert result["flow_balance"] == 25
     assert result["flow_balance_status"] == "supply_dominant"
 
+
 def test_post_process_data_flow_balance_exhaust_dominant():
     """Flow balance status is exhaust_dominant when exhaust > supply."""
     coord = _make_coordinator()
@@ -132,12 +139,14 @@ def test_post_process_data_flow_balance_exhaust_dominant():
     result = coord._post_process_data(data)
     assert result["flow_balance_status"] == "exhaust_dominant"
 
+
 def test_post_process_data_flow_balance_balanced():
     """Flow balance status is balanced when diff < 10."""
     coord = _make_coordinator()
     data = {"supply_flow_rate": 100, "exhaust_flow_rate": 98}
     result = coord._post_process_data(data)
     assert result["flow_balance_status"] == "balanced"
+
 
 def test_post_process_data_flow_balance_string_values():
     """flow_balance must not crash when register returns a string value."""
@@ -147,6 +156,7 @@ def test_post_process_data_flow_balance_string_values():
     # Should silently skip — no crash, no flow_balance key
     assert "flow_balance" not in result
 
+
 def test_post_process_data_power_calculation():
     """Power is estimated and energy accumulated when DAC values provided."""
     coord = _make_coordinator()
@@ -154,6 +164,7 @@ def test_post_process_data_power_calculation():
     result = coord._post_process_data(data)
     assert "estimated_power" in result
     assert "total_energy" in result
+
 
 def test_post_process_data_timezone_aware_timestamp():
     """Timezone-aware last timestamp is handled correctly (lines 1916-1919)."""
@@ -169,6 +180,7 @@ def test_post_process_data_timezone_aware_timestamp():
 # Group R — async_write_temporary_* (lines 2320-2366)
 # ---------------------------------------------------------------------------
 
+
 def test_post_process_data_type_error_in_efficiency():
     """TypeError in efficiency calculation is caught (lines 1897-1898)."""
     coord = _make_coordinator()
@@ -180,6 +192,7 @@ def test_post_process_data_type_error_in_efficiency():
     result = coord._post_process_data(data)
     assert "calculated_efficiency" not in result
 
+
 def test_post_process_data_non_datetime_last_timestamp():
     """Non-datetime _last_power_timestamp → elapsed=0.0 (line 1914)."""
     coord = _make_coordinator()
@@ -188,6 +201,7 @@ def test_post_process_data_non_datetime_last_timestamp():
     result = coord._post_process_data(data)
     assert "estimated_power" in result
     assert "total_energy" in result
+
 
 def test_post_process_data_naive_now_aware_last_ts():
     """Naive _utcnow with aware last_ts → adds UTC tz to now (line 1919)."""

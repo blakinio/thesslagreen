@@ -119,7 +119,6 @@ def test_plan_multi_register_chunks_respects_single_request(coordinator):
     ]
 
 
-
 def test_handle_write_response_failure_logs_retry(coordinator, caplog):
     """Non-final failures should log retry and continue."""
     caplog.set_level("INFO")

@@ -27,7 +27,9 @@ async def test_diagnostics_expected_keys_when_missing_scan_data():
 
     coord = DummyCoordinator()
     entry = SimpleNamespace(entry_id="test", runtime_data=coord)
-    hass = SimpleNamespace(data={DOMAIN: {entry.entry_id: coord}}, config=SimpleNamespace(language="en"))
+    hass = SimpleNamespace(
+        data={DOMAIN: {entry.entry_id: coord}}, config=SimpleNamespace(language="en")
+    )
 
     with patch(
         "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
@@ -61,7 +63,9 @@ async def test_diagnostics_offline_active_error_formatting():
 
     coord = DummyCoordinator()
     entry = SimpleNamespace(entry_id="test", runtime_data=coord)
-    hass = SimpleNamespace(data={DOMAIN: {entry.entry_id: coord}}, config=SimpleNamespace(language="en"))
+    hass = SimpleNamespace(
+        data={DOMAIN: {entry.entry_id: coord}}, config=SimpleNamespace(language="en")
+    )
 
     with patch(
         "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",

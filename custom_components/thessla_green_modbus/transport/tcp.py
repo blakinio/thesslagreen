@@ -16,7 +16,9 @@ from .base import BaseModbusTransport
 class TcpModbusTransport(BaseModbusTransport):
     """TCP Modbus transport implementation."""
 
-    def __init__(self, *, host: str, port: int, connection_type: str = CONNECTION_TYPE_TCP, **kwargs: Any) -> None:
+    def __init__(
+        self, *, host: str, port: int, connection_type: str = CONNECTION_TYPE_TCP, **kwargs: Any
+    ) -> None:
         super().__init__(**kwargs)
         self.host = host
         self.port = port
@@ -39,7 +41,9 @@ class TcpModbusTransport(BaseModbusTransport):
         try:
             return AsyncModbusTcpClient(self.host, **common_kwargs)
         except TypeError:
-            fallback = {k: v for k, v in common_kwargs.items() if k in {"port", "timeout", "framer"}}
+            fallback = {
+                k: v for k, v in common_kwargs.items() if k in {"port", "timeout", "framer"}
+            }
             try:
                 return AsyncModbusTcpClient(self.host, **fallback)
             except TypeError:

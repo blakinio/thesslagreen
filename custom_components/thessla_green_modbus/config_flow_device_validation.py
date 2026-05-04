@@ -196,7 +196,6 @@ async def _create_scanner(
     )
 
 
-
 def _map_validation_exception(
     exc: BaseException,
     *,
@@ -345,6 +344,7 @@ async def _resolve_runtime_classes(
         scanner_cls_override or module.ThesslaGreenDeviceScanner,
         capabilities_cls_override or module.DeviceCapabilities,
     )
+
 
 async def _execute_validation_flow(
     *,

@@ -10,7 +10,9 @@ from custom_components.thessla_green_modbus.scanner.core import DeviceCapabiliti
 
 
 def test_device_capabilities_serialization():
-    caps = DeviceCapabilities(basic_control=True, bypass_system=True, temperature_sensors={"t2", "t1"})
+    caps = DeviceCapabilities(
+        basic_control=True, bypass_system=True, temperature_sensors={"t2", "t1"}
+    )
     serialized = caps.as_dict()
     assert serialized["basic_control"] is True
     assert serialized["bypass_system"] is True

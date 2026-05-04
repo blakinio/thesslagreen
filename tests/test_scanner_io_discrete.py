@@ -18,14 +18,17 @@ def _make_ok_response(registers):
     resp.registers = list(registers)
     return resp
 
+
 def _make_bit_response(bits):
     resp = MagicMock()
     resp.isError.return_value = False
     resp.bits = list(bits)
     return resp
 
+
 async def _make_scanner(**kwargs):
     return await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 1, **kwargs)
+
 
 def _make_transport(
     *, raises_on_close=None, ensure_side_effect=None, input_response=None, holding_response=None
@@ -44,6 +47,7 @@ def _make_transport(
     t.is_connected = MagicMock(return_value=True)
     return t
 
+
 async def test_read_discrete_two_arg_count_none():
     """Lines 2443-2446: _read_discrete(address, count) — count=None path."""
     scanner = await _make_scanner(retry=1)
@@ -60,6 +64,7 @@ async def test_read_discrete_two_arg_count_none():
         result = await scanner._read_discrete(0, 1)
 
     assert result == [True]
+
 
 async def test_read_discrete_two_arg_int_address():
     """Lines 2447-2450: _read_discrete(int, count, count) — int address path."""
@@ -78,6 +83,7 @@ async def test_read_discrete_two_arg_int_address():
 
     assert result == [False]
 
+
 async def test_read_discrete_no_client_raises():
     """Lines 2455-2456: client=None raises ConnectionException."""
     scanner = await _make_scanner()
@@ -86,6 +92,7 @@ async def test_read_discrete_no_client_raises():
 
     with pytest.raises(ConnectionException, match="Modbus client is not connected"):
         await scanner._read_discrete(0, 1)
+
 
 async def test_read_discrete_timeout_error(caplog):
     """Lines 2484-2491: TimeoutError logged."""
@@ -105,6 +112,7 @@ async def test_read_discrete_timeout_error(caplog):
 
     assert result is None
     assert "Timeout reading discrete" in caplog.text
+
 
 async def test_read_discrete_modbus_exception_with_transport_reconnect():
     """Lines 2492-2508: ModbusException triggers transport ensure_connected."""
@@ -138,6 +146,7 @@ async def test_read_discrete_modbus_exception_with_transport_reconnect():
     assert result == [True]
     mock_transport.ensure_connected.assert_called()
 
+
 async def test_read_discrete_cancelled_error_reraises():
     """Lines 2509-2515: asyncio.CancelledError is re-raised."""
     scanner = await _make_scanner(retry=1)
@@ -152,6 +161,7 @@ async def test_read_discrete_cancelled_error_reraises():
         pytest.raises(asyncio.CancelledError),
     ):
         await scanner._read_discrete(mock_client, 0, 1)
+
 
 async def test_read_discrete_oserror_breaks(caplog):
     """Lines 2516-2524: OSError breaks retry loop."""

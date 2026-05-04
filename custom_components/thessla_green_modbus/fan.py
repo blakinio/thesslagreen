@@ -265,8 +265,10 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
     def _is_writable_holding_register(self, register_name: str) -> bool:
         """Return True if a register is writable and available on this device."""
-        return register_name in holding_registers() and register_name in self.coordinator.available_registers.get(
-            "holding_registers", set()
+        return (
+            register_name in holding_registers()
+            and register_name
+            in self.coordinator.available_registers.get("holding_registers", set())
         )
 
     @property

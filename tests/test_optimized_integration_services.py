@@ -41,7 +41,9 @@ async def test_services_registration():
     mock_coordinator.async_request_refresh = AsyncMock()
     mock_coordinator.async_write_register = AsyncMock(return_value=True)
 
-    with patch("custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator") as mock_coordinator_class:
+    with patch(
+        "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
+    ) as mock_coordinator_class:
         mock_coordinator_class.return_value = mock_coordinator
         await async_setup_entry(hass, entry)
 

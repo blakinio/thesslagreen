@@ -16,6 +16,7 @@ def test_extend_entity_mappings_switch_continue(monkeypatch):
     finally:
         em.SWITCH_ENTITY_MAPPINGS.pop("p10_switch_only", None)
 
+
 def test_extend_entity_mappings_select_continue(monkeypatch):
     """Register already in SELECT_ENTITY_MAPPINGS triggers the continue at line 1085."""
     sel_reg = RegisterDef(
@@ -27,6 +28,7 @@ def test_extend_entity_mappings_select_continue(monkeypatch):
         em._extend_entity_mappings_from_registers()
     finally:
         em.SELECT_ENTITY_MAPPINGS.pop("p10_select_only", None)
+
 
 def test_extend_entity_mappings_generic_writable_binary(monkeypatch):
     """Register with max_val<=1, write access and a matching switch translation key
@@ -51,6 +53,7 @@ def test_extend_entity_mappings_generic_writable_binary(monkeypatch):
     assert "p10_new_switch" in em.SWITCH_ENTITY_MAPPINGS
     em.SWITCH_ENTITY_MAPPINGS.pop("p10_new_switch", None)
 
+
 def test_extend_entity_mappings_generic_writable_binary_no_translation(monkeypatch):
     """Register without a matching translation key is NOT added to SWITCH_ENTITY_MAPPINGS."""
     reg = RegisterDef(
@@ -71,6 +74,7 @@ def test_extend_entity_mappings_generic_writable_binary_no_translation(monkeypat
     em._extend_entity_mappings_from_registers()
     assert "p10_no_translation_switch" not in em.SWITCH_ENTITY_MAPPINGS
 
+
 def test_extend_entity_mappings_generic_readonly_binary(monkeypatch):
     """Register with max_val<=1, read-only access and a matching binary_sensor translation
     key creates a binary sensor entry."""
@@ -90,6 +94,7 @@ def test_extend_entity_mappings_generic_readonly_binary(monkeypatch):
     em._extend_entity_mappings_from_registers()
     assert "p10_new_binary" in em.BINARY_SENSOR_ENTITY_MAPPINGS
     em.BINARY_SENSOR_ENTITY_MAPPINGS.pop("p10_new_binary", None)
+
 
 def test_extend_entity_mappings_generic_select_from_info(monkeypatch):
     """Register with info text and a matching select translation key creates a select entry."""
@@ -118,6 +123,7 @@ def test_extend_entity_mappings_generic_select_from_info(monkeypatch):
     assert "p10_gen_select" in em.SELECT_ENTITY_MAPPINGS
     em.SELECT_ENTITY_MAPPINGS.pop("p10_gen_select", None)
 
+
 def test_extend_entity_mappings_select_skips_parts_without_dash(monkeypatch):
     """Parts in info_text without ' - ' are skipped."""
     reg = RegisterDef(
@@ -144,6 +150,7 @@ def test_extend_entity_mappings_select_skips_parts_without_dash(monkeypatch):
     em._extend_entity_mappings_from_registers()
     assert "p10_gen_select_skip" in em.SELECT_ENTITY_MAPPINGS
     em.SELECT_ENTITY_MAPPINGS.pop("p10_gen_select_skip", None)
+
 
 def test_extend_entity_mappings_select_skips_non_int_value(monkeypatch):
     """Non-integer value in info_text triggers ValueError continue."""
@@ -176,6 +183,7 @@ def test_extend_entity_mappings_select_skips_non_int_value(monkeypatch):
         assert "on" in states
         em.SELECT_ENTITY_MAPPINGS.pop("p10_gen_select_badval", None)
 
+
 def test_extend_entity_mappings_generic_number(monkeypatch):
     """Register with wider range, write access and a matching number translation key
     creates a number entry."""
@@ -197,6 +205,7 @@ def test_extend_entity_mappings_generic_number(monkeypatch):
     em._extend_entity_mappings_from_registers()
     assert "p10_gen_number" in em.NUMBER_ENTITY_MAPPINGS
     em.NUMBER_ENTITY_MAPPINGS.pop("p10_gen_number", None)
+
 
 def test_extend_entity_mappings_generic_number_no_translation(monkeypatch):
     """Register without a matching number translation key is NOT added."""

@@ -11,7 +11,9 @@ def mark_connection_established(*, offline_state_setter: Any) -> None:
     offline_state_setter(False)
 
 
-def mark_connection_failure(*, statistics: MutableMapping[str, Any], offline_state_setter: Any) -> None:
+def mark_connection_failure(
+    *, statistics: MutableMapping[str, Any], offline_state_setter: Any
+) -> None:
     """Record connection failure counters and switch coordinator offline."""
     statistics["connection_errors"] += 1
     offline_state_setter(True)

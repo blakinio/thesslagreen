@@ -50,10 +50,7 @@ def test_post_process_data(coordinator):
     assert processed_data["flow_balance_status"] == "supply_dominant"
     assert processed_data["estimated_power"] > 0
     assert processed_data["total_energy"] > 0
-    assert (
-        processed_data["heat_recovery_efficiency"]
-        == processed_data["calculated_efficiency"]
-    )
+    assert processed_data["heat_recovery_efficiency"] == processed_data["calculated_efficiency"]
     assert processed_data["heat_recovery_power"] >= 0
     assert processed_data["electrical_power"] == processed_data["estimated_power"]
 

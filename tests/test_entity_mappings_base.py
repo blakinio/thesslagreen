@@ -17,6 +17,7 @@ def test_get_register_info_skips_nameless_registers(monkeypatch):
     # Empty name was skipped — not in cache
     assert em._get_register_info("") is None
 
+
 def test_get_register_info_numeric_suffix_fallback(monkeypatch):
     """Name ending with _<digit> falls back to base name (line 225)."""
     base_reg = RegisterDef(function=3, address=1, name="pump_speed_p8", access="rw", unit="%")
@@ -29,6 +30,7 @@ def test_get_register_info_numeric_suffix_fallback(monkeypatch):
     fallback = em._get_register_info("pump_speed_p8_2")
     assert fallback == base
 
+
 def test_load_number_mappings_skips_registers_without_info(monkeypatch):
     """Registers absent from info cache are skipped (line 258)."""
     mystery = RegisterDef(function=3, address=999, name="mystery_reg_p8", access="rw")
@@ -38,6 +40,7 @@ def test_load_number_mappings_skips_registers_without_info(monkeypatch):
 
     result = em._load_number_mappings()
     assert "mystery_reg_p8" not in result
+
 
 def test_load_number_mappings_skips_enumerated_unit_registers(monkeypatch):
     """Registers with enumerated unit string are excluded from numbers (line 281)."""
@@ -49,6 +52,7 @@ def test_load_number_mappings_skips_enumerated_unit_registers(monkeypatch):
 
     result = em._load_number_mappings()
     assert "mode_reg_p8" not in result
+
 
 def test_load_number_mappings_includes_min_max_when_present(monkeypatch):
     """min and max are conditionally added to config when not None (lines 289, 291)."""
@@ -64,6 +68,7 @@ def test_load_number_mappings_includes_min_max_when_present(monkeypatch):
     assert "speed_reg_p8" in result
     assert result["speed_reg_p8"]["min"] == 0
     assert result["speed_reg_p8"]["max"] == 100
+
 
 async def test_async_setup_entity_mappings_no_hass():
     """Calling async_setup_entity_mappings(hass=None) hits the else branch (line 1238)."""

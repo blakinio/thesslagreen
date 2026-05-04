@@ -40,7 +40,6 @@ class AbortFlow(Exception):
 
 
 @pytest.mark.asyncio
-
 @pytest.mark.asyncio
 async def test_config_flow_max_registers_per_request_validated():
     """Config flow validates max registers per request."""
@@ -113,9 +112,11 @@ async def test_config_flow_max_registers_per_request_validated():
         assert result["errors"][CONF_MAX_REGISTERS_PER_REQUEST] == "max_registers_range"
         mock_validate.assert_not_called()
 
+
 @pytest.mark.asyncio
 async def test_options_flow_max_registers_per_request_validation():
     """Options flow validates max registers per request within range."""
+
 
 @pytest.mark.asyncio
 async def test_options_flow_max_registers_per_request_validated():
@@ -149,7 +150,6 @@ async def test_options_flow_max_registers_per_request_validated():
     assert result["errors"][CONF_MAX_REGISTERS_PER_REQUEST] == "max_registers_range"
 
 
-
 @pytest.mark.asyncio
 async def test_build_options_form_payload_includes_transport_placeholders():
     """Options form payload builder returns schema and placeholders."""
@@ -158,8 +158,6 @@ async def test_build_options_form_payload_includes_transport_placeholders():
         {},
     )
 
-    schema_keys = {
-        key.schema if hasattr(key, "schema") else key for key in data_schema.schema
-    }
+    schema_keys = {key.schema if hasattr(key, "schema") else key for key in data_schema.schema}
     assert CONF_MAX_REGISTERS_PER_REQUEST in schema_keys
     assert placeholders["transport_label"] in {"Modbus TCP", "Modbus TCP (Auto)", "Modbus TCP RTU"}

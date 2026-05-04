@@ -19,7 +19,9 @@ from .base import BaseModbusTransport
 
 
 class RtuModbusTransport(BaseModbusTransport):
-    def __init__(self, *, serial_port: str, baudrate: int, parity: str, stopbits: int, **kwargs: Any) -> None:
+    def __init__(
+        self, *, serial_port: str, baudrate: int, parity: str, stopbits: int, **kwargs: Any
+    ) -> None:
         super().__init__(**kwargs)
         self.serial_port = serial_port
         self.baudrate = baudrate

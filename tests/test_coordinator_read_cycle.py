@@ -17,7 +17,15 @@ def _make_coordinator(**kwargs) -> ThesslaGreenModbusCoordinator:
     hass = MagicMock()
     hass.async_add_executor_job = None
     return ThesslaGreenModbusCoordinator.from_params(
-        hass=hass, host="192.168.1.1", port=502, slave_id=1, name="test", scan_interval=30, timeout=3, retry=2, **kwargs
+        hass=hass,
+        host="192.168.1.1",
+        port=502,
+        slave_id=1,
+        name="test",
+        scan_interval=30,
+        timeout=3,
+        retry=2,
+        **kwargs,
     )
 
 
@@ -74,6 +82,9 @@ def test_process_register_value_sensor_unavailable_temperature():
     mock_def.is_temperature.return_value = True
     mock_def.enum = None
     mock_def.decode.return_value = 0
-    with patch("custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition", return_value=mock_def):
+    with patch(
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
+        return_value=mock_def,
+    ):
         result = coord._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
     assert result is None

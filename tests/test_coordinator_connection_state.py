@@ -12,7 +12,9 @@ from custom_components.thessla_green_modbus.coordinator.connection_state import 
 def test_mark_connection_established_sets_online() -> None:
     holder = {"offline": True}
 
-    mark_connection_established(offline_state_setter=lambda value: holder.__setitem__("offline", value))
+    mark_connection_established(
+        offline_state_setter=lambda value: holder.__setitem__("offline", value)
+    )
 
     assert holder["offline"] is False
 

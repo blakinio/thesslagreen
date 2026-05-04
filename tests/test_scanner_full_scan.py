@@ -26,6 +26,7 @@ async def test_deep_scan_skips_none_result():
     assert "raw_registers" in result
     assert result["raw_registers"] == {}
 
+
 @pytest.mark.asyncio
 async def test_deep_scan_collects_values():
     """Line 1547-1550: deep_scan=True with data collects raw_registers."""
@@ -50,6 +51,7 @@ async def test_deep_scan_collects_values():
 # Group M: full_register_scan with invalid holding values (lines 1229-1253)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_full_register_scan_input_returns_none():
     """Lines 1198-1202: full_register_scan input read returns None."""
@@ -68,6 +70,7 @@ async def test_full_register_scan_input_returns_none():
         result = await scanner.scan()
 
     assert result["failed_addresses"]["modbus_exceptions"]["input_registers"]
+
 
 @pytest.mark.asyncio
 async def test_full_register_scan_holding_invalid_value():
@@ -97,6 +100,7 @@ async def test_full_register_scan_holding_invalid_value():
 # Group N: full_register_scan coil/discrete (lines 1258-1296)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_full_register_scan_coil_returns_none():
     """Lines 1261-1265: full_register_scan coil read returns None."""
@@ -115,6 +119,7 @@ async def test_full_register_scan_coil_returns_none():
         result = await scanner.scan()
 
     assert result["failed_addresses"]["modbus_exceptions"]["coil_registers"]
+
 
 @pytest.mark.asyncio
 async def test_full_register_scan_discrete_returns_value():
@@ -142,6 +147,7 @@ async def test_full_register_scan_discrete_returns_value():
 # Group S: RTU in scan_device (lines 1669-1675)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_full_register_scan_input_no_alias_path():
     """Line 1217: input register not in _names_by_address → add by reg_name."""
@@ -163,6 +169,7 @@ async def test_full_register_scan_input_no_alias_path():
 
     # fake_input_reg should be in available_registers (added without alias)
     assert "fake_input_reg" in result["available_registers"]["input_registers"]
+
 
 @pytest.mark.asyncio
 async def test_full_register_scan_input_invalid_value():
@@ -190,6 +197,7 @@ async def test_full_register_scan_input_invalid_value():
 # Line 1248: full_register_scan holding no-alias path
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_full_register_scan_holding_no_alias_path():
     """Line 1248: holding register not in _names_by_address → add by reg_name."""
@@ -214,6 +222,7 @@ async def test_full_register_scan_holding_no_alias_path():
 # ---------------------------------------------------------------------------
 # Lines 1266-1275: full_register_scan coil valid response
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_full_register_scan_coil_valid_with_name():
@@ -248,6 +257,7 @@ async def test_full_register_scan_coil_valid_with_name():
 # Lines 1283-1286, 1294-1296: full_register_scan discrete None and valid
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_full_register_scan_discrete_none():
     """Lines 1283-1286: full_register_scan discrete returns None."""
@@ -266,6 +276,7 @@ async def test_full_register_scan_discrete_none():
         result = await scanner.scan()
 
     assert 0 in result["failed_addresses"]["modbus_exceptions"]["discrete_inputs"]
+
 
 @pytest.mark.asyncio
 async def test_full_register_scan_discrete_valid():
@@ -300,6 +311,7 @@ async def test_full_register_scan_discrete_valid():
 # Line 1325: input probe fails → warning
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_full_register_scan_coil_alias_path():
     """Line 1271: full_register_scan coil with alias names updates all aliases."""
@@ -328,6 +340,7 @@ async def test_full_register_scan_coil_alias_path():
         result = await scanner.scan()
 
     assert "fake_coil_alias" in result["available_registers"]["coil_registers"]
+
 
 @pytest.mark.asyncio
 async def test_full_register_scan_coil_unknown_addr():

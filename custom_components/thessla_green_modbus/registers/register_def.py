@@ -20,6 +20,7 @@ from .codec import (
 
 _LOGGER = logging.getLogger(__name__)
 
+
 @dataclass(slots=True)
 class RegisterDef:
     """Definition of a single Modbus register."""
@@ -289,4 +290,3 @@ class RegisterDef:
             resolution=self.resolution,
             name=self.name,
         )
-

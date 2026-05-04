@@ -18,14 +18,17 @@ def _make_ok_response(registers):
     resp.registers = list(registers)
     return resp
 
+
 def _make_bit_response(bits):
     resp = MagicMock()
     resp.isError.return_value = False
     resp.bits = list(bits)
     return resp
 
+
 async def _make_scanner(**kwargs):
     return await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 1, **kwargs)
+
 
 def _make_transport(
     *, raises_on_close=None, ensure_side_effect=None, input_response=None, holding_response=None
@@ -44,6 +47,7 @@ def _make_transport(
     t.is_connected = MagicMock(return_value=True)
     return t
 
+
 async def test_read_coil_two_arg_count_none():
     """Lines 2340-2343: _read_coil(address, count) — count=None path uses self._client."""
     scanner = await _make_scanner(retry=1)
@@ -60,6 +64,7 @@ async def test_read_coil_two_arg_count_none():
         result = await scanner._read_coil(0, 1)
 
     assert result == [True]
+
 
 async def test_read_coil_two_arg_int_address():
     """Lines 2344-2347: _read_coil(int, count, count) — int address path."""
@@ -78,6 +83,7 @@ async def test_read_coil_two_arg_int_address():
 
     assert result == [False]
 
+
 async def test_read_coil_no_client_raises():
     """Lines 2352-2353: client=None raises ConnectionException."""
     scanner = await _make_scanner()
@@ -86,6 +92,7 @@ async def test_read_coil_no_client_raises():
 
     with pytest.raises(ConnectionException, match="Modbus client is not connected"):
         await scanner._read_coil(0, 1)
+
 
 async def test_read_coil_timeout_error(caplog):
     """Lines 2381-2388: TimeoutError logged, retries exhausted → None."""
@@ -105,6 +112,7 @@ async def test_read_coil_timeout_error(caplog):
 
     assert result is None
     assert "Timeout reading coil" in caplog.text
+
 
 async def test_read_coil_modbus_exception_with_transport_reconnect(caplog):
     """Lines 2389-2405: ModbusException triggers transport ensure_connected."""
@@ -140,6 +148,7 @@ async def test_read_coil_modbus_exception_with_transport_reconnect(caplog):
     assert result == [True]
     mock_transport.ensure_connected.assert_called()
 
+
 async def test_read_coil_cancelled_error_reraises():
     """Lines 2406-2412: asyncio.CancelledError is re-raised."""
     scanner = await _make_scanner(retry=1)
@@ -154,6 +163,7 @@ async def test_read_coil_cancelled_error_reraises():
         pytest.raises(asyncio.CancelledError),
     ):
         await scanner._read_coil(mock_client, 0, 1)
+
 
 async def test_read_coil_oserror_breaks(caplog):
     """Lines 2413-2421: OSError breaks retry loop."""

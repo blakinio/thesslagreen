@@ -61,6 +61,7 @@ async def test_duplicate_entry_aborts():
         with pytest.raises(AbortFlow):
             await flow.async_step_confirm({})
 
+
 @pytest.mark.asyncio
 async def test_user_step_duplicate_entry_aborts_silently(caplog):
     """Duplicate device during user step should abort without logging errors."""
@@ -91,4 +92,3 @@ async def test_user_step_duplicate_entry_aborts_silently(caplog):
 
     assert err.value.reason == "already_configured"
     assert not caplog.records
-

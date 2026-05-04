@@ -27,6 +27,7 @@ from .io import is_request_cancelled_error
 
 _LOGGER = logging.getLogger(__name__)
 
+
 def _initialize_scan_tracking() -> tuple[dict[str, dict[int, Any]], dict[str, int]]:
     """Create scan containers for unknown and scanned registers."""
     return (
@@ -147,12 +148,17 @@ async def run_full_scan(
     scanned_registers: dict[str, int],
 ) -> None:
     """Scan all registers up to max known address (full_register_scan mode)."""
+
     async def _run_word_phase(max_addr: int, scan_key: str, func: int, read_fn: Any) -> None:
-        for start, count in _group_reads(range(max_addr + 1), max_block_size=scanner.effective_batch):
+        for start, count in _group_reads(
+            range(max_addr + 1), max_block_size=scanner.effective_batch
+        ):
             scanned_registers[scan_key] += count
             data = await read_fn(start, count)
             if data is None:
-                scanner.failed_addresses["modbus_exceptions"][scan_key].update(range(start, start + count))
+                scanner.failed_addresses["modbus_exceptions"][scan_key].update(
+                    range(start, start + count)
+                )
                 continue
             apply_word_register_block(
                 scanner,
@@ -164,14 +170,16 @@ async def run_full_scan(
                 unknown_registers=unknown_registers,
             )
 
-    async def _run_bit_phase(
-        max_addr: int, scan_key: str, function: int, read_fn: Any
-    ) -> None:
-        for start, count in _group_reads(range(max_addr + 1), max_block_size=scanner.effective_batch):
+    async def _run_bit_phase(max_addr: int, scan_key: str, function: int, read_fn: Any) -> None:
+        for start, count in _group_reads(
+            range(max_addr + 1), max_block_size=scanner.effective_batch
+        ):
             scanned_registers[scan_key] += count
             data = await read_fn(start, count)
             if data is None:
-                scanner.failed_addresses["modbus_exceptions"][scan_key].update(range(start, start + count))
+                scanner.failed_addresses["modbus_exceptions"][scan_key].update(
+                    range(start, start + count)
+                )
                 continue
             for offset, value in enumerate(data):
                 addr = start + offset
@@ -302,7 +310,6 @@ async def scan(scanner: Any) -> dict[str, Any]:
         scan_started=scan_started,
         raw_registers=raw_registers,
     )
-
 
 
 async def scan_device(scanner: Any) -> dict[str, Any]:
