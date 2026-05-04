@@ -32,6 +32,7 @@ from custom_components.thessla_green_modbus.modbus_helpers import (
     _calculate_batch_size,
     _call_modbus,
     _classify_modbus_exception,
+    _prepare_modbus_call,
     async_close_client,
     group_reads,
 )
@@ -216,6 +217,54 @@ def test_calculate_batch_size_uses_values_length():
 def test_calculate_batch_size_defaults_to_one():
     """Empty kwargs defaults to one request item."""
     assert _calculate_batch_size({}) == 1
+
+
+@pytest.mark.asyncio
+async def test_prepare_modbus_call_metadata_uses_detected_keyword():
+    """Prepared metadata should keep argument normalization and unit-detection."""
+
+    async def func(address, *, count, unit=None):
+        return address, count, unit
+
+    kwargs = {}
+    positional, kwarg, func_name, batch_size, delay = _prepare_modbus_call(
+        func,
+        (11, 5),
+        kwargs,
+        attempt=1,
+        backoff=0.1,
+        backoff_jitter=None,
+        apply_backoff=True,
+    )
+
+    assert positional == [11]
+    assert kwargs == {"count": 5}
+    assert kwarg == "unit"
+    assert func_name == "func"
+    assert batch_size == 5
+    assert delay == 0.0
+
+
+@pytest.mark.asyncio
+async def test_prepare_modbus_call_metadata_disables_backoff():
+    """Prepared metadata should skip delay when backoff is disabled."""
+
+    async def func(address, *, count, slave=None):
+        return address, count, slave
+
+    positional, kwarg, _func_name, _batch_size, delay = _prepare_modbus_call(
+        func,
+        (2, 3),
+        {},
+        attempt=3,
+        backoff=1.0,
+        backoff_jitter=None,
+        apply_backoff=False,
+    )
+
+    assert positional == [2]
+    assert kwarg == "slave"
+    assert delay == 0.0
 
 
 def test_classify_modbus_exception_cancelled():

@@ -341,6 +341,31 @@ def _calculate_batch_size(kwargs: dict[str, Any]) -> int:
     return kwargs.get("count") or len(kwargs.get("values", [])) or 1
 
 
+def _prepare_modbus_call(
+    func: Callable[..., Awaitable[Any]],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+    *,
+    attempt: int,
+    backoff: float,
+    backoff_jitter: float | tuple[float, float] | None,
+    apply_backoff: bool,
+) -> tuple[list[Any], str, str, int, float]:
+    """Prepare call metadata for ``_call_modbus`` without mutating behavior."""
+
+    signature = _get_signature(func)
+    positional, params = _normalize_positional_and_keyword_args(signature, args, kwargs)
+    kwarg = _resolve_slave_kwarg(func, params, signature)
+    func_name = getattr(func, "__name__", repr(func))
+    batch_size = _calculate_batch_size(kwargs)
+    delay = (
+        _calculate_backoff_delay(base=backoff, attempt=attempt, jitter=backoff_jitter)
+        if apply_backoff
+        else 0.0
+    )
+    return positional, kwarg, func_name, batch_size, delay
+
+
 def _classify_modbus_exception(err: Exception) -> str:
     """Return exception class for Modbus call logging."""
     if isinstance(err, ModbusIOException) and "request cancelled" in str(err).lower():
@@ -386,22 +411,15 @@ async def _call_modbus(
     (or lack thereof) is cached per callable for subsequent invocations.
     """
 
-    # Fetch and cache the function signature
-    signature = _get_signature(func)
-
-    positional, params = _normalize_positional_and_keyword_args(signature, args, kwargs)
-    kwarg = _resolve_slave_kwarg(func, params, signature)
-
-    func_name = getattr(func, "__name__", repr(func))
-    batch_size = _calculate_batch_size(kwargs)
-
-    delay = 0.0
-    if apply_backoff:
-        delay = _calculate_backoff_delay(
-            base=backoff,
-            attempt=attempt,
-            jitter=backoff_jitter,
-        )
+    positional, kwarg, func_name, batch_size, delay = _prepare_modbus_call(
+        func,
+        args,
+        kwargs,
+        attempt=attempt,
+        backoff=backoff,
+        backoff_jitter=backoff_jitter,
+        apply_backoff=apply_backoff,
+    )
 
     if delay > 0:
         _LOGGER.debug(
