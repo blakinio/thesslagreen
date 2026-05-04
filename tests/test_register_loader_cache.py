@@ -12,11 +12,16 @@ from custom_components.thessla_green_modbus.registers.loader import (
 
 
 def _add_desc(reg: dict) -> dict:
-    return {**reg, "description": reg.get("description", "desc"), "description_en": reg.get("description_en", "desc")}
+    return {
+        **reg,
+        "description": reg.get("description", "desc"),
+        "description_en": reg.get("description_en", "desc"),
+    }
 
 
 def _write(path: Path, regs: list[dict]) -> None:
     path.write_text(json.dumps({"registers": [_add_desc(r) for r in regs]}))
+
 
 def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     """Ensure register file caching and invalidation behave correctly."""
@@ -63,6 +68,7 @@ def test_register_cache_invalidation(tmp_path, monkeypatch) -> None:
     assert hash_calls == 2
     assert hash_before != hash_after
 
+
 def test_registers_sha256_uses_cache(tmp_path, monkeypatch) -> None:
     """registers_sha256 should avoid re-reading unchanged files."""
 
@@ -94,6 +100,7 @@ def test_registers_sha256_uses_cache(tmp_path, monkeypatch) -> None:
 
     assert read_calls == 2
 
+
 def test_registers_reload_on_file_change(tmp_path) -> None:
     """Changing the register JSON file triggers a reload."""
 
@@ -111,6 +118,7 @@ def test_registers_reload_on_file_change(tmp_path) -> None:
 
     updated = load_registers(path)
     assert any(r.name == "cache_test_marker" for r in updated)
+
 
 def test_clear_cache_resets_file_hash(tmp_path, monkeypatch) -> None:
     """clear_cache should reset the cached file hash."""

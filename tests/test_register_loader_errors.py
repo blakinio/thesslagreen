@@ -8,11 +8,16 @@ from custom_components.thessla_green_modbus.registers.parser import load_registe
 
 
 def _add_desc(reg: dict) -> dict:
-    return {**reg, "description": reg.get("description", "desc"), "description_en": reg.get("description_en", "desc")}
+    return {
+        **reg,
+        "description": reg.get("description", "desc"),
+        "description_en": reg.get("description_en", "desc"),
+    }
 
 
 def _write(path: Path, regs: list[dict]) -> None:
     path.write_text(json.dumps({"registers": [_add_desc(r) for r in regs]}))
+
 
 def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
     """Duplicate names or addresses should raise an error."""
@@ -23,6 +28,7 @@ def test_duplicate_registers_raise_error(tmp_path, registers) -> None:
     with pytest.raises(ValueError):
         load_registers_from_file(path)
 
+
 def test_invalid_registers_rejected(tmp_path, register) -> None:
     """Registers violating schema constraints should raise an error."""
 
@@ -31,6 +37,7 @@ def test_invalid_registers_rejected(tmp_path, register) -> None:
 
     with pytest.raises(ValueError):
         load_registers_from_file(path)
+
 
 def test_bits_within_bitmask_width(tmp_path) -> None:
     """Registers with bits not exceeding bitmask width should load."""
@@ -48,6 +55,7 @@ def test_bits_within_bitmask_width(tmp_path) -> None:
 
     load_registers_from_file(path)
 
+
 def test_missing_descriptions_rejected(tmp_path, reg) -> None:
     base = {
         "function": "03",
@@ -62,6 +70,7 @@ def test_missing_descriptions_rejected(tmp_path, reg) -> None:
     with pytest.raises(ValueError):
         load_registers_from_file(path)
 
+
 def test_missing_register_file_raises_runtime_error(tmp_path) -> None:
     """Missing register definition file should raise RuntimeError."""
 
@@ -69,6 +78,7 @@ def test_missing_register_file_raises_runtime_error(tmp_path) -> None:
     with pytest.raises(RuntimeError) as exc:
         load_registers_from_file(path)
     assert str(path) in str(exc.value)
+
 
 def test_invalid_register_file_raises_runtime_error(tmp_path) -> None:
     """Invalid register definition file should raise RuntimeError."""
@@ -78,6 +88,7 @@ def test_invalid_register_file_raises_runtime_error(tmp_path) -> None:
     with pytest.raises(RuntimeError) as exc:
         load_registers_from_file(path)
     assert str(path) in str(exc.value)
+
 
 def test_special_modes_invalid_json(monkeypatch) -> None:
     """Parser falls back to empty special mode enum on invalid file."""
