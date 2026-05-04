@@ -164,6 +164,26 @@ async def run_full_scan(
                 unknown_registers=unknown_registers,
             )
 
+    async def _run_bit_phase(
+        max_addr: int, scan_key: str, function: int, read_fn: Any
+    ) -> None:
+        for start, count in _group_reads(range(max_addr + 1), max_block_size=scanner.effective_batch):
+            scanned_registers[scan_key] += count
+            data = await read_fn(start, count)
+            if data is None:
+                scanner.failed_addresses["modbus_exceptions"][scan_key].update(range(start, start + count))
+                continue
+            for offset, value in enumerate(data):
+                addr = start + offset
+                if (reg_name := scanner._registers.get(function, {}).get(addr)) is not None:
+                    names = scanner._alias_names(function, addr)
+                    if names:
+                        scanner.available_registers[scan_key].update(names)
+                    else:
+                        scanner.available_registers[scan_key].add(reg_name)
+                else:
+                    unknown_registers[scan_key][addr] = value
+
     await _run_word_phase(
         input_max,
         "input_registers",
@@ -181,53 +201,22 @@ async def run_full_scan(
         ),
     )
 
-    for start, count in _group_reads(range(coil_max + 1), max_block_size=scanner.effective_batch):
-        scanned_registers["coil_registers"] += count
-        coil_data = (
-            await scanner._read_coil(scanner._client, start, count)
-            if scanner._client is not None
-            else await scanner._read_coil(start, count)
-        )
-        if coil_data is None:
-            scanner.failed_addresses["modbus_exceptions"]["coil_registers"].update(
-                range(start, start + count)
-            )
-            continue
-        for offset, value in enumerate(coil_data):
-            addr = start + offset
-            if (reg_name := scanner._registers.get(1, {}).get(addr)) is not None:
-                names = scanner._alias_names(1, addr)
-                if names:
-                    scanner.available_registers["coil_registers"].update(names)
-                else:
-                    scanner.available_registers["coil_registers"].add(reg_name)
-            else:
-                unknown_registers["coil_registers"][addr] = value
-
-    for start, count in _group_reads(
-        range(discrete_max + 1), max_block_size=scanner.effective_batch
-    ):
-        scanned_registers["discrete_inputs"] += count
-        discrete_data = (
-            await scanner._read_discrete(scanner._client, start, count)
-            if scanner._client is not None
-            else await scanner._read_discrete(start, count)
-        )
-        if discrete_data is None:
-            scanner.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
-                range(start, start + count)
-            )
-            continue
-        for offset, value in enumerate(discrete_data):
-            addr = start + offset
-            if (reg_name := scanner._registers.get(2, {}).get(addr)) is not None:
-                names = scanner._alias_names(2, addr)
-                if names:
-                    scanner.available_registers["discrete_inputs"].update(names)
-                else:
-                    scanner.available_registers["discrete_inputs"].add(reg_name)
-            else:
-                unknown_registers["discrete_inputs"][addr] = value
+    await _run_bit_phase(
+        coil_max,
+        "coil_registers",
+        1,
+        lambda start, count: scanner._read_coil(scanner._client, start, count)
+        if scanner._client is not None
+        else scanner._read_coil(start, count),
+    )
+    await _run_bit_phase(
+        discrete_max,
+        "discrete_inputs",
+        2,
+        lambda start, count: scanner._read_discrete(scanner._client, start, count)
+        if scanner._client is not None
+        else scanner._read_discrete(start, count),
+    )
 
 
 async def scan(scanner: Any) -> dict[str, Any]:

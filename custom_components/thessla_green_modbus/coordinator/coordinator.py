@@ -81,7 +81,7 @@ from ..coordinator_state import (
 from ..coordinator_state import normalize_serial_settings as _normalize_serial_settings_impl
 from ..coordinator_state import resolve_effective_batch as _resolve_effective_batch_impl
 from ..errors import CannotConnect
-from ..modbus_exceptions import ConnectionException, ModbusException
+from ..modbus_exceptions import ConnectionException
 from ..modbus_helpers import group_reads
 from ..modbus_transport import (
     BaseModbusTransport,
@@ -119,6 +119,7 @@ from .connection import (
 from .connection import (
     setup_client_with_retry as _setup_client_with_retry_impl,
 )
+from .connection_lifecycle import ensure_connected_lifecycle as _ensure_connected_lifecycle_impl
 from .connection_state import (
     mark_connection_disconnected as _mark_connection_disconnected_impl,
 )
@@ -664,74 +665,61 @@ class ThesslaGreenModbusCoordinator(
     async def _ensure_connected(self) -> None:
         """Ensure Modbus connection is established using the shared client."""
 
-        async with self._client_lock:
-            parity = SERIAL_PARITY_MAP.get(self.config.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
-            stop_bits = SERIAL_STOP_BITS_MAP.get(
-                self.config.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
-            )
-            try:
-                transport, client, selected_mode = await _ensure_connected_runtime_impl(
-                    current_transport=self._transport,
-                    current_client=self.client,
-                    reconnect_client_if_needed_fn=_reconnect_client_if_needed_impl,
-                    disconnect_locked_fn=self._disconnect_locked,
-                    get_runtime_state_fn=lambda: (self._transport, self.client),
-                    ensure_transport_selected_fn=lambda: _ensure_transport_selected_impl(
-                        current_transport=self._transport,
-                        connection_type=self.config.connection_type,
-                        connection_mode=self.config.connection_mode,
-                        host=self.config.host,
-                        port=self.config.port,
-                        serial_port=self.config.serial_port,
-                        baudrate=self.config.baud_rate,
-                        parity=parity,
-                        stopbits=stop_bits,
-                        retry=self.retry,
-                        backoff=self.backoff,
-                        max_backoff=DEFAULT_MAX_BACKOFF,
-                        timeout=self.timeout,
-                        offline_state=self.offline_state,
-                        connection_type_rtu=CONNECTION_TYPE_RTU,
-                        connection_mode_auto=CONNECTION_MODE_AUTO,
-                        connection_mode_tcp=CONNECTION_MODE_TCP,
-                        build_rtu_transport_fn=_build_rtu_transport_impl,
-                        build_tcp_transport_fn=self._build_tcp_transport,
-                        select_auto_transport_fn=lambda: _select_auto_transport_impl(
-                            resolved_connection_mode=self._resolved_connection_mode,
-                            build_tcp_transport=self._build_tcp_transport,
-                            try_direct_client_connect=lambda allow_parameterless_ctor: self._try_direct_client_connect(
-                                allow_parameterless_ctor=allow_parameterless_ctor
-                            ),
-                            port=self.config.port,
-                            timeout=self.timeout,
-                            slave_id=self.config.slave_id,
-                            host=self.config.host,
-                            logger=_LOGGER,
-                        ),
+        parity = SERIAL_PARITY_MAP.get(self.config.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
+        stop_bits = SERIAL_STOP_BITS_MAP.get(
+            self.config.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
+        )
+
+        def _ensure_transport_selected() -> Any:
+            return lambda: _ensure_transport_selected_impl(
+                current_transport=self._transport,
+                connection_type=self.config.connection_type,
+                connection_mode=self.config.connection_mode,
+                host=self.config.host,
+                port=self.config.port,
+                serial_port=self.config.serial_port,
+                baudrate=self.config.baud_rate,
+                parity=parity,
+                stopbits=stop_bits,
+                retry=self.retry,
+                backoff=self.backoff,
+                max_backoff=DEFAULT_MAX_BACKOFF,
+                timeout=self.timeout,
+                offline_state=self.offline_state,
+                connection_type_rtu=CONNECTION_TYPE_RTU,
+                connection_mode_auto=CONNECTION_MODE_AUTO,
+                connection_mode_tcp=CONNECTION_MODE_TCP,
+                build_rtu_transport_fn=_build_rtu_transport_impl,
+                build_tcp_transport_fn=self._build_tcp_transport,
+                select_auto_transport_fn=lambda: _select_auto_transport_impl(
+                    resolved_connection_mode=self._resolved_connection_mode,
+                    build_tcp_transport=self._build_tcp_transport,
+                    try_direct_client_connect=lambda allow_parameterless_ctor: self._try_direct_client_connect(
+                        allow_parameterless_ctor=allow_parameterless_ctor
                     ),
-                    connect_transport_or_client_fn=_connect_transport_or_client_impl,
-                    mark_connection_established_fn=lambda: _mark_connection_established_impl(
-                        offline_state_setter=lambda value: setattr(self, "offline_state", value)
-                    ),
-                    mark_connection_failure_fn=lambda: _mark_connection_failure_impl(
-                        statistics=self.statistics,
-                        offline_state_setter=lambda value: setattr(self, "offline_state", value),
-                    ),
+                    port=self.config.port,
+                    timeout=self.timeout,
+                    slave_id=self.config.slave_id,
+                    host=self.config.host,
                     logger=_LOGGER,
-                )
-                self._transport = transport
-                self.client = client
-                if selected_mode is not None:
-                    self._resolved_connection_mode = selected_mode
-            except (ModbusException, ConnectionException) as exc:
-                _LOGGER.exception("Failed to establish connection: %s", exc)
-                raise
-            except TimeoutError as exc:
-                _LOGGER.warning("Connection attempt timed out: %s", exc)
-                raise
-            except OSError as exc:
-                _LOGGER.exception("Unexpected error establishing connection: %s", exc)
-                raise
+                ),
+            )
+
+        await _ensure_connected_lifecycle_impl(
+            self,
+            ensure_connected_runtime_fn=_ensure_connected_runtime_impl,
+            reconnect_client_if_needed_fn=_reconnect_client_if_needed_impl,
+            ensure_transport_selected_fn_factory=_ensure_transport_selected,
+            connect_transport_or_client_fn=_connect_transport_or_client_impl,
+            mark_connection_established_fn=lambda: _mark_connection_established_impl(
+                offline_state_setter=lambda value: setattr(self, "offline_state", value)
+            ),
+            mark_connection_failure_fn=lambda: _mark_connection_failure_impl(
+                statistics=self.statistics,
+                offline_state_setter=lambda value: setattr(self, "offline_state", value),
+            ),
+            logger=_LOGGER,
+        )
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from the device with optimized batch reading.

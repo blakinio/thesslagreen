@@ -105,6 +105,31 @@ def _build_register_chunks(scanner: Any, start: int, count: int) -> list[tuple[i
     )
 
 
+def _normalize_bit_read_request(
+    scanner: Any,
+    client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
+    address_or_count: int,
+    count: int | None,
+) -> tuple[Any, int, int]:
+    """Normalize bit-read call signatures to (client, address, count)."""
+    if count is None:
+        return scanner._client, int(client_or_address), address_or_count
+    if isinstance(client_or_address, int):
+        return scanner._client, client_or_address, address_or_count
+    return client_or_address, address_or_count, count
+
+
+def _resolve_bit_read_client(scanner: Any, client: Any) -> Any:
+    """Prefer transport client when available for bit reads."""
+    if client is None:
+        raise ConnectionException("Modbus client is not connected")
+    if client is scanner._client and scanner._transport is not None:
+        fresh = getattr(scanner._transport, "client", None)
+        if fresh is not None:
+            return fresh
+    return client
+
+
 def _extend_or_abort_register_results(
     results: list[int], block: list[int] | None
 ) -> tuple[bool, list[int] | None]:
@@ -635,24 +660,10 @@ async def read_bit_registers(
     count: int | None = None,
 ) -> list[bool] | None:
     """Shared implementation for coil/discrete reads with retry and backoff."""
-    if count is None:
-        address = int(client_or_address)
-        count = address_or_count
-        client = scanner._client
-    elif isinstance(client_or_address, int):
-        address = client_or_address
-        count = address_or_count
-        client = scanner._client
-    else:
-        client = client_or_address
-        address = address_or_count
-
-    if client is None:
-        raise ConnectionException("Modbus client is not connected")
-    if client is scanner._client and scanner._transport is not None:
-        fresh = getattr(scanner._transport, "client", None)
-        if fresh is not None:
-            client = fresh
+    client, address, count = _normalize_bit_read_request(
+        scanner, client_or_address, address_or_count, count
+    )
+    client = _resolve_bit_read_client(scanner, client)
 
     for attempt in range(1, scanner.retry + 1):
         try:
@@ -668,8 +679,7 @@ async def read_bit_registers(
                 backoff=scanner.backoff,
                 backoff_jitter=scanner.backoff_jitter,
             )
-            normalized_bits = normalize_bit_read_result(response, count)
-            if normalized_bits is not None:
+            if (normalized_bits := normalize_bit_read_result(response, count)) is not None:
                 return normalized_bits
         except TimeoutError:
             _LOGGER.warning(

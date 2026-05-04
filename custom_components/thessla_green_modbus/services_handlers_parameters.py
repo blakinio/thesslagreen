@@ -53,41 +53,14 @@ def _parameter_registrations(
         deps,
         context="set bypass parameters",
         success_log="Set bypass parameters for %s",
-        step_builder=lambda call: [
-            (
-                "bypass_mode",
-                BYPASS_MODE_MAP[deps.normalize_option(call.data["mode"])],
-                False,
-                "Failed to set bypass mode for %s",
-            ),
-            (
-                "min_bypass_temperature",
-                call.data.get("min_outdoor_temperature"),
-                True,
-                "Failed to set bypass min temperature for %s",
-            ),
-        ],
+        step_builder=lambda call: _bypass_steps(call, deps),
     )
     set_gwc_parameters = _build_step_handler(
         hass,
         deps,
         context="set GWC parameters",
         success_log="Set GWC parameters for %s",
-        step_builder=lambda call: [
-            ("gwc_mode", GWC_MODE_MAP[deps.normalize_option(call.data["mode"])], False, "Failed to set GWC mode for %s"),
-            (
-                "min_gwc_air_temperature",
-                call.data.get("min_air_temperature"),
-                True,
-                "Failed to set GWC min air temperature for %s",
-            ),
-            (
-                "max_gwc_air_temperature",
-                call.data.get("max_air_temperature"),
-                True,
-                "Failed to set GWC max air temperature for %s",
-            ),
-        ],
+        step_builder=lambda call: _gwc_steps(call, deps),
     )
 
     set_air_quality_thresholds = _build_step_handler(
@@ -103,30 +76,38 @@ def _parameter_registrations(
         deps,
         context="set temperature curve",
         success_log="Set temperature curve for %s",
-        step_builder=lambda call: [
-            ("heating_curve_slope", call.data["slope"], False, "Failed to set heating curve slope for %s"),
-            ("heating_curve_offset", call.data["offset"], False, "Failed to set heating curve offset for %s"),
-            (
-                "max_supply_temperature",
-                call.data.get("max_supply_temp"),
-                True,
-                "Failed to set max supply temperature for %s",
-            ),
-            (
-                "min_supply_temperature",
-                call.data.get("min_supply_temp"),
-                True,
-                "Failed to set min supply temperature for %s",
-            ),
-        ],
+        step_builder=_temperature_curve_steps,
     )
-
     return (
         ("set_bypass_parameters", set_bypass_parameters, SET_BYPASS_PARAMETERS_SCHEMA),
         ("set_gwc_parameters", set_gwc_parameters, SET_GWC_PARAMETERS_SCHEMA),
         ("set_air_quality_thresholds", set_air_quality_thresholds, SET_AIR_QUALITY_THRESHOLDS_SCHEMA),
         ("set_temperature_curve", set_temperature_curve, SET_TEMPERATURE_CURVE_SCHEMA),
     )
+
+
+def _bypass_steps(call: ServiceCall, deps: ServiceHandlerDeps) -> list[WriteStep]:
+    return [
+        ("bypass_mode", BYPASS_MODE_MAP[deps.normalize_option(call.data["mode"])], False, "Failed to set bypass mode for %s"),
+        ("min_bypass_temperature", call.data.get("min_outdoor_temperature"), True, "Failed to set bypass min temperature for %s"),
+    ]
+
+
+def _gwc_steps(call: ServiceCall, deps: ServiceHandlerDeps) -> list[WriteStep]:
+    return [
+        ("gwc_mode", GWC_MODE_MAP[deps.normalize_option(call.data["mode"])], False, "Failed to set GWC mode for %s"),
+        ("min_gwc_air_temperature", call.data.get("min_air_temperature"), True, "Failed to set GWC min air temperature for %s"),
+        ("max_gwc_air_temperature", call.data.get("max_air_temperature"), True, "Failed to set GWC max air temperature for %s"),
+    ]
+
+
+def _temperature_curve_steps(call: ServiceCall) -> list[WriteStep]:
+    return [
+        ("heating_curve_slope", call.data["slope"], False, "Failed to set heating curve slope for %s"),
+        ("heating_curve_offset", call.data["offset"], False, "Failed to set heating curve offset for %s"),
+        ("max_supply_temperature", call.data.get("max_supply_temp"), True, "Failed to set max supply temperature for %s"),
+        ("min_supply_temperature", call.data.get("min_supply_temp"), True, "Failed to set min supply temperature for %s"),
+    ]
 
 
 async def _run_parameter_steps(
