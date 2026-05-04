@@ -10,6 +10,7 @@ from ..const import MAX_REGS_PER_REQUEST
 from ..modbus_exceptions import ConnectionException, ModbusException
 from ..modbus_helpers import chunk_register_values
 from ..registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
+from .write_path import SingleWritePlan, run_single_write_attempts
 
 if TYPE_CHECKING:
     from ..modbus_transport import BaseModbusTransport
@@ -380,7 +381,6 @@ class _CoordinatorScheduleMixin:
         refresh_after_write = False
         async with self._write_lock:
             try:
-                original_value = value
                 definition = self._resolve_write_definition(register_name)
                 if definition is None:
                     return False
@@ -394,49 +394,18 @@ class _CoordinatorScheduleMixin:
                 if encoded_values is None and scalar_value is None:
                     return False
 
-                address = definition.address + offset
-
-                for attempt in range(1, self.retry + 1):
-                    try:
-                        response, success = await self._execute_single_register_write_attempt(
-                            definition=definition,
-                            register_name=register_name,
-                            address=address,
-                            encoded_values=encoded_values,
-                            scalar_value=scalar_value,
-                            attempt=attempt,
-                        )
-                        if not success:
-                            should_retry = self._handle_write_response_failure(
-                                is_final_attempt=attempt == self.retry,
-                                final_error_message="Error writing to register %s: %s",
-                                retry_message=f"Retrying write to register {register_name}",
-                                error_args=(register_name, response),
-                            )
-                            if not should_retry:
-                                return False
-                            continue
-
-                        refresh_after_write = self._handle_successful_single_register_write(
-                            register_name=register_name,
-                            original_value=original_value,
-                            refresh=refresh,
-                        )
-                        break
-                    except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:
-                        should_retry = await self._handle_write_attempt_exception(
-                            register_name=register_name,
-                            attempt=attempt,
-                            exc=exc,
-                            timed_out_message="Writing register %s timed out (attempt %d/%d)",
-                            persistent_timeout_message="Persistent timeout writing register %s",
-                            failed_message="Failed to write register %s",
-                            retry_message="Retrying write to register %s after error: %s",
-                            unexpected_message="Unexpected error writing register %s",
-                        )
-                        if not should_retry:
-                            return False
-                        continue
+                plan = SingleWritePlan(
+                    register_name=register_name,
+                    address=definition.address + offset,
+                    encoded_values=encoded_values,
+                    scalar_value=scalar_value,
+                    original_value=value,
+                )
+                success, refresh_after_write = await run_single_write_attempts(
+                    self, definition, plan, refresh
+                )
+                if not success:
+                    return False
 
             except (ModbusException, ConnectionException):  # pragma: no cover - safety
                 _LOGGER.exception("Failed to write register %s", register_name)
