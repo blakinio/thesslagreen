@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, cast
+from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
 
@@ -21,6 +21,13 @@ from .io_core import (
     track_holding_failure,
     track_input_failure,
     unpack_read_args,
+)
+from .io_read_helpers import (
+    append_read_block,
+    build_read_attempt_meta,
+    build_success_result,
+    iter_grouped_read_chunks,
+    normalize_bit_read_result,
 )
 
 try:
@@ -87,23 +94,24 @@ def _log_read_failure(kind: str, start: int, end: int, retry: int) -> None:
     _LOGGER.error("Failed to read %s registers %d-%d after %d retries", kind, start, end, retry)
 
 
-def _normalize_register_result(response: Any) -> list[int]:
-    """Normalize a successful register response payload."""
-    return cast(list[int], response.registers)
-
-
 def _build_register_chunks(scanner: Any, start: int, count: int) -> list[tuple[int, int]]:
     """Build contiguous chunk plan for a register range."""
-    return list(chunk_register_range(start, count, scanner.effective_batch))
+    return iter_grouped_read_chunks(
+        start,
+        count,
+        lambda chunk_start, chunk_count: chunk_register_range(
+            chunk_start, chunk_count, scanner.effective_batch
+        ),
+    )
 
 
 def _extend_or_abort_register_results(
     results: list[int], block: list[int] | None
 ) -> tuple[bool, list[int] | None]:
     """Append block values and indicate whether read batching should continue."""
-    if block is None:
+    can_continue = append_read_block(results, block)
+    if not can_continue:
         return False, None
-    results.extend(block)
     return True, results
 
 
@@ -166,7 +174,7 @@ def _process_register_response(
 
     if register_type == "holding_registers" and address in scanner._holding_failures:
         del scanner._holding_failures[address]
-    return True, _normalize_register_result(response)
+    return True, build_success_result(response)
 
 
 def _handle_terminal_read_failure(scanner: Any, register_type: str, start: int, end: int) -> None:
@@ -311,8 +319,9 @@ async def read_input(
 ) -> list[int] | None:
     """Read input registers with retry and backoff."""
     client, address, count = unpack_read_args(scanner, client_or_address, address_or_count, count)
-    start = address
-    end = address + count - 1
+    meta = build_read_attempt_meta(address, count)
+    start = meta.start
+    end = meta.end
 
     if _prepare_input_read(scanner, start, end, skip_cache):
         return None
@@ -523,8 +532,9 @@ async def read_holding(
 ) -> list[int] | None:
     """Read holding registers with retry, backoff and failure tracking."""
     client, address, count = unpack_read_args(scanner, client_or_address, address_or_count, count)
-    start = address
-    end = address + count - 1
+    meta = build_read_attempt_meta(address, count)
+    start = meta.start
+    end = meta.end
 
     if _prepare_holding_read(scanner, start, end, address, skip_cache):
         return None
@@ -643,8 +653,9 @@ async def read_bit_registers(
                 backoff=scanner.backoff,
                 backoff_jitter=scanner.backoff_jitter,
             )
-            if response is not None and not response.isError():
-                return cast(list[bool], response.bits[:count])
+            normalized_bits = normalize_bit_read_result(response, count)
+            if normalized_bits is not None:
+                return normalized_bits
         except TimeoutError:
             _LOGGER.warning(
                 "Timeout reading %s %d on attempt %d",
