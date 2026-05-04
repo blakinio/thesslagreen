@@ -134,6 +134,8 @@ from .io import _ModbusIOMixin
 from .lifecycle import async_setup as _async_setup_impl
 from .models import CoordinatorConfig
 from .retry import _PermanentModbusError
+from .runtime_state import clear_register_failure as _clear_register_failure_impl
+from .runtime_state import mark_registers_failed as _mark_registers_failed_impl
 from .scan import (
     apply_scan_cache as _apply_scan_cache_impl,
 )
@@ -569,14 +571,11 @@ class ThesslaGreenModbusCoordinator(
 
     def _mark_registers_failed(self, names: Iterable[str | None]) -> None:
         """Record registers that failed to read."""
-        failed: set[str] = getattr(self, "_failed_registers", set())
-        failed.update(name for name in names if name)
-        self._failed_registers = failed
+        _mark_registers_failed_impl(self, names)
 
     def _clear_register_failure(self, name: str) -> None:
         """Remove register from failed list on successful read."""
-        if hasattr(self, "_failed_registers"):
-            self._failed_registers.discard(name)
+        _clear_register_failure_impl(self, name)
 
     async def _test_connection(self) -> None:
         """Test initial connection to the device."""
