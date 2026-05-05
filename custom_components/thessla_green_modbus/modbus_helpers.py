@@ -365,25 +365,14 @@ async def _call_modbus(
     func_name = getattr(func, "__name__", repr(func))
     batch_size = kwargs.get("count") or len(kwargs.get("values", [])) or 1
 
-    delay = 0.0
-    if apply_backoff:
-        delay = _calculate_backoff_delay(
-            base=backoff,
-            attempt=attempt,
-            jitter=backoff_jitter,
-        )
-
-    if delay > 0:
-        _LOGGER.debug(
-            "Delaying %.3fs before attempt %s/%s of %s", delay, attempt, max_attempts, func_name
-        )
-        try:
-            await asyncio.sleep(delay)
-        except asyncio.CancelledError:
-            _LOGGER.debug(
-                "Sleep cancelled before calling %s attempt %s/%s", func_name, attempt, max_attempts
-            )
-            raise
+    await _sleep_with_backoff(
+        func_name=func_name,
+        attempt=attempt,
+        max_attempts=max_attempts,
+        backoff=backoff,
+        backoff_jitter=backoff_jitter,
+        apply_backoff=apply_backoff,
+    )
 
     _LOGGER.debug(
         "Calling %s on slave %s (batch=%s attempt %s/%s)",
@@ -401,14 +390,73 @@ async def _call_modbus(
         kwargs=kwargs,
     )
 
+    response = await _execute_modbus_call(
+        func=func,
+        positional=positional,
+        kwargs=kwargs,
+        kwarg=kwarg,
+        slave_id=slave_id,
+        timeout=timeout,
+        func_name=func_name,
+        attempt=attempt,
+        max_attempts=max_attempts,
+    )
+
+    _log_modbus_response(func_name, response)
+    return response
+
+
+async def _sleep_with_backoff(
+    *,
+    func_name: str,
+    attempt: int,
+    max_attempts: int,
+    backoff: float,
+    backoff_jitter: float | tuple[float, float] | None,
+    apply_backoff: bool,
+) -> None:
+    """Apply optional exponential backoff delay before a Modbus call."""
+
+    delay = 0.0
+    if apply_backoff:
+        delay = _calculate_backoff_delay(
+            base=backoff,
+            attempt=attempt,
+            jitter=backoff_jitter,
+        )
+
+    if delay <= 0:
+        return
+
+    _LOGGER.debug("Delaying %.3fs before attempt %s/%s of %s", delay, attempt, max_attempts, func_name)
+    try:
+        await asyncio.sleep(delay)
+    except asyncio.CancelledError:
+        _LOGGER.debug("Sleep cancelled before calling %s attempt %s/%s", func_name, attempt, max_attempts)
+        raise
+
+
+async def _execute_modbus_call(
+    *,
+    func: Callable[..., Awaitable[Any]],
+    positional: list[Any],
+    kwargs: dict[str, Any],
+    kwarg: str,
+    slave_id: int,
+    timeout: float | None,
+    func_name: str,
+    attempt: int,
+    max_attempts: int,
+) -> Any:
+    """Execute Modbus call with timeout/cancellation/error normalization."""
+
     async def _invoke() -> Any:
         return await _invoke_with_slave_kwarg(func, positional, kwargs, kwarg, slave_id)
 
     try:
         if timeout is not None and _should_apply_external_timeout(func):
-            response = await asyncio.wait_for(_invoke(), timeout=timeout)
-        else:
-            response = await _invoke()
+            return await asyncio.wait_for(_invoke(), timeout=timeout)
+        return await _invoke()
     except TimeoutError as err:
         _LOGGER.debug("Call to %s timed out on attempt %s/%s", func_name, attempt, max_attempts)
         raise TimeoutError("Modbus request timed out") from err
@@ -428,9 +476,6 @@ async def _call_modbus(
         else:
             _LOGGER.debug("Call to %s failed on attempt %s/%s", func_name, attempt, max_attempts)
         raise
-
-    _log_modbus_response(func_name, response)
-    return response
 
 
 def group_reads(
