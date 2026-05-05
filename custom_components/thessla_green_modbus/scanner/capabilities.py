@@ -12,7 +12,6 @@ from ..utils import BCD_TIME_PREFIXES, decode_bcd_time
 
 if TYPE_CHECKING:
     from ..scanner_device_info import DeviceCapabilities
-    from .core import ThesslaGreenDeviceScanner
 
 _LOGGER = logging.getLogger(__name__)
 
