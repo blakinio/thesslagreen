@@ -7,13 +7,13 @@ from typing import Any
 
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from .modbus_transport_base import (
-    BaseModbusTransport,
-    RawModbusResponse,
-    RawModbusWriteResponse,
     _MAX_READ_REGISTERS,
     _MAX_SLAVE_ID,
     _MAX_WRITE_REGISTERS,
     _MIN_SLAVE_ID,
+    BaseModbusTransport,
+    RawModbusResponse,
+    RawModbusWriteResponse,
     _append_crc,
     _crc16,
 )

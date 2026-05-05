@@ -9,7 +9,6 @@ from ..scanner_register_maps import HOLDING_REGISTERS, INPUT_REGISTERS, REGISTER
 
 if TYPE_CHECKING:
     from ..scanner_device_info import ScannerDeviceInfo
-    from .core import ThesslaGreenDeviceScanner
 
 _LOGGER = logging.getLogger(__name__)
 

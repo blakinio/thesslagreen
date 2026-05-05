@@ -11,7 +11,7 @@ from ..scanner_helpers import UART_OPTIONAL_REGS
 from ..scanner_register_maps import MULTI_REGISTER_SIZES
 
 if TYPE_CHECKING:
-    from .core import ThesslaGreenDeviceScanner
+    pass
 
 _LOGGER = logging.getLogger(__name__)
 
