@@ -105,9 +105,7 @@ def analyze_capabilities(scanner: Any) -> DeviceCapabilities:
     return cast(DeviceCapabilities, caps)
 
 
-def filter_unsupported_addresses(
-    scanner: Any, reg_type: str, addrs: set[int]
-) -> set[int]:
+def filter_unsupported_addresses(scanner: Any, reg_type: str, addrs: set[int]) -> set[int]:
     """Return failed addresses not covered by unsupported spans."""
     if reg_type == "input_registers":
         ranges = scanner._unsupported_input_ranges
@@ -146,9 +144,7 @@ def mark_holding_supported(scanner: Any, address: int) -> None:
                 scanner._unsupported_holding_ranges[(address + 1, end)] = code
 
 
-def mark_holding_unsupported(
-    scanner: Any, start: int, end: int, code: int
-) -> None:
+def mark_holding_unsupported(scanner: Any, start: int, end: int, code: int) -> None:
     """Track unsupported holding register range without overlaps."""
     for (exist_start, exist_end), exist_code in list(scanner._unsupported_holding_ranges.items()):
         if exist_end < start or exist_start > end:
@@ -161,9 +157,7 @@ def mark_holding_unsupported(
     scanner._unsupported_holding_ranges[(start, end)] = code
 
 
-def mark_input_unsupported(
-    scanner: Any, start: int, end: int, code: int | None
-) -> None:
+def mark_input_unsupported(scanner: Any, start: int, end: int, code: int | None) -> None:
     """Cache unsupported input register range, merging overlaps."""
     for (old_start, old_end), _ in list(scanner._unsupported_input_ranges.items()):
         if end < old_start or start > old_end:

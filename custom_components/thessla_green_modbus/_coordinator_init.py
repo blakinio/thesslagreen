@@ -13,7 +13,9 @@ def normalize_runtime_config(
     cfg: CoordinatorConfig,
     *,
     normalize_scan_interval: Callable[[timedelta | int], float],
-    resolve_connection_settings: Callable[[str | None, str | None, int | None], tuple[str, str | None]],
+    resolve_connection_settings: Callable[
+        [str | None, str | None, int | None], tuple[str, str | None]
+    ],
     normalize_serial_settings: Callable[[str, int, str, int], tuple[str, int, str, int]],
 ) -> tuple[CoordinatorConfig, str | None, float]:
     """Return normalized config and precomputed connection mode for runtime."""

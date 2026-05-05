@@ -14,9 +14,7 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-async def scan_firmware_info(
-    scanner: Any, info_regs: list[int], device: ScannerDeviceInfo
-) -> None:
+async def scan_firmware_info(scanner: Any, info_regs: list[int], device: ScannerDeviceInfo) -> None:
     """Parse firmware version from info_regs and update device."""
     major: int | None = None
     minor: int | None = None

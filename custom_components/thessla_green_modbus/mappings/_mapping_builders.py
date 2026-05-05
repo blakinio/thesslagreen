@@ -491,7 +491,6 @@ def _extend_entity_mappings_from_registers() -> None:
                 )
 
 
-
 __all__ = [
     "_TIME_ENTITY_PREFIXES",
     "_extend_entity_mappings_from_registers",
