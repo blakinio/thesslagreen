@@ -261,7 +261,6 @@ def _expand_cached_failed_range(
     return range_start, range_end
 
 
-
 __all__ = [
     "ensure_pymodbus_client_module",
     "is_request_cancelled_error",

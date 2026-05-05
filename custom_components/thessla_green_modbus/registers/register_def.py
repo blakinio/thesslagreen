@@ -12,6 +12,7 @@ from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
+
 @dataclass(slots=True)
 class RegisterDef:
     """Definition of a single Modbus register."""
@@ -311,4 +312,3 @@ class RegisterDef:
             mult = Decimal(str(self.multiplier))
             scaled = (scaled / mult).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
         return scaled
-

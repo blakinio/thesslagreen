@@ -71,9 +71,7 @@ async def scan_register_batch(
                     scanner._log_invalid_value(sorted(reg_names)[0], value)
 
 
-async def scan_named_input(
-    scanner: Any, input_registers: dict[int, str]
-) -> None:
+async def scan_named_input(scanner: Any, input_registers: dict[int, str]) -> None:
     """Scan FC04 input registers in batches."""
     known_missing = getattr(scanner, "_known_missing_registers", KNOWN_MISSING_REGISTERS)
     addr_to_names: dict[int, set[str]] = {}
@@ -90,17 +88,17 @@ async def scan_named_input(
                 list[int] | None,
                 await scanner._read_input(scanner._client, start, count, skip_cache=skip_cache)
                 if scanner._client is not None
-                else await scanner._read_input(start, count, skip_cache=skip_cache)
+                else await scanner._read_input(start, count, skip_cache=skip_cache),
             )
         except TypeError:
-            return cast(list[int] | None, await scanner._read_input(start, count, skip_cache=skip_cache))
+            return cast(
+                list[int] | None, await scanner._read_input(start, count, skip_cache=skip_cache)
+            )
 
     await scan_register_batch(scanner, "input_registers", addr_to_names, addresses, _read)
 
 
-async def scan_named_holding(
-    scanner: Any, holding_registers: dict[int, str]
-) -> None:
+async def scan_named_holding(scanner: Any, holding_registers: dict[int, str]) -> None:
     """Scan FC03 holding registers in batches, handling multi-word registers."""
     known_missing = getattr(scanner, "_known_missing_registers", KNOWN_MISSING_REGISTERS)
     multi_register_sizes = getattr(scanner, "_multi_register_sizes", MULTI_REGISTER_SIZES)
@@ -127,7 +125,7 @@ async def scan_named_holding(
                 list[int] | None,
                 await scanner._read_holding(scanner._client, start, count, skip_cache=skip_cache)
                 if scanner._client is not None
-                else await scanner._read_holding(start, count, skip_cache=skip_cache)
+                else await scanner._read_holding(start, count, skip_cache=skip_cache),
             )
         except TypeError:
             return cast(
@@ -152,9 +150,7 @@ async def scan_named_holding(
             scanner.available_registers["holding_registers"].add(name)
 
 
-async def scan_named_coil(
-    scanner: Any, coil_registers: dict[int, str]
-) -> None:
+async def scan_named_coil(scanner: Any, coil_registers: dict[int, str]) -> None:
     """Scan FC01 coil registers in batches."""
     known_missing = getattr(scanner, "_known_missing_registers", KNOWN_MISSING_REGISTERS)
     addr_to_names: dict[int, set[str]] = {}
@@ -192,9 +188,7 @@ async def scan_named_coil(
                 scanner.available_registers["coil_registers"].update(addr_to_names[addr])
 
 
-async def scan_named_discrete(
-    scanner: Any, discrete_registers: dict[int, str]
-) -> None:
+async def scan_named_discrete(scanner: Any, discrete_registers: dict[int, str]) -> None:
     """Scan FC02 discrete input registers in batches."""
     known_missing = getattr(scanner, "_known_missing_registers", KNOWN_MISSING_REGISTERS)
     addr_to_names: dict[int, set[str]] = {}

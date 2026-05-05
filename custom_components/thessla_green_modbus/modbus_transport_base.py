@@ -292,7 +292,6 @@ class BaseModbusTransport(ABC):
         """Write multiple holding registers."""
 
 
-
 __all__ = [
     "BaseModbusTransport",
     "RawModbusResponse",

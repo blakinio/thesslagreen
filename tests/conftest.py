@@ -44,7 +44,6 @@ if _HA_AVAILABLE:
         ha_climate.PRESET_ECO = "eco"  # type: ignore[attr-defined]
 
 
-
 def _fake_modbus_response(*, registers=None, bits=None):
     """Build a minimal pymodbus-like response object for tests."""
     resp = MagicMock()
