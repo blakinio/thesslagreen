@@ -28,6 +28,8 @@ except ImportError:
 
 from custom_components.thessla_green_modbus.const import DOMAIN
 
+pytest_plugins = ["tests.helpers_register_loader"]
+
 try:
     asyncio.get_event_loop()
 except RuntimeError:
