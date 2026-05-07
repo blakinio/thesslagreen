@@ -44,3 +44,34 @@ def normalize_bit_read_result(response: Any, count: int) -> list[bool] | None:
     if response is None or response.isError():
         return None
     return cast(list[bool], response.bits[:count])
+
+
+def classify_skip_range(
+    *,
+    start: int,
+    end: int,
+    skip_cache: bool,
+    unsupported_ranges: set[tuple[int, int]],
+    failed_registers: set[int],
+    expand_cached_failed_range: Any,
+) -> tuple[bool, int, int]:
+    """Classify whether a read range should be skipped as unsupported/cached-failed."""
+    if skip_cache:
+        return False, start, end
+    if any(skip_start <= start and end <= skip_end for skip_start, skip_end in unsupported_ranges):
+        return True, start, end
+    cached_failed_range = expand_cached_failed_range(
+        start=start,
+        end=end,
+        failed_registers=failed_registers,
+    )
+    if cached_failed_range is None:
+        return False, start, end
+    return True, cached_failed_range[0], cached_failed_range[1]
+
+
+def should_log_terminal_failure(register_type: str, aborted_transiently: bool) -> bool:
+    """Return True when terminal failure should be logged for the read type."""
+    if not aborted_transiently:
+        return True
+    return register_type == "holding_registers"
