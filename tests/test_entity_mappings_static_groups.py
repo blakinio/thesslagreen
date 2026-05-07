@@ -1,5 +1,11 @@
 """Focused tests for extracted static mapping groups."""
 
+from custom_components.thessla_green_modbus.mappings._static_discrete import (
+    BINARY_SENSOR_ENTITY_MAPPINGS,
+)
+from custom_components.thessla_green_modbus.mappings._static_discrete_diagnostics import (
+    DIAGNOSTIC_BINARY_SENSOR_ENTITY_MAPPINGS,
+)
 from custom_components.thessla_green_modbus.mappings._static_sensor_temperatures import (
     HOLDING_TEMPERATURE_SENSOR_MAPPINGS,
     INPUT_TEMPERATURE_SENSOR_MAPPINGS,
@@ -36,3 +42,8 @@ def test_extracted_group_payloads_match_exported_sensor_mappings() -> None:
         **HOLDING_TEMPERATURE_SENSOR_MAPPINGS,
     }.items():
         assert SENSOR_ENTITY_MAPPINGS[key] == payload
+
+
+def test_extracted_diagnostic_binary_group_payloads_match_exported_mappings() -> None:
+    for key, payload in DIAGNOSTIC_BINARY_SENSOR_ENTITY_MAPPINGS.items():
+        assert BINARY_SENSOR_ENTITY_MAPPINGS[key] == payload

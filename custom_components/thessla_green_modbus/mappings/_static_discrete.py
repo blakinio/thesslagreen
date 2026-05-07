@@ -6,6 +6,8 @@ from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
+from ._static_discrete_diagnostics import DIAGNOSTIC_BINARY_SENSOR_ENTITY_MAPPINGS
+
 
 def _select_payload(icon: str, translation_key: str, states: dict[str, int]) -> dict[str, Any]:
     """Build a standard select entity mapping payload."""
@@ -178,7 +180,7 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     },
 }
 
-BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
+BINARY_SENSOR_BASE_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     # System status (from coil registers)
     "duct_water_heater_pump": {
         "translation_key": "duct_water_heater_pump",
@@ -348,38 +350,11 @@ BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "device_class": BinarySensorDeviceClass.RUNNING,
         "register_type": "holding_registers",
     },
-    # Filter alarm flags (f_ prefix → diagnostic binary sensors)
-    "f_142": {
-        "translation_key": "f_142",
-        "icon": "mdi:filter-remove",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
-        "register_type": "holding_registers",
-    },
-    "f_143": {
-        "translation_key": "f_143",
-        "icon": "mdi:filter-remove",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
-        "register_type": "holding_registers",
-    },
-    "f_146": {
-        "translation_key": "f_146",
-        "icon": "mdi:filter-alert",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
-        "register_type": "holding_registers",
-    },
-    "f_147": {
-        "translation_key": "f_147",
-        "icon": "mdi:filter-alert",
-        "device_class": BinarySensorDeviceClass.PROBLEM,
-        "register_type": "holding_registers",
-    },
-    # Secondary heater (ERV) status
-    "post_heater_on": {
-        "translation_key": "post_heater_on",
-        "icon": "mdi:radiator",
-        "device_class": BinarySensorDeviceClass.HEAT,
-        "register_type": "holding_registers",
-    },
+}
+
+BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
+    **BINARY_SENSOR_BASE_ENTITY_MAPPINGS,
+    **DIAGNOSTIC_BINARY_SENSOR_ENTITY_MAPPINGS,
 }
 
 SWITCH_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
