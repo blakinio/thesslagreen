@@ -65,6 +65,34 @@ def initialize_reauth_state(
     return False, active_entry_id, dict(defaults)
 
 
+def resolve_reauth_form_state(
+    *,
+    active_entry_id: str | None,
+    entry: Any | None,
+    user_input: dict[str, Any] | None,
+    existing_data: dict[str, Any] | None,
+) -> tuple[bool, str | None, dict[str, Any]]:
+    """Resolve reauth flow state transition and form defaults."""
+    entry_defaults = resolve_reauth_defaults(
+        getattr(entry, "data", None),
+        getattr(entry, "options", None),
+    )
+    should_initialize, reauth_entry_id, reauth_defaults = initialize_reauth_state(
+        active_entry_id=active_entry_id,
+        entry=entry,
+        defaults=entry_defaults,
+    )
+    form_defaults = (
+        reauth_defaults
+        if should_initialize
+        else build_reauth_form_defaults(
+            user_input=user_input,
+            existing_data=existing_data,
+        )
+    )
+    return should_initialize, reauth_entry_id, form_defaults
+
+
 def build_reauth_form_defaults(
     *,
     user_input: dict[str, Any] | None,
