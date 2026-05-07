@@ -23,6 +23,7 @@ from custom_components.thessla_green_modbus.config_flow_steps import (
     initialize_reauth_state,
     resolve_reauth_defaults,
     resolve_reauth_entry,
+    resolve_reauth_form_state,
 )
 from custom_components.thessla_green_modbus.errors import CannotConnect
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
@@ -335,6 +336,40 @@ def test_initialize_reauth_state_initializes_from_entry():
     assert defaults == {"host": "10.0.0.10"}
 
 
+
+
+def test_resolve_reauth_form_state_initializes_from_entry():
+    from types import SimpleNamespace
+
+    entry = SimpleNamespace(
+        entry_id="entry-9",
+        data={"host": "10.0.0.1"},
+        options={"deep_scan": True},
+    )
+
+    should_init, entry_id, defaults = resolve_reauth_form_state(
+        active_entry_id=None,
+        entry=entry,
+        user_input=None,
+        existing_data=None,
+    )
+
+    assert should_init is True
+    assert entry_id == "entry-9"
+    assert defaults == {"host": "10.0.0.1", "deep_scan": True}
+
+
+def test_resolve_reauth_form_state_uses_form_defaults_after_init():
+    should_init, entry_id, defaults = resolve_reauth_form_state(
+        active_entry_id="entry-9",
+        entry=None,
+        user_input={"host": "from_user"},
+        existing_data={"host": "from_existing"},
+    )
+
+    assert should_init is False
+    assert entry_id == "entry-9"
+    assert defaults == {"host": "from_user"}
 def test_build_reauth_form_defaults_prefers_user_input():
     defaults = build_reauth_form_defaults(
         user_input={"host": "from_user"},
