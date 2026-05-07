@@ -401,6 +401,56 @@ async def _dispatch_modbus_call(
     return await _invoke()
 
 
+async def _apply_attempt_delay(
+    *,
+    delay: float,
+    func_name: str,
+    attempt: int,
+    max_attempts: int,
+) -> None:
+    """Apply pre-attempt delay while preserving cancellation diagnostics."""
+    if delay <= 0:
+        return
+
+    _LOGGER.debug(
+        "Delaying %.3fs before attempt %s/%s of %s",
+        delay,
+        attempt,
+        max_attempts,
+        func_name,
+    )
+    try:
+        await asyncio.sleep(delay)
+    except asyncio.CancelledError:
+        _LOGGER.debug(
+            "Sleep cancelled before calling %s attempt %s/%s",
+            func_name,
+            attempt,
+            max_attempts,
+        )
+        raise
+
+
+def _raise_mapped_call_exception(
+    err: Exception,
+    *,
+    func_name: str,
+    attempt: int,
+    max_attempts: int,
+) -> None:
+    """Log call classification and re-raise preserving existing behavior."""
+    if isinstance(err, TimeoutError):
+        _LOGGER.debug("Call to %s timed out on attempt %s/%s", func_name, attempt, max_attempts)
+        raise TimeoutError("Modbus request timed out") from err
+
+    classification = _classify_modbus_exception(err)
+    if classification == "cancelled":
+        _LOGGER.debug("Call to %s cancelled on attempt %s/%s", func_name, attempt, max_attempts)
+    else:
+        _LOGGER.debug("Call to %s failed on attempt %s/%s", func_name, attempt, max_attempts)
+    raise
+
+
 async def _call_modbus(
     func: Callable[..., Awaitable[Any]],
     slave_id: int,
@@ -432,24 +482,12 @@ async def _call_modbus(
     )
 
     prepared = _PreparedCall(positional, kwarg, func_name, batch_size, delay)
-    if prepared.delay > 0:
-        _LOGGER.debug(
-            "Delaying %.3fs before attempt %s/%s of %s",
-            prepared.delay,
-            attempt,
-            max_attempts,
-            prepared.func_name,
-        )
-        try:
-            await asyncio.sleep(prepared.delay)
-        except asyncio.CancelledError:
-            _LOGGER.debug(
-                "Sleep cancelled before calling %s attempt %s/%s",
-                prepared.func_name,
-                attempt,
-                max_attempts,
-            )
-            raise
+    await _apply_attempt_delay(
+        delay=prepared.delay,
+        func_name=prepared.func_name,
+        attempt=attempt,
+        max_attempts=max_attempts,
+    )
 
     _LOGGER.debug(
         "Calling %s on slave %s (batch=%s attempt %s/%s)",
@@ -477,10 +515,9 @@ async def _call_modbus(
             timeout=timeout,
         )
     except TimeoutError as err:
-        _LOGGER.debug(
-            "Call to %s timed out on attempt %s/%s", prepared.func_name, attempt, max_attempts
+        _raise_mapped_call_exception(
+            err, func_name=prepared.func_name, attempt=attempt, max_attempts=max_attempts
         )
-        raise TimeoutError("Modbus request timed out") from err
     except asyncio.CancelledError:
         _LOGGER.debug(
             "Call to %s cancelled on attempt %s/%s", prepared.func_name, attempt, max_attempts
@@ -494,16 +531,9 @@ async def _call_modbus(
         TypeError,
         ValueError,
     ) as err:
-        classification = _classify_modbus_exception(err)
-        if classification == "cancelled":
-            _LOGGER.debug(
-                "Call to %s cancelled on attempt %s/%s", prepared.func_name, attempt, max_attempts
-            )
-        else:
-            _LOGGER.debug(
-                "Call to %s failed on attempt %s/%s", prepared.func_name, attempt, max_attempts
-            )
-        raise
+        _raise_mapped_call_exception(
+            err, func_name=prepared.func_name, attempt=attempt, max_attempts=max_attempts
+        )
 
     _log_modbus_response(prepared.func_name, response)
     return response
