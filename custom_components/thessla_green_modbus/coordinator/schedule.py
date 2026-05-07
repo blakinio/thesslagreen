@@ -10,7 +10,7 @@ from ..const import MAX_REGS_PER_REQUEST
 from ..modbus_exceptions import ConnectionException, ModbusException
 from ..modbus_helpers import chunk_register_values
 from ..registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
-from .write_path import SingleWritePlan, run_single_write_attempts
+from .write_path import SingleWritePlan, finalize_write_result, run_single_write_attempts
 
 if TYPE_CHECKING:
     from ..modbus_transport import BaseModbusTransport
@@ -49,6 +49,9 @@ class _CoordinatorScheduleMixin:
     async def _ensure_connection(self) -> None: ...
     async def _disconnect(self) -> None: ...
     def _clear_register_failure(self, name: str) -> None: ...
+    async def _safe_request_refresh(self) -> None:
+        """Request refresh and ignore mock-context TypeError in tests."""
+        await _safe_request_refresh(self)
     def _assert_write_connection_ready(self) -> None:
         """Ensure transport/client is present and connected for writes."""
         transport = self._transport
@@ -287,12 +290,6 @@ class _CoordinatorScheduleMixin:
 
         raise exc
 
-    async def _finalize_write_result(self, refresh_after_write: bool) -> bool:
-        """Finish write operation with optional refresh."""
-        if refresh_after_write:
-            await _safe_request_refresh(self)
-        return True
-
     def _handle_successful_single_register_write(
         self,
         *,
@@ -407,7 +404,7 @@ class _CoordinatorScheduleMixin:
                 _LOGGER.exception("Failed to write register %s", register_name)
                 return False
 
-        return await self._finalize_write_result(refresh_after_write)
+        return await finalize_write_result(self, refresh_after_write)
 
     async def async_write_registers(
         self,
@@ -475,9 +472,7 @@ class _CoordinatorScheduleMixin:
                 _LOGGER.exception("Failed to write registers at %s", start_address)
                 return False
 
-        if refresh_after_write:
-            await _safe_request_refresh(self)
-        return True
+        return await finalize_write_result(self, refresh_after_write)
 
     async def async_write_temporary_airflow(self, airflow: float, refresh: bool = True) -> bool:
         """Write temporary airflow settings using the 3-register block."""

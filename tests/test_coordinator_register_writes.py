@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+from custom_components.thessla_green_modbus.coordinator.write_path import finalize_write_result
 from custom_components.thessla_green_modbus.registers.loader import RegisterDef
 
 
@@ -222,3 +223,25 @@ def test_handle_successful_single_register_write_without_refresh(coordinator):
 
     assert refresh_after_write is False
     coordinator._clear_register_failure.assert_called_once_with("mode")
+
+
+@pytest.mark.asyncio
+async def test_finalize_write_result_refreshes_when_enabled(coordinator):
+    """Finalize helper should refresh when flag is set."""
+    coordinator._safe_request_refresh = AsyncMock()
+
+    result = await finalize_write_result(coordinator, True)
+
+    assert result is True
+    coordinator._safe_request_refresh.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_finalize_write_result_skips_refresh_when_disabled(coordinator):
+    """Finalize helper should skip refresh when flag is unset."""
+    coordinator._safe_request_refresh = AsyncMock()
+
+    result = await finalize_write_result(coordinator, False)
+
+    assert result is True
+    coordinator._safe_request_refresh.assert_not_called()

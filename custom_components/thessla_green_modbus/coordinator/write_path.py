@@ -64,3 +64,10 @@ async def run_single_write_attempts(
                 return False, False
             continue
     return True, refresh_after_write
+
+
+async def finalize_write_result(coordinator: Any, refresh_after_write: bool) -> bool:
+    """Finish write operation with optional refresh."""
+    if refresh_after_write:
+        await coordinator._safe_request_refresh()
+    return True
