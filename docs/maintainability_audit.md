@@ -1,51 +1,68 @@
 # Maintainability audit
 
-Date: 2026-05-04
+Date: 2026-05-05
+
+## Branch note
+
+- Working target branch is **dev**.
+- `main` is **not** authoritative for this audit refresh.
+- No `main -> dev` merge is recommended as part of this work.
 
 ## Commands executed (exact)
 
-- `python -m pip install -q -r requirements-dev.txt`
+- `git branch --show-current`
+- `git status --short`
+- `python -m pip install --upgrade pip setuptools wheel`
+- `python -m pip install -r requirements-dev.txt`
+- import gate script for `pydantic`, `pytest`, `pytest_asyncio`, `pytest_homeassistant_custom_component`, `homeassistant`
 - `ruff check custom_components tests tools`
 - `ruff check --select I custom_components tests tools`
-- `ruff format --check custom_components tests tools`
+- `ruff format --check custom_components tests tools || true`
 - `python -m compileall -q custom_components/thessla_green_modbus tests tools`
 - `python tools/compare_registers_with_reference.py`
 - `python tools/check_maintainability.py`
-- `pytest tests/ -q`
 - `python tools/validate_entity_mappings.py`
+- `pytest tests/ -q`
+- AST metrics script (largest files/classes/functions)
 - `find custom_components/thessla_green_modbus -maxdepth 2 -name "coordinator.py" -print`
 - `rg "from homeassistant|import homeassistant" custom_components/thessla_green_modbus/core custom_components/thessla_green_modbus/transport custom_components/thessla_green_modbus/registers custom_components/thessla_green_modbus/scanner || true`
 - `rg "compat|shim|proxy|re-export|legacy" custom_components tests docs || true`
-- AST metrics script (largest files/classes/functions snapshot)
 
 ## Exact status by gate
 
+### Import gate result
+
+- ✅ `OK pydantic`
+- ✅ `OK pytest`
+- ✅ `OK pytest_asyncio`
+- ✅ `OK pytest_homeassistant_custom_component`
+- ✅ `OK homeassistant`
+
 ### Required maintained gates
 
-- **ruff check**: ✅ pass (`All checks passed!`).
-- **compileall**: ✅ pass.
-- **register compare** (`compare_registers_with_reference.py`): ✅ pass (informational output remains: 62 extras; 242 name mismatches on common addresses).
-- **maintainability** (`check_maintainability.py`): ✅ pass (`Maintainability gate passed.`).
-- **pytest** (`pytest tests/ -q`): ❌ fail (`ModuleNotFoundError: pytest_homeassistant_custom_component`).
-- **entity mappings** (`validate_entity_mappings.py`): ❌ fail (`ModuleNotFoundError: pydantic`).
+- ✅ `ruff check custom_components tests tools` (`All checks passed!`).
+- ✅ `ruff check --select I custom_components tests tools` (`All checks passed!`).
+- ✅ `python -m compileall -q custom_components/thessla_green_modbus tests tools`.
+- ✅ `python tools/compare_registers_with_reference.py` (informational output only: 62 extras; 242 name mismatches on common addresses).
+- ✅ `python tools/check_maintainability.py` (`Maintainability gate passed.`).
+- ✅ `python tools/validate_entity_mappings.py` (`OK: 366 entities validated`).
+- ✅ `pytest tests/ -q` (pass; 4 skipped tests).
 
-### Non-required tools
+### Pytest skips
 
-- **black**: not executed in this run; not a required gate.
-- **isort**: not executed in this run; not a required gate.
-- **mypy**: not executed in this run; not a required gate.
-- **hassfest**: not executed in this run; not a required gate.
-- **HACS**: not executed in this run; readiness not claimable from this audit.
+- `tests/test_entity_data_correctness_number.py`: three skipped checks (min/max/step assertions already explicitly covered).
+- `tests/test_register_pdf_mapping.py`: skipped because `pypdf` is unavailable in this environment.
 
 ## Ruff format drift
 
-- `ruff format --check custom_components tests tools`: reports **7 files would be reformatted**.
+- `ruff format --check custom_components tests tools || true`: **1 file would be reformatted**.
+- Drift file: `custom_components/thessla_green_modbus/mappings/_mapping_builders.py`.
 
 ## Architecture invariants snapshot
 
 - `find ... coordinator.py`: only `custom_components/thessla_green_modbus/coordinator/coordinator.py` found.
-- No `homeassistant` imports detected under `core/`, `transport/`, `registers/`, `scanner/`.
-- `compat|shim|proxy|re-export|legacy` grep returns informational matches (docs/tests/comments + known compatibility references); no new invariant claim beyond grep evidence.
+- HA imports in `core/transport/registers/scanner`: **none detected** by grep.
+- `compat|shim|proxy|re-export|legacy` grep: informational matches in docs/tests/comments and known compatibility-related references; no new compatibility-layer creation in this audit task.
 
 ## Largest files/classes/functions (current)
 
@@ -59,7 +76,7 @@ Date: 2026-05-04
 6. `custom_components/thessla_green_modbus/scanner/core.py` — 470
 7. `custom_components/thessla_green_modbus/mappings/_static_discrete.py` — 444
 8. `custom_components/thessla_green_modbus/config_flow.py` — 437
-9. `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` — 414
+9. `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` — 433
 10. `tools/translate_register_descriptions.py` — 397
 
 ### Largest classes (AST span)
@@ -88,21 +105,14 @@ Date: 2026-05-04
 9. `test_entity_counts_per_platform` (`tests/test_all_entity_creation.py`) — 100
 10. `read_input_registers_optimized` (`_coordinator_read_batches.py`) — 100
 
-## Current remaining hotspots
+## Remaining hotspots
 
 - Coordinator concentration: `coordinator/coordinator.py`, `coordinator/schedule.py`.
 - Scanner complexity: `scanner/io_read.py`, `scanner/core.py`.
 - Mapping assembly density: `mappings/_mapping_builders.py`.
 - Config-flow branching density: `config_flow.py`, `config_flow_device_validation.py`.
 
-## Readiness caveats
+## Release readiness caveat
 
-- **Required gates are not fully green** in this environment because `pytest` and `validate_entity_mappings.py` fail due to missing Python packages.
-- **Release/HACS readiness** cannot be claimed because HACS validation was not executed.
-- **Real-device validation** cannot be claimed from this run; no new device-evidence artifacts were produced.
-
-## Next recommended PRs
-
-1. **Gate-recovery PR:** ensure dev requirements include/import `pytest_homeassistant_custom_component` and `pydantic` in the verification environment, then rerun full maintained gates.
-2. Optional formatting-only PR: apply `ruff format` drift cleanup (7 files) only after required gates are green.
-3. Continue decomposition PRs for coordinator/scanner/mapping/config-flow hotspots once gates are green.
+- HACS/hassfest readiness is **not proven** in this audit because neither HACS validation nor hassfest was run.
+- Real-device validation is **not proven** in this audit because no hardware verification artifacts were produced.
