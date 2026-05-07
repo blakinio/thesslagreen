@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from custom_components.thessla_green_modbus.const import CONNECTION_MODE_AUTO
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
+from custom_components.thessla_green_modbus.scanner import state as scanner_state
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
 pytestmark = pytest.mark.asyncio
@@ -73,7 +74,7 @@ async def test_scanner_has_read_coil_method():
 def test_resolve_connection_configuration_fixed_mode():
     """Resolved non-auto mode should be cached as fixed mode."""
     resolved_type, resolved_mode, resolved_fixed_mode = (
-        ThesslaGreenDeviceScanner._resolve_connection_configuration(
+        scanner_state.resolve_connection_configuration(
             "tcp",
             "tcp",
             502,
@@ -87,7 +88,7 @@ def test_resolve_connection_configuration_fixed_mode():
 def test_resolve_connection_configuration_auto_mode():
     """Resolved auto mode should not pre-cache fixed mode."""
     resolved_type, resolved_mode, resolved_fixed_mode = (
-        ThesslaGreenDeviceScanner._resolve_connection_configuration(
+        scanner_state.resolve_connection_configuration(
             "tcp",
             CONNECTION_MODE_AUTO,
             502,
