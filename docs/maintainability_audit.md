@@ -33,6 +33,14 @@ Date: 2026-05-05
 
 ## Exact status by validation gate
 
+### Import gate result
+
+- ✅ `OK pydantic`
+- ✅ `OK pytest`
+- ✅ `OK pytest_asyncio`
+- ✅ `OK pytest_homeassistant_custom_component`
+- ✅ `OK homeassistant`
+
 ### Required maintained gates
 
 - **ruff check**: ✅ pass (`All checks passed!`).
