@@ -29,10 +29,12 @@ from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOExc
 from custom_components.thessla_green_modbus.modbus_helpers import (
     _KWARG_CACHE,
     _SIG_CACHE,
+    _apply_attempt_delay,
     _calculate_batch_size,
     _call_modbus,
     _classify_modbus_exception,
     _prepare_modbus_call,
+    _raise_mapped_call_exception,
     async_close_client,
     group_reads,
 )
@@ -217,6 +219,34 @@ def test_calculate_batch_size_uses_values_length():
 def test_calculate_batch_size_defaults_to_one():
     """Empty kwargs defaults to one request item."""
     assert _calculate_batch_size({}) == 1
+
+
+@pytest.mark.asyncio
+async def test_apply_attempt_delay_zero_does_not_sleep(monkeypatch):
+    """Zero delay exits early without calling asyncio.sleep."""
+    called = False
+
+    async def fake_sleep(_delay):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+    await _apply_attempt_delay(delay=0.0, func_name="read_holding_registers", attempt=1, max_attempts=2)
+    assert called is False  # nosec B101
+
+
+def test_raise_mapped_call_exception_timeout():
+    """Timeout errors are wrapped with the helper message."""
+    with pytest.raises(TimeoutError, match="Modbus request timed out"):
+        try:
+            raise TimeoutError("inner timeout")
+        except TimeoutError as err:
+            _raise_mapped_call_exception(
+                err,
+                func_name="read_input_registers",
+                attempt=1,
+                max_attempts=3,
+            )
 
 
 @pytest.mark.asyncio
