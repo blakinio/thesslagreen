@@ -14,7 +14,9 @@ from custom_components.thessla_green_modbus.scanner.io_read import (
 )
 from custom_components.thessla_green_modbus.scanner.io_read_helpers import (
     build_read_attempt_meta,
+    classify_skip_range,
     normalize_bit_read_result,
+    should_log_terminal_failure,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -310,3 +312,52 @@ def test_normalize_bit_read_result_handles_error_and_success():
     ok_response.isError.return_value = False
     ok_response.bits = [True, False, True]
     assert normalize_bit_read_result(ok_response, 2) == [True, False]
+
+
+def test_classify_skip_range_covers_skip_cache_unsupported_and_failed():
+    """Skip classifier should preserve unsupported and cached-failed semantics."""
+    expand = MagicMock(return_value=(22, 24))
+    assert classify_skip_range(
+        start=20,
+        end=21,
+        skip_cache=True,
+        unsupported_ranges={(20, 30)},
+        failed_registers={20, 21},
+        expand_cached_failed_range=expand,
+    ) == (False, 20, 21)
+
+    assert classify_skip_range(
+        start=20,
+        end=21,
+        skip_cache=False,
+        unsupported_ranges={(20, 30)},
+        failed_registers=set(),
+        expand_cached_failed_range=expand,
+    ) == (True, 20, 21)
+
+    expand.return_value = None
+    assert classify_skip_range(
+        start=20,
+        end=21,
+        skip_cache=False,
+        unsupported_ranges=set(),
+        failed_registers={20, 21},
+        expand_cached_failed_range=expand,
+    ) == (False, 20, 21)
+
+    expand.return_value = (18, 25)
+    assert classify_skip_range(
+        start=20,
+        end=21,
+        skip_cache=False,
+        unsupported_ranges=set(),
+        failed_registers={20, 21},
+        expand_cached_failed_range=expand,
+    ) == (True, 18, 25)
+
+
+def test_should_log_terminal_failure_tracks_holding_vs_input_aborts():
+    """Terminal failure logging policy should match prior behavior."""
+    assert should_log_terminal_failure("input_registers", True) is False
+    assert should_log_terminal_failure("holding_registers", True) is True
+    assert should_log_terminal_failure("input_registers", False) is True

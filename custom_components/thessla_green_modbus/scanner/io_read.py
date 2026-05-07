@@ -26,8 +26,10 @@ from .io_read_helpers import (
     append_read_block,
     build_read_attempt_meta,
     build_success_result,
+    classify_skip_range,
     iter_grouped_read_chunks,
     normalize_bit_read_result,
+    should_log_terminal_failure,
 )
 
 try:
@@ -41,11 +43,6 @@ _LOGGER = logging.getLogger(__name__)
 def _mark_failed_addresses(scanner: Any, register_type: str, start: int, end: int) -> None:
     """Track read failures for a contiguous address range."""
     scanner.failed_addresses["modbus_exceptions"][register_type].update(range(start, end + 1))
-
-
-def _is_unsupported_range(ranges: Any, start: int, end: int) -> bool:
-    """Return True when start-end is fully covered by any unsupported range."""
-    return any(skip_start <= start and end <= skip_end for skip_start, skip_end in ranges)
 
 
 def _log_read_abort(kind: str, start: int, end: int, attempt: int, retry: int) -> None:
@@ -223,7 +220,7 @@ def _finalize_register_read_failure(
     kind = "input" if register_type == "input_registers" else "holding"
     if aborted_transiently:
         _log_read_abort(kind, start, end, attempted_reads, retry)
-        if register_type == "holding_registers":
+        if should_log_terminal_failure(register_type, aborted_transiently):
             _log_read_failure(kind, start, end, retry)
         return
 
@@ -235,36 +232,28 @@ def _should_skip_input_range(
     scanner: Any, start: int, end: int, skip_cache: bool
 ) -> tuple[bool, int, int]:
     """Return (skip, mark_start, mark_end) for unsupported/cached input ranges."""
-    if skip_cache:
-        return False, start, end
-    if _is_unsupported_range(scanner._unsupported_input_ranges, start, end):
-        return True, start, end
-    cached_failed_range = _expand_cached_failed_range(
+    return classify_skip_range(
         start=start,
         end=end,
+        skip_cache=skip_cache,
+        unsupported_ranges=scanner._unsupported_input_ranges,
         failed_registers=scanner._failed_input,
+        expand_cached_failed_range=_expand_cached_failed_range,
     )
-    if cached_failed_range is None:
-        return False, start, end
-    return True, cached_failed_range[0], cached_failed_range[1]
 
 
 def _should_skip_holding_range(
     scanner: Any, start: int, end: int, skip_cache: bool
 ) -> tuple[bool, int, int]:
     """Return (skip, mark_start, mark_end) for unsupported/cached holding ranges."""
-    if skip_cache:
-        return False, start, end
-    if _is_unsupported_range(scanner._unsupported_holding_ranges, start, end):
-        return True, start, end
-    cached_failed_range = _expand_cached_failed_range(
+    return classify_skip_range(
         start=start,
         end=end,
+        skip_cache=skip_cache,
+        unsupported_ranges=scanner._unsupported_holding_ranges,
         failed_registers=scanner._failed_holding,
+        expand_cached_failed_range=_expand_cached_failed_range,
     )
-    if cached_failed_range is None:
-        return False, start, end
-    return True, cached_failed_range[0], cached_failed_range[1]
 
 
 def _prepare_input_read(scanner: Any, start: int, end: int, skip_cache: bool) -> bool:
