@@ -1,6 +1,6 @@
 # Refactor status (current)
 
-Last reviewed: 2026-05-04.
+Last reviewed: 2026-05-05.
 
 Related document:
 
@@ -27,23 +27,24 @@ The following constraints remain active and must be preserved:
 4. No proxy modules.
 5. `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant.
 
-## Current invariant verification snapshot (2026-05-04)
+## Current invariant verification snapshot (2026-05-05)
 
 - Top-level `custom_components/thessla_green_modbus/coordinator.py`: **absent**.
 - Canonical coordinator module: `custom_components/thessla_green_modbus/coordinator/coordinator.py`.
 - HA imports in `core/transport/registers/scanner`: **none detected** by grep.
 - Compatibility grep (`compat|shim|proxy|re-export|legacy`): informational matches present in docs/tests/comments/known compatibility code references.
 
-## Required gate status snapshot (2026-05-04)
+## Required gate status snapshot (2026-05-05)
 
 - `ruff check custom_components tests tools`: **pass**.
+- `ruff check --select I custom_components tests tools`: **pass**.
+- `ruff format --check custom_components tests tools`: **1 file drift**.
 - `python -m compileall -q custom_components/thessla_green_modbus tests tools`: **pass**.
 - `python tools/compare_registers_with_reference.py`: **pass** (informational: 62 extras, 242 name mismatches).
 - `python tools/check_maintainability.py`: **pass**.
-- `pytest tests/ -q`: **fail** (`ModuleNotFoundError: pytest_homeassistant_custom_component`).
-- `python tools/validate_entity_mappings.py`: **fail** (`ModuleNotFoundError: pydantic`).
-
-Because two required gates fail in this environment, the repo cannot be declared fully green under maintained gates from this run.
+- `python tools/validate_entity_mappings.py`: **pass**.
+- `pytest tests/ -q`: **pass** (with 4 skips).
+- Import gate (`pydantic`, `pytest`, `pytest_asyncio`, `pytest_homeassistant_custom_component`, `homeassistant`): **pass**.
 
 ## Non-required tool status
 
@@ -52,7 +53,6 @@ Because two required gates fail in this environment, the repo cannot be declared
 - `mypy`: not executed.
 - `hassfest`: not executed.
 - `HACS`: not executed.
-- `ruff format --check`: **7 files drift**.
 
 ## Remaining hotspots (current queue)
 
@@ -61,13 +61,13 @@ Because two required gates fail in this environment, the repo cannot be declared
 3. Mapping build complexity (`mappings/_mapping_builders.py`).
 4. Config-flow/device validation complexity (`config_flow.py`, `config_flow_device_validation.py`).
 
+## Branch note
+
+- Target branch for ongoing work and PR base is **dev**.
+- `main` is not authoritative for this stream.
+- No `main -> dev` merge is recommended by this audit.
+
 ## Readiness caveats
 
-- **Release/HACS readiness:** not claimable (HACS validation not executed).
+- **HACS/hassfest readiness:** not claimable (not executed in this run).
 - **Real-device readiness:** not claimable from this verification run; no new on-device evidence captured.
-
-## Next recommended PRs
-
-1. Gate recovery: make the verification environment reliably install `pytest_homeassistant_custom_component` and `pydantic`, then rerun required maintained gates.
-2. Optional formatting-only PR for `ruff format` drift (7 files) after required gates pass.
-3. Continue focused decomposition PRs for the largest coordinator/scanner/mapping/config-flow hotspots.
