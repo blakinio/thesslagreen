@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any, cast
 
 from .. import scanner_register_maps as _register_maps
 from ..const import (
-    CONNECTION_MODE_AUTO,
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_PARITY,
@@ -38,9 +37,6 @@ from ..scanner_helpers import (
 )
 from ..scanner_helpers import (
     SAFE_REGISTERS as _SAFE_REGISTERS,
-)
-from ..utils import (
-    resolve_connection_settings,
 )
 from . import capabilities_facade as scanner_capabilities_facade
 from . import firmware as scanner_firmware
@@ -164,7 +160,7 @@ class ThesslaGreenDeviceScanner(
             resolved_type,
             resolved_mode,
             resolved_fixed_mode,
-        ) = self._resolve_connection_configuration(
+        ) = scanner_state.resolve_connection_configuration(
             connection_type,
             connection_mode,
             port,
@@ -195,19 +191,6 @@ class ThesslaGreenDeviceScanner(
         """Pre-compute addresses of known missing registers for batch grouping."""
         scanner_setup.populate_known_missing_addresses(self)
         self._update_known_missing_addresses()
-
-    @staticmethod
-    def _resolve_connection_configuration(
-        connection_type: str,
-        connection_mode: str | None,
-        port: int,
-    ) -> tuple[str, str, str | None]:
-        """Resolve transport selection and cached fixed mode."""
-        resolved_type, resolved_mode = resolve_connection_settings(
-            connection_type, connection_mode, port
-        )
-        resolved_fixed_mode = resolved_mode if resolved_mode != CONNECTION_MODE_AUTO else None
-        return resolved_type, resolved_mode, resolved_fixed_mode
 
     def _update_known_missing_addresses(self) -> None:
         """Populate cached missing register addresses from known missing list."""

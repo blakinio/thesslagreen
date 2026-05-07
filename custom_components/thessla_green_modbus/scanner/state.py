@@ -21,6 +21,7 @@ from ..scanner_register_maps import (
     INPUT_REGISTERS,
     MULTI_REGISTER_SIZES,
 )
+from ..utils import resolve_connection_settings
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,19 @@ def build_connection_state(
         parity=normalized_parity,
         stop_bits=normalized_stop_bits,
     )
+
+
+def resolve_connection_configuration(
+    connection_type: str,
+    connection_mode: str | None,
+    port: int,
+) -> tuple[str, str, str | None]:
+    """Resolve transport selection and cached fixed mode."""
+    resolved_type, resolved_mode = resolve_connection_settings(
+        connection_type, connection_mode, port
+    )
+    resolved_fixed_mode = resolved_mode if resolved_mode != CONNECTION_MODE_AUTO else None
+    return resolved_type, resolved_mode, resolved_fixed_mode
 
 
 def apply_connection_state(scanner: Any, state: ScannerConnectionState) -> None:
