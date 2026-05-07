@@ -134,7 +134,11 @@ def _should_skip_number_mapping(
 
 def _build_number_mapping_payload(info: dict[str, Any]) -> dict[str, Any]:
     """Build number mapping payload from register info metadata."""
-    cfg: dict[str, Any] = {"unit": info.get("unit"), "step": info.get("step", 1), "scale": info.get("scale", 1)}
+    cfg: dict[str, Any] = {
+        "unit": info.get("unit"),
+        "step": info.get("step", 1),
+        "scale": info.get("scale", 1),
+    }
     if info.get("min") is not None:
         cfg["min"] = info["min"]
     if info.get("max") is not None:
