@@ -12,6 +12,14 @@ from ..scanner_device_info import DeviceCapabilities
 _LOGGER = logging.getLogger(__name__)
 
 
+
+def get_scan_cache_from_entry(entry: Any) -> dict[str, Any]:
+    """Return cached scan payload from config entry options."""
+    if entry is None:
+        return {}
+    raw_cache = entry.options.get("device_scan_cache", {})
+    return raw_cache if isinstance(raw_cache, dict) else {}
+
 def load_full_register_list(coordinator: Any) -> None:
     """Load full register list when forced."""
     coordinator.available_registers = {

@@ -144,6 +144,9 @@ from .scan import (
     firmware_lacks_known_missing as _firmware_lacks_known_missing_impl,
 )
 from .scan import (
+    get_scan_cache_from_entry as _get_scan_cache_from_entry_impl,
+)
+from .scan import (
     load_full_register_list as _load_full_register_list_impl,
 )
 from .scan import (
@@ -528,10 +531,7 @@ class ThesslaGreenModbusCoordinator(
 
     def _get_scan_cache_from_entry(self) -> dict[str, Any]:
         """Return cached scan payload from config entry options."""
-        if self.entry is None:
-            return {}
-        raw_cache = self.entry.options.get("device_scan_cache", {})
-        return raw_cache if isinstance(raw_cache, dict) else {}
+        return _get_scan_cache_from_entry_impl(self.entry)
 
     def _load_full_register_list(self) -> None:
         """Load full register list when forced."""
