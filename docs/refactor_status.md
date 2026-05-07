@@ -38,11 +38,13 @@ The following constraints remain active and must be preserved:
 
 - `ruff check custom_components tests tools`: **pass**.
 - `ruff check --select I custom_components tests tools`: **pass**.
+- `ruff format --check custom_components tests tools`: **1 file drift**.
 - `python -m compileall -q custom_components/thessla_green_modbus tests tools`: **pass**.
 - `python tools/compare_registers_with_reference.py`: **pass** (informational: 62 extras, 242 name mismatches).
 - `python tools/check_maintainability.py`: **pass**.
 - `python tools/validate_entity_mappings.py`: **pass**.
 - `pytest tests/ -q`: **pass** (with 4 skips).
+- Import gate (`pydantic`, `pytest`, `pytest_asyncio`, `pytest_homeassistant_custom_component`, `homeassistant`): **pass**.
 
 ## Non-required tool status
 
@@ -51,7 +53,6 @@ The following constraints remain active and must be preserved:
 - `mypy`: not executed.
 - `hassfest`: not executed.
 - `HACS`: not executed.
-- `ruff format --check`: **1 file drift** (`custom_components/thessla_green_modbus/mappings/_mapping_builders.py`).
 
 ## Remaining hotspots (current queue)
 
@@ -60,13 +61,13 @@ The following constraints remain active and must be preserved:
 3. Mapping build complexity (`mappings/_mapping_builders.py`).
 4. Config-flow/device validation complexity (`config_flow.py`, `config_flow_device_validation.py`).
 
-## Branch authority note
+## Branch note
 
-- Base branch for this audit work is **dev**.
+- Target branch for ongoing work and PR base is **dev**.
 - `main` is not authoritative for this stream.
-- No `main -> dev` merge is recommended.
+- No `main -> dev` merge is recommended by this audit.
 
 ## Readiness caveats
 
-- **Release/HACS readiness:** not claimable (HACS/hassfest not executed in this run).
+- **HACS/hassfest readiness:** not claimable (not executed in this run).
 - **Real-device readiness:** not claimable from this verification run; no new on-device evidence captured.
