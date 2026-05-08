@@ -52,6 +52,7 @@ class _CoordinatorScheduleMixin:
     async def _safe_request_refresh(self) -> None:
         """Request refresh and ignore mock-context TypeError in tests."""
         await _safe_request_refresh(self)
+
     def _assert_write_connection_ready(self) -> None:
         """Ensure transport/client is present and connected for writes."""
         transport = self._transport

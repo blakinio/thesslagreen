@@ -213,17 +213,21 @@ async def run_full_scan(
         coil_max,
         "coil_registers",
         1,
-        lambda start, count: scanner._read_coil(scanner._client, start, count)
-        if scanner._client is not None
-        else scanner._read_coil(start, count),
+        lambda start, count: (
+            scanner._read_coil(scanner._client, start, count)
+            if scanner._client is not None
+            else scanner._read_coil(start, count)
+        ),
     )
     await _run_bit_phase(
         discrete_max,
         "discrete_inputs",
         2,
-        lambda start, count: scanner._read_discrete(scanner._client, start, count)
-        if scanner._client is not None
-        else scanner._read_discrete(start, count),
+        lambda start, count: (
+            scanner._read_discrete(scanner._client, start, count)
+            if scanner._client is not None
+            else scanner._read_discrete(start, count)
+        ),
     )
 
 

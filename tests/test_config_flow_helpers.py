@@ -336,8 +336,6 @@ def test_initialize_reauth_state_initializes_from_entry():
     assert defaults == {"host": "10.0.0.10"}
 
 
-
-
 def test_resolve_reauth_form_state_initializes_from_entry():
     from types import SimpleNamespace
 
@@ -370,6 +368,8 @@ def test_resolve_reauth_form_state_uses_form_defaults_after_init():
     assert should_init is False
     assert entry_id == "entry-9"
     assert defaults == {"host": "from_user"}
+
+
 def test_build_reauth_form_defaults_prefers_user_input():
     defaults = build_reauth_form_defaults(
         user_input={"host": "from_user"},
