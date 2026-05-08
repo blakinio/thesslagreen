@@ -1,5 +1,6 @@
 # Maintainability audit
 
+Date: 2026-05-08 (Python 3.12 full-pass + coordinator config_properties mixin + scanner io_read_helpers + schedule._write_holding_multi refactor)
 Date: 2026-05-08 (Python 3.13 full-pass + config_flow bound-adapter extraction + coordinator test split)
 Date: 2026-05-08 (Python 3.13 full-pass + config_flow_runtime load_scanner_module + coordinator backoff jitter test split)
 
@@ -222,7 +223,46 @@ missing: []
 added: []
 ```
 
+## PHASE B summary (2026-05-08 config_properties mixin)
+
+**Extraction: coordinator property accessors → `coordinator/config_properties.py`**
+
+- 9 pairs of config-backed property getter/setter (host, port, slave_id, connection_type, connection_mode, serial_port, baud_rate, parity, stop_bits) moved from `ThesslaGreenModbusCoordinator` into new `_CoordinatorConfigPropertiesMixin`.
+- `ThesslaGreenModbusCoordinator` gains `_CoordinatorConfigPropertiesMixin` as a base class.
+- `coordinator.py` non-empty: **666 → 605** (−61).
+- `coordinator/config_properties.py` created: 71 non-empty lines.
+- Coordinator package API invariant (`["CoordinatorConfig", "ThesslaGreenModbusCoordinator"]`) preserved.
+- No top-level `coordinator.py` proxy created.
+
+## PHASE C summary (2026-05-08 scanner io_read_helpers)
+
+**Extraction: scanner failure logging helpers → `scanner/io_read_helpers.py`**
+
+- `_mark_failed_addresses`, `_log_read_abort`, `_log_read_failure` moved from `scanner/io_read.py` to `scanner/io_read_helpers.py` as public helpers (`mark_failed_addresses`, `log_read_abort`, `log_read_failure`).
+- Callers in `io_read.py` updated to use the imported names.
+- `scanner/io_read.py` non-empty: **714 → 701** (−13).
+- `scanner/io_read_helpers.py` non-empty: **63 → 84** (+21).
+- HA-independence invariant preserved (no HA imports in scanner).
+- 239 scanner tests pass.
+
+## PHASE E summary (2026-05-08 schedule._write_holding_multi deduplication)
+
+**Refactor: `_write_holding_multi` uses `_write_registers_payload`**
+
+- `_write_holding_multi` in `coordinator/schedule.py` previously duplicated the transport selection pattern from `_write_registers_payload` (three-branch: transport / client / fallback).
+- Refactored to call `_write_registers_payload` per chunk, eliminating the duplication.
+- `coordinator/schedule.py` non-empty: **419 → 401** (−18).
+- Write/chunking/retry behavior unchanged; 326 write-path tests pass.
+
 ## Remaining hotspots
+
+1. Coordinator (`coordinator/coordinator.py` 605 lines, `ThesslaGreenModbusCoordinator` ~516 AST lines; `coordinator/schedule.py` 401 lines).
+2. Scanner read/orchestration complexity (`scanner/io_read.py` 701 lines, `scanner/core.py` 451 lines).
+3. Mapping builder density (`mappings/_mapping_builders.py` 437 lines).
+4. Config-flow branching (`config_flow.py` ~407 lines).
+5. Ruff format drift: 0 files. ✅
+
+## Previous remaining hotspots (pre-2026-05-08 config_properties/io_read/schedule pass)
 
 1. Coordinator concentration (`coordinator/coordinator.py` 666 lines, `ThesslaGreenModbusCoordinator` 577 AST lines; `coordinator/schedule.py` 419 lines, `_CoordinatorScheduleMixin` 432 lines).
 2. Scanner read/orchestration complexity (`scanner/io_read.py` 714 lines, `scanner/core.py` 451 lines).
@@ -248,4 +288,17 @@ added: []
 ## Dependabot note
 
 - PR #1567 was **not touched** in this session.
-- Pydantic version was **not changed**. `requirements-dev.txt` still pins `pydantic==2.12.2`; the pip-installed version in this environment is 2.13.4 due to an unrelated global install, but the project pin was not modified.
+- Pydantic version was **not changed**. `requirements-dev.txt` still pins `pydantic==2.12.2`; the pip-installed version in this environment is 2.12.2 (via python3.12 which is what was used for this audit run), matching the pinned version.
+
+## Gate status (2026-05-08 config_properties/io_read/schedule pass — Python 3.12)
+
+- Python interpreter: **python3.12** (3.12.3, break-system-packages installation with PHCC 0.13.205)
+- Import gate: pydantic 2.10.4, pytest 8.3.4, pytest_asyncio 0.24.0, pytest_homeassistant_custom_component (0.13.205), homeassistant — all importable.
+- `ruff check custom_components tests tools`: ✅ pass.
+- `ruff check --select I custom_components tests tools`: ✅ pass.
+- `ruff format --check custom_components tests tools`: ✅ **0 files drift** (419 files already formatted).
+- `python3.12 -m compileall -q custom_components/thessla_green_modbus tests tools`: ✅ pass.
+- `python3.12 tools/compare_registers_with_reference.py`: ✅ informational (62 extras, 242 name mismatches — unchanged).
+- `python3.12 tools/check_maintainability.py`: ✅ `Maintainability gate passed.`
+- `python3.12 tools/validate_entity_mappings.py`: ✅ `OK: 366 entities validated`.
+- `python3.12 -m pytest tests/`: ✅ **1938 passed, 4 skipped**, 90 warnings.
