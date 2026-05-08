@@ -568,7 +568,9 @@ def test_build_reconfigure_schema_empty_entry_data_uses_defaults():
     schema = build_reconfigure_schema({})
     assert isinstance(schema, vol.Schema)
 
-    result = schema({CONF_HOST: "192.168.1.1", CONF_PORT: DEFAULT_PORT, CONF_SLAVE_ID: DEFAULT_SLAVE_ID})
+    result = schema(
+        {CONF_HOST: "192.168.1.1", CONF_PORT: DEFAULT_PORT, CONF_SLAVE_ID: DEFAULT_SLAVE_ID}
+    )
     assert result[CONF_PORT] == DEFAULT_PORT
     assert result[CONF_SLAVE_ID] == DEFAULT_SLAVE_ID
 
