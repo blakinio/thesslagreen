@@ -556,47 +556,32 @@ def _handle_holding_read_exception(
     raise exc
 
 
-async def read_holding(
+async def _run_holding_read_retry_loop(
     scanner: Any,
-    client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
-    address_or_count: int,
-    count: int | None = None,
     *,
-    skip_cache: bool = False,
+    transport: Any,
+    client: Any,
+    address: int,
+    count: int,
+    start: int,
+    end: int,
+    skip_cache: bool,
 ) -> list[int] | None:
-    """Read holding registers with retry, backoff and failure tracking."""
-    client, address, count = unpack_read_args(scanner, client_or_address, address_or_count, count)
-    meta = build_read_attempt_meta(address, count)
-    start = meta.start
-    end = meta.end
-
-    if _prepare_holding_read(scanner, start, end, address, skip_cache):
-        return None
-
-    transport, client = resolve_transport_and_client(scanner, client)
-
+    """Run holding read retry loop and finalize failure state when needed."""
     aborted_transiently = False
     attempted_reads = 0
     for attempt in range(1, scanner.retry + 1):
         attempted_reads = attempt
         try:
-            if transport is not None:
-                response = await transport.read_holding_registers(
-                    scanner.slave_id, address, count=count
-                )
-            else:
-                response = await _call_modbus_with_fallback(
-                    scanner,
-                    client.read_holding_registers,
-                    scanner.slave_id,
-                    address,
-                    count=count,
-                    attempt=attempt,
-                    retry=scanner.retry,
-                    timeout=scanner.timeout,
-                    backoff=scanner.backoff,
-                    backoff_jitter=scanner.backoff_jitter,
-                )
+            response = await _execute_word_read_attempt(
+                scanner,
+                transport=transport,
+                client=client,
+                method_name="read_holding_registers",
+                address=address,
+                count=count,
+                attempt=attempt,
+            )
             done, payload = _process_register_response(
                 scanner,
                 response=response,
@@ -648,6 +633,37 @@ async def read_holding(
         aborted_transiently=aborted_transiently,
     )
     return None
+
+
+async def read_holding(
+    scanner: Any,
+    client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
+    address_or_count: int,
+    count: int | None = None,
+    *,
+    skip_cache: bool = False,
+) -> list[int] | None:
+    """Read holding registers with retry, backoff and failure tracking."""
+    client, address, count = unpack_read_args(scanner, client_or_address, address_or_count, count)
+    meta = build_read_attempt_meta(address, count)
+    start = meta.start
+    end = meta.end
+
+    if _prepare_holding_read(scanner, start, end, address, skip_cache):
+        return None
+
+    transport, client = resolve_transport_and_client(scanner, client)
+
+    return await _run_holding_read_retry_loop(
+        scanner,
+        transport=transport,
+        client=client,
+        address=address,
+        count=count,
+        start=start,
+        end=end,
+        skip_cache=skip_cache,
+    )
 
 
 async def read_bit_registers(
