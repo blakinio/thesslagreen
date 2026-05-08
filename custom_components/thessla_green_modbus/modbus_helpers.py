@@ -142,28 +142,31 @@ def _mask_frame(frame: bytes) -> str:
     return hex_str
 
 
+_READ_FC: dict[str, int] = {
+    "read_input_registers": 4,
+    "read_holding_registers": 3,
+    "read_coils": 1,
+    "read_discrete_inputs": 2,
+}
+
+
+def _encode_read_frame(
+    slave_id: int, fc: int, positional: list[Any], kwargs: dict[str, Any]
+) -> bytes:
+    """Encode a standard Modbus read request frame (addr + count)."""
+    addr = int(positional[0])
+    count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
+    return bytes([slave_id, fc, addr >> 8, addr & 255, count >> 8, count & 255])
+
+
 def _build_request_frame(
     func_name: str, slave_id: int, positional: list[Any], kwargs: dict[str, Any]
 ) -> bytes:
     """Best-effort Modbus request frame builder for logging."""
 
     try:
-        if func_name == "read_input_registers":
-            addr = int(positional[0])
-            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 4, addr >> 8, addr & 255, count >> 8, count & 255])
-        if func_name == "read_holding_registers":
-            addr = int(positional[0])
-            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 3, addr >> 8, addr & 255, count >> 8, count & 255])
-        if func_name == "read_coils":
-            addr = int(positional[0])
-            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 1, addr >> 8, addr & 255, count >> 8, count & 255])
-        if func_name == "read_discrete_inputs":
-            addr = int(positional[0])
-            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 2, addr >> 8, addr & 255, count >> 8, count & 255])
+        if func_name in _READ_FC:
+            return _encode_read_frame(slave_id, _READ_FC[func_name], positional, kwargs)
         if func_name == "write_register":
             addr = int(kwargs.get("address", positional[0]))
             value = int(kwargs.get("value", positional[1] if len(positional) > 1 else 0))
