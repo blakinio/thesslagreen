@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import timedelta
+from typing import Any
 
 from .const import CONNECTION_MODE_AUTO
 from .coordinator.models import CoordinatorConfig
@@ -60,3 +61,36 @@ def normalize_runtime_config(
     )
     resolved_connection_mode = resolved_mode if resolved_mode != CONNECTION_MODE_AUTO else None
     return normalized_cfg, resolved_connection_mode, interval_seconds
+
+
+def apply_coordinator_config(
+    coordinator: Any,
+    normalized_cfg: CoordinatorConfig,
+    resolved_connection_mode: str | None,
+    entry: Any,
+    *,
+    normalize_backoff_fn: Callable[[float], float],
+    parse_backoff_jitter_fn: Callable[[Any], float | tuple[float, float] | None],
+    resolve_effective_batch_fn: Callable[[Any, int], int],
+) -> None:
+    """Assign normalized config attributes to a fresh coordinator instance."""
+    coordinator._device_name = normalized_cfg.name
+    coordinator.config = normalized_cfg
+    coordinator._resolved_connection_mode = resolved_connection_mode
+    coordinator.timeout = normalized_cfg.timeout
+    coordinator.retry = normalized_cfg.retry
+    coordinator.backoff = normalize_backoff_fn(normalized_cfg.backoff)
+    coordinator.backoff_jitter = parse_backoff_jitter_fn(normalized_cfg.backoff_jitter)
+    coordinator.force_full_register_list = normalized_cfg.force_full_register_list
+    coordinator.scan_uart_settings = normalized_cfg.scan_uart_settings
+    coordinator.deep_scan = normalized_cfg.deep_scan
+    coordinator.safe_scan = normalized_cfg.safe_scan
+    coordinator.entry = entry
+    coordinator.skip_missing_registers = normalized_cfg.skip_missing_registers
+
+    effective_batch = resolve_effective_batch_fn(entry, normalized_cfg.max_registers_per_request)
+    coordinator.effective_batch = effective_batch
+    coordinator.max_registers_per_request = effective_batch
+    coordinator.config.max_registers_per_request = effective_batch
+    coordinator.config.backoff = coordinator.backoff
+    coordinator.config.backoff_jitter = coordinator.backoff_jitter

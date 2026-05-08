@@ -130,6 +130,50 @@ def _extend_or_abort_register_results(
     return True, results
 
 
+def _handle_register_error_response(
+    scanner: Any,
+    *,
+    register_type: str,
+    start: int,
+    end: int,
+    address: int,
+    count: int,
+    code: int | None,
+) -> tuple[bool, list[int] | None]:
+    """Classify and finalize a Modbus error response.
+
+    Returns (done, payload) — same contract as _process_register_response.
+    """
+    _LOGGER.warning(
+        "Exception code %s while reading %s %d-%d",
+        code,
+        register_type.replace("_", " "),
+        start,
+        end,
+    )
+    if register_type == "input_registers" or code == 2:
+        _handle_error_response(
+            scanner,
+            register_type=register_type,
+            start=start,
+            end=end,
+            code=code,
+        )
+        return True, None
+    if count == 1:
+        track_holding_failure(scanner, count, address)
+        if address in scanner._failed_holding:
+            _handle_error_response(
+                scanner,
+                register_type="holding_registers",
+                start=start,
+                end=end,
+                code=code or 0,
+            )
+            return True, None
+    return False, None
+
+
 def _process_register_response(
     scanner: Any,
     *,
@@ -152,34 +196,15 @@ def _process_register_response(
 
     is_error, code = _validate_register_response(response)
     if is_error:
-        _LOGGER.warning(
-            "Exception code %s while reading %s %d-%d",
-            code,
-            register_type.replace("_", " "),
-            start,
-            end,
+        return _handle_register_error_response(
+            scanner,
+            register_type=register_type,
+            start=start,
+            end=end,
+            address=address,
+            count=count,
+            code=code,
         )
-        if register_type == "input_registers" or code == 2:
-            _handle_error_response(
-                scanner,
-                register_type=register_type,
-                start=start,
-                end=end,
-                code=code,
-            )
-            return True, None
-        if count == 1:
-            track_holding_failure(scanner, count, address)
-            if address in scanner._failed_holding:
-                _handle_error_response(
-                    scanner,
-                    register_type="holding_registers",
-                    start=start,
-                    end=end,
-                    code=code or 0,
-                )
-                return True, None
-        return False, None
 
     if skip_cache and count == 1:
         if register_type == "input_registers":
@@ -762,6 +787,7 @@ async def read_discrete(
 
 __all__ = [
     "_attempt_bit_reconnect",
+    "_handle_register_error_response",
     "read_bit_registers",
     "read_coil",
     "read_discrete",

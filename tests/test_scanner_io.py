@@ -15,6 +15,7 @@ from custom_components.thessla_green_modbus.scanner.io_read import (
     _extend_or_abort_register_results,
     _finalize_register_read_failure,
     _handle_input_attempt_exception,
+    _handle_register_error_response,
 )
 from custom_components.thessla_green_modbus.scanner.io_read_helpers import (
     build_read_attempt_meta,
@@ -440,3 +441,84 @@ async def test_attempt_bit_reconnect_connection_exception_returns_original():
     result = await _attempt_bit_reconnect(scanner, original)
 
     assert result is original
+
+
+# ---------------------------------------------------------------------------
+# _handle_register_error_response
+# ---------------------------------------------------------------------------
+
+
+def _make_error_scanner():
+    scanner = MagicMock()
+    scanner._failed_input = set()
+    scanner._failed_holding = set()
+    scanner._holding_failures = {}
+    scanner.retry = 3
+    return scanner
+
+
+def test_handle_register_error_response_input_marks_failed_and_returns_done():
+    """Input register error marks range failed and signals done=True."""
+    scanner = _make_error_scanner()
+    done, payload = _handle_register_error_response(
+        scanner,
+        register_type="input_registers",
+        start=10,
+        end=10,
+        address=10,
+        count=1,
+        code=2,
+    )
+    assert done is True
+    assert payload is None
+    scanner._mark_input_unsupported.assert_called_once()
+
+
+def test_handle_register_error_response_code2_holding_marks_failed():
+    """Exception code 2 on holding registers marks range failed and signals done=True."""
+    scanner = _make_error_scanner()
+    done, payload = _handle_register_error_response(
+        scanner,
+        register_type="holding_registers",
+        start=20,
+        end=20,
+        address=20,
+        count=1,
+        code=2,
+    )
+    assert done is True
+    assert payload is None
+    scanner._mark_holding_unsupported.assert_called_once()
+
+
+def test_handle_register_error_response_holding_non_code2_returns_retry():
+    """Holding register error with non-code-2 and count>1 returns done=False (retry)."""
+    scanner = _make_error_scanner()
+    done, payload = _handle_register_error_response(
+        scanner,
+        register_type="holding_registers",
+        start=30,
+        end=35,
+        address=30,
+        count=6,
+        code=None,
+    )
+    assert done is False
+    assert payload is None
+
+
+def test_handle_register_error_response_holding_single_exhausted_marks_done():
+    """Holding register single-address error returns done=True after failure threshold."""
+    scanner = _make_error_scanner()
+    scanner._failed_holding = {50}
+    done, payload = _handle_register_error_response(
+        scanner,
+        register_type="holding_registers",
+        start=50,
+        end=50,
+        address=50,
+        count=1,
+        code=None,
+    )
+    assert done is True
+    assert payload is None

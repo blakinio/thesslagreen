@@ -1,6 +1,6 @@
 # Refactor status (current)
 
-Last reviewed: 2026-05-08 (post-hotspot cleanup PR — phases B–F, Python 3.13.12).
+Last reviewed: 2026-05-08 (final cleanup release PR — phases A–G, Python 3.13.12).
 
 Related document: `docs/maintainability_audit.md`
 
@@ -31,54 +31,55 @@ The following constraints remain active and must be preserved:
 - Top-level `custom_components/thessla_green_modbus/coordinator.py`: **absent**.
 - Canonical coordinator module: `custom_components/thessla_green_modbus/coordinator/coordinator.py`.
 - Coordinator package API invariant: `__all__ == ["CoordinatorConfig", "ThesslaGreenModbusCoordinator"]`.
-- HA imports in `core/transport/registers/scanner`: **none detected** in the last validation pass.
-- Entity mapping invariant: **366 entities** in the last successful validation pass.
+- HA imports in `core/transport/registers/scanner`: **none detected**.
+- Entity mapping invariant: **366 entities**.
 
 ## Latest merged refactor snapshot
 
-Latest merged PR: **#1595 — Extract coordinator config properties & refactor schedule write logic**.
+Latest PR (this document): **final cleanup release — phases B–E + docs**.
 
-Merged changes:
+Changes in this PR:
 
-- `_CoordinatorConfigPropertiesMixin` extracted to `coordinator/config_properties.py`.
-- Nine config-backed property pairs moved out of `ThesslaGreenModbusCoordinator`.
-- Scanner failure logging helpers promoted to `scanner/io_read_helpers.py`.
-- `_write_holding_multi` in `coordinator/schedule.py` now delegates to `_write_registers_payload` per chunk.
+- **Phase B** (`scanner/io_read.py`): extracted `_handle_register_error_response` from `_process_register_response`; 4 new tests.
+- **Phase C** (`coordinator/coordinator.py` + `_coordinator_init.py`): extracted `apply_coordinator_config`; `__init__` reduced 61→47 lines.
+- **Phase D** (`mappings/_mapping_builders.py`): extracted `_route_holding_register_to_mapping` from `_extend_entity_mappings_from_registers`; latter reduced 83→59 lines.
+- **Phase E** (`scanner/selection.py`): extracted `_split_groups_around_missing` from `group_registers_for_batch_read`; 6 new tests.
 
-Current post-PR #1595 file-size snapshot from that PR:
+Current file-size snapshot:
 
-| Area | Current size |
+| Area | Size (non-empty lines) |
 |---|---:|
-| `coordinator/coordinator.py` | 605 non-empty lines |
-| `coordinator/schedule.py` | 401 non-empty lines |
-| `scanner/io_read.py` | 701 non-empty lines |
+| `coordinator/coordinator.py` | 596 |
+| `coordinator/schedule.py` | 367 |
+| `scanner/io_read.py` | 713 |
+| `scanner/selection.py` | 119 |
+| `mappings/_mapping_builders.py` | 466 |
+| `scanner/core.py` | 433 |
 
 ## Required gate status snapshot
 
-Last complete successful validation from PR #1595:
+Last complete successful validation (Python 3.13.12):
 
 - `ruff check custom_components tests tools`: **pass**.
 - `ruff check --select I custom_components tests tools`: **pass**.
 - `ruff format --check custom_components tests tools`: **0 files drift**.
-- `python3.12 -m compileall -q custom_components/thessla_green_modbus tests tools`: **pass**.
-- `python3.12 tools/check_maintainability.py`: **pass**.
-- `python3.12 tools/validate_entity_mappings.py`: **pass** — **366 entities**.
-- `python3.12 -m pytest tests/ -q`: **1938 passed, 4 skipped**.
-
-Earlier Python 3.13 validation from the 2026-05-08 cleanup/config-flow series remains useful historical context, but the latest full post-#1595 test evidence is the Python 3.12 pass above.
+- `python3.13 -m compileall -q custom_components/thessla_green_modbus tests tools`: **pass**.
+- `python3.13 tools/check_maintainability.py`: **Maintainability gate passed**.
+- `python3.13 tools/validate_entity_mappings.py`: **OK: 366 entities validated**.
+- `python3.13 -m pytest tests/ -q`: **1948 passed, 4 skipped**.
 
 ## Remaining hotspots
 
-1. Coordinator size/branching: `coordinator/coordinator.py` and `coordinator/schedule.py`.
-2. Scanner read/orchestration complexity: `scanner/io_read.py` and `scanner/core.py`.
-3. Mapping builder density: `mappings/_mapping_builders.py`.
-4. Config-flow branching: `config_flow.py`.
-5. Large test modules, where focused splits remain possible.
+1. `scanner/io_read.py` — `_run_word_read_retry_loop` (87 lines), `read_bit_registers` (64 lines).
+2. `scanner/core.py` — `__init__` (68 lines), `create` (52 lines) — mostly long parameter lists.
+3. `coordinator/coordinator.py` — `from_params` (54 lines) — long parameter list pass-through.
+4. `coordinator/schedule.py` — `async_write_register` (49 lines), `_handle_write_attempt_exception` (45 lines).
+5. Config-flow branching: `config_flow.py`.
 
 ## Recommended next work
 
-1. Continue with a focused extraction in `scanner/io_read.py` or `scanner/core.py`.
-2. Alternatively reduce `mappings/_mapping_builders.py` if a cohesive helper extraction is visible.
+1. Consider extracting `_handle_bit_attempt_exception` from `read_bit_registers` in `scanner/io_read.py`.
+2. `coordinator/schedule.py` write-path complexity still has extraction candidates.
 3. Keep each PR narrow: one production extraction plus focused tests and refreshed docs.
 
 ## Non-required tool status
@@ -86,8 +87,8 @@ Earlier Python 3.13 validation from the 2026-05-08 cleanup/config-flow series re
 - `black`: not executed.
 - `isort`: not executed.
 - `mypy`: not executed.
-- `hassfest`: not executed locally.
-- `HACS`: not executed locally.
+- `hassfest`: not available locally — CI runs it via GitHub Actions.
+- `HACS`: not available locally — CI runs it via GitHub Actions.
 
 ## Branch note
 
@@ -97,10 +98,11 @@ Earlier Python 3.13 validation from the 2026-05-08 cleanup/config-flow series re
 
 ## Readiness caveats
 
-- **HACS/hassfest readiness:** not claimable from local verification unless CI explicitly runs those actions.
+- **HACS/hassfest readiness:** not claimable from local verification; CI runs those gates.
 - **Real-device readiness:** not claimable from these refactor validations unless separate on-device evidence is captured.
+- **Release notes/tag:** not finalized.
 
 ## Dependabot note
 
 - PR #1567 is still separate from this refactor stream.
-- Pydantic remains pinned in the project; this document does not change dependency versions.
+- Pydantic remains pinned at 2.12.2; this document does not change dependency versions.

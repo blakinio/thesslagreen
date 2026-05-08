@@ -21,6 +21,25 @@ def build_names_by_address(mapping: dict[str, int]) -> dict[int, set[str]]:
     return by_address
 
 
+def _split_groups_around_missing(
+    groups: list[tuple[int, int]],
+    known_missing_addresses: set[int],
+) -> list[tuple[int, int]]:
+    """Re-split batched groups so each known-missing address becomes its own group."""
+    result: list[tuple[int, int]] = []
+    for start, length in groups:
+        current = start
+        for addr in range(start, start + length):
+            if addr in known_missing_addresses:
+                if addr > current:
+                    result.append((current, addr - current))
+                result.append((addr, 1))
+                current = addr + 1
+        if current < start + length:
+            result.append((current, start + length - current))
+    return result
+
+
 def group_registers_for_batch_read(
     scanner: Any,
     addresses: list[int],
@@ -46,18 +65,7 @@ def group_registers_for_batch_read(
     if not scanner._known_missing_addresses:
         return groups
 
-    result: list[tuple[int, int]] = []
-    for start, length in groups:
-        current = start
-        for addr in range(start, start + length):
-            if addr in scanner._known_missing_addresses:
-                if addr > current:
-                    result.append((current, addr - current))
-                result.append((addr, 1))
-                current = addr + 1
-        if current < start + length:
-            result.append((current, start + length - current))
-    return result
+    return _split_groups_around_missing(groups, scanner._known_missing_addresses)
 
 
 def select_scan_registers(
