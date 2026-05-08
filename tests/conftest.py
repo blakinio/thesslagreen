@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-pytest_plugins = ("tests.helpers_register_loader",)
+pytest_plugins = ("tests.helpers_register_loader", "tests.helpers_coordinator")
 
 
 def _ensure_current_event_loop() -> asyncio.AbstractEventLoop:
