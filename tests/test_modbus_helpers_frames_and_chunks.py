@@ -68,6 +68,33 @@ def test_mask_frame_multi_bytes():
     assert "0064" in result
 
 
+def test_encode_read_frame_produces_correct_bytes():
+    from custom_components.thessla_green_modbus.modbus_helpers import _encode_read_frame
+
+    frame = _encode_read_frame(1, 4, [100], {"count": 3})
+    assert frame == bytes([1, 4, 0, 100, 0, 3])
+
+
+def test_build_request_frame_read_input_registers():
+    from custom_components.thessla_green_modbus.modbus_helpers import _build_request_frame
+
+    frame = _build_request_frame("read_input_registers", 1, [256], {"count": 10})
+    assert frame[0] == 1
+    assert frame[1] == 4
+    assert frame[2] == 1
+    assert frame[3] == 0
+    assert len(frame) == 6
+
+
+def test_build_request_frame_read_holding_registers():
+    from custom_components.thessla_green_modbus.modbus_helpers import _build_request_frame
+
+    frame = _build_request_frame("read_holding_registers", 2, [50], {"count": 5})
+    assert frame[0] == 2
+    assert frame[1] == 3
+    assert len(frame) == 6
+
+
 def test_build_request_frame_read_coils():
     from custom_components.thessla_green_modbus.modbus_helpers import _build_request_frame
 
