@@ -401,6 +401,57 @@ def _load_discrete_mappings() -> tuple[
     return binary_configs, switch_configs, select_configs
 
 
+def _route_holding_register_to_mapping(
+    reg: Any,
+    *,
+    number_mappings: dict[str, Any],
+    sensor_mappings: dict[str, Any],
+    binary_mappings: dict[str, Any],
+    switch_mappings: dict[str, Any],
+    select_mappings: dict[str, Any],
+    time_mappings: dict[str, Any],
+    binary_keys: Any,
+    switch_keys: Any,
+    select_keys: Any,
+    number_keys: Any,
+) -> None:
+    """Route one holding register to its appropriate mapping bucket."""
+    register, access, min_val, max_val, unit, info_text, scale, step = _register_context(reg)
+
+    if _is_problem_register(register):
+        _route_problem_mapping(register, binary_keys, binary_mappings)
+        return
+
+    if register.startswith("date_time"):
+        return
+
+    if _route_time_and_season_mappings(
+        register, access, sensor_mappings, time_mappings, select_mappings
+    ):
+        return
+
+    _route_enum_or_min_max_mapping(
+        reg=reg,
+        register=register,
+        access=access,
+        min_val=min_val,
+        max_val=max_val,
+        unit=unit,
+        info_text=info_text,
+        scale=scale,
+        step=step,
+        switch_keys=switch_keys,
+        binary_keys=binary_keys,
+        select_keys=select_keys,
+        number_keys=number_keys,
+        sensor_mappings=sensor_mappings,
+        number_mappings=number_mappings,
+        binary_mappings=binary_mappings,
+        switch_mappings=switch_mappings,
+        select_mappings=select_mappings,
+    )
+
+
 def _extend_entity_mappings_from_registers() -> None:
     """Populate entity mappings for registers not explicitly defined.
 
@@ -432,9 +483,8 @@ def _extend_entity_mappings_from_registers() -> None:
     for reg in _get_all():
         if reg.function != 3 or not reg.name:
             continue
-        register, access, min_val, max_val, unit, info_text, scale, step = _register_context(reg)
         if _is_unmappable_holding_register(
-            register,
+            reg.name,
             all_mappings=(
                 number_mappings,
                 sensor_mappings,
@@ -448,41 +498,18 @@ def _extend_entity_mappings_from_registers() -> None:
         ):
             continue
 
-        if _is_problem_register(register):
-            _route_problem_mapping(register, binary_keys, binary_mappings)
-            continue
-
-        if register.startswith("date_time"):
-            continue
-
-        if _route_time_and_season_mappings(
-            register,
-            access,
-            sensor_mappings,
-            time_mappings,
-            select_mappings,
-        ):
-            continue
-
-        _route_enum_or_min_max_mapping(
-            reg=reg,
-            register=register,
-            access=access,
-            min_val=min_val,
-            max_val=max_val,
-            unit=unit,
-            info_text=info_text,
-            scale=scale,
-            step=step,
-            switch_keys=switch_keys,
-            binary_keys=binary_keys,
-            select_keys=select_keys,
-            number_keys=number_keys,
-            sensor_mappings=sensor_mappings,
+        _route_holding_register_to_mapping(
+            reg,
             number_mappings=number_mappings,
+            sensor_mappings=sensor_mappings,
             binary_mappings=binary_mappings,
             switch_mappings=switch_mappings,
             select_mappings=select_mappings,
+            time_mappings=time_mappings,
+            binary_keys=binary_keys,
+            switch_keys=switch_keys,
+            select_keys=select_keys,
+            number_keys=number_keys,
         )
 
 
@@ -517,6 +544,7 @@ __all__ = [
     "_resolve_parent_child_mappings",
     "_route_enum_mapping",
     "_route_enum_or_min_max_mapping",
+    "_route_holding_register_to_mapping",
     "_route_min_max_mapping",
     "_route_problem_mapping",
     "_route_time_and_season_mappings",

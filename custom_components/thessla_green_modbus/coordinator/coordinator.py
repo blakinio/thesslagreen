@@ -18,6 +18,7 @@ from .._coordinator_connection_test import run_connection_test as _run_connectio
 from .._coordinator_device_info import run_device_scan as _run_device_scan_impl
 from .._coordinator_device_info import warn_missing_device_info as _warn_missing_device_info_impl
 from .._coordinator_factory import build_config_from_params as _build_config_from_params_impl
+from .._coordinator_init import apply_coordinator_config as _apply_coordinator_config_impl
 from .._coordinator_init import normalize_runtime_config as _normalize_runtime_config_impl
 from .._coordinator_register_groups import (
     compute_register_groups as _compute_register_groups_impl,
@@ -240,29 +241,15 @@ class ThesslaGreenModbusCoordinator(
             )
         self.hass = hass
 
-        self._device_name = normalized_cfg.name
-        self.config = normalized_cfg
-        self._resolved_connection_mode = resolved_connection_mode
-        self.timeout = normalized_cfg.timeout
-        self.retry = normalized_cfg.retry
-        self.backoff = _normalize_backoff_impl(normalized_cfg.backoff)
-
-        self.backoff_jitter = self._parse_backoff_jitter(normalized_cfg.backoff_jitter)
-        self.force_full_register_list = normalized_cfg.force_full_register_list
-        self.scan_uart_settings = normalized_cfg.scan_uart_settings
-        self.deep_scan = normalized_cfg.deep_scan
-        self.safe_scan = normalized_cfg.safe_scan
-        self.entry = entry
-        self.skip_missing_registers = normalized_cfg.skip_missing_registers
-
-        self.effective_batch = _resolve_effective_batch_impl(
-            entry, normalized_cfg.max_registers_per_request
+        _apply_coordinator_config_impl(
+            self,
+            normalized_cfg,
+            resolved_connection_mode,
+            entry,
+            normalize_backoff_fn=_normalize_backoff_impl,
+            parse_backoff_jitter_fn=_parse_backoff_jitter_impl,
+            resolve_effective_batch_fn=_resolve_effective_batch_impl,
         )
-        self.max_registers_per_request = self.effective_batch
-
-        self.config.max_registers_per_request = self.max_registers_per_request
-        self.config.backoff = self.backoff
-        self.config.backoff_jitter = self.backoff_jitter
 
         _initialize_runtime_state_impl(self, entry=entry)
 
