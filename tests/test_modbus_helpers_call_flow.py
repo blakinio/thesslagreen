@@ -581,9 +581,7 @@ def test_log_call_attempt_emits_request_frame_when_known(caplog):
     """_log_call_attempt logs a masked request frame for known function names."""
     prepared = _make_prepared(func_name="read_input_registers", positional=[20], batch_size=2)
     with caplog.at_level(_logging.DEBUG, logger=_mh._LOGGER.name):
-        _log_call_attempt(
-            prepared, slave_id=1, attempt=1, max_attempts=1, kwargs={"count": 2}
-        )
+        _log_call_attempt(prepared, slave_id=1, attempt=1, max_attempts=1, kwargs={"count": 2})
     messages = [r.message for r in caplog.records]
     assert any("Modbus request" in m for m in messages)
 

@@ -4,9 +4,14 @@ import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ConnectionException,
+    ModbusException,
+    ModbusIOException,
+)
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.scanner.io_read import (
+    _attempt_bit_reconnect,
     _extend_or_abort_register_results,
     _finalize_register_read_failure,
     _handle_input_attempt_exception,
@@ -369,3 +374,69 @@ def test_should_log_terminal_failure_tracks_holding_vs_input_aborts():
     assert should_log_terminal_failure("input_registers", True) is False
     assert should_log_terminal_failure("holding_registers", True) is True
     assert should_log_terminal_failure("input_registers", False) is True
+
+
+async def test_attempt_bit_reconnect_no_transport_returns_original_client():
+    """Returns original client unchanged when scanner has no transport."""
+    scanner = MagicMock()
+    scanner._transport = None
+    original = AsyncMock()
+    result = await _attempt_bit_reconnect(scanner, original)
+    assert result is original
+
+
+async def test_attempt_bit_reconnect_with_transport_returns_transport_client():
+    """Returns transport client and updates scanner._client when reconnect succeeds."""
+    scanner = MagicMock()
+    transport_client = AsyncMock()
+    mock_transport = MagicMock()
+    mock_transport.ensure_connected = AsyncMock()
+    mock_transport.client = transport_client
+    scanner._transport = mock_transport
+
+    original = AsyncMock()
+    result = await _attempt_bit_reconnect(scanner, original)
+
+    assert result is transport_client
+    assert scanner._client is transport_client
+    mock_transport.ensure_connected.assert_called_once()
+
+
+async def test_attempt_bit_reconnect_transport_no_client_attr_returns_original():
+    """Returns original client when transport has no .client attribute."""
+    scanner = MagicMock()
+    mock_transport = MagicMock()
+    mock_transport.ensure_connected = AsyncMock()
+    mock_transport.client = None
+    scanner._transport = mock_transport
+
+    original = AsyncMock()
+    result = await _attempt_bit_reconnect(scanner, original)
+
+    assert result is original
+
+
+async def test_attempt_bit_reconnect_ensure_connected_raises_returns_original():
+    """Returns original client when ensure_connected raises any connection error."""
+    scanner = MagicMock()
+    mock_transport = MagicMock()
+    mock_transport.ensure_connected = AsyncMock(side_effect=ModbusException("lost"))
+    scanner._transport = mock_transport
+
+    original = AsyncMock()
+    result = await _attempt_bit_reconnect(scanner, original)
+
+    assert result is original
+
+
+async def test_attempt_bit_reconnect_connection_exception_returns_original():
+    """Returns original client when ensure_connected raises ConnectionException."""
+    scanner = MagicMock()
+    mock_transport = MagicMock()
+    mock_transport.ensure_connected = AsyncMock(side_effect=ConnectionException("down"))
+    scanner._transport = mock_transport
+
+    original = AsyncMock()
+    result = await _attempt_bit_reconnect(scanner, original)
+
+    assert result is original

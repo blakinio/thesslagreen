@@ -117,6 +117,28 @@ def _resolve_bit_read_client(scanner: Any, client: Any) -> Any:
     return client
 
 
+async def _attempt_bit_reconnect(scanner: Any, client: Any) -> Any:
+    """Try to reconnect via transport after a connection error; return updated client."""
+    if scanner._transport is None:
+        return client
+    try:
+        await scanner._transport.ensure_connected()
+        transport_client = getattr(scanner._transport, "client", None)
+        if transport_client is not None:
+            scanner._client = transport_client
+            return transport_client
+    except (
+        ModbusException,
+        ConnectionException,
+        ModbusIOException,
+        TimeoutError,
+        OSError,
+        AttributeError,
+    ):
+        pass
+    return client
+
+
 def _extend_or_abort_register_results(
     results: list[int], block: list[int] | None
 ) -> tuple[bool, list[int] | None]:
@@ -705,22 +727,7 @@ async def read_bit_registers(
                 attempt,
             )
         except (ModbusException, ConnectionException):
-            if scanner._transport is not None:
-                try:
-                    await scanner._transport.ensure_connected()
-                    transport_client = getattr(scanner._transport, "client", None)
-                    if transport_client is not None:
-                        client = transport_client
-                        scanner._client = transport_client
-                except (
-                    ModbusException,
-                    ConnectionException,
-                    ModbusIOException,
-                    TimeoutError,
-                    OSError,
-                    AttributeError,
-                ):
-                    pass
+            client = await _attempt_bit_reconnect(scanner, client)
         except asyncio.CancelledError:
             raise
         except OSError as exc:
@@ -784,6 +791,7 @@ async def read_discrete(
 
 
 __all__ = [
+    "_attempt_bit_reconnect",
     "read_bit_registers",
     "read_coil",
     "read_discrete",
