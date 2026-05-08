@@ -1,6 +1,6 @@
 # Refactor status (current)
 
-Last reviewed: 2026-05-08.
+Last reviewed: 2026-05-08 (refresh after test recovery).
 
 Related document:
 
@@ -27,35 +27,36 @@ The following constraints remain active and must be preserved:
 4. No proxy modules.
 5. `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant.
 
-## Current invariant verification snapshot (2026-05-08)
+## Current invariant verification snapshot (2026-05-08 refresh)
 
 - Top-level `custom_components/thessla_green_modbus/coordinator.py`: **absent**.
 - Canonical coordinator module: `custom_components/thessla_green_modbus/coordinator/coordinator.py`.
 - HA imports in `core/transport/registers/scanner`: **none detected** by grep.
 - Compatibility grep (`compat|shim|proxy|re-export|legacy`): informational matches present in docs/tests/comments/known compatibility code references.
 
-## Notable since previous snapshot (2026-05-05)
+## Notable since previous snapshot (2026-05-08 pre-refresh)
 
-- `coordinator/scan.py` added — focused scan sub-module extracted from coordinator.
-- `tests/helpers_coordinator.py` added — shared coordinator fixture (46 lines);
-  loaded as plugin via `tests/conftest.py` (`pytest_plugins`).
-- `tests/test_coordinator_error_paths_split.py` added — split test file using shared fixture.
-- `tests/test_coordinator.py` simplified — fixture moved to `helpers_coordinator.py`
-  (shrank from 502 → 440 non-empty lines).
+- `scanner/io_read_helpers.py` — new scanner helper module added; has ruff format drift.
+- `coordinator/coordinator.py` — slight growth (697 → 699 non-empty lines).
+- `scanner/io_read.py` — reduced (704 → 694 non-empty lines).
+- `modbus_helpers.py` — grown (522 → 538 non-empty lines).
+- `config_flow.py` — reduced (428 → 414 non-empty lines).
+- `tests/test_text.py` — ruff format drift resolved (removed from drift list).
+- Ruff format drift reduced from **7 files** to **3 files**:
+  - `scanner/io_read_helpers.py`, `tests/test_config_flow_helpers.py`, `tests/test_modbus_helpers_call_flow.py`.
 
-## Required gate status snapshot (2026-05-08)
+## Required gate status snapshot (2026-05-08 refresh)
 
 - `ruff check custom_components tests tools`: **pass**.
 - `ruff check --select I custom_components tests tools`: **pass**.
-- `ruff format --check custom_components tests tools`: **7 files drift**
-  (coordinator.py, scan.py, schedule.py, scanner/orchestration.py,
-  test_config_flow_helpers.py, test_modbus_helpers_call_flow.py, test_text.py).
+- `ruff format --check custom_components tests tools`: **3 files drift**
+  (scanner/io_read_helpers.py, tests/test_config_flow_helpers.py,
+  tests/test_modbus_helpers_call_flow.py). Improved from 7 files in prior audit.
 - `python -m compileall -q custom_components/thessla_green_modbus tests tools`: **pass**.
 - `python tools/compare_registers_with_reference.py`: **pass** (informational: 62 extras, 242 name mismatches).
 - `python tools/check_maintainability.py`: **pass**.
 - `python tools/validate_entity_mappings.py`: **BLOCKED** — requires `homeassistant` (Python >=3.12); code is syntactically valid.
 - `pytest tests/ -q`: **BLOCKED** — `pytest-homeassistant-custom-component` requires Python >=3.12; not available in Python 3.11 audit environment.
-- `pytest -q tests/test_coordinator_error_paths_split.py tests/test_coordinator.py tests/test_coordinator_*.py`: **BLOCKED** — same reason; shared fixture and split test files are present and syntactically correct.
 - Import gate (`pydantic`, `pytest`, `pytest_asyncio`): **pass** (3.11 env).
 - Import gate (`pytest_homeassistant_custom_component`, `homeassistant`): **BLOCKED** — Python 3.11 env only; passes on Python 3.12 CI.
 
@@ -64,15 +65,16 @@ The following constraints remain active and must be preserved:
 - `black`: not executed.
 - `isort`: not executed.
 - `mypy`: not executed.
-- `hassfest`: not executed.
-- `HACS`: not executed.
+- `hassfest`: not executed (runs as GitHub Action only; not a PyPI package).
+- `HACS`: not executed (runs as GitHub Action only; not a PyPI package).
 
 ## Remaining hotspots (current queue)
 
-1. Coordinator size/branching (`coordinator/coordinator.py` 697 lines, `coordinator/schedule.py` 468 lines).
-2. Scanner read/orchestration complexity (`scanner/io_read.py` 704 lines, `scanner/core.py` 454 lines).
+1. Coordinator size/branching (`coordinator/coordinator.py` 699 lines, `coordinator/schedule.py` 468 lines).
+2. Scanner read/orchestration complexity (`scanner/io_read.py` 694 lines, `scanner/core.py` 454 lines).
 3. Mapping build complexity (`mappings/_mapping_builders.py` 437 lines).
-4. Config-flow/device validation complexity (`config_flow.py` 428 lines, `config_flow_device_validation.py`).
+4. Config-flow/device validation complexity (`config_flow.py` 414 lines, `config_flow_device_validation.py`).
+5. Ruff format drift: 3 files (`scanner/io_read_helpers.py`, `tests/test_config_flow_helpers.py`, `tests/test_modbus_helpers_call_flow.py`).
 
 ## Branch note
 
@@ -82,5 +84,5 @@ The following constraints remain active and must be preserved:
 
 ## Readiness caveats
 
-- **HACS/hassfest readiness:** not claimable (not executed in this run).
+- **HACS/hassfest readiness:** not claimable (not executed in this run; these run as GitHub Actions only).
 - **Real-device readiness:** not claimable from this verification run; no new on-device evidence captured.
