@@ -125,6 +125,58 @@ async def run_single_write_attempts(
     return True, refresh_after_write
 
 
+async def run_multi_register_write_attempts(
+    coordinator: Any,
+    start_address: int,
+    values: list[int],
+    require_single_request: bool,
+    refresh: bool,
+) -> tuple[bool, bool]:
+    """Execute retry loop for multi-register write. Returns (success, refresh_after_write)."""
+    refresh_after_write = False
+    for attempt in range(1, coordinator.retry + 1):
+        try:
+            response, success = await coordinator._execute_multi_register_chunks(
+                coordinator._plan_multi_register_chunks(
+                    start_address, values, require_single_request
+                ),
+                attempt,
+            )
+            if not success:
+                should_retry = coordinator._handle_write_response_failure(
+                    is_final_attempt=attempt == coordinator.retry,
+                    final_error_message="Error writing registers at %s: %s",
+                    retry_message=f"Retrying multi-register write at {start_address}",
+                    error_args=(start_address, response),
+                )
+                if not should_retry:
+                    return False, False
+                await coordinator._disconnect()
+                continue
+            refresh_after_write = refresh
+            _LOGGER.info(
+                "Successfully wrote %s to registers starting at %s",
+                values,
+                start_address,
+            )
+            break
+        except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:
+            should_retry = await coordinator._handle_write_attempt_exception(
+                register_name=str(start_address),
+                attempt=attempt,
+                exc=exc,
+                timed_out_message="Writing registers at %s timed out (attempt %d/%d)",
+                persistent_timeout_message="Persistent timeout writing registers at %s",
+                failed_message="Failed to write registers at %s",
+                retry_message="Retrying multi-register write at %s after error: %s",
+                unexpected_message="Unexpected error writing registers at %s",
+            )
+            if not should_retry:
+                return False, False
+            continue
+    return True, refresh_after_write
+
+
 async def finalize_write_result(coordinator: Any, refresh_after_write: bool) -> bool:
     """Finish write operation with optional refresh."""
     if refresh_after_write:

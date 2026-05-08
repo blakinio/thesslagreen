@@ -14,6 +14,7 @@ from .write_path import (
     SingleWritePlan,
     encode_write_value,
     finalize_write_result,
+    run_multi_register_write_attempts,
     run_single_write_attempts,
 )
 
@@ -358,47 +359,11 @@ class _CoordinatorScheduleMixin:
                 await self._ensure_connection()
                 self._assert_write_connection_ready()
 
-                for attempt in range(1, self.retry + 1):
-                    try:
-                        response, success = await self._execute_multi_register_chunks(
-                            self._plan_multi_register_chunks(
-                                start_address, values, require_single_request
-                            ),
-                            attempt,
-                        )
-                        if not success:
-                            should_retry = self._handle_write_response_failure(
-                                is_final_attempt=attempt == self.retry,
-                                final_error_message="Error writing registers at %s: %s",
-                                retry_message=f"Retrying multi-register write at {start_address}",
-                                error_args=(start_address, response),
-                            )
-                            if not should_retry:
-                                return False
-                            await self._disconnect()
-                            continue
-
-                        refresh_after_write = refresh
-                        _LOGGER.info(
-                            "Successfully wrote %s to registers starting at %s",
-                            values,
-                            start_address,
-                        )
-                        break
-                    except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:
-                        should_retry = await self._handle_write_attempt_exception(
-                            register_name=str(start_address),
-                            attempt=attempt,
-                            exc=exc,
-                            timed_out_message="Writing registers at %s timed out (attempt %d/%d)",
-                            persistent_timeout_message="Persistent timeout writing registers at %s",
-                            failed_message="Failed to write registers at %s",
-                            retry_message="Retrying multi-register write at %s after error: %s",
-                            unexpected_message="Unexpected error writing registers at %s",
-                        )
-                        if not should_retry:
-                            return False
-                        continue
+                success, refresh_after_write = await run_multi_register_write_attempts(
+                    self, start_address, values, require_single_request, refresh
+                )
+                if not success:
+                    return False
 
             except (ModbusException, ConnectionException):  # pragma: no cover - safety
                 _LOGGER.exception("Failed to write registers at %s", start_address)

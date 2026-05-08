@@ -350,7 +350,7 @@ async def _execute_word_read_attempt(
     )
 
 
-async def _run_input_read_retry_loop(
+async def _run_word_read_retry_loop(
     scanner: Any,
     *,
     transport: Any,
@@ -360,8 +360,12 @@ async def _run_input_read_retry_loop(
     start: int,
     end: int,
     skip_cache: bool,
+    method_name: str,
+    register_type: str,
+    handle_attempt_exception: Any,
+    log_success: bool = False,
 ) -> list[int] | None:
-    """Run input read retry loop and finalize failure state when needed."""
+    """Shared retry loop for word-register (input/holding) reads."""
     attempted_reads = 0
     aborted_transiently = False
     for attempt in range(1, scanner.retry + 1):
@@ -371,7 +375,7 @@ async def _run_input_read_retry_loop(
                 scanner,
                 transport=transport,
                 client=client,
-                method_name="read_input_registers",
+                method_name=method_name,
                 address=address,
                 count=count,
                 attempt=attempt,
@@ -379,7 +383,7 @@ async def _run_input_read_retry_loop(
             done, payload = _process_register_response(
                 scanner,
                 response=response,
-                register_type="input_registers",
+                register_type=register_type,
                 start=start,
                 end=end,
                 address=address,
@@ -387,17 +391,25 @@ async def _run_input_read_retry_loop(
                 skip_cache=skip_cache,
             )
             if done:
-                if payload is not None:
-                    _LOGGER.debug("Read input registers %d-%d: %s", start, end, payload)
+                if log_success and payload is not None:
+                    _LOGGER.debug(
+                        "Read %s %d-%d: %s",
+                        register_type.replace("_", " "),
+                        start,
+                        end,
+                        payload,
+                    )
                 return payload
+        except asyncio.CancelledError:
+            raise
         except (
-            ModbusIOException,
             TimeoutError,
+            ModbusIOException,
             OSError,
             ModbusException,
             ConnectionException,
         ) as exc:
-            aborted, stop = _handle_input_attempt_exception(
+            aborted, stop = handle_attempt_exception(
                 scanner,
                 exc,
                 start=start,
@@ -417,7 +429,7 @@ async def _run_input_read_retry_loop(
         )
     _finalize_register_read_failure(
         scanner,
-        register_type="input_registers",
+        register_type=register_type,
         start=start,
         end=end,
         retry=scanner.retry,
@@ -425,6 +437,34 @@ async def _run_input_read_retry_loop(
         aborted_transiently=aborted_transiently,
     )
     return None
+
+
+async def _run_input_read_retry_loop(
+    scanner: Any,
+    *,
+    transport: Any,
+    client: Any,
+    address: int,
+    count: int,
+    start: int,
+    end: int,
+    skip_cache: bool,
+) -> list[int] | None:
+    """Run input read retry loop and finalize failure state when needed."""
+    return await _run_word_read_retry_loop(
+        scanner,
+        transport=transport,
+        client=client,
+        address=address,
+        count=count,
+        start=start,
+        end=end,
+        skip_cache=skip_cache,
+        method_name="read_input_registers",
+        register_type="input_registers",
+        handle_attempt_exception=_handle_input_attempt_exception,
+        log_success=True,
+    )
 
 
 async def read_input(
@@ -571,71 +611,20 @@ async def _run_holding_read_retry_loop(
     skip_cache: bool,
 ) -> list[int] | None:
     """Run holding read retry loop and finalize failure state when needed."""
-    aborted_transiently = False
-    attempted_reads = 0
-    for attempt in range(1, scanner.retry + 1):
-        attempted_reads = attempt
-        try:
-            response = await _execute_word_read_attempt(
-                scanner,
-                transport=transport,
-                client=client,
-                method_name="read_holding_registers",
-                address=address,
-                count=count,
-                attempt=attempt,
-            )
-            done, payload = _process_register_response(
-                scanner,
-                response=response,
-                register_type="holding_registers",
-                start=start,
-                end=end,
-                address=address,
-                count=count,
-                skip_cache=skip_cache,
-            )
-            if done:
-                return payload
-        except asyncio.CancelledError:
-            raise
-        except (
-            TimeoutError,
-            ModbusIOException,
-            ModbusException,
-            ConnectionException,
-            OSError,
-        ) as exc:
-            aborted, stop = _handle_holding_read_exception(
-                scanner,
-                exc,
-                start=start,
-                end=end,
-                address=address,
-                count=count,
-                attempt=attempt,
-            )
-            aborted_transiently = aborted_transiently or aborted
-            if stop:
-                break
-
-        await _sleep_retry_backoff(
-            backoff=scanner.backoff,
-            backoff_jitter=scanner.backoff_jitter,
-            attempt=attempt,
-            retry=scanner.retry,
-        )
-
-    _finalize_register_read_failure(
+    return await _run_word_read_retry_loop(
         scanner,
-        register_type="holding_registers",
+        transport=transport,
+        client=client,
+        address=address,
+        count=count,
         start=start,
         end=end,
-        retry=scanner.retry,
-        attempted_reads=attempted_reads,
-        aborted_transiently=aborted_transiently,
+        skip_cache=skip_cache,
+        method_name="read_holding_registers",
+        register_type="holding_registers",
+        handle_attempt_exception=_handle_holding_read_exception,
+        log_success=False,
     )
-    return None
 
 
 async def read_holding(

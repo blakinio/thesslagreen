@@ -1,18 +1,19 @@
 # Maintainability audit
 
-Date: 2026-05-08 (post-PR #1595 documentation cleanup).
+Date: 2026-05-08 (post-hotspot cleanup PR — phases B–F).
 
 ## Commands covered by latest successful validation
 
-Latest complete validation evidence comes from PR #1595, using Python 3.12:
+Latest complete validation uses Python 3.13.12:
 
-- `ruff check custom_components tests tools`
-- `ruff check --select I custom_components tests tools`
-- `ruff format --check custom_components tests tools`
-- `python3.12 -m compileall -q custom_components/thessla_green_modbus tests tools`
-- `python3.12 tools/check_maintainability.py`
-- `python3.12 tools/validate_entity_mappings.py`
-- `python3.12 -m pytest tests/ -q`
+- `ruff check custom_components tests tools` — **pass**
+- `ruff check --select I custom_components tests tools` — **pass**
+- `ruff format --check custom_components tests tools` — **0 files drift** (419 already formatted)
+- `python3.13 -m compileall -q custom_components/thessla_green_modbus tests tools` — **pass**
+- `python3.13 tools/compare_registers_with_reference.py` — **pass**
+- `python3.13 tools/check_maintainability.py` — **Maintainability gate passed**
+- `python3.13 tools/validate_entity_mappings.py` — **OK: 366 entities validated**
+- `python3.13 -m pytest tests/ -q` — **1938 passed, 4 skipped**
 
 ## Exact status by validation gate
 
@@ -20,52 +21,72 @@ Latest complete validation evidence comes from PR #1595, using Python 3.12:
 - **ruff import order check**: pass.
 - **ruff format --check**: 0 files drift.
 - **compileall**: pass.
+- **compare_registers**: pass.
 - **maintainability** (`check_maintainability.py`): pass.
 - **entity mappings** (`validate_entity_mappings.py`): pass — **366 entities**.
 - **pytest** (`pytest tests/ -q`): **1938 passed, 4 skipped**.
-
-Earlier Python 3.13 validation from the 2026-05-08 config-flow cleanup series remains historical context, but the latest full post-#1595 validation evidence is the Python 3.12 pass above.
 
 ## Notable merged changes (2026-05-08 series)
 
 All changes below are already merged into **dev** as of this audit.
 
-### Config-flow runtime extraction
+### Config-flow runtime extraction (merged, earlier PR)
 
 - `_load_scanner_module` moved from inline in `config_flow.py` into `load_scanner_module` in `config_flow_runtime.py`.
-- `import_module` import removed from `config_flow.py`.
-- `_SCANNER_MODULE_PATH` constant added to `config_flow_runtime.py` for testability.
-- 5 focused unit tests added in `tests/test_config_flow_runtime_loader.py`.
 
-### Config-flow bound-adapter extraction
+### Config-flow bound-adapter extraction (merged, earlier PR)
 
 - `_validate_tcp_config`, `_validate_rtu_config`, `_process_scan_capabilities` removed from `config_flow.py`.
-- Replaced by `validate_tcp_config_bound`, `validate_rtu_config_bound`, and `process_scan_capabilities_bound` in `config_flow_validation.py`.
-- 13 focused tests added in `tests/test_config_flow_validation_bound.py`.
 
-### Coordinator test splits
+### Coordinator config property extraction (merged, earlier PR)
 
-- `TestParseBackoffJitter` split out of `test_coordinator.py` into focused coordinator backoff/jitter test modules.
-- No production behavior changed.
-
-### Coordinator config property extraction
-
-- 9 pairs of config-backed property getter/setter moved from `ThesslaGreenModbusCoordinator` into `_CoordinatorConfigPropertiesMixin` in `coordinator/config_properties.py`.
+- 9 pairs of config-backed property getter/setter moved into `_CoordinatorConfigPropertiesMixin`.
 - `coordinator.py` non-empty lines reduced from 666 to 605.
-- Coordinator package API invariant preserved.
 
-### Scanner failure logging helper promotion
+### Scanner failure logging helper promotion (merged, earlier PR)
 
-- `_mark_failed_addresses`, `_log_read_abort`, `_log_read_failure` moved from `scanner/io_read.py` to `scanner/io_read_helpers.py` as public helpers.
+- `_mark_failed_addresses`, `_log_read_abort`, `_log_read_failure` moved to `scanner/io_read_helpers.py`.
 - `scanner/io_read.py` non-empty lines reduced from 714 to 701.
-- HA-independence invariant preserved.
 
-### Schedule write-path deduplication
+### Schedule write-path deduplication (merged, earlier PR)
 
-- `_write_holding_multi` in `coordinator/schedule.py` now delegates to `_write_registers_payload` per chunk.
-- Duplicated transport/client/fallback branching removed from that method.
+- `_write_holding_multi` delegates to `_write_registers_payload` per chunk.
 - `coordinator/schedule.py` non-empty lines reduced from 419 to 401.
-- Write/chunking/retry behavior unchanged.
+
+### Hotspot cleanup — PHASE B: scanner/io_read.py (this PR)
+
+- Extracted `_run_word_read_retry_loop` as a shared core retry loop.
+- `_run_input_read_retry_loop` (75 lines) and `_run_holding_read_retry_loop` (77 lines) are now thin 26-line wrappers.
+- `scanner/io_read.py` non-empty lines: 701 → 690.
+- HA-independence invariant preserved. 188 scanner tests pass.
+
+### Hotspot cleanup — PHASE C: coordinator/coordinator.py (this PR)
+
+- Extracted `_build_transport_selector_fn` method from the 60-line `_ensure_connected`.
+- Removed dead duplicate docstring string from `_get_client_method`; simplified repeated getattr/callable pattern to a loop.
+- `_ensure_connected` reduced from 60 → 17 lines.
+- `coordinator.py` non-empty lines: 605 → 606 (same; inner function became named method).
+- Coordinator package API invariant preserved. 307 coordinator tests pass.
+
+### Hotspot cleanup — PHASE D: scanner/core.py (this PR)
+
+- Extracted `apply_scanner_params` into `scanner/setup.py`.
+- `ThesslaGreenDeviceScanner.__init__` reduced from 88 → 68 lines.
+- `scanner/core.py` non-empty lines: 451 → 433.
+- HA-independence invariant preserved. 188 scanner tests pass.
+
+### Hotspot cleanup — PHASE E: mappings/_mapping_builders.py (this PR)
+
+- Extracted `_resolve_base_helpers()` combining the identical 3-line resolver trio used in `_load_number_mappings` and `_load_discrete_mappings`.
+- `_mapping_builders.py` non-empty lines: 437 → 441 (net +4 from new helper; both loaders simplified).
+- 366 entities validated. 284 mapping tests pass.
+
+### Hotspot cleanup — PHASE F: coordinator/schedule.py (this PR)
+
+- Extracted `run_multi_register_write_attempts` into `coordinator/write_path.py`, mirroring existing `run_single_write_attempts`.
+- `async_write_registers` reduced from 67 → 31 lines.
+- `coordinator/schedule.py` non-empty lines: 401 → 367.
+- All write/retry/lock/refresh behaviors unchanged. 303 coordinator tests pass.
 
 ## Architecture invariants snapshot
 
@@ -77,27 +98,27 @@ All changes below are already merged into **dev** as of this audit.
 
 ## Current largest known production hotspots
 
-| Area | Current known size |
-|---|---:|
-| `custom_components/thessla_green_modbus/scanner/io_read.py` | 701 non-empty lines |
-| `custom_components/thessla_green_modbus/coordinator/coordinator.py` | 605 non-empty lines |
-| `custom_components/thessla_green_modbus/scanner/core.py` | 451 non-empty lines |
-| `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` | 437 non-empty lines |
-| `custom_components/thessla_green_modbus/coordinator/schedule.py` | 401 non-empty lines |
-| `custom_components/thessla_green_modbus/config_flow.py` | reduced by recent extractions; remeasure before next edit |
+| Area | Before | After this PR |
+|---|---:|---:|
+| `custom_components/thessla_green_modbus/scanner/io_read.py` | 701 | **690** |
+| `custom_components/thessla_green_modbus/coordinator/coordinator.py` | 605 | 606 |
+| `custom_components/thessla_green_modbus/scanner/core.py` | 451 | **433** |
+| `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` | 437 | 441 |
+| `custom_components/thessla_green_modbus/coordinator/schedule.py` | 401 | **367** |
+| `custom_components/thessla_green_modbus/coordinator/write_path.py` | 118 | 184 (gained `run_multi_register_write_attempts`) |
 
 ## Remaining hotspots
 
-1. Coordinator size/branching (`coordinator/coordinator.py`, `coordinator/schedule.py`).
-2. Scanner read/orchestration complexity (`scanner/io_read.py`, `scanner/core.py`).
-3. Mapping builder density (`mappings/_mapping_builders.py`).
-4. Config-flow branching (`config_flow.py`).
-5. Large test modules where focused splits remain possible.
+1. `coordinator/coordinator.py` — `from_params` (54 lines) and `__init__` (61 lines) still large.
+2. `scanner/io_read.py` — `_process_register_response` (60 lines) and `read_bit_registers` (64 lines) remain.
+3. `scanner/core.py` — `create` (52 lines) and `_group_registers_for_batch_read` (24 lines).
+4. `mappings/_mapping_builders.py` — `_extend_entity_mappings_from_registers` (83 lines) remains.
+5. Config-flow branching (`config_flow.py`) — not touched in this cycle.
 
 ## Recommended next work
 
-1. Continue with a focused extraction in `scanner/io_read.py` or `scanner/core.py`.
-2. Alternatively reduce `mappings/_mapping_builders.py` if a cohesive helper extraction is visible.
+1. `_process_register_response` and `read_bit_registers` in `scanner/io_read.py` are the next extraction candidates.
+2. `_extend_entity_mappings_from_registers` in `mappings/_mapping_builders.py` could be split by routing phase.
 3. Keep each PR narrow: one production extraction plus focused tests and refreshed docs.
 
 ## Branch note

@@ -132,50 +132,30 @@ class ThesslaGreenDeviceScanner(
             )
         # Avoid sticky logger levels from previous tests/services.
         _LOGGER.setLevel(logging.DEBUG)
-        self.host = host
-        self.port = port
-        self.slave_id = slave_id
-        self.timeout = timeout
-        self.retry = retry
-        try:
-            self.backoff = float(backoff)
-        except (TypeError, ValueError):
-            self.backoff = 0.0
-        self.backoff_jitter = scanner_setup.normalize_backoff_jitter(backoff_jitter)
-        self.verbose_invalid_values = verbose_invalid_values
-        self.scan_uart_settings = scan_uart_settings
-        self.skip_known_missing = skip_known_missing
-        self.deep_scan = deep_scan
-        self.full_register_scan = full_register_scan
-        self.safe_scan = safe_scan
-        self.effective_batch = scanner_setup.normalize_effective_batch(
-            max_registers_per_request, max_batch=MAX_BATCH_REGISTERS
-        )
-        self.max_registers_per_request = self.effective_batch
-
-        (
-            resolved_type,
-            resolved_mode,
-            resolved_fixed_mode,
-        ) = scanner_state.resolve_connection_configuration(
-            connection_type,
-            connection_mode,
-            port,
-        )
-        scanner_state.apply_connection_state(
+        scanner_setup.apply_scanner_params(
             self,
-            scanner_state.build_connection_state(
-                connection_type=resolved_type,
-                connection_mode=resolved_mode,
-                resolved_connection_mode=resolved_fixed_mode,
-                serial_port=serial_port,
-                baud_rate=baud_rate,
-                parity=parity,
-                stop_bits=stop_bits,
-            ),
+            host=host,
+            port=port,
+            slave_id=slave_id,
+            timeout=timeout,
+            retry=retry,
+            backoff=backoff,
+            backoff_jitter=backoff_jitter,
+            verbose_invalid_values=verbose_invalid_values,
+            scan_uart_settings=scan_uart_settings,
+            skip_known_missing=skip_known_missing,
+            deep_scan=deep_scan,
+            full_register_scan=full_register_scan,
+            safe_scan=safe_scan,
+            max_registers_per_request=max_registers_per_request,
+            connection_type=connection_type,
+            connection_mode=connection_mode,
+            serial_port=serial_port,
+            baud_rate=baud_rate,
+            parity=parity,
+            stop_bits=stop_bits,
+            hass=hass,
         )
-        self._hass = hass
-
         scanner_setup.initialize_runtime_collections(self, DeviceCapabilities)
         scanner_state.apply_register_defaults(
             self,
