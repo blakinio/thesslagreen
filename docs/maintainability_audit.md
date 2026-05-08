@@ -1,30 +1,28 @@
 # Maintainability audit
 
-Date: 2026-05-08 (Python 3.13 full-pass + modbus_helpers._encode_read_frame refactor)
+Date: 2026-05-08 (Python 3.13 full-pass + schedule encode_write_value + scanner normalize_effective_batch)
 
 ## Commands executed (exact)
 
 - `git branch --show-current`
 - `git status --short`
-- `uv pip install -r requirements-dev.txt` (Python 3.13 venv)
+- `python3.13 -m venv /tmp/venv313 && /tmp/venv313/bin/pip install ...` (Python 3.13 venv)
 - Import gate script:
-  - `python - <<'PY' ... __import__(...) ... PY`
+  - `python3.13 - <<'PY' ... __import__(...) ... PY`
 - `ruff check custom_components tests tools`
 - `ruff check --select I custom_components tests tools`
-- `ruff format --check custom_components tests tools || true`
-- `python -m compileall -q custom_components/thessla_green_modbus tests tools`
-- `python tools/compare_registers_with_reference.py`
-- `python tools/check_maintainability.py`
-- `python tools/validate_entity_mappings.py`
+- `ruff format --check custom_components tests tools`
+- `python3.13 -m compileall -q custom_components/thessla_green_modbus tests tools`
+- `python3.13 tools/compare_registers_with_reference.py`
+- `python3.13 tools/check_maintainability.py`
+- `python3.13 tools/validate_entity_mappings.py`
 - `pytest tests/ -q`
 - AST metrics script (largest files/classes/functions snapshot)
-- `find custom_components/thessla_green_modbus -maxdepth 2 -name "coordinator.py" -print`
-- `rg "from homeassistant|import homeassistant" core/ transport/ registers/ scanner/`
-- `rg "compat|shim|proxy|re-export|legacy" custom_components tests docs`
+- `rg "from homeassistant|import homeassistant" custom_components/thessla_green_modbus/scanner`
 
 ## Import gate result
 
-Environment: **Python 3.13.12** (`.venv-py313`). All five required modules import successfully.
+Environment: **Python 3.13.12** (`/tmp/venv313`). All five required modules import successfully.
 
 - `pydantic`: ✅ `OK pydantic: 2.12.2`
 - `pytest`: ✅ `OK pytest: 9.0.0`
@@ -38,21 +36,37 @@ Environment: **Python 3.13.12** (`.venv-py313`). All five required modules impor
 
 - **ruff check**: ✅ pass (`All checks passed!`).
 - **ruff import order check**: ✅ pass (`All checks passed!`).
-- **ruff format --check**: ✅ **0 files drift** (413 files already formatted — improved from 2 files in prior audit).
+- **ruff format --check**: ✅ **0 files drift** (413 files already formatted).
 - **compileall**: ✅ pass.
 - **register compare** (`compare_registers_with_reference.py`): ✅ pass
   (informational: 62 extras; 242 name mismatches on common addresses — unchanged).
 - **maintainability** (`check_maintainability.py`): ✅ pass (`Maintainability gate passed.`).
 - **entity mappings** (`validate_entity_mappings.py`): ✅ pass (`OK: 366 entities validated`).
-- **pytest** (`pytest tests/ -q`): ✅ **1900 passed, 4 skipped**, 84 warnings in 12.13s.
-- **coordinator split check**: ✅ pass (277 passed, 1 warning in 2.01s).
+- **pytest** (`pytest tests/ -q`): ✅ **1915 passed, 4 skipped**, 90 warnings in 12.68s.
 
-### Notable changes since previous audit (2026-05-08 scanner/io_read refactor run)
+### Notable changes since previous audit (2026-05-08 modbus_helpers._encode_read_frame run)
 
-- Full test suite runs on Python 3.13 — all gates green.
-- `modbus_helpers.py` — `_encode_read_frame` extracted from `_build_request_frame`; function reduced from 56 → 42 AST lines; `_READ_FC` dict added.
-- Ruff format drift: **0 files** (down from 2 in previous audit; prior drift in `test_config_flow_helpers.py` and `test_modbus_helpers_call_flow.py` was resolved upstream).
-- pytest count: **1900 passed** (up from 1892; 3 new tests for `_encode_read_frame`, `read_input_registers`, `read_holding_registers` paths).
+**PHASE B — coordinator/schedule.py write-path cleanup:**
+
+- `_encode_write_value` (55-line method) extracted from `_CoordinatorScheduleMixin` into
+  standalone `encode_write_value` function in `coordinator/write_path.py`.
+- `_CoordinatorScheduleMixin` class: **488 → 432 AST lines** (−56).
+- `coordinator/schedule.py` non-empty lines: **468 → 419** (−49).
+- `coordinator/write_path.py` non-empty lines: **63 → 118** (+55).
+- 9 focused unit tests added in `tests/test_coordinator_register_writes.py`.
+- coordinator package `__all__` invariant: `["CoordinatorConfig", "ThesslaGreenModbusCoordinator"]` — unchanged.
+- No top-level `coordinator.py` file created.
+
+**PHASE C — scanner/core.py focused cleanup:**
+
+- Inline batch-clamping logic in `ThesslaGreenDeviceScanner.__init__` extracted into
+  `normalize_effective_batch(max_registers_per_request, *, max_batch)` in `scanner/setup.py`.
+- `ThesslaGreenDeviceScanner.__init__`: **91 → 88 AST lines** (−3 inline lines replaced by 2-line call).
+- `scanner/setup.py` gained 14-line `normalize_effective_batch` function (parallel to existing `normalize_backoff_jitter`).
+- 7 focused unit tests added in `tests/test_device_scanner_setup.py`.
+- Scanner HA-independence invariant: **no Home Assistant imports** detected.
+
+**Test count change:** 1900 → 1909 → 1915 (+15 total from PHASE B + PHASE C).
 
 ### Ruff format drift
 
@@ -82,12 +96,12 @@ All 413 files are already formatted. ✅
 | 714 | `custom_components/thessla_green_modbus/scanner/io_read.py` |
 | 699 | `custom_components/thessla_green_modbus/coordinator/coordinator.py` |
 | 537 | `custom_components/thessla_green_modbus/modbus_helpers.py` |
-| 468 | `custom_components/thessla_green_modbus/coordinator/schedule.py` |
-| 454 | `custom_components/thessla_green_modbus/scanner/core.py` |
+| 451 | `custom_components/thessla_green_modbus/scanner/core.py` |
 | 440 | `tests/test_coordinator.py` |
 | 437 | `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` |
 | 433 | `tests/test_config_flow_helpers.py` |
 | 420 | `tests/test_modbus_helpers_call_flow.py` |
+| 419 | `custom_components/thessla_green_modbus/coordinator/schedule.py` |
 | 417 | `custom_components/thessla_green_modbus/mappings/_static_discrete.py` |
 
 ### Largest classes (AST span, top 10)
@@ -95,8 +109,8 @@ All 413 files are already formatted. ✅
 | Lines | Class | File |
 |------:|-------|------|
 | 611 | `ThesslaGreenModbusCoordinator` | `coordinator/coordinator.py` |
-| 488 | `_CoordinatorScheduleMixin` | `coordinator/schedule.py` |
-| 428 | `ThesslaGreenDeviceScanner` | `scanner/core.py` |
+| 432 | `_CoordinatorScheduleMixin` | `coordinator/schedule.py` (was 488) |
+| 425 | `ThesslaGreenDeviceScanner` | `scanner/core.py` (was 428) |
 | 334 | `RawRtuOverTcpTransport` | `modbus_transport_raw.py` |
 | 268 | `RegisterDef` | `registers/register_def.py` |
 | 251 | `ThesslaGreenFan` | `fan.py` |
@@ -118,13 +132,32 @@ All 413 files are already formatted. ✅
 | 103 | `run` | `tests/test_force_full_register_list_integration.py` |
 | 100 | `test_entity_counts_per_platform` | `tests/test_all_entity_creation.py` |
 | 100 | `read_input_registers_optimized` | `_coordinator_read_batches.py` |
-| 78 | `_call_modbus` | `modbus_helpers.py` |
-| 42 | `_build_request_frame` | `modbus_helpers.py` (was 56) |
+| 91 | `verify_connection` | `scanner/setup.py` |
+
+## PHASE B before/after metrics
+
+| Metric | Before | After |
+|--------|--------|-------|
+| `_CoordinatorScheduleMixin` AST lines | 488 | 432 |
+| `coordinator/schedule.py` non-empty | 468 | 419 |
+| `coordinator/write_path.py` non-empty | 63 | 118 |
+| New test functions | — | +9 |
+| `_encode_write_value` in mixin | yes | **removed** |
+| `encode_write_value` standalone in write_path | no | **added** |
+
+## PHASE C before/after metrics
+
+| Metric | Before | After |
+|--------|--------|-------|
+| `ThesslaGreenDeviceScanner.__init__` AST lines | 91 | 88 |
+| Inline batch-clamp lines in `__init__` | 6 | 2 (delegation) |
+| `normalize_effective_batch` in setup.py | no | **added** (14 lines) |
+| New test functions | — | +7 |
 
 ## Remaining hotspots
 
-1. Coordinator concentration (`coordinator/coordinator.py` 699 lines, `ThesslaGreenModbusCoordinator` 611 lines; `coordinator/schedule.py` 468 lines, `_CoordinatorScheduleMixin` 488 lines).
-2. Scanner read/orchestration complexity (`scanner/io_read.py` 714 lines, `scanner/core.py` 454 lines).
+1. Coordinator concentration (`coordinator/coordinator.py` 699 lines, `ThesslaGreenModbusCoordinator` 611 lines; `coordinator/schedule.py` 419 lines, `_CoordinatorScheduleMixin` 432 lines).
+2. Scanner read/orchestration complexity (`scanner/io_read.py` 714 lines, `scanner/core.py` 451 lines).
 3. Mapping builder density (`mappings/_mapping_builders.py` 437 lines).
 4. Config-flow branching (`config_flow.py` 414 lines).
 5. Ruff format drift: 0 files. ✅

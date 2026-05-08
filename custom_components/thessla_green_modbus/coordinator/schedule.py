@@ -10,7 +10,12 @@ from ..const import MAX_REGS_PER_REQUEST
 from ..modbus_exceptions import ConnectionException, ModbusException
 from ..modbus_helpers import chunk_register_values
 from ..registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
-from .write_path import SingleWritePlan, finalize_write_result, run_single_write_attempts
+from .write_path import (
+    SingleWritePlan,
+    encode_write_value,
+    finalize_write_result,
+    run_single_write_attempts,
+)
 
 if TYPE_CHECKING:
     from ..modbus_transport import BaseModbusTransport
@@ -90,62 +95,6 @@ class _CoordinatorScheduleMixin:
             if not self._write_response_ok(response):
                 return response, False
         return response, True
-
-    def _encode_write_value(
-        self,
-        register_name: str,
-        definition: Any,
-        value: float | str | list[int] | tuple[int, ...],
-        offset: int,
-    ) -> tuple[list[int] | None, Any]:
-        """Encode *value* for writing. Returns (encoded_values, scalar_value).
-
-        For multi-register definitions, returns (list[int], original_value).
-        For single-register definitions, returns (None, int_value).
-        Logs an error and returns (None, None) on validation failure.
-        """
-        if definition.length > 1:
-            if isinstance(value, list | tuple) and not isinstance(value, bytes | bytearray | str):
-                if len(value) + offset > definition.length:
-                    _LOGGER.error(
-                        "Register %s expects at most %d values starting at offset %d",
-                        register_name,
-                        definition.length - offset,
-                        offset,
-                    )
-                    return None, None
-                if offset == 0 and len(value) != definition.length:
-                    _LOGGER.error(
-                        "Register %s requires exactly %d values",
-                        register_name,
-                        definition.length,
-                    )
-                    return None, None
-                try:
-                    return [int(v) for v in value], value
-                except (TypeError, ValueError):
-                    _LOGGER.error("Register %s expects integer values", register_name)
-                    return None, None
-            else:
-                encoded = definition.encode(value)
-                if isinstance(encoded, list):
-                    encoded_values: list[int] = [int(v) for v in encoded]
-                else:
-                    encoded_values = [int(encoded)]
-                if offset >= definition.length:
-                    _LOGGER.error(
-                        "Register %s expects at most %d values starting at offset %d",
-                        register_name,
-                        definition.length - offset,
-                        offset,
-                    )
-                    return None, None
-                return encoded_values[offset:], value
-        else:
-            if isinstance(value, list | tuple) and not isinstance(value, bytes | bytearray | str):
-                _LOGGER.error("Register %s expects a single value", register_name)
-                return None, None
-            return None, int(definition.encode(value))
 
     async def _write_holding_multi(
         self,
@@ -382,7 +331,7 @@ class _CoordinatorScheduleMixin:
                 await self._ensure_connection()
                 self._assert_write_connection_ready()
 
-                encoded_values, scalar_value = self._encode_write_value(
+                encoded_values, scalar_value = encode_write_value(
                     register_name, definition, value, offset
                 )
                 if encoded_values is None and scalar_value is None:
