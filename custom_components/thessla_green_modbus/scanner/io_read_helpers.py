@@ -33,9 +33,7 @@ def build_register_chunks(start: int, count: int, batch_size: int) -> list[tuple
     return iter_grouped_read_chunks(
         start,
         count,
-        lambda chunk_start, chunk_count: chunk_register_range(
-            chunk_start, chunk_count, batch_size
-        ),
+        lambda chunk_start, chunk_count: chunk_register_range(chunk_start, chunk_count, batch_size),
     )
 
 
