@@ -7,13 +7,13 @@ import pytest
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.scanner.io_read import (
-    _build_register_chunks,
     _extend_or_abort_register_results,
     _finalize_register_read_failure,
     _handle_input_attempt_exception,
 )
 from custom_components.thessla_green_modbus.scanner.io_read_helpers import (
     build_read_attempt_meta,
+    build_register_chunks,
     classify_skip_range,
     normalize_bit_read_result,
     should_log_terminal_failure,
@@ -279,9 +279,17 @@ def test_finalize_register_read_failure_holding_non_aborted_marks_and_logs(caplo
 
 def test_build_register_chunks_uses_effective_batch():
     """Chunk construction should respect effective batch size boundaries."""
-    scanner = MagicMock()
-    scanner.effective_batch = 2
-    assert _build_register_chunks(scanner, 10, 5) == [(10, 2), (12, 2), (14, 1)]
+    assert build_register_chunks(10, 5, 2) == [(10, 2), (12, 2), (14, 1)]
+
+
+def test_build_register_chunks_single_chunk_when_count_fits():
+    """Single chunk produced when count does not exceed batch size."""
+    assert build_register_chunks(0, 3, 10) == [(0, 3)]
+
+
+def test_build_register_chunks_exact_multiple():
+    """Produces even chunks when count is an exact multiple of batch size."""
+    assert build_register_chunks(5, 6, 3) == [(5, 3), (8, 3)]
 
 
 def test_extend_or_abort_register_results_handles_none_and_appends():

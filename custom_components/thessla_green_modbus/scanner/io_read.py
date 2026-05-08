@@ -9,7 +9,6 @@ from typing import Any
 from pymodbus.client import AsyncModbusTcpClient
 
 from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from ..modbus_helpers import chunk_register_range
 from ..transport.retry import ErrorKind, classify_transport_error
 from .io_core import (
     _call_modbus_with_fallback,
@@ -25,9 +24,9 @@ from .io_core import (
 from .io_read_helpers import (
     append_read_block,
     build_read_attempt_meta,
+    build_register_chunks,
     build_success_result,
     classify_skip_range,
-    iter_grouped_read_chunks,
     normalize_bit_read_result,
     should_log_terminal_failure,
 )
@@ -91,17 +90,6 @@ def _should_abort_input_exception(exc: Exception) -> bool:
 def _log_read_failure(kind: str, start: int, end: int, retry: int) -> None:
     """Log terminal read failure after retry budget is exhausted."""
     _LOGGER.error("Failed to read %s registers %d-%d after %d retries", kind, start, end, retry)
-
-
-def _build_register_chunks(scanner: Any, start: int, count: int) -> list[tuple[int, int]]:
-    """Build contiguous chunk plan for a register range."""
-    return iter_grouped_read_chunks(
-        start,
-        count,
-        lambda chunk_start, chunk_count: chunk_register_range(
-            chunk_start, chunk_count, scanner.effective_batch
-        ),
-    )
 
 
 def _normalize_bit_read_request(
@@ -489,7 +477,7 @@ async def read_register_block(
 
     results: list[int] = []
     active_client = client or scanner._client
-    for chunk_start, chunk_count in _build_register_chunks(scanner, start, count):
+    for chunk_start, chunk_count in build_register_chunks(start, count, scanner.effective_batch):
         block = await (
             read_fn(chunk_start, chunk_count)
             if active_client is None
