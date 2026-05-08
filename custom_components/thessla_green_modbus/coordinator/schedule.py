@@ -107,25 +107,7 @@ class _CoordinatorScheduleMixin:
         for chunk_start, chunk in chunk_register_values(
             address, encoded_values, self.effective_batch
         ):
-            if self._transport is None and self.client is not None:
-                response = await self.client.write_registers(
-                    address=chunk_start,
-                    values=[int(v) for v in chunk],
-                )
-            elif self._transport is not None:
-                response = await self._transport.write_registers(
-                    self.slave_id,
-                    chunk_start,
-                    values=[int(v) for v in chunk],
-                    attempt=attempt,
-                )
-            else:
-                response = await self._call_modbus(
-                    self._get_client_method("write_registers"),
-                    chunk_start,
-                    values=[int(v) for v in chunk],
-                    attempt=attempt,
-                )
+            response = await self._write_registers_payload(chunk_start, chunk, attempt)
             if response is None or response.isError():
                 return response, False
         return response, True

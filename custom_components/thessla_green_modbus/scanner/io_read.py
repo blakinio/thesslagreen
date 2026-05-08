@@ -27,6 +27,9 @@ from .io_read_helpers import (
     build_register_chunks,
     build_success_result,
     classify_skip_range,
+    log_read_abort,
+    log_read_failure,
+    mark_failed_addresses,
     normalize_bit_read_result,
     should_log_terminal_failure,
 )
@@ -39,23 +42,6 @@ except (ImportError, AttributeError):
 _LOGGER = logging.getLogger(__name__)
 
 
-def _mark_failed_addresses(scanner: Any, register_type: str, start: int, end: int) -> None:
-    """Track read failures for a contiguous address range."""
-    scanner.failed_addresses["modbus_exceptions"][register_type].update(range(start, end + 1))
-
-
-def _log_read_abort(kind: str, start: int, end: int, attempt: int, retry: int) -> None:
-    """Log a transiently aborted read due to timeout/cancellation."""
-    _LOGGER.warning(
-        "Aborted reading %s registers %d-%d after %d/%d attempts due to timeout/cancellation",
-        kind,
-        start,
-        end,
-        attempt,
-        retry,
-    )
-
-
 def _handle_error_response(
     scanner: Any, *, register_type: str, start: int, end: int, code: int | None
 ) -> None:
@@ -66,7 +52,7 @@ def _handle_error_response(
     else:
         scanner._failed_holding.update(range(start, end + 1))
         scanner._mark_holding_unsupported(start, end, code)
-    _mark_failed_addresses(scanner, register_type, start, end)
+    mark_failed_addresses(scanner, register_type, start, end)
 
 
 def _validate_register_response(response: Any) -> tuple[bool, int | None]:
@@ -85,11 +71,6 @@ def _should_abort_input_exception(exc: Exception) -> bool:
             exc
         ).kind is ErrorKind.CANCELLED or is_request_cancelled_error(exc)
     return isinstance(exc, (TimeoutError, OSError))
-
-
-def _log_read_failure(kind: str, start: int, end: int, retry: int) -> None:
-    """Log terminal read failure after retry budget is exhausted."""
-    _LOGGER.error("Failed to read %s registers %d-%d after %d retries", kind, start, end, retry)
 
 
 def _normalize_bit_read_request(
@@ -213,7 +194,7 @@ def _process_register_response(
 
 def _handle_terminal_read_failure(scanner: Any, register_type: str, start: int, end: int) -> None:
     """Mark all addresses in a terminally failed read range."""
-    _mark_failed_addresses(scanner, register_type, start, end)
+    mark_failed_addresses(scanner, register_type, start, end)
 
 
 def _finalize_register_read_failure(
@@ -229,12 +210,12 @@ def _finalize_register_read_failure(
     """Finalize shared failure state/logging for input/holding read loops."""
     kind = "input" if register_type == "input_registers" else "holding"
     if aborted_transiently:
-        _log_read_abort(kind, start, end, attempted_reads, retry)
+        log_read_abort(kind, start, end, attempted_reads, retry)
         if should_log_terminal_failure(register_type, aborted_transiently):
-            _log_read_failure(kind, start, end, retry)
+            log_read_failure(kind, start, end, retry)
         return
 
-    _log_read_failure(kind, start, end, retry)
+    log_read_failure(kind, start, end, retry)
     _handle_terminal_read_failure(scanner, register_type, start, end)
 
 

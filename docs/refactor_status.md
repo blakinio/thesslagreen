@@ -1,5 +1,8 @@
 # Refactor status (current)
 
+Last reviewed: 2026-05-08 (Python 3.12 full-pass + coordinator config_properties mixin + scanner io_read_helpers + schedule._write_holding_multi refactor).
+Last reviewed: 2026-05-08 (Python 3.13 full-pass + config_flow bound-adapter extraction + coordinator test split).
+Last reviewed: 2026-05-08 (Python 3.13 full-pass + config_flow_runtime load_scanner_module + coordinator backoff jitter test split).
 Last reviewed: 2026-05-08 (Python 3.13 cleanup run — stale/duplicate sections removed)
 
 Related document: `docs/maintainability_audit.md`
@@ -60,8 +63,46 @@ The following constraints remain active and must be preserved:
 - `hassfest`: not executed (runs as GitHub Action only; not a PyPI package).
 - `HACS`: not executed (runs as GitHub Action only; not a PyPI package).
 
+## Notable since previous snapshot (2026-05-08 config_properties/io_read/schedule pass — Python 3.12)
+
+- Full test suite validated on Python 3.12.3 — **1938 passed, 4 skipped**, 90 warnings.
+- Ruff format drift: **0 files** (419 files) ✅.
+- **PHASE B** — `_CoordinatorConfigPropertiesMixin` extracted from `ThesslaGreenModbusCoordinator`. Nine config-backed property pairs (host, port, slave_id, connection_type, connection_mode, serial_port, baud_rate, parity, stop_bits) moved to `coordinator/config_properties.py`. `coordinator.py` non-empty: 666 → 605 (−61). No public API change.
+- **PHASE C** — `mark_failed_addresses`, `log_read_abort`, `log_read_failure` promoted from private helpers in `scanner/io_read.py` to public exports in `scanner/io_read_helpers.py`. `scanner/io_read.py` non-empty: 714 → 701 (−13).
+- **PHASE E** — `_write_holding_multi` in `coordinator/schedule.py` refactored to use `_write_registers_payload` instead of duplicating the three-branch transport selection. `schedule.py` non-empty: 419 → 401 (−18).
+- PHASE D (mappings): skipped — no safe focused extraction identified; 366 entity invariant preserved.
+- PHASE F (test cleanup): skipped — coordinator tests already well-split across 9 files.
+
+## Required gate status snapshot (2026-05-08 config_properties/io_read/schedule pass)
+
+- `ruff check custom_components tests tools`: **pass** ✅.
+- `ruff check --select I custom_components tests tools`: **pass** ✅.
+- `ruff format --check custom_components tests tools`: **0 files drift** (419 formatted) ✅.
+- `python3.12 -m compileall -q custom_components/thessla_green_modbus tests tools`: **pass** ✅.
+- `python3.12 tools/compare_registers_with_reference.py`: **pass** (informational: 62 extras, 242 name mismatches) ✅.
+- `python3.12 tools/check_maintainability.py`: **pass** (`Maintainability gate passed.`) ✅.
+- `python3.12 tools/validate_entity_mappings.py`: **pass** (`OK: 366 entities validated`) ✅.
+- `python3.12 -m pytest tests/ -q`: **pass** — **1938 passed, 4 skipped**, 90 warnings ✅.
+- Import gate (all 5 required modules): **pass** on Python 3.12.3.
+- HA-independence invariant (`scanner/` has no HA imports): **pass** ✅.
+- Coordinator package API invariant (`__all__ == ["CoordinatorConfig", "ThesslaGreenModbusCoordinator"]`): **pass** ✅.
+- Path invariant (no top-level `coordinator.py`): **pass** ✅.
+
 ## Remaining hotspots (current queue)
 
+1. Coordinator size/branching (`coordinator/coordinator.py` 605 lines; `coordinator/schedule.py` 401 lines).
+2. Scanner read/orchestration complexity (`scanner/io_read.py` 701 lines, `scanner/core.py` 451 lines).
+3. Mapping build complexity (`mappings/_mapping_builders.py` 437 lines).
+4. Config-flow branching (`config_flow.py` ~407 lines).
+5. Ruff format drift: 0 files ✅.
+
+## Previous remaining hotspots
+
+1. Coordinator size/branching (`coordinator/coordinator.py` 666 lines, `coordinator/schedule.py` 419 lines).
+2. Scanner read/orchestration complexity (`scanner/io_read.py` 714 lines, `scanner/core.py` 451 lines).
+3. Mapping build complexity (`mappings/_mapping_builders.py` 437 lines).
+4. Config-flow branching (`config_flow.py` 394 lines; reduced from 414).
+4. Config-flow branching (`config_flow.py` 407 lines).
 1. Coordinator size/branching: `coordinator/coordinator.py` 666 lines; `coordinator/schedule.py` 419 lines.
 2. Scanner read/orchestration complexity: `scanner/io_read.py` 714 lines; `scanner/core.py` 451 lines.
 3. Mapping build complexity: `mappings/_mapping_builders.py` 437 lines.
@@ -81,5 +122,7 @@ The following constraints remain active and must be preserved:
 
 ## Dependabot note
 
+- PR #1567 was **not touched** in any session.
+- Pydantic version was **not changed**. `requirements-dev.txt` still pins `pydantic==2.12.2`.
 - PR #1567 was **not touched** in this session.
 - Pydantic version was **not changed**. `requirements-dev.txt` still pins `pydantic==2.12.2`. Project pin confirmed unchanged.
