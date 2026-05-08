@@ -39,6 +39,22 @@ from .register_map_runtime import async_ensure_register_maps, initial_register_h
 _LOGGER = logging.getLogger(__name__)
 
 
+def normalize_effective_batch(
+    max_registers_per_request: Any,
+    *,
+    max_batch: int,
+) -> int:
+    """Clamp *max_registers_per_request* to the valid [1, max_batch] range.
+
+    Returns *max_batch* when the value cannot be converted to an integer.
+    """
+    try:
+        effective = min(int(max_registers_per_request), max_batch)
+    except (TypeError, ValueError):
+        effective = max_batch
+    return max(1, effective)
+
+
 def normalize_backoff_jitter(
     backoff_jitter: float | tuple[float, float] | list[float] | str | None,
 ) -> float | tuple[float, float] | None:

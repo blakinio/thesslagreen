@@ -81,7 +81,6 @@ from ..coordinator_state import (
 from ..coordinator_state import normalize_serial_settings as _normalize_serial_settings_impl
 from ..coordinator_state import resolve_effective_batch as _resolve_effective_batch_impl
 from ..errors import CannotConnect
-from ..modbus_exceptions import ConnectionException
 from ..modbus_helpers import group_reads
 from ..modbus_transport import (
     BaseModbusTransport,
@@ -442,40 +441,6 @@ class ThesslaGreenModbusCoordinator(
 
         _missing_method.__name__ = name
         return _missing_method
-
-    async def _read_coils_transport(
-        self,
-        _slave_id: int,
-        address: int,
-        *,
-        count: int,
-        attempt: int = 1,
-    ) -> Any:
-        if not self.client:
-            raise ConnectionException("Modbus client is not connected")
-        return await self._call_modbus(
-            self.client.read_coils,
-            address,
-            count=count,
-            attempt=attempt,
-        )
-
-    async def _read_discrete_inputs_transport(
-        self,
-        _slave_id: int,
-        address: int,
-        *,
-        count: int,
-        attempt: int = 1,
-    ) -> Any:
-        if not self.client:
-            raise ConnectionException("Modbus client is not connected")
-        return await self._call_modbus(
-            self.client.read_discrete_inputs,
-            address,
-            count=count,
-            attempt=attempt,
-        )
 
     def _build_scanner_kwargs(self) -> dict[str, Any]:
         """Return constructor kwargs shared by all scanner creation paths."""

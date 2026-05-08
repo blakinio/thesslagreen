@@ -7,6 +7,7 @@ from typing import Any
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
 from ._static_discrete_diagnostics import DIAGNOSTIC_BINARY_SENSOR_ENTITY_MAPPINGS
+from ._static_discrete_uart import UART_SELECT_ENTITY_MAPPINGS
 
 
 def _select_payload(icon: str, translation_key: str, states: dict[str, int]) -> dict[str, Any]:
@@ -115,62 +116,6 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "states": {"pl": 0, "en": 1, "ru": 2, "uk": 3, "sk": 4},
         "register_type": "holding_registers",
     },
-    "uart_0_baud": {
-        "icon": "mdi:serial-port",
-        "translation_key": "uart_0_baud",
-        "states": {
-            "baud_4800": 0,
-            "baud_9600": 1,
-            "baud_14400": 2,
-            "baud_19200": 3,
-            "baud_28800": 4,
-            "baud_38400": 5,
-            "baud_57600": 6,
-            "baud_76800": 7,
-            "baud_115200": 8,
-        },
-        "register_type": "holding_registers",
-    },
-    "uart_0_parity": {
-        "icon": "mdi:serial-port",
-        "translation_key": "uart_0_parity",
-        "states": {"none": 0, "even": 1, "odd": 2},
-        "register_type": "holding_registers",
-    },
-    "uart_0_stop": {
-        "icon": "mdi:serial-port",
-        "translation_key": "uart_0_stop",
-        "states": {"one": 0, "two": 1},
-        "register_type": "holding_registers",
-    },
-    "uart_1_baud": {
-        "icon": "mdi:serial-port",
-        "translation_key": "uart_1_baud",
-        "states": {
-            "baud_4800": 0,
-            "baud_9600": 1,
-            "baud_14400": 2,
-            "baud_19200": 3,
-            "baud_28800": 4,
-            "baud_38400": 5,
-            "baud_57600": 6,
-            "baud_76800": 7,
-            "baud_115200": 8,
-        },
-        "register_type": "holding_registers",
-    },
-    "uart_1_parity": {
-        "icon": "mdi:serial-port",
-        "translation_key": "uart_1_parity",
-        "states": {"none": 0, "even": 1, "odd": 2},
-        "register_type": "holding_registers",
-    },
-    "uart_1_stop": {
-        "icon": "mdi:serial-port",
-        "translation_key": "uart_1_stop",
-        "states": {"one": 0, "two": 1},
-        "register_type": "holding_registers",
-    },
     # ERV (secondary heater) operating mode — 3 fixed options
     "cfg_post_heater_mode": {
         "icon": "mdi:radiator",
@@ -178,6 +123,7 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "states": {"off": 0, "mode_1": 1, "mode_2": 2},
         "register_type": "holding_registers",
     },
+    **UART_SELECT_ENTITY_MAPPINGS,
 }
 
 BINARY_SENSOR_BASE_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {

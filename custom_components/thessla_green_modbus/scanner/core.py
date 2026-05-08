@@ -148,12 +148,9 @@ class ThesslaGreenDeviceScanner(
         self.deep_scan = deep_scan
         self.full_register_scan = full_register_scan
         self.safe_scan = safe_scan
-        try:
-            self.effective_batch = min(int(max_registers_per_request), MAX_BATCH_REGISTERS)
-        except (TypeError, ValueError):
-            self.effective_batch = MAX_BATCH_REGISTERS
-        if self.effective_batch < 1:
-            self.effective_batch = 1
+        self.effective_batch = scanner_setup.normalize_effective_batch(
+            max_registers_per_request, max_batch=MAX_BATCH_REGISTERS
+        )
         self.max_registers_per_request = self.effective_batch
 
         (
