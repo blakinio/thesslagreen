@@ -1,6 +1,6 @@
 # Maintainability audit
 
-Date: 2026-05-08 (final cleanup release PR — phases A–G).
+Date: 2026-05-08 (final cleanup release PR — phases A, B, E + docs).
 
 ## Commands covered by latest successful validation
 
@@ -42,73 +42,77 @@ OK homeassistant: installed
 
 - Python 3.13.12 interpreter used.
 - All gates passed at baseline.
-- Baseline pytest: 1938 passed, 4 skipped.
+- Baseline pytest: **1948 passed, 4 skipped**.
 - Result: **kept**.
 
 ### PHASE B — scanner/io_read.py final focused cleanup
 
 Files touched: `scanner/io_read.py`, `tests/test_scanner_io.py`.
 
-Extraction: `_handle_register_error_response` pulled out of `_process_register_response`.
-- `_process_register_response` reduced: 60 → 41 lines.
-- New `_handle_register_error_response`: 42 lines (pure, testable error-branch classifier).
-- 4 new focused tests added in `test_scanner_io.py`.
-- HA-independence invariant preserved.
-- Targeted tests: 89 passed.
-- Full gates after phase: **1942 passed, 4 skipped**.
-- Result: **kept**.
-
-### PHASE C — coordinator/coordinator.py final focused cleanup
-
-Files touched: `_coordinator_init.py`, `coordinator/coordinator.py`.
-
-Extraction: `apply_coordinator_config` added to `_coordinator_init.py`.
-- `ThesslaGreenModbusCoordinator.__init__` reduced: 61 → 47 lines.
-- New `apply_coordinator_config`: 31 lines (assigns normalized config attrs to fresh instance).
-- Coordinator package API invariant preserved: `__all__ == ["CoordinatorConfig", "ThesslaGreenModbusCoordinator"]`.
-- Top-level `coordinator.py` remains absent.
-- Targeted tests: 307 passed.
-- Full gates after phase: **1942 passed, 4 skipped**.
-- Result: **kept**.
-
-### PHASE D — mappings/_mapping_builders.py final focused cleanup
-
-Files touched: `mappings/_mapping_builders.py`.
-
-Extraction: `_route_holding_register_to_mapping` pulled from the per-register dispatch loop in `_extend_entity_mappings_from_registers`.
-- `_extend_entity_mappings_from_registers` reduced: 83 → 59 lines.
-- New `_route_holding_register_to_mapping`: 49 lines (routes one holding register to its bucket).
-- Entity count stable: 366 entities validated.
-- Targeted tests: 284 passed, 3 skipped.
-- Full gates after phase: **1942 passed, 4 skipped**.
-- Result: **kept**.
-
-### PHASE E — scanner/core.py final focused cleanup
-
-Files touched: `scanner/selection.py`, `tests/test_scanner_safe_scan.py`.
-
-Extraction: `_split_groups_around_missing` pulled from `group_registers_for_batch_read` in `scanner/selection.py`.
-- `group_registers_for_batch_read` reduced: 37 → 26 lines.
-- New `_split_groups_around_missing`: 17 lines (pure function, no scanner dependency).
-- 6 new focused unit tests added in `test_scanner_safe_scan.py`.
+Extractions and inlines:
+1. Extracted `_run_word_read_single_attempt` from `_run_word_read_retry_loop`.
+   - `_run_word_read_retry_loop`: 87 → 56 lines (36% reduction).
+   - New `_run_word_read_single_attempt`: 70 lines (try/except attempt body).
+2. Inlined 3 thin wrapper functions to maintain file within 820-line limit:
+   - `_validate_register_response` (7 lines) → inlined into `_process_register_response`.
+   - `_handle_terminal_read_failure` (3 lines) → inlined at 3 call sites (now direct `mark_failed_addresses`).
+   - `_extend_or_abort_register_results` (8 lines) → inlined into `read_register_block` (now direct `append_read_block`).
+3. Test updated: `test_extend_or_abort_register_results_handles_none_and_appends` renamed to
+   `test_append_read_block_handles_none_and_appends` and updated to use `append_read_block` directly.
+- `io_read.py` file: 797 → 813 lines (within 820-line strict limit).
 - HA-independence invariant preserved.
 - Targeted tests: 198 passed.
 - Full gates after phase: **1948 passed, 4 skipped**.
 - Result: **kept**.
 
-### PHASE F — release-readiness validation/audit
+### PHASE C — scanner/core.py final split
 
-- manifest.json: domain `thessla_green_modbus`, version `2.8.0`, homeassistant `2026.1.0`, integration_type `hub`.
-- pyproject.toml: version `2.8.0`, requires-python `>=3.13`.
+- Assessment: `scanner/core.py` is 478/760 line limit; `__init__` (68 lines) and `create` (52 lines)
+  are both within the 210-line function limit.
+- Both functions are already fully delegated minimal wrappers; apparent length is dominated by
+  necessary parameter lists, not extractable logic.
+- Result: **SKIPPED** — no meaningful extraction exists within safe bounds.
+
+### PHASE D — coordinator/coordinator.py final split
+
+- Assessment: `coordinator/coordinator.py` is 675/1200 line limit; `from_params` (54 lines) and
+  `__init__` (47 lines) are both well under the 220-line function limit.
+- Both functions are already fully delegated minimal wrappers; same pattern as scanner/core.py.
+- Result: **SKIPPED** — no meaningful extraction exists within safe bounds.
+
+### PHASE E — coordinator/schedule.py final split
+
+Files touched: `coordinator/schedule.py`.
+
+Extraction: `_locked_single_register_write` pulled from `async_write_register`.
+- `async_write_register`: 49 → 30 lines (39% reduction).
+- New `_locked_single_register_write`: 31 lines (prepare definition, encode, build plan, run attempts).
+- `schedule.py` file: 420 → 433 lines (well within 1300-line default limit).
+- Coordinator package API invariant preserved: `__all__ == ["CoordinatorConfig", "ThesslaGreenModbusCoordinator"]`.
+- Top-level `coordinator.py` remains absent.
+- Targeted tests: 303 passed.
+- Full gates after phase: **1948 passed, 4 skipped**.
+- Result: **kept**.
+
+### PHASE F — config_flow.py final cleanup
+
+- Assessment: `config_flow.py` is 467/1000 line limit; max function `validate_input` at 36 lines
+  (limit 220). All functions within all maintainability limits.
+- Result: **SKIPPED** — optional phase; all functions within limits; diff manageable without it.
+
+### PHASE G — release-readiness audit
+
+- manifest.json: domain `thessla_green_modbus`, version `2.8.0`, homeassistant `2026.1.0`,
+  integration_type `hub`. Status: **present and consistent**.
+- pyproject.toml: version `2.8.0`, requires-python `>=3.13`. Status: **consistent with manifest**.
 - hacs.json: present — name "ThesslaGreen Modbus", content_in_root: false, render_readme: true.
-- **hassfest**: not available as installable CLI in this environment — **not proven locally**.
-- **HACS CLI**: not available as installable CLI in this environment — **not proven locally**.
-- CI (`ci.yaml`) installs `hacs` pip package during test runs; HACS/hassfest gates run via GitHub Actions.
+- **hassfest**: not available as installable CLI — **not proven locally**. CI runs it via GitHub Actions.
+- **HACS CLI**: not available as installable CLI — **not proven locally**. CI runs it via GitHub Actions.
 - Real-device validation: **not proven**.
 - Release notes/tag/changelog: **not finalized**.
-- Result: documented; no CI change made (hassfest/hacs not locally available).
+- Result: documented; no CI change made.
 
-### PHASE G — docs/status refresh
+### PHASE H — docs/status refresh
 
 - `docs/maintainability_audit.md`: refreshed with current state (this file).
 - `docs/refactor_status.md`: refreshed.
@@ -122,32 +126,28 @@ Extraction: `_split_groups_around_missing` pulled from `group_registers_for_batc
 - Coordinator package API invariant: `__all__ == ["CoordinatorConfig", "ThesslaGreenModbusCoordinator"]`.
 - Entity mapping invariant: **366 entities**.
 
-## Before / after metrics
+## Before / after metrics (this PR)
 
-| File | Before this PR | After this PR |
-|---|---:|---:|
-| `scanner/io_read.py` (non-empty lines) | 690 | **713** (+23 from new helper) |
-| `scanner/io_read.py::_process_register_response` | 60 lines | **41 lines** |
-| `coordinator/coordinator.py` (non-empty lines) | 606 | **596** |
-| `coordinator/coordinator.py::__init__` | 61 lines | **47 lines** |
-| `mappings/_mapping_builders.py` (non-empty lines) | 441 | **466** (+25 from new helper) |
-| `mappings/_mapping_builders.py::_extend_entity_mappings_from_registers` | 83 lines | **59 lines** |
-| `scanner/selection.py::group_registers_for_batch_read` | 37 lines | **26 lines** |
-| `_coordinator_init.py` | 63 non-empty lines | **86 non-empty lines** (+23 from helper) |
+| File | Before (lines) | After (lines) | Notes |
+|---|---:|---:|---|
+| `scanner/io_read.py` (total) | 797 | **813** | +16 net |
+| `scanner/io_read.py::_run_word_read_retry_loop` | 87 lines | **56 lines** | 36% reduction |
+| `coordinator/schedule.py` (total) | 420 | **433** | +13 net |
+| `coordinator/schedule.py::async_write_register` | 49 lines | **30 lines** | 39% reduction |
 
 ## Remaining hotspots
 
-1. `scanner/io_read.py` — `_run_word_read_retry_loop` (87 lines) and `read_bit_registers` (64 lines) remain.
-2. `scanner/core.py` — `__init__` (68 lines) and `create` (52 lines) are parameter-list-heavy wrappers.
-3. `coordinator/coordinator.py` — `from_params` (54 lines) is a long-signature pass-through.
-4. `coordinator/schedule.py` — `async_write_register` (49 lines) and `_handle_write_attempt_exception` (45 lines).
-5. Config-flow branching (`config_flow.py`) — not touched in this cycle.
+1. `scanner/io_read.py` — `_run_word_read_single_attempt` (70 lines, new), `read_bit_registers` (64 lines).
+2. `scanner/core.py` — `__init__` (68 lines), `create` (52 lines) — long parameter lists, already minimal.
+3. `coordinator/coordinator.py` — `from_params` (54 lines) — long parameter list pass-through.
+4. `coordinator/schedule.py` — `_handle_write_attempt_exception` (45 lines).
+5. Config-flow branching: `config_flow.py` — all within limits.
 
 ## Release-readiness status
 
 | Item | Status |
 |---|---|
-| manifest.json | present, version 2.8.0 |
+| manifest.json | present, version 2.8.0, consistent |
 | hacs.json | present |
 | HACS validation | **not proven** (CLI unavailable locally; CI runs it) |
 | hassfest validation | **not proven** (CLI unavailable locally; CI runs it) |

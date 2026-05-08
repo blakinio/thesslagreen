@@ -12,12 +12,12 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.scanner.io_read import (
     _attempt_bit_reconnect,
-    _extend_or_abort_register_results,
     _finalize_register_read_failure,
     _handle_input_attempt_exception,
     _handle_register_error_response,
 )
 from custom_components.thessla_green_modbus.scanner.io_read_helpers import (
+    append_read_block,
     build_read_attempt_meta,
     build_register_chunks,
     classify_skip_range,
@@ -298,16 +298,14 @@ def test_build_register_chunks_exact_multiple():
     assert build_register_chunks(5, 6, 3) == [(5, 3), (8, 3)]
 
 
-def test_extend_or_abort_register_results_handles_none_and_appends():
-    """Result helper should abort on None and append successful blocks."""
+def test_append_read_block_handles_none_and_appends():
+    """append_read_block should return False on None block and append successful blocks."""
     results = [1]
-    can_continue, payload = _extend_or_abort_register_results(results, None)
-    assert (can_continue, payload) == (False, None)
+    assert append_read_block(results, None) is False
     assert results == [1]
 
-    can_continue, payload = _extend_or_abort_register_results(results, [2, 3])
-    assert can_continue is True
-    assert payload == [1, 2, 3]
+    assert append_read_block(results, [2, 3]) is True
+    assert results == [1, 2, 3]
 
 
 def test_build_read_attempt_meta_sets_expected_range():
