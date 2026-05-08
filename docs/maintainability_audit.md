@@ -1,30 +1,28 @@
 # Maintainability audit
 
-Date: 2026-05-08 (Python 3.13 full-pass + modbus_helpers._encode_read_frame refactor)
+Date: 2026-05-08 (Python 3.13 full-pass + coordinator io mixin + UART select extraction)
 
 ## Commands executed (exact)
 
 - `git branch --show-current`
 - `git status --short`
-- `uv pip install -r requirements-dev.txt` (Python 3.13 venv)
+- `uv venv .venv --python 3.13 && uv pip install -r requirements-dev.txt` (Python 3.13 venv)
 - Import gate script:
   - `python - <<'PY' ... __import__(...) ... PY`
 - `ruff check custom_components tests tools`
 - `ruff check --select I custom_components tests tools`
-- `ruff format --check custom_components tests tools || true`
+- `ruff format --check custom_components tests tools`
 - `python -m compileall -q custom_components/thessla_green_modbus tests tools`
 - `python tools/compare_registers_with_reference.py`
 - `python tools/check_maintainability.py`
 - `python tools/validate_entity_mappings.py`
 - `pytest tests/ -q`
 - AST metrics script (largest files/classes/functions snapshot)
-- `find custom_components/thessla_green_modbus -maxdepth 2 -name "coordinator.py" -print`
-- `rg "from homeassistant|import homeassistant" core/ transport/ registers/ scanner/`
-- `rg "compat|shim|proxy|re-export|legacy" custom_components tests docs`
+- Coordinator split check: `pytest -q tests/test_coordinator_error_paths_split.py tests/test_coordinator.py tests/test_coordinator_*.py`
 
 ## Import gate result
 
-Environment: **Python 3.13.12** (`.venv-py313`). All five required modules import successfully.
+Environment: **Python 3.13.12** (`.venv` via uv). All five required modules import successfully.
 
 - `pydantic`: ✅ `OK pydantic: 2.12.2`
 - `pytest`: ✅ `OK pytest: 9.0.0`
@@ -38,27 +36,35 @@ Environment: **Python 3.13.12** (`.venv-py313`). All five required modules impor
 
 - **ruff check**: ✅ pass (`All checks passed!`).
 - **ruff import order check**: ✅ pass (`All checks passed!`).
-- **ruff format --check**: ✅ **0 files drift** (413 files already formatted — improved from 2 files in prior audit).
+- **ruff format --check**: ✅ **0 files drift** (414 files already formatted).
 - **compileall**: ✅ pass.
 - **register compare** (`compare_registers_with_reference.py`): ✅ pass
   (informational: 62 extras; 242 name mismatches on common addresses — unchanged).
 - **maintainability** (`check_maintainability.py`): ✅ pass (`Maintainability gate passed.`).
 - **entity mappings** (`validate_entity_mappings.py`): ✅ pass (`OK: 366 entities validated`).
-- **pytest** (`pytest tests/ -q`): ✅ **1900 passed, 4 skipped**, 84 warnings in 12.13s.
-- **coordinator split check**: ✅ pass (277 passed, 1 warning in 2.01s).
+- **pytest** (`pytest tests/ -q`): ✅ **1900 passed, 4 skipped**, 84 warnings in ~12s.
+- **coordinator split check**: ✅ pass (277 passed, 1 warning in 2.10s).
 
-### Notable changes since previous audit (2026-05-08 scanner/io_read refactor run)
+### Notable changes since previous audit (2026-05-08 modbus_helpers._encode_read_frame run)
 
-- Full test suite runs on Python 3.13 — all gates green.
-- `modbus_helpers.py` — `_encode_read_frame` extracted from `_build_request_frame`; function reduced from 56 → 42 AST lines; `_READ_FC` dict added.
-- Ruff format drift: **0 files** (down from 2 in previous audit; prior drift in `test_config_flow_helpers.py` and `test_modbus_helpers_call_flow.py` was resolved upstream).
-- pytest count: **1900 passed** (up from 1892; 3 new tests for `_encode_read_frame`, `read_input_registers`, `read_holding_registers` paths).
+- PHASE B: Extracted `_read_coils_transport` and `_read_discrete_inputs_transport` from
+  `coordinator/coordinator.py` into `_ModbusIOMixin` in `coordinator/io.py`. These methods
+  were already declared as abstract stubs in the mixin — now they are concrete implementations.
+  `ConnectionException` import removed from `coordinator.py`; added to `io.py`.
+  `coordinator.py` reduced from **699 → 666** non-empty lines.
+  `ThesslaGreenModbusCoordinator` reduced from **611 → 577** AST lines.
+- PHASE C: Extracted 6 UART/serial-port select mappings (`uart_0_baud`, `uart_0_parity`,
+  `uart_0_stop`, `uart_1_baud`, `uart_1_parity`, `uart_1_stop`) from `_static_discrete.py`
+  into new `_static_discrete_uart.py`. Pattern follows existing `_static_discrete_diagnostics.py`.
+  `_static_discrete.py` reduced from **417 → ~363** non-empty lines.
+  `SELECT_ENTITY_MAPPINGS` composed via `{..., **UART_SELECT_ENTITY_MAPPINGS}`.
+  Entity count unchanged: **366**.
 
 ### Ruff format drift
 
 `ruff format --check custom_components tests tools` reports **0 files would be reformatted**.
 
-All 413 files are already formatted. ✅
+All 414 files are already formatted. ✅
 
 ### Required CI gate status note
 
@@ -73,14 +79,53 @@ All 413 files are already formatted. ✅
 - `compat|shim|proxy|re-export|legacy` grep returns only informational matches
   in docs/tests/comments and known compatibility-reference strings.
 
-## Largest files/classes/functions (current — 2026-05-08 refresh)
+## PHASE B summary
+
+**Extraction: `_read_coils_transport` and `_read_discrete_inputs_transport` → `coordinator/io.py`**
+
+Before:
+- `coordinator/coordinator.py` non-empty: **699** lines
+- `ThesslaGreenModbusCoordinator` AST span: **611** lines
+- Methods were implemented in `coordinator.py`; `io.py` had abstract stubs
+
+After:
+- `coordinator/coordinator.py` non-empty: **666** lines (−33)
+- `ThesslaGreenModbusCoordinator` AST span: **577** lines (−34)
+- Implementations moved to `_ModbusIOMixin` in `coordinator/io.py`; stubs replaced with code
+- `ConnectionException` import removed from `coordinator.py`; added to `io.py`
+
+API invariant confirmed: `sorted(__all__) == ["CoordinatorConfig", "ThesslaGreenModbusCoordinator"]` ✅
+
+Path invariant confirmed: no `coordinator.py` at package root ✅
+
+Targeted test result: **293 passed**, 1 warning ✅
+
+## PHASE C summary
+
+**Extraction: UART select mappings → `mappings/_static_discrete_uart.py`**
+
+Before:
+- `_static_discrete.py` non-empty: **417** lines
+- 6 UART/serial-port entries inline in `SELECT_ENTITY_MAPPINGS`
+
+After:
+- `_static_discrete.py` non-empty: **~363** lines (−54)
+- New `_static_discrete_uart.py` created with `UART_SELECT_ENTITY_MAPPINGS`
+- `SELECT_ENTITY_MAPPINGS` composed via `{..., **UART_SELECT_ENTITY_MAPPINGS}`
+- Pattern mirrors existing `_static_discrete_diagnostics.py` extraction
+
+Entity count unchanged: **366** ✅
+
+Targeted mapping test result: **284 passed**, 3 skipped ✅
+
+## Largest files/classes/functions (current — 2026-05-08 Phase B+C refresh)
 
 ### Largest files (non-empty lines, top 10)
 
 | Lines | Path |
 |------:|------|
 | 714 | `custom_components/thessla_green_modbus/scanner/io_read.py` |
-| 699 | `custom_components/thessla_green_modbus/coordinator/coordinator.py` |
+| 666 | `custom_components/thessla_green_modbus/coordinator/coordinator.py` |
 | 537 | `custom_components/thessla_green_modbus/modbus_helpers.py` |
 | 468 | `custom_components/thessla_green_modbus/coordinator/schedule.py` |
 | 454 | `custom_components/thessla_green_modbus/scanner/core.py` |
@@ -88,13 +133,13 @@ All 413 files are already formatted. ✅
 | 437 | `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` |
 | 433 | `tests/test_config_flow_helpers.py` |
 | 420 | `tests/test_modbus_helpers_call_flow.py` |
-| 417 | `custom_components/thessla_green_modbus/mappings/_static_discrete.py` |
+| 414 | `custom_components/thessla_green_modbus/config_flow.py` |
 
 ### Largest classes (AST span, top 10)
 
 | Lines | Class | File |
 |------:|-------|------|
-| 611 | `ThesslaGreenModbusCoordinator` | `coordinator/coordinator.py` |
+| 577 | `ThesslaGreenModbusCoordinator` | `coordinator/coordinator.py` |
 | 488 | `_CoordinatorScheduleMixin` | `coordinator/schedule.py` |
 | 428 | `ThesslaGreenDeviceScanner` | `scanner/core.py` |
 | 334 | `RawRtuOverTcpTransport` | `modbus_transport_raw.py` |
@@ -105,7 +150,7 @@ All 413 files are already formatted. ✅
 | 204 | `ConfigFlow` | `config_flow.py` |
 | 183 | `ThesslaGreenClimate` | `climate.py` |
 
-### Largest functions (AST span, top 10)
+### Largest functions (AST span, top 15)
 
 | Lines | Function | File |
 |------:|----------|------|
@@ -118,12 +163,16 @@ All 413 files are already formatted. ✅
 | 103 | `run` | `tests/test_force_full_register_list_integration.py` |
 | 100 | `test_entity_counts_per_platform` | `tests/test_all_entity_creation.py` |
 | 100 | `read_input_registers_optimized` | `_coordinator_read_batches.py` |
+| 98 | `async_setup_entry` | `sensor.py` |
+| 92 | `run_full_scan` | `scanner/orchestration.py` |
+| 91 | `__init__` | `scanner/core.py` |
+| 89 | `validate` | `tools/validate_registers.py` |
+| 86 | `_install_homeassistant_stubs` | `tools/validate_dashboard_entities.py` |
 | 78 | `_call_modbus` | `modbus_helpers.py` |
-| 42 | `_build_request_frame` | `modbus_helpers.py` (was 56) |
 
 ## Remaining hotspots
 
-1. Coordinator concentration (`coordinator/coordinator.py` 699 lines, `ThesslaGreenModbusCoordinator` 611 lines; `coordinator/schedule.py` 468 lines, `_CoordinatorScheduleMixin` 488 lines).
+1. Coordinator concentration (`coordinator/coordinator.py` 666 lines, `ThesslaGreenModbusCoordinator` 577 lines; `coordinator/schedule.py` 468 lines, `_CoordinatorScheduleMixin` 488 lines).
 2. Scanner read/orchestration complexity (`scanner/io_read.py` 714 lines, `scanner/core.py` 454 lines).
 3. Mapping builder density (`mappings/_mapping_builders.py` 437 lines).
 4. Config-flow branching (`config_flow.py` 414 lines).
