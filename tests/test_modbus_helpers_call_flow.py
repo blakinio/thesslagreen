@@ -33,7 +33,9 @@ from custom_components.thessla_green_modbus.modbus_helpers import (
     _calculate_batch_size,
     _call_modbus,
     _classify_modbus_exception,
+    _log_call_attempt,
     _prepare_modbus_call,
+    _PreparedCall,
     _raise_mapped_call_exception,
     async_close_client,
     group_reads,
@@ -541,3 +543,53 @@ async def test_call_modbus_response_encode_error_logged(caplog):
         result = await _call_modbus(bad_func, 1)
     assert isinstance(result, BadResponse)
     assert any("Failed to encode" in r.message for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# _log_call_attempt — direct tests
+# ---------------------------------------------------------------------------
+
+
+def _make_prepared(
+    func_name: str = "read_registers",
+    batch_size: int = 4,
+    positional: list | None = None,
+    kwarg: str = "slave",
+    delay: float = 0.0,
+) -> _PreparedCall:
+    return _PreparedCall(
+        positional=positional if positional is not None else [10],
+        kwarg=kwarg,
+        func_name=func_name,
+        batch_size=batch_size,
+        delay=delay,
+    )
+
+
+def test_log_call_attempt_emits_calling_message(caplog):
+    """_log_call_attempt logs the 'Calling ... on slave ...' summary."""
+    prepared = _make_prepared(func_name="read_holding_registers", batch_size=3)
+    with caplog.at_level(_logging.DEBUG, logger=_mh._LOGGER.name):
+        _log_call_attempt(prepared, slave_id=5, attempt=1, max_attempts=3, kwargs={})
+    messages = [r.message for r in caplog.records]
+    assert any("read_holding_registers" in m and "slave 5" in m for m in messages)
+
+
+def test_log_call_attempt_emits_request_frame_when_known(caplog):
+    """_log_call_attempt logs a masked request frame for known function names."""
+    prepared = _make_prepared(func_name="read_input_registers", positional=[20], batch_size=2)
+    with caplog.at_level(_logging.DEBUG, logger=_mh._LOGGER.name):
+        _log_call_attempt(
+            prepared, slave_id=1, attempt=1, max_attempts=1, kwargs={"count": 2}
+        )
+    messages = [r.message for r in caplog.records]
+    assert any("Modbus request" in m for m in messages)
+
+
+def test_log_call_attempt_includes_attempt_context(caplog):
+    """_log_call_attempt includes attempt/max_attempts in the summary message."""
+    prepared = _make_prepared(func_name="write_register", batch_size=1)
+    with caplog.at_level(_logging.DEBUG, logger=_mh._LOGGER.name):
+        _log_call_attempt(prepared, slave_id=2, attempt=2, max_attempts=4, kwargs={})
+    messages = [r.message for r in caplog.records]
+    assert any("2/4" in m for m in messages)

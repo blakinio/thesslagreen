@@ -383,6 +383,31 @@ def _classify_modbus_exception(err: Exception) -> str:
     return "failed"
 
 
+def _log_call_attempt(
+    prepared: _PreparedCall,
+    *,
+    slave_id: int,
+    attempt: int,
+    max_attempts: int,
+    kwargs: dict[str, Any],
+) -> None:
+    """Emit pre-dispatch attempt diagnostics at debug level."""
+    _LOGGER.debug(
+        "Calling %s on slave %s (batch=%s attempt %s/%s)",
+        prepared.func_name,
+        slave_id,
+        prepared.batch_size,
+        attempt,
+        max_attempts,
+    )
+    _log_modbus_request(
+        func_name=prepared.func_name,
+        slave_id=slave_id,
+        positional=prepared.positional,
+        kwargs=kwargs,
+    )
+
+
 async def _dispatch_modbus_call(
     func: Callable[..., Awaitable[Any]],
     positional: list[Any],
@@ -489,19 +514,11 @@ async def _call_modbus(
         max_attempts=max_attempts,
     )
 
-    _LOGGER.debug(
-        "Calling %s on slave %s (batch=%s attempt %s/%s)",
-        prepared.func_name,
-        slave_id,
-        prepared.batch_size,
-        attempt,
-        max_attempts,
-    )
-
-    _log_modbus_request(
-        func_name=prepared.func_name,
+    _log_call_attempt(
+        prepared,
         slave_id=slave_id,
-        positional=prepared.positional,
+        attempt=attempt,
+        max_attempts=max_attempts,
         kwargs=kwargs,
     )
 
