@@ -50,6 +50,7 @@ from .config_flow_runtime import (
 )
 from .config_flow_runtime import run_with_retry as _run_with_retry_impl
 from .config_flow_schema import build_connection_schema as _build_connection_schema_impl
+from .config_flow_schema import build_reconfigure_schema as _build_reconfigure_schema_impl
 from .config_flow_steps import extract_discovered_state as _extract_discovered_state_impl
 from .config_flow_steps import merge_options_payload as _merge_options_payload_impl
 from .config_flow_steps import resolve_reauth_entry as _resolve_reauth_entry_impl
@@ -282,22 +283,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_HOST,
-                        default=entry.data.get(CONF_HOST, ""),
-                    ): str,
-                    vol.Required(
-                        CONF_PORT,
-                        default=entry.data.get(CONF_PORT, DEFAULT_PORT),
-                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
-                    vol.Required(
-                        CONF_SLAVE_ID,
-                        default=entry.data.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID),
-                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=247)),
-                }
-            ),
+            data_schema=_build_reconfigure_schema_impl(entry.data),
         )
 
     def _build_connection_schema(self, defaults: dict[str, Any]) -> vol.Schema:

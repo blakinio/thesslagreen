@@ -526,3 +526,87 @@ async def test_call_with_optional_timeout_sync_function():
 # ---------------------------------------------------------------------------
 # Pass 16 — lines 425-428: RTU validation success path
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# build_reconfigure_schema
+# ---------------------------------------------------------------------------
+
+
+def test_build_reconfigure_schema_returns_schema_with_defaults():
+    """Schema built from entry data should carry host/port/slave defaults."""
+    import voluptuous as vol
+    from custom_components.thessla_green_modbus.config_flow_schema import (
+        build_reconfigure_schema,
+    )
+    from custom_components.thessla_green_modbus.const import CONF_SLAVE_ID
+    from homeassistant.const import CONF_HOST, CONF_PORT
+
+    entry_data = {CONF_HOST: "10.0.0.5", CONF_PORT: 502, CONF_SLAVE_ID: 3}
+    schema = build_reconfigure_schema(entry_data)
+    assert isinstance(schema, vol.Schema)
+
+    result = schema({CONF_HOST: "10.0.0.5", CONF_PORT: 502, CONF_SLAVE_ID: 3})
+    assert result[CONF_HOST] == "10.0.0.5"
+    assert result[CONF_PORT] == 502
+    assert result[CONF_SLAVE_ID] == 3
+
+
+def test_build_reconfigure_schema_empty_entry_data_uses_defaults():
+    """Empty entry data falls back to module-level defaults."""
+    import voluptuous as vol
+    from custom_components.thessla_green_modbus.config_flow_schema import (
+        build_reconfigure_schema,
+    )
+    from custom_components.thessla_green_modbus.const import (
+        CONF_SLAVE_ID,
+        DEFAULT_PORT,
+        DEFAULT_SLAVE_ID,
+    )
+    from homeassistant.const import CONF_HOST, CONF_PORT
+
+    schema = build_reconfigure_schema({})
+    assert isinstance(schema, vol.Schema)
+
+    result = schema({CONF_HOST: "192.168.1.1", CONF_PORT: DEFAULT_PORT, CONF_SLAVE_ID: DEFAULT_SLAVE_ID})
+    assert result[CONF_PORT] == DEFAULT_PORT
+    assert result[CONF_SLAVE_ID] == DEFAULT_SLAVE_ID
+
+
+def test_build_reconfigure_schema_rejects_port_out_of_range():
+    """Port outside 1-65535 should raise Invalid."""
+    import voluptuous as vol
+    from custom_components.thessla_green_modbus.config_flow_schema import (
+        build_reconfigure_schema,
+    )
+    from custom_components.thessla_green_modbus.const import CONF_SLAVE_ID
+    from homeassistant.const import CONF_HOST, CONF_PORT
+
+    schema = build_reconfigure_schema({})
+    with pytest.raises(vol.Invalid):
+        schema({CONF_HOST: "host", CONF_PORT: 70000, CONF_SLAVE_ID: 1})
+
+
+def test_build_reconfigure_schema_rejects_slave_id_out_of_range():
+    """Slave ID outside 1-247 should raise Invalid."""
+    import voluptuous as vol
+    from custom_components.thessla_green_modbus.config_flow_schema import (
+        build_reconfigure_schema,
+    )
+    from custom_components.thessla_green_modbus.const import CONF_SLAVE_ID
+    from homeassistant.const import CONF_HOST, CONF_PORT
+
+    schema = build_reconfigure_schema({})
+    with pytest.raises(vol.Invalid):
+        schema({CONF_HOST: "host", CONF_PORT: 502, CONF_SLAVE_ID: 300})
+
+
+def test_build_reconfigure_schema_none_entry_data_treated_as_empty():
+    """Passing None for entry_data should not raise."""
+    import voluptuous as vol
+    from custom_components.thessla_green_modbus.config_flow_schema import (
+        build_reconfigure_schema,
+    )
+
+    schema = build_reconfigure_schema(None)
+    assert isinstance(schema, vol.Schema)
