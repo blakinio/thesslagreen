@@ -231,7 +231,9 @@ async def test_apply_attempt_delay_zero_does_not_sleep(monkeypatch):
         called = True
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
-    await _apply_attempt_delay(delay=0.0, func_name="read_holding_registers", attempt=1, max_attempts=2)
+    await _apply_attempt_delay(
+        delay=0.0, func_name="read_holding_registers", attempt=1, max_attempts=2
+    )
     assert called is False  # nosec B101
 
 

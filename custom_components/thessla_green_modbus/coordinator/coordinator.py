@@ -648,8 +648,8 @@ class ThesslaGreenModbusCoordinator(
         transport, mode = await _select_auto_transport_impl(
             resolved_connection_mode=self._resolved_connection_mode,
             build_tcp_transport=self._build_tcp_transport,
-            try_direct_client_connect=lambda allow_parameterless_ctor: self._try_direct_client_connect(
-                allow_parameterless_ctor=allow_parameterless_ctor
+            try_direct_client_connect=lambda allow_parameterless_ctor: (
+                self._try_direct_client_connect(allow_parameterless_ctor=allow_parameterless_ctor)
             ),
             port=self.config.port,
             timeout=self.timeout,
@@ -694,8 +694,10 @@ class ThesslaGreenModbusCoordinator(
                 select_auto_transport_fn=lambda: _select_auto_transport_impl(
                     resolved_connection_mode=self._resolved_connection_mode,
                     build_tcp_transport=self._build_tcp_transport,
-                    try_direct_client_connect=lambda allow_parameterless_ctor: self._try_direct_client_connect(
-                        allow_parameterless_ctor=allow_parameterless_ctor
+                    try_direct_client_connect=lambda allow_parameterless_ctor: (
+                        self._try_direct_client_connect(
+                            allow_parameterless_ctor=allow_parameterless_ctor
+                        )
                     ),
                     port=self.config.port,
                     timeout=self.timeout,
