@@ -12,6 +12,9 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.util.network import is_host_valid
 from voluptuous import Invalid as VOL_INVALID
 
+from .config_flow_network import looks_like_hostname as _looks_like_hostname
+from .config_flow_options import normalize_baud_rate, normalize_parity, normalize_stop_bits
+from .config_flow_payloads import caps_to_dict as _caps_to_dict
 from .const import (
     CONF_BAUD_RATE,
     CONF_PARITY,
@@ -25,6 +28,8 @@ from .const import (
     DEFAULT_STOP_BITS,
 )
 from .errors import CannotConnect
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def validate_slave_id(data: dict[str, Any]) -> int:
@@ -144,3 +149,35 @@ def process_scan_capabilities(
         raise CannotConnect("invalid_capabilities")
 
     return caps_dict
+
+
+# --- Production-wired bound adapters ---
+
+
+def validate_tcp_config_bound(data: dict[str, Any]) -> tuple[str, int]:
+    """validate_tcp_config pre-wired with the production hostname checker."""
+    return validate_tcp_config(data, looks_like_hostname=_looks_like_hostname)
+
+
+def validate_rtu_config_bound(data: dict[str, Any]) -> None:
+    """validate_rtu_config pre-wired with the production option normalizers."""
+    validate_rtu_config(
+        data,
+        normalize_baud_rate=normalize_baud_rate,
+        normalize_parity=normalize_parity,
+        normalize_stop_bits=normalize_stop_bits,
+    )
+
+
+def process_scan_capabilities_bound(
+    scan_result: dict[str, Any],
+    capabilities_cls: type,
+    logger: logging.Logger = _LOGGER,
+) -> dict[str, Any]:
+    """process_scan_capabilities pre-wired with the production caps serializer."""
+    return process_scan_capabilities(
+        scan_result,
+        capabilities_cls=capabilities_cls,
+        caps_to_dict=_caps_to_dict,
+        logger=logger,
+    )

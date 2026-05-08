@@ -1,6 +1,6 @@
 # Refactor status (current)
 
-Last reviewed: 2026-05-08 (Python 3.13 full-pass + modbus_helpers._encode_read_frame refactor).
+Last reviewed: 2026-05-08 (Python 3.13 full-pass + config_flow bound-adapter extraction + coordinator test split).
 
 Related document:
 
@@ -34,12 +34,12 @@ The following constraints remain active and must be preserved:
 - HA imports in `core/transport/registers/scanner`: **none detected** by grep.
 - Compatibility grep (`compat|shim|proxy|re-export|legacy`): informational matches present in docs/tests/comments/known compatibility code references.
 
-## Notable since previous snapshot (2026-05-08 scanner/io_read refactor run)
+## Notable since previous snapshot (2026-05-08 config_flow + coordinator test cleanup)
 
-- Full test suite validated on Python 3.13 — **1900 passed, 4 skipped**.
-- Ruff format drift: **0 files** (down from 2 — prior drift in `test_config_flow_helpers.py` and `test_modbus_helpers_call_flow.py` was resolved upstream).
-- `modbus_helpers.py` — `_encode_read_frame` extracted; `_build_request_frame` reduced from 56 → 42 AST lines. `_READ_FC` dict maps read function names to Modbus function codes.
-- 3 new focused tests: `test_encode_read_frame_produces_correct_bytes`, `test_build_request_frame_read_input_registers`, `test_build_request_frame_read_holding_registers`.
+- Full test suite validated on Python 3.13 — **1913 passed, 4 skipped** (+13 vs previous run).
+- Ruff format drift: **0 files** (415 files).
+- **PHASE B**: Three adapter functions removed from `config_flow.py`; replaced by `validate_tcp_config_bound`, `validate_rtu_config_bound`, `process_scan_capabilities_bound` in `config_flow_validation.py`. `config_flow.py` 414 → 394 non-empty lines. 13 new focused tests in `tests/test_config_flow_validation_bound.py`.
+- **PHASE C**: `TestParseBackoffJitter` (5 test methods) moved from `test_coordinator.py` to `tests/test_coordinator_parse_backoff.py`. `test_coordinator.py` 440 → 412 non-empty lines; total coordinator test count unchanged at 277.
 
 ## Required gate status snapshot (2026-05-08 Python 3.13 run)
 
@@ -50,7 +50,7 @@ The following constraints remain active and must be preserved:
 - `python3.13 tools/compare_registers_with_reference.py`: **pass** (informational: 62 extras, 242 name mismatches).
 - `python3.13 tools/check_maintainability.py`: **pass** (`Maintainability gate passed.`).
 - `python3.13 tools/validate_entity_mappings.py`: **pass** (`OK: 366 entities validated`).
-- `python3.13 -m pytest tests/ -q`: **pass** — 1900 passed, 4 skipped, 84 warnings.
+- `python3.13 -m pytest tests/ -q`: **pass** — 1913 passed, 4 skipped, 84 warnings.
 - Import gate (all 5 modules): **pass** on Python 3.13.
 
 ## Non-required tool status
@@ -66,7 +66,7 @@ The following constraints remain active and must be preserved:
 1. Coordinator size/branching (`coordinator/coordinator.py` 699 lines, `coordinator/schedule.py` 468 lines).
 2. Scanner read/orchestration complexity (`scanner/io_read.py` 714 lines, `scanner/core.py` 454 lines).
 3. Mapping build complexity (`mappings/_mapping_builders.py` 437 lines).
-4. Config-flow branching (`config_flow.py` 414 lines).
+4. Config-flow branching (`config_flow.py` 394 lines; reduced from 414).
 5. Ruff format drift: 0 files ✅.
 
 ## Branch note
@@ -83,4 +83,4 @@ The following constraints remain active and must be preserved:
 ## Dependabot note
 
 - PR #1567 was **not touched** in this session.
-- Pydantic version was **not changed** (installed: 2.12.2).
+- Pydantic version was **not changed**. `requirements-dev.txt` still pins `pydantic==2.12.2`.
