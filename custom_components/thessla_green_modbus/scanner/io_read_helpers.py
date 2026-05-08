@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, cast
 
+from ..modbus_helpers import chunk_register_range
+
 
 @dataclass(frozen=True)
 class ReadAttemptMeta:
@@ -24,6 +26,17 @@ def build_read_attempt_meta(address: int, count: int) -> ReadAttemptMeta:
 def iter_grouped_read_chunks(start: int, count: int, chunk_builder: Any) -> list[tuple[int, int]]:
     """Create grouped chunk plan for optimized/batched reads."""
     return list(chunk_builder(start, count))
+
+
+def build_register_chunks(start: int, count: int, batch_size: int) -> list[tuple[int, int]]:
+    """Build a batched chunk plan for a contiguous register range."""
+    return iter_grouped_read_chunks(
+        start,
+        count,
+        lambda chunk_start, chunk_count: chunk_register_range(
+            chunk_start, chunk_count, batch_size
+        ),
+    )
 
 
 def append_read_block(results: list[int], block: list[int] | None) -> bool:
