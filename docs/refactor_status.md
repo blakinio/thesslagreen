@@ -3,10 +3,9 @@
 Last reviewed: 2026-05-08 (Python 3.12 full-pass + coordinator config_properties mixin + scanner io_read_helpers + schedule._write_holding_multi refactor).
 Last reviewed: 2026-05-08 (Python 3.13 full-pass + config_flow bound-adapter extraction + coordinator test split).
 Last reviewed: 2026-05-08 (Python 3.13 full-pass + config_flow_runtime load_scanner_module + coordinator backoff jitter test split).
+Last reviewed: 2026-05-08 (Python 3.13 cleanup run — stale/duplicate sections removed)
 
-Related document:
-
-- `docs/maintainability_audit.md`
+Related document: `docs/maintainability_audit.md`
 
 ## Scope and direction
 
@@ -29,45 +28,32 @@ The following constraints remain active and must be preserved:
 4. No proxy modules.
 5. `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant.
 
-## Current invariant verification snapshot (2026-05-08 load_scanner_module + backoff jitter split)
+## Current invariant verification snapshot (2026-05-08)
 
 - Top-level `custom_components/thessla_green_modbus/coordinator.py`: **absent**.
 - Canonical coordinator module: `custom_components/thessla_green_modbus/coordinator/coordinator.py`.
 - HA imports in `core/transport/registers/scanner`: **none detected** by grep.
-- Compatibility grep (`compat|shim|proxy|re-export|legacy`): informational matches present in docs/tests/comments/known compatibility code references.
+- Compatibility grep (`compat|shim|proxy|re-export|legacy`): informational matches in docs/tests/comments/known compatibility code references only.
 
-## Notable since previous snapshot (2026-05-08 config_flow + coordinator test cleanup)
+## Notable merged changes (2026-05-08 series)
 
-- Full test suite validated on Python 3.13 — **1913 passed, 4 skipped** (+13 vs previous run).
-- Ruff format drift: **0 files** (415 files).
-- **PHASE B**: Three adapter functions removed from `config_flow.py`; replaced by `validate_tcp_config_bound`, `validate_rtu_config_bound`, `process_scan_capabilities_bound` in `config_flow_validation.py`. `config_flow.py` 414 → 394 non-empty lines. 13 new focused tests in `tests/test_config_flow_validation_bound.py`.
-- **PHASE C**: `TestParseBackoffJitter` (5 test methods) moved from `test_coordinator.py` to `tests/test_coordinator_parse_backoff.py`. `test_coordinator.py` 440 → 412 non-empty lines; total coordinator test count unchanged at 277.
-## Notable since previous snapshot (2026-05-08 Phase B+C run)
+- **PHASE B (load_scanner_module extraction):** `_load_scanner_module` moved from `config_flow.py` inline into `load_scanner_module` in `config_flow_runtime.py`. `import_module` import removed. `_SCANNER_MODULE_PATH` constant added. 5 focused tests added in `test_config_flow_runtime_loader.py`. `config_flow.py`: 414 → 407.
+- **PHASE B (bound-adapter extraction):** `_validate_tcp_config`, `_validate_rtu_config`, `_process_scan_capabilities` removed from `config_flow.py`; replaced by bound variants in `config_flow_validation.py`. 13 tests added in `test_config_flow_validation_bound.py`. `config_flow.py`: 407 → **387** (current).
+- **PHASE C (coordinator test splits):** `TestParseBackoffJitter` class redistributed into `test_coordinator_parse_backoff.py` and `test_coordinator_backoff_jitter.py`. `test_coordinator.py`: 440 → **412** (current). Coordinator test collection: **286** (unchanged; redistribution only). No production files changed.
 
-- Full test suite validated on Python 3.13 — **1920 passed, 4 skipped**.
-- Ruff format drift: **0 files** ✅.
-- **PHASE B** — `_load_scanner_module` (7-line async function) moved from inline in `config_flow.py`
-  into `load_scanner_module` in `config_flow_runtime.py`. `config_flow.py` non-empty: 414 → 407.
-  `import_module` import removed from `config_flow.py`. `_SCANNER_MODULE_PATH` constant added for
-  testability. 5 focused unit tests added in `tests/test_config_flow_runtime_loader.py`.
-- **PHASE C** (test-only) — `TestParseBackoffJitter` class (5 tests) moved from `test_coordinator.py`
-  into `test_coordinator_backoff_jitter.py`. `test_coordinator.py` non-empty: 440 → 412.
-  Coordinator test collection total: **286 → 286** (unchanged). No production files changed.
+## Required gate status snapshot (2026-05-08 cleanup run)
 
-## Required gate status snapshot (2026-05-08 load_scanner_module run)
-
-- `ruff check custom_components tests tools`: **pass**.
-- `ruff check --select I custom_components tests tools`: **pass**.
-- `ruff format --check custom_components tests tools`: **0 files drift** (416 formatted) ✅.
-- `python3.13 -m compileall -q custom_components/thessla_green_modbus tests tools`: **pass**.
-- `python3.13 tools/compare_registers_with_reference.py`: **pass** (informational: 62 extras, 242 name mismatches).
-- `python3.13 tools/check_maintainability.py`: **pass** (`Maintainability gate passed.`).
-- `python3.13 tools/validate_entity_mappings.py`: **pass** (`OK: 366 entities validated`).
-- `python3.13 -m pytest tests/ -q`: **pass** — 1913 passed, 4 skipped, 84 warnings.
-- `python3.13 -m pytest tests/ -q`: **pass** — 1920 passed, 4 skipped, 90 warnings.
-- Import gate (all 5 modules): **pass** on Python 3.13.
-- Coordinator tests: **300 passed**, 1 warning.
-- Config flow tests: **142 passed**, 1 warning.
+- `ruff check custom_components tests tools`: **pass** ✅.
+- `ruff check --select I custom_components tests tools`: **pass** ✅.
+- `ruff format --check custom_components tests tools`: **0 files drift** (418 files formatted) ✅.
+- `python3.13 -m compileall -q custom_components/thessla_green_modbus tests tools`: **pass** ✅.
+- `python3.13 tools/compare_registers_with_reference.py`: **pass** (informational: 62 extras, 242 name mismatches) ✅.
+- `python3.13 tools/check_maintainability.py`: **pass** (`Maintainability gate passed.`) ✅.
+- `python3.13 tools/validate_entity_mappings.py`: not run this session (native dep build failure). Last confirmed: **OK: 366 entities validated** (2026-05-08 Phase B+C run).
+- `python3.13 -m pytest tests/ -q`: not run this session (native dep build failure). Last confirmed: **1920 passed, 4 skipped, 90 warnings** (2026-05-08 Phase B+C run).
+- Import gate (pydantic/pytest/pytest_asyncio): **pass** on Python 3.13.12. `pydantic 2.12.2` (project pin confirmed).
+- Coordinator tests (last confirmed): **300 passed**, 1 warning.
+- Config flow tests (last confirmed): **142 passed**, 1 warning.
 
 ## Non-required tool status
 
@@ -117,6 +103,10 @@ The following constraints remain active and must be preserved:
 3. Mapping build complexity (`mappings/_mapping_builders.py` 437 lines).
 4. Config-flow branching (`config_flow.py` 394 lines; reduced from 414).
 4. Config-flow branching (`config_flow.py` 407 lines).
+1. Coordinator size/branching: `coordinator/coordinator.py` 666 lines; `coordinator/schedule.py` 419 lines.
+2. Scanner read/orchestration complexity: `scanner/io_read.py` 714 lines; `scanner/core.py` 451 lines.
+3. Mapping build complexity: `mappings/_mapping_builders.py` 437 lines.
+4. Config-flow branching: `config_flow.py` 387 lines (reduced from 414 after two PHASE B extractions).
 5. Ruff format drift: 0 files ✅.
 
 ## Branch note
@@ -134,3 +124,5 @@ The following constraints remain active and must be preserved:
 
 - PR #1567 was **not touched** in any session.
 - Pydantic version was **not changed**. `requirements-dev.txt` still pins `pydantic==2.12.2`.
+- PR #1567 was **not touched** in this session.
+- Pydantic version was **not changed**. `requirements-dev.txt` still pins `pydantic==2.12.2`. Project pin confirmed unchanged.
