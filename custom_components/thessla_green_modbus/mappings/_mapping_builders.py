@@ -283,12 +283,19 @@ def _resolve(attr: str, fallback: Any) -> Any:
     return fallback
 
 
+def _resolve_base_helpers() -> tuple[Any, Any, Any]:
+    """Return (get_all_registers, get_register_info, parse_states) for loaders."""
+    return (
+        _resolve("get_all_registers", get_all_registers),
+        _resolve("_get_register_info", _get_register_info),
+        _resolve("_parse_states", _parse_states),
+    )
+
+
 def _load_number_mappings() -> dict[str, dict[str, Any]]:
     """Build number entity configurations from register metadata."""
 
-    _get_all = _resolve("get_all_registers", get_all_registers)
-    _get_info = _resolve("_get_register_info", _get_register_info)
-    _parse = _resolve("_parse_states", _parse_states)
+    _get_all, _get_info, _parse = _resolve_base_helpers()
     _num_trans = _resolve("_number_translation_keys", _number_translation_keys)
 
     parent = _get_parent()
@@ -336,9 +343,7 @@ def _load_discrete_mappings() -> tuple[
 ]:
     """Generate mappings for binary_sensor, switch and select entities."""
 
-    _get_all = _resolve("get_all_registers", get_all_registers)
-    _get_info = _resolve("_get_register_info", _get_register_info)
-    _parse = _resolve("_parse_states", _parse_states)
+    _get_all, _get_info, _parse = _resolve_base_helpers()
     _tkeys = _resolve("_load_translation_keys", _load_translation_keys)
     _coil_regs = _resolve("coil_registers", coil_registers)
     _discrete_regs = _resolve("discrete_input_registers", discrete_input_registers)
@@ -508,6 +513,7 @@ __all__ = [
     "_parse_info_states",
     "_register_context",
     "_resolve",
+    "_resolve_base_helpers",
     "_resolve_parent_child_mappings",
     "_route_enum_mapping",
     "_route_enum_or_min_max_mapping",

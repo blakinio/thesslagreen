@@ -1,6 +1,6 @@
 # Refactor status (current)
 
-Last reviewed: 2026-05-08 (post-PR #1595 documentation cleanup).
+Last reviewed: 2026-05-08 (post-hotspot cleanup PR — phases B–F, Python 3.13.12).
 
 Related document: `docs/maintainability_audit.md`
 
