@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
@@ -48,6 +47,7 @@ from .config_flow_runtime import (
 from .config_flow_runtime import (
     is_request_cancelled_error as _is_request_cancelled_error_impl,
 )
+from .config_flow_runtime import load_scanner_module as _load_scanner_module
 from .config_flow_runtime import run_with_retry as _run_with_retry_impl
 from .config_flow_schema import build_connection_schema as _build_connection_schema_impl
 from .config_flow_schema import build_reconfigure_schema as _build_reconfigure_schema_impl
@@ -105,16 +105,6 @@ def _is_request_cancelled_error(exc: ModbusIOException) -> bool:
 
 ThesslaGreenDeviceScanner: Any | None = None
 DeviceCapabilities: Any | None = None
-
-
-async def _load_scanner_module(hass: HomeAssistant) -> Any:
-    """Import scanner.core via the HA executor to avoid blocking the event loop."""
-    if hass is None or not hasattr(hass, "async_add_executor_job"):
-        return import_module("custom_components.thessla_green_modbus.scanner.core")
-    return await hass.async_add_executor_job(
-        import_module, "custom_components.thessla_green_modbus.scanner.core"
-    )
-
 
 # Delay between retries when establishing the connection during the config flow.
 # Uses exponential backoff: ``backoff * 2 ** (attempt-1)``.

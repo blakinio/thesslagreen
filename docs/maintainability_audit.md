@@ -1,6 +1,6 @@
 # Maintainability audit
 
-Date: 2026-05-08 (Python 3.13 full-pass + schedule encode_write_value + scanner normalize_effective_batch)
+Date: 2026-05-08 (Python 3.13 full-pass + config_flow_runtime load_scanner_module + coordinator backoff jitter test split)
 
 ## Commands executed (exact)
 
@@ -42,37 +42,35 @@ Environment: **Python 3.13.12** (`/tmp/venv313`). All five required modules impo
   (informational: 62 extras; 242 name mismatches on common addresses — unchanged).
 - **maintainability** (`check_maintainability.py`): ✅ pass (`Maintainability gate passed.`).
 - **entity mappings** (`validate_entity_mappings.py`): ✅ pass (`OK: 366 entities validated`).
-- **pytest** (`pytest tests/ -q`): ✅ **1915 passed, 4 skipped**, 90 warnings in 12.68s.
+- **pytest** (`pytest tests/ -q`): ✅ **1920 passed, 4 skipped**, 90 warnings in 14.87s.
 
 ### Notable changes since previous audit (2026-05-08 modbus_helpers._encode_read_frame run)
 
-**PHASE B — coordinator/schedule.py write-path cleanup:**
+**PHASE B — config_flow_runtime.py: extract load_scanner_module:**
 
-- `_encode_write_value` (55-line method) extracted from `_CoordinatorScheduleMixin` into
-  standalone `encode_write_value` function in `coordinator/write_path.py`.
-- `_CoordinatorScheduleMixin` class: **488 → 432 AST lines** (−56).
-- `coordinator/schedule.py` non-empty lines: **468 → 419** (−49).
-- `coordinator/write_path.py` non-empty lines: **63 → 118** (+55).
-- 9 focused unit tests added in `tests/test_coordinator_register_writes.py`.
-- coordinator package `__all__` invariant: `["CoordinatorConfig", "ThesslaGreenModbusCoordinator"]` — unchanged.
-- No top-level `coordinator.py` file created.
+- `_load_scanner_module` (7-line async function) moved from inline in `config_flow.py` into
+  `load_scanner_module` function in `config_flow_runtime.py`.
+- `config_flow.py` now imports `load_scanner_module as _load_scanner_module` from runtime module.
+- `import_module` import removed from `config_flow.py`.
+- `_SCANNER_MODULE_PATH` constant added to `config_flow_runtime.py` for testability.
+- 5 focused unit tests added in `tests/test_config_flow_runtime_loader.py`.
 
-**PHASE C — scanner/core.py focused cleanup:**
+**PHASE C — test_coordinator.py: move TestParseBackoffJitter test group:**
 
-- Inline batch-clamping logic in `ThesslaGreenDeviceScanner.__init__` extracted into
-  `normalize_effective_batch(max_registers_per_request, *, max_batch)` in `scanner/setup.py`.
-- `ThesslaGreenDeviceScanner.__init__`: **91 → 88 AST lines** (−3 inline lines replaced by 2-line call).
-- `scanner/setup.py` gained 14-line `normalize_effective_batch` function (parallel to existing `normalize_backoff_jitter`).
-- 7 focused unit tests added in `tests/test_device_scanner_setup.py`.
-- Scanner HA-independence invariant: **no Home Assistant imports** detected.
+- `TestParseBackoffJitter` class (5 tests, 37 lines) moved from `tests/test_coordinator.py`
+  into new `tests/test_coordinator_backoff_jitter.py`.
+- `DEFAULT_BACKOFF_JITTER` import removed from `test_coordinator.py` (no longer needed).
+- `test_coordinator.py` non-empty lines: **440 → 412** (−28).
+- Test collection total: **286 → 286** (unchanged, redistribution only).
+- No production files changed in PHASE C.
 
-**Test count change:** 1900 → 1909 → 1915 (+15 total from PHASE B + PHASE C).
+**Test count change:** 1915 → 1920 (+5 from PHASE B new tests).
 
 ### Ruff format drift
 
 `ruff format --check custom_components tests tools` reports **0 files would be reformatted**.
 
-All 414 files are already formatted. ✅
+All 416 files are already formatted. ✅
 
 ### Required CI gate status note
 
@@ -89,42 +87,42 @@ All 414 files are already formatted. ✅
 
 ## PHASE B summary
 
-**Extraction: `_read_coils_transport` and `_read_discrete_inputs_transport` → `coordinator/io.py`**
+**Extraction: `_load_scanner_module` → `config_flow_runtime.load_scanner_module`**
 
 Before:
-- `coordinator/coordinator.py` non-empty: **699** lines
-- `ThesslaGreenModbusCoordinator` AST span: **611** lines
-- Methods were implemented in `coordinator.py`; `io.py` had abstract stubs
+- `config_flow.py` non-empty: **414** lines
+- `_load_scanner_module` inline in `config_flow.py` (7-line async function)
+- `config_flow_runtime.py` non-empty: **48** lines
+- No tests for scanner module loading isolation
 
 After:
-- `coordinator/coordinator.py` non-empty: **666** lines (−33)
-- `ThesslaGreenModbusCoordinator` AST span: **577** lines (−34)
-- Implementations moved to `_ModbusIOMixin` in `coordinator/io.py`; stubs replaced with code
-- `ConnectionException` import removed from `coordinator.py`; added to `io.py`
+- `config_flow.py` non-empty: **407** lines (−7)
+- `config_flow_runtime.py` non-empty: **62** lines (+14)
+- `load_scanner_module` function + `_SCANNER_MODULE_PATH` constant added to runtime module
+- 5 focused tests added in `tests/test_config_flow_runtime_loader.py`
 
-API invariant confirmed: `sorted(__all__) == ["CoordinatorConfig", "ThesslaGreenModbusCoordinator"]` ✅
+Step names, form schemas, error keys, abort reasons, reauth/reconfigure/options behavior: all unchanged ✅
 
-Path invariant confirmed: no `coordinator.py` at package root ✅
-
-Targeted test result: **293 passed**, 1 warning ✅
+Targeted config flow test result: **142 passed**, 1 warning ✅
 
 ## PHASE C summary
 
-**Extraction: UART select mappings → `mappings/_static_discrete_uart.py`**
+**Test-only split: `TestParseBackoffJitter` → `tests/test_coordinator_backoff_jitter.py`**
 
 Before:
-- `_static_discrete.py` non-empty: **417** lines
-- 6 UART/serial-port entries inline in `SELECT_ENTITY_MAPPINGS`
+- `test_coordinator.py` non-empty: **440** lines
+- `TestParseBackoffJitter` class (5 tests) inline in `test_coordinator.py`
+- `DEFAULT_BACKOFF_JITTER` import present but only used by that class
 
 After:
-- `_static_discrete.py` non-empty: **~363** lines (−54)
-- New `_static_discrete_uart.py` created with `UART_SELECT_ENTITY_MAPPINGS`
-- `SELECT_ENTITY_MAPPINGS` composed via `{..., **UART_SELECT_ENTITY_MAPPINGS}`
-- Pattern mirrors existing `_static_discrete_diagnostics.py` extraction
+- `test_coordinator.py` non-empty: **412** lines (−28)
+- New `tests/test_coordinator_backoff_jitter.py` with `TestParseBackoffJitter` (5 tests)
+- `DEFAULT_BACKOFF_JITTER` import removed from `test_coordinator.py`
+- Coordinator test collection: **286 → 286** (unchanged) ✅
 
-Entity count unchanged: **366** ✅
+No production files changed in PHASE C ✅
 
-Targeted mapping test result: **284 passed**, 3 skipped ✅
+Coordinator targeted test result: **300 passed**, 1 warning ✅
 
 ## Largest files/classes/functions (current — 2026-05-08 Phase B+C refresh)
 
@@ -136,20 +134,20 @@ Targeted mapping test result: **284 passed**, 3 skipped ✅
 | 666 | `custom_components/thessla_green_modbus/coordinator/coordinator.py` |
 | 537 | `custom_components/thessla_green_modbus/modbus_helpers.py` |
 | 451 | `custom_components/thessla_green_modbus/scanner/core.py` |
-| 440 | `tests/test_coordinator.py` |
 | 437 | `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` |
 | 433 | `tests/test_config_flow_helpers.py` |
 | 420 | `tests/test_modbus_helpers_call_flow.py` |
 | 419 | `custom_components/thessla_green_modbus/coordinator/schedule.py` |
-| 417 | `custom_components/thessla_green_modbus/mappings/_static_discrete.py` |
+| 412 | `tests/test_coordinator.py` |
+| 407 | `custom_components/thessla_green_modbus/config_flow.py` |
 
 ### Largest classes (AST span, top 10)
 
 | Lines | Class | File |
 |------:|-------|------|
-| 611 | `ThesslaGreenModbusCoordinator` | `coordinator/coordinator.py` |
-| 432 | `_CoordinatorScheduleMixin` | `coordinator/schedule.py` (was 488) |
-| 425 | `ThesslaGreenDeviceScanner` | `scanner/core.py` (was 428) |
+| 577 | `ThesslaGreenModbusCoordinator` | `coordinator/coordinator.py` |
+| 432 | `_CoordinatorScheduleMixin` | `coordinator/schedule.py` |
+| 425 | `ThesslaGreenDeviceScanner` | `scanner/core.py` |
 | 334 | `RawRtuOverTcpTransport` | `modbus_transport_raw.py` |
 | 268 | `RegisterDef` | `registers/register_def.py` |
 | 251 | `ThesslaGreenFan` | `fan.py` |
@@ -177,28 +175,39 @@ Targeted mapping test result: **284 passed**, 3 skipped ✅
 
 | Metric | Before | After |
 |--------|--------|-------|
-| `_CoordinatorScheduleMixin` AST lines | 488 | 432 |
-| `coordinator/schedule.py` non-empty | 468 | 419 |
-| `coordinator/write_path.py` non-empty | 63 | 118 |
-| New test functions | — | +9 |
-| `_encode_write_value` in mixin | yes | **removed** |
-| `encode_write_value` standalone in write_path | no | **added** |
+| `config_flow.py` non-empty | 414 | 407 |
+| `config_flow_runtime.py` non-empty | 48 | 62 |
+| `_load_scanner_module` inline in config_flow.py | yes | **removed** |
+| `load_scanner_module` in config_flow_runtime.py | no | **added** |
+| `_SCANNER_MODULE_PATH` constant | no | **added** |
+| New test functions | — | +5 |
+| `import_module` import in config_flow.py | yes | **removed** |
 
 ## PHASE C before/after metrics
 
 | Metric | Before | After |
 |--------|--------|-------|
-| `ThesslaGreenDeviceScanner.__init__` AST lines | 91 | 88 |
-| Inline batch-clamp lines in `__init__` | 6 | 2 (delegation) |
-| `normalize_effective_batch` in setup.py | no | **added** (14 lines) |
-| New test functions | — | +7 |
+| `test_coordinator.py` non-empty | 440 | 412 |
+| `TestParseBackoffJitter` in test_coordinator.py | yes | **moved** |
+| `test_coordinator_backoff_jitter.py` | absent | **created** |
+| Coordinator test count total | 286 | 286 (unchanged) |
+| `DEFAULT_BACKOFF_JITTER` import in test_coordinator.py | yes | **removed** |
+
+## Coordinator collection comparison
+
+```
+before count: 286
+after count: 286
+missing: []
+added: []
+```
 
 ## Remaining hotspots
 
-1. Coordinator concentration (`coordinator/coordinator.py` 699 lines, `ThesslaGreenModbusCoordinator` 611 lines; `coordinator/schedule.py` 419 lines, `_CoordinatorScheduleMixin` 432 lines).
+1. Coordinator concentration (`coordinator/coordinator.py` 666 lines, `ThesslaGreenModbusCoordinator` 577 AST lines; `coordinator/schedule.py` 419 lines, `_CoordinatorScheduleMixin` 432 lines).
 2. Scanner read/orchestration complexity (`scanner/io_read.py` 714 lines, `scanner/core.py` 451 lines).
 3. Mapping builder density (`mappings/_mapping_builders.py` 437 lines).
-4. Config-flow branching (`config_flow.py` 414 lines).
+4. Config-flow branching (`config_flow.py` 407 lines).
 5. Ruff format drift: 0 files. ✅
 
 ## Branch note (authoritative target)
