@@ -1,6 +1,6 @@
 # Refactor status (current)
 
-Last reviewed: 2026-05-08 (Python 3.13 full-pass + modbus_helpers._encode_read_frame refactor).
+Last reviewed: 2026-05-08 (Python 3.13 full-pass + coordinator io mixin + UART select extraction).
 
 Related document:
 
@@ -27,21 +27,25 @@ The following constraints remain active and must be preserved:
 4. No proxy modules.
 5. `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant.
 
-## Current invariant verification snapshot (2026-05-08 refresh)
+## Current invariant verification snapshot (2026-05-08 Phase B+C refresh)
 
 - Top-level `custom_components/thessla_green_modbus/coordinator.py`: **absent**.
 - Canonical coordinator module: `custom_components/thessla_green_modbus/coordinator/coordinator.py`.
 - HA imports in `core/transport/registers/scanner`: **none detected** by grep.
 - Compatibility grep (`compat|shim|proxy|re-export|legacy`): informational matches present in docs/tests/comments/known compatibility code references.
 
-## Notable since previous snapshot (2026-05-08 scanner/io_read refactor run)
+## Notable since previous snapshot (2026-05-08 modbus_helpers._encode_read_frame run)
 
 - Full test suite validated on Python 3.13 — **1900 passed, 4 skipped**.
-- Ruff format drift: **0 files** (down from 2 — prior drift in `test_config_flow_helpers.py` and `test_modbus_helpers_call_flow.py` was resolved upstream).
-- `modbus_helpers.py` — `_encode_read_frame` extracted; `_build_request_frame` reduced from 56 → 42 AST lines. `_READ_FC` dict maps read function names to Modbus function codes.
-- 3 new focused tests: `test_encode_read_frame_produces_correct_bytes`, `test_build_request_frame_read_input_registers`, `test_build_request_frame_read_holding_registers`.
+- Ruff format drift: **0 files** ✅.
+- **PHASE B**: `_read_coils_transport` and `_read_discrete_inputs_transport` moved from
+  `coordinator/coordinator.py` into `_ModbusIOMixin` in `coordinator/io.py`.
+  `coordinator.py` reduced 699 → 666 non-empty lines; `ThesslaGreenModbusCoordinator` 611 → 577 AST lines.
+- **PHASE C**: 6 UART/serial-port select entries extracted from `_static_discrete.py` into new
+  `_static_discrete_uart.py`. `SELECT_ENTITY_MAPPINGS` now composed via `{..., **UART_SELECT_ENTITY_MAPPINGS}`.
+  `_static_discrete.py` reduced 417 → ~363 non-empty lines. Entity count unchanged: 366.
 
-## Required gate status snapshot (2026-05-08 Python 3.13 run)
+## Required gate status snapshot (2026-05-08 Phase B+C run)
 
 - `ruff check custom_components tests tools`: **pass**.
 - `ruff check --select I custom_components tests tools`: **pass**.
@@ -52,6 +56,7 @@ The following constraints remain active and must be preserved:
 - `python3.13 tools/validate_entity_mappings.py`: **pass** (`OK: 366 entities validated`).
 - `python3.13 -m pytest tests/ -q`: **pass** — 1900 passed, 4 skipped, 84 warnings.
 - Import gate (all 5 modules): **pass** on Python 3.13.
+- Coordinator split check: **277 passed**, 1 warning.
 
 ## Non-required tool status
 
@@ -63,7 +68,7 @@ The following constraints remain active and must be preserved:
 
 ## Remaining hotspots (current queue)
 
-1. Coordinator size/branching (`coordinator/coordinator.py` 699 lines, `coordinator/schedule.py` 468 lines).
+1. Coordinator size/branching (`coordinator/coordinator.py` 666 lines, `coordinator/schedule.py` 468 lines).
 2. Scanner read/orchestration complexity (`scanner/io_read.py` 714 lines, `scanner/core.py` 454 lines).
 3. Mapping build complexity (`mappings/_mapping_builders.py` 437 lines).
 4. Config-flow branching (`config_flow.py` 414 lines).
