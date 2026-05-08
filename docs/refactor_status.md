@@ -27,7 +27,7 @@ The following constraints remain active and must be preserved:
 4. No proxy modules.
 5. `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant.
 
-## Current invariant verification snapshot (2026-05-08 refresh)
+## Current invariant verification snapshot (2026-05-08 Phase B+C refresh)
 
 - Top-level `custom_components/thessla_green_modbus/coordinator.py`: **absent**.
 - Canonical coordinator module: `custom_components/thessla_green_modbus/coordinator/coordinator.py`.
@@ -45,7 +45,7 @@ The following constraints remain active and must be preserved:
   `normalize_effective_batch` in `scanner/setup.py` (parallel to existing `normalize_backoff_jitter`).
   `__init__` AST lines: 91 → 88. 7 focused unit tests added.
 
-## Required gate status snapshot (2026-05-08 Python 3.13 run)
+## Required gate status snapshot (2026-05-08 Phase B+C run)
 
 - `ruff check custom_components tests tools`: **pass**.
 - `ruff check --select I custom_components tests tools`: **pass**.
@@ -56,6 +56,7 @@ The following constraints remain active and must be preserved:
 - `python3.13 tools/validate_entity_mappings.py`: **pass** (`OK: 366 entities validated`).
 - `python3.13 -m pytest tests/ -q`: **pass** — 1915 passed, 4 skipped, 90 warnings.
 - Import gate (all 5 modules): **pass** on Python 3.13.
+- Coordinator split check: **277 passed**, 1 warning.
 
 ## Non-required tool status
 

@@ -72,7 +72,7 @@ Environment: **Python 3.13.12** (`/tmp/venv313`). All five required modules impo
 
 `ruff format --check custom_components tests tools` reports **0 files would be reformatted**.
 
-All 413 files are already formatted. ✅
+All 414 files are already formatted. ✅
 
 ### Required CI gate status note
 
@@ -87,14 +87,53 @@ All 413 files are already formatted. ✅
 - `compat|shim|proxy|re-export|legacy` grep returns only informational matches
   in docs/tests/comments and known compatibility-reference strings.
 
-## Largest files/classes/functions (current — 2026-05-08 refresh)
+## PHASE B summary
+
+**Extraction: `_read_coils_transport` and `_read_discrete_inputs_transport` → `coordinator/io.py`**
+
+Before:
+- `coordinator/coordinator.py` non-empty: **699** lines
+- `ThesslaGreenModbusCoordinator` AST span: **611** lines
+- Methods were implemented in `coordinator.py`; `io.py` had abstract stubs
+
+After:
+- `coordinator/coordinator.py` non-empty: **666** lines (−33)
+- `ThesslaGreenModbusCoordinator` AST span: **577** lines (−34)
+- Implementations moved to `_ModbusIOMixin` in `coordinator/io.py`; stubs replaced with code
+- `ConnectionException` import removed from `coordinator.py`; added to `io.py`
+
+API invariant confirmed: `sorted(__all__) == ["CoordinatorConfig", "ThesslaGreenModbusCoordinator"]` ✅
+
+Path invariant confirmed: no `coordinator.py` at package root ✅
+
+Targeted test result: **293 passed**, 1 warning ✅
+
+## PHASE C summary
+
+**Extraction: UART select mappings → `mappings/_static_discrete_uart.py`**
+
+Before:
+- `_static_discrete.py` non-empty: **417** lines
+- 6 UART/serial-port entries inline in `SELECT_ENTITY_MAPPINGS`
+
+After:
+- `_static_discrete.py` non-empty: **~363** lines (−54)
+- New `_static_discrete_uart.py` created with `UART_SELECT_ENTITY_MAPPINGS`
+- `SELECT_ENTITY_MAPPINGS` composed via `{..., **UART_SELECT_ENTITY_MAPPINGS}`
+- Pattern mirrors existing `_static_discrete_diagnostics.py` extraction
+
+Entity count unchanged: **366** ✅
+
+Targeted mapping test result: **284 passed**, 3 skipped ✅
+
+## Largest files/classes/functions (current — 2026-05-08 Phase B+C refresh)
 
 ### Largest files (non-empty lines, top 10)
 
 | Lines | Path |
 |------:|------|
 | 714 | `custom_components/thessla_green_modbus/scanner/io_read.py` |
-| 699 | `custom_components/thessla_green_modbus/coordinator/coordinator.py` |
+| 666 | `custom_components/thessla_green_modbus/coordinator/coordinator.py` |
 | 537 | `custom_components/thessla_green_modbus/modbus_helpers.py` |
 | 451 | `custom_components/thessla_green_modbus/scanner/core.py` |
 | 440 | `tests/test_coordinator.py` |
@@ -119,7 +158,7 @@ All 413 files are already formatted. ✅
 | 204 | `ConfigFlow` | `config_flow.py` |
 | 183 | `ThesslaGreenClimate` | `climate.py` |
 
-### Largest functions (AST span, top 10)
+### Largest functions (AST span, top 15)
 
 | Lines | Function | File |
 |------:|----------|------|
