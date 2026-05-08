@@ -57,10 +57,12 @@ from .config_flow_steps import resolve_reauth_entry as _resolve_reauth_entry_imp
 from .config_flow_steps import resolve_reauth_form_state as _resolve_reauth_form_state_impl
 from .config_flow_steps import validate_options_submission as _validate_options_submission_impl
 from .config_flow_user_submit import process_user_submission as _process_user_submission_impl
-from .config_flow_validation import process_scan_capabilities as _process_scan_capabilities_impl
-from .config_flow_validation import validate_rtu_config as _validate_rtu_config_impl
+from .config_flow_validation import (
+    process_scan_capabilities_bound as _process_scan_capabilities_bound,
+)
+from .config_flow_validation import validate_rtu_config_bound as _validate_rtu_config_bound
 from .config_flow_validation import validate_slave_id as _validate_slave_id_impl
-from .config_flow_validation import validate_tcp_config as _validate_tcp_config_impl
+from .config_flow_validation import validate_tcp_config_bound as _validate_tcp_config_bound
 from .const import (
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
@@ -175,34 +177,6 @@ def _validate_slave_id(data: dict[str, Any]) -> int:
     return _validate_slave_id_impl(data)
 
 
-def _validate_tcp_config(data: dict[str, Any]) -> tuple[str, int]:
-    """Validate and normalise TCP fields in data. Returns (host, port)."""
-    return _validate_tcp_config_impl(data, looks_like_hostname=_looks_like_hostname)
-
-
-def _validate_rtu_config(data: dict[str, Any]) -> None:
-    """Validate and normalise RTU serial fields in data."""
-    _validate_rtu_config_impl(
-        data,
-        normalize_baud_rate=_normalize_baud_rate,
-        normalize_parity=_normalize_parity,
-        normalize_stop_bits=_normalize_stop_bits,
-    )
-
-
-def _process_scan_capabilities(
-    scan_result: dict[str, Any],
-    capabilities_cls: type,
-) -> dict[str, Any]:
-    """Extract and validate capabilities from a scan result dict."""
-    return _process_scan_capabilities_impl(
-        scan_result,
-        capabilities_cls=capabilities_cls,
-        caps_to_dict=_caps_to_dict,
-        logger=_LOGGER,
-    )
-
-
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     return await _validate_input_impl(
@@ -210,8 +184,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         data,
         normalize_connection_type=_normalize_connection_type,
         validate_slave_id=_validate_slave_id,
-        validate_tcp_config=_validate_tcp_config,
-        validate_rtu_config=_validate_rtu_config,
+        validate_tcp_config=_validate_tcp_config_bound,
+        validate_rtu_config=_validate_rtu_config_bound,
         load_scanner_module=_load_scanner_module,
         scanner_cls_override=ThesslaGreenDeviceScanner,
         capabilities_cls_override=DeviceCapabilities,
@@ -221,7 +195,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
             backoff=backoff,
         ),
         call_with_optional_timeout=_call_with_optional_timeout,
-        process_scan_capabilities=_process_scan_capabilities,
+        process_scan_capabilities=_process_scan_capabilities_bound,
         is_request_cancelled_error=_is_request_cancelled_error,
         classify_os_error=_classify_os_error_impl,
         should_log_timeout_traceback=_should_log_timeout_traceback_impl,
@@ -323,7 +297,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
             device_info=self._device_info,
             scan_result=self._scan_result,
             cap_cls=cap_cls,
-            caps_to_dict=_caps_to_dict,
+            caps_to_dict=_caps_to_dict_impl,
         )
 
         return self.async_show_form(

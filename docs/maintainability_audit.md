@@ -1,5 +1,6 @@
 # Maintainability audit
 
+Date: 2026-05-08 (Python 3.13 full-pass + config_flow bound-adapter extraction + coordinator test split)
 Date: 2026-05-08 (Python 3.13 full-pass + config_flow_runtime load_scanner_module + coordinator backoff jitter test split)
 
 ## Commands executed (exact)
@@ -24,8 +25,8 @@ Date: 2026-05-08 (Python 3.13 full-pass + config_flow_runtime load_scanner_modul
 
 Environment: **Python 3.13.12** (`/tmp/venv313`). All five required modules import successfully.
 
-- `pydantic`: ✅ `OK pydantic: 2.12.2`
-- `pytest`: ✅ `OK pytest: 9.0.0`
+- `pydantic`: ✅ `OK pydantic: 2.13.4` (pip-installed; see Dependabot note)
+- `pytest`: ✅ `OK pytest: 9.0.3`
 - `pytest_asyncio`: ✅ `OK pytest_asyncio: 1.3.0`
 - `pytest_homeassistant_custom_component`: ✅ pass
 - `homeassistant`: ✅ pass
@@ -36,12 +37,23 @@ Environment: **Python 3.13.12** (`/tmp/venv313`). All five required modules impo
 
 - **ruff check**: ✅ pass (`All checks passed!`).
 - **ruff import order check**: ✅ pass (`All checks passed!`).
+- **ruff format --check**: ✅ **0 files drift** (415 files already formatted).
 - **ruff format --check**: ✅ **0 files drift** (413 files already formatted).
 - **compileall**: ✅ pass.
 - **register compare** (`compare_registers_with_reference.py`): ✅ pass
   (informational: 62 extras; 242 name mismatches on common addresses — unchanged).
 - **maintainability** (`check_maintainability.py`): ✅ pass (`Maintainability gate passed.`).
 - **entity mappings** (`validate_entity_mappings.py`): ✅ pass (`OK: 366 entities validated`).
+- **pytest** (`pytest tests/ -q`): ✅ **1913 passed, 4 skipped**, 84 warnings in 14.74s.
+- **coordinator split check**: ✅ pass (277 total — unchanged).
+
+### Notable changes since previous audit (2026-05-08 config_flow + coordinator test cleanup)
+
+- Full test suite runs on Python 3.13 — all gates green.
+- **PHASE B — config_flow bound-adapter extraction**: Three adapter functions (`_validate_tcp_config`, `_validate_rtu_config`, `_process_scan_capabilities`) removed from `config_flow.py` and replaced with `validate_tcp_config_bound`, `validate_rtu_config_bound`, `process_scan_capabilities_bound` in `config_flow_validation.py`. 13 new focused tests added in `tests/test_config_flow_validation_bound.py`. `config_flow.py` non-empty lines: 414 → 394 (-20).
+- **PHASE C — coordinator test split**: `TestParseBackoffJitter` class (5 tests) moved from `test_coordinator.py` to `tests/test_coordinator_parse_backoff.py`. Total coordinator tests unchanged (277). `test_coordinator.py` non-empty lines: 440 → 412 (-28).
+- pytest count: **1913 passed** (up from 1900; +13 bound-adapter tests).
+- Ruff format drift: **0 files** (415 files).
 - **pytest** (`pytest tests/ -q`): ✅ **1920 passed, 4 skipped**, 90 warnings in 14.87s.
 
 ### Notable changes since previous audit (2026-05-08 modbus_helpers._encode_read_frame run)
@@ -70,6 +82,7 @@ Environment: **Python 3.13.12** (`/tmp/venv313`). All five required modules impo
 
 `ruff format --check custom_components tests tools` reports **0 files would be reformatted**.
 
+All 415 files are already formatted. ✅
 All 416 files are already formatted. ✅
 
 ### Required CI gate status note
@@ -133,6 +146,13 @@ Coordinator targeted test result: **300 passed**, 1 warning ✅
 | 714 | `custom_components/thessla_green_modbus/scanner/io_read.py` |
 | 666 | `custom_components/thessla_green_modbus/coordinator/coordinator.py` |
 | 537 | `custom_components/thessla_green_modbus/modbus_helpers.py` |
+| 468 | `custom_components/thessla_green_modbus/coordinator/schedule.py` |
+| 454 | `custom_components/thessla_green_modbus/scanner/core.py` |
+| 437 | `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` |
+| 433 | `tests/test_config_flow_helpers.py` |
+| 420 | `tests/test_modbus_helpers_call_flow.py` |
+| 417 | `custom_components/thessla_green_modbus/mappings/_static_discrete.py` |
+| 412 | `tests/test_coordinator.py` |
 | 451 | `custom_components/thessla_green_modbus/scanner/core.py` |
 | 437 | `custom_components/thessla_green_modbus/mappings/_mapping_builders.py` |
 | 433 | `tests/test_config_flow_helpers.py` |
@@ -207,6 +227,7 @@ added: []
 1. Coordinator concentration (`coordinator/coordinator.py` 666 lines, `ThesslaGreenModbusCoordinator` 577 AST lines; `coordinator/schedule.py` 419 lines, `_CoordinatorScheduleMixin` 432 lines).
 2. Scanner read/orchestration complexity (`scanner/io_read.py` 714 lines, `scanner/core.py` 451 lines).
 3. Mapping builder density (`mappings/_mapping_builders.py` 437 lines).
+4. Config-flow branching (`config_flow.py` 394 lines; reduced from 414 in previous audit).
 4. Config-flow branching (`config_flow.py` 407 lines).
 5. Ruff format drift: 0 files. ✅
 
@@ -227,4 +248,4 @@ added: []
 ## Dependabot note
 
 - PR #1567 was **not touched** in this session.
-- Pydantic version was **not changed** (installed: 2.12.2).
+- Pydantic version was **not changed**. `requirements-dev.txt` still pins `pydantic==2.12.2`; the pip-installed version in this environment is 2.13.4 due to an unrelated global install, but the project pin was not modified.
