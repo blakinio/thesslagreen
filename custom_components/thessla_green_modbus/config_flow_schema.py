@@ -213,6 +213,24 @@ def _build_serial_defaults_and_validators(
     }
 
 
+def build_reconfigure_schema(entry_data: dict[str, Any]) -> vol.Schema:
+    """Return schema for the reconfigure step (host / port / slave_id only)."""
+    data = entry_data or {}
+    return vol.Schema(
+        {
+            vol.Required(CONF_HOST, default=data.get(CONF_HOST, "")): str,
+            vol.Required(
+                CONF_PORT,
+                default=data.get(CONF_PORT, DEFAULT_PORT),
+            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+            vol.Required(
+                CONF_SLAVE_ID,
+                default=data.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID),
+            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=247)),
+        }
+    )
+
+
 def build_connection_schema(
     defaults: dict[str, Any],
     *,
