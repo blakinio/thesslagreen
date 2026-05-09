@@ -1,5 +1,9 @@
 """Ensure translation files don't contain unused keys."""
 
+from custom_components.thessla_green_modbus.config_flow_options_form import (
+    build_options_defaults,
+    build_options_schema,
+)
 from custom_components.thessla_green_modbus.const import SPECIAL_FUNCTION_MAP
 
 from tests.test_translations import (
@@ -9,7 +13,6 @@ from tests.test_translations import (
     ISSUE_KEYS,
     NUMBER_KEYS,
     OPTION_ERROR_KEYS,
-    OPTION_KEYS,
     PL,
     SELECT_KEYS,
     SERVICES,
@@ -30,9 +33,11 @@ def _assert_no_extra_keys(trans, entity_type, valid_keys) -> None:
 
 def _assert_no_extra_option_keys(trans) -> None:
     opts = trans["options"]["step"]["init"]
-    extra = [k for k in opts["data"] if k not in OPTION_KEYS]
+    schema = build_options_schema(build_options_defaults({}, {}))
+    valid_option_keys = {key.schema for key in schema.schema}
+    extra = [k for k in opts["data"] if k not in valid_option_keys]
     assert not extra, f"Unused option translations: {extra}"  # nosec B101
-    extra_desc = [k for k in opts["data_description"] if k not in OPTION_KEYS]
+    extra_desc = [k for k in opts["data_description"] if k not in valid_option_keys]
     assert not extra_desc, f"Unused option descriptions: {extra_desc}"  # nosec B101
     errors = trans["options"].get("error", {})
     extra_err = [k for k in errors if k not in OPTION_ERROR_KEYS]

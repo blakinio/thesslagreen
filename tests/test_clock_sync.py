@@ -207,6 +207,11 @@ async def test_sync_proceeds_when_drift_exceeds_threshold():
     # Device clock is 400 seconds behind
     coord = _make_coordinator(data={"device_clock": "2025-05-09T14:23:45"})
 
+    async def _refresh_side_effect():
+        coord.data = {"device_clock": "2025-05-09T14:30:45"}
+
+    coord.async_request_refresh.side_effect = _refresh_side_effect
+
     result = await async_perform_clock_sync(
         coord,
         force=False,
