@@ -8,11 +8,11 @@ Transport-specific behavior has been split into focused modules:
 - test_modbus_transport_errors.py
 """
 
-from custom_components.thessla_green_modbus.modbus_transport import (
+from custom_components.thessla_green_modbus.transport.crc import append_crc as _append_crc
+from custom_components.thessla_green_modbus.transport.crc import crc16 as _crc16
+from custom_components.thessla_green_modbus.transport.raw import (
     RawModbusResponse,
     RawModbusWriteResponse,
-    _append_crc,
-    _crc16,
 )
 
 

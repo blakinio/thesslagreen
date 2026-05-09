@@ -18,8 +18,8 @@ from ..const import (
 )
 from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from ..modbus_helpers import group_reads as _group_reads
-from ..modbus_transport import RtuModbusTransport
 from ..scanner_device_info import ScannerDeviceInfo
+from ..transport.rtu import RtuModbusTransport
 from . import custom_scan as scanner_custom_scan
 from . import scan_runtime
 from .full_scan_phase import apply_word_register_block
@@ -213,17 +213,21 @@ async def run_full_scan(
         coil_max,
         "coil_registers",
         1,
-        lambda start, count: scanner._read_coil(scanner._client, start, count)
-        if scanner._client is not None
-        else scanner._read_coil(start, count),
+        lambda start, count: (
+            scanner._read_coil(scanner._client, start, count)
+            if scanner._client is not None
+            else scanner._read_coil(start, count)
+        ),
     )
     await _run_bit_phase(
         discrete_max,
         "discrete_inputs",
         2,
-        lambda start, count: scanner._read_discrete(scanner._client, start, count)
-        if scanner._client is not None
-        else scanner._read_discrete(start, count),
+        lambda start, count: (
+            scanner._read_discrete(scanner._client, start, count)
+            if scanner._client is not None
+            else scanner._read_discrete(start, count)
+        ),
     )
 
 

@@ -8,12 +8,10 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from ..modbus_exceptions import ConnectionException, ModbusException
-from ..modbus_transport import (
-    BaseModbusTransport,
-    RawRtuOverTcpTransport,
-    RtuModbusTransport,
-    TcpModbusTransport,
-)
+from ..transport.base import BaseModbusTransport
+from ..transport.rtu import RtuModbusTransport
+from ..transport.tcp import TcpModbusTransport
+from ..transport.tcp_rtu import RawRtuOverTcpTransport
 
 
 async def reconnect_client_if_needed(client: Any) -> bool:

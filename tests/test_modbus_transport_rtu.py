@@ -5,10 +5,10 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import custom_components.thessla_green_modbus.modbus_transport as _transport_mod
+import custom_components.thessla_green_modbus.transport.rtu as _transport_mod
 import pytest
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
-from custom_components.thessla_green_modbus.modbus_transport import RtuModbusTransport
+from custom_components.thessla_green_modbus.transport.rtu import RtuModbusTransport
 
 # ---------------------------------------------------------------------------
 # RtuModbusTransport tests
@@ -189,7 +189,7 @@ async def test_rtu_write_registers_ensures_connection():
 @pytest.mark.asyncio
 async def test_rtu_connect_no_callable_connect(monkeypatch):
     """RTU _connect sets connected=True when client.connect is not callable (lines 516-517)."""
-    from custom_components.thessla_green_modbus.modbus_transport import RtuModbusTransport
+    from custom_components.thessla_green_modbus.transport.rtu import RtuModbusTransport
 
     class NoConnectClient:
         connected = False
@@ -199,7 +199,7 @@ async def test_rtu_connect_no_callable_connect(monkeypatch):
             pass
 
     monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.modbus_transport._AsyncModbusSerialClient",
+        "custom_components.thessla_green_modbus.transport.rtu._AsyncModbusSerialClient",
         lambda **kwargs: NoConnectClient(),
     )
 

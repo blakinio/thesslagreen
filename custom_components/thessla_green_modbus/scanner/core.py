@@ -24,10 +24,6 @@ from ..const import (
 )
 from ..modbus_helpers import async_maybe_await_close
 from ..modbus_helpers import group_reads as _group_reads
-from ..modbus_transport import (
-    BaseModbusTransport,
-    RtuModbusTransport,
-)
 from ..registers.loader import (
     async_get_all_registers,
 )
@@ -38,6 +34,8 @@ from ..scanner_helpers import (
 from ..scanner_helpers import (
     SAFE_REGISTERS as _SAFE_REGISTERS,
 )
+from ..transport.base import BaseModbusTransport
+from ..transport.rtu import RtuModbusTransport
 from . import capabilities_facade as scanner_capabilities_facade
 from . import firmware as scanner_firmware
 from . import orchestration as scanner_orchestration

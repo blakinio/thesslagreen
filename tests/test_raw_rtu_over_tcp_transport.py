@@ -2,10 +2,8 @@ import asyncio
 
 import pytest
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
-from custom_components.thessla_green_modbus.modbus_transport import (
-    RawRtuOverTcpTransport,
-    _crc16,
-)
+from custom_components.thessla_green_modbus.transport.crc import crc16 as _crc16
+from custom_components.thessla_green_modbus.transport.tcp_rtu import RawRtuOverTcpTransport
 
 
 class DummyWriter:

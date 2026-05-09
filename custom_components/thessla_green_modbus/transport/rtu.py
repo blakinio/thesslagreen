@@ -1,8 +1,8 @@
-"""RTU transport implementation."""
+"""RTU serial transport implementation."""
 
 from __future__ import annotations
 
-import inspect
+import logging
 from typing import Any
 
 try:
@@ -15,14 +15,34 @@ else:  # pragma: no cover
 
 from ..modbus_exceptions import ConnectionException
 from ..modbus_helpers import async_maybe_await_close
-from .base import BaseModbusTransport
+from .tcp import _ClientBackedTransport
+
+_LOGGER = logging.getLogger(__name__)
 
 
-class RtuModbusTransport(BaseModbusTransport):
+class RtuModbusTransport(_ClientBackedTransport):
+    """RTU Modbus transport implementation using async serial client."""
+
     def __init__(
-        self, *, serial_port: str, baudrate: int, parity: str, stopbits: int, **kwargs: Any
+        self,
+        *,
+        serial_port: str,
+        baudrate: int,
+        parity: str,
+        stopbits: int,
+        max_retries: int,
+        base_backoff: float,
+        max_backoff: float,
+        timeout: float,
+        offline_state: bool = False,
     ) -> None:
-        super().__init__(**kwargs)
+        super().__init__(
+            max_retries=max_retries,
+            base_backoff=base_backoff,
+            max_backoff=max_backoff,
+            timeout=timeout,
+            offline_state=offline_state,
+        )
         self.serial_port = serial_port
         self.baudrate = baudrate
         self.parity = parity
@@ -34,10 +54,10 @@ class RtuModbusTransport(BaseModbusTransport):
 
     async def _connect(self) -> None:
         if _AsyncModbusSerialClient is None:
-            msg = "Modbus serial client is unavailable."
+            message = "Modbus serial client is unavailable. Install pymodbus with serial support."
             if SERIAL_IMPORT_ERROR is not None:
-                msg = f"{msg} ({SERIAL_IMPORT_ERROR})"
-            raise ConnectionException(msg)
+                message = f"{message} ({SERIAL_IMPORT_ERROR})"
+            raise ConnectionException(message)
         if not self.serial_port:
             raise ConnectionException("Serial port not configured for RTU transport")
         self.client = _AsyncModbusSerialClient(
@@ -48,18 +68,8 @@ class RtuModbusTransport(BaseModbusTransport):
             stopbits=self.stopbits,
             timeout=self.timeout,
         )
-        connect_method = getattr(self.client, "connect", None)
-        if callable(connect_method):
-            connected = connect_method()
-            if inspect.isawaitable(connected):
-                connected = await connected
-        else:
-            connected = True
-            self.client.connected = True
-        if not connected:
-            self.offline_state = True
-            raise ConnectionException(f"Could not connect to {self.serial_port}")
-        self.offline_state = False
+        await self._connect_client(endpoint=self.serial_port)
+        _LOGGER.debug("RTU Modbus connection established on %s", self.serial_port)
 
     async def _reset_connection(self) -> None:
         if self.client is None:
@@ -68,3 +78,10 @@ class RtuModbusTransport(BaseModbusTransport):
             await async_maybe_await_close(self.client)
         finally:
             self.client = None
+
+
+__all__ = [
+    "SERIAL_IMPORT_ERROR",
+    "RtuModbusTransport",
+    "_AsyncModbusSerialClient",
+]

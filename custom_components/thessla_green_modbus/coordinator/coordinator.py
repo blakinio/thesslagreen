@@ -83,9 +83,6 @@ from ..coordinator_state import resolve_effective_batch as _resolve_effective_ba
 from ..errors import CannotConnect
 from ..modbus_exceptions import ConnectionException
 from ..modbus_helpers import group_reads
-from ..modbus_transport import (
-    BaseModbusTransport,
-)
 from ..register_defs_cache import get_register_definitions
 from ..registers.register_def import RegisterDef
 from ..scanner import (
@@ -93,6 +90,7 @@ from ..scanner import (
     ThesslaGreenDeviceScanner,
     is_request_cancelled_error,
 )
+from ..transport.base import BaseModbusTransport
 from ..utils import resolve_connection_settings
 from .capabilities import _CoordinatorCapabilitiesMixin
 from .connection import (
@@ -648,8 +646,8 @@ class ThesslaGreenModbusCoordinator(
         transport, mode = await _select_auto_transport_impl(
             resolved_connection_mode=self._resolved_connection_mode,
             build_tcp_transport=self._build_tcp_transport,
-            try_direct_client_connect=lambda allow_parameterless_ctor: self._try_direct_client_connect(
-                allow_parameterless_ctor=allow_parameterless_ctor
+            try_direct_client_connect=lambda allow_parameterless_ctor: (
+                self._try_direct_client_connect(allow_parameterless_ctor=allow_parameterless_ctor)
             ),
             port=self.config.port,
             timeout=self.timeout,
@@ -694,8 +692,10 @@ class ThesslaGreenModbusCoordinator(
                 select_auto_transport_fn=lambda: _select_auto_transport_impl(
                     resolved_connection_mode=self._resolved_connection_mode,
                     build_tcp_transport=self._build_tcp_transport,
-                    try_direct_client_connect=lambda allow_parameterless_ctor: self._try_direct_client_connect(
-                        allow_parameterless_ctor=allow_parameterless_ctor
+                    try_direct_client_connect=lambda allow_parameterless_ctor: (
+                        self._try_direct_client_connect(
+                            allow_parameterless_ctor=allow_parameterless_ctor
+                        )
                     ),
                     port=self.config.port,
                     timeout=self.timeout,

@@ -13,7 +13,7 @@ from ..registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
 from .write_path import SingleWritePlan, finalize_write_result, run_single_write_attempts
 
 if TYPE_CHECKING:
-    from ..modbus_transport import BaseModbusTransport
+    from ..transport.base import BaseModbusTransport
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,6 +52,7 @@ class _CoordinatorScheduleMixin:
     async def _safe_request_refresh(self) -> None:
         """Request refresh and ignore mock-context TypeError in tests."""
         await _safe_request_refresh(self)
+
     def _assert_write_connection_ready(self) -> None:
         """Ensure transport/client is present and connected for writes."""
         transport = self._transport
