@@ -1,7 +1,9 @@
 # Release Readiness Audit
 
 Date: 2026-05-09
-Branch: `claude/finalize-release-readiness-ozgQt` → PR base: `dev`
+Branch: `dev` (working branch: `claude/setup-dev-workflow-yd3k6`)
+
+> **Related:** [HA Quality Scale Audit](ha_quality_scale_audit.md) — full rule-by-rule Bronze/Silver/Gold evaluation added 2026-05-09.
 
 ---
 
