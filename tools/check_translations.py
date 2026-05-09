@@ -24,6 +24,12 @@ OPTION_KEYS = [
     "enable_device_scan",
     "log_level",
     "safe_scan",
+    "scan_uart_settings",
+    "airflow_unit",
+    "sync_device_clock_enabled",
+    "sync_device_clock_on_start",
+    "sync_device_clock_interval_hours",
+    "sync_device_clock_max_drift_seconds",
 ]
 
 OPTION_ERROR_KEYS = [

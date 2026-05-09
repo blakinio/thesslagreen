@@ -46,14 +46,14 @@
       "invalid_stop_bits": "Wybrano nieprawidłową liczbę bitów stopu.",
       "dns_failure": "Nie można rozwiązać nazwy hosta.",
       "connection_refused": "Połączenie zostało odrzucone przez hosta.",
-      "missing_method": "Brak wymaganej metody w skanerze. Sprawdź logi po szczegóły.",
+      "missing_method": "Brak wymaganej metody w skanerze. Sprawdź logi, aby zobaczyć szczegóły.",
       "io_error": "Błąd wejścia/wyjścia podczas komunikacji z urządzeniem. Sprawdź okablowanie i połączenie sieciowe.",
       "invalid_capabilities": "Nieprawidłowe dane możliwości urządzenia.",
       "invalid_format": "Odebrano dane w nieoczekiwanym formacie z urządzenia.",
       "modbus_error": "Błąd komunikacji Modbus. Sprawdź okablowanie i ustawienia.",
-      "max_registers_range": "Maksymalna liczba rejestrów na żądanie musi mieścić się w zakresie 1-16.",
+      "max_registers_range": "Maksymalna liczba rejestrów na żądanie musi mieścić się w zakresie 1–16.",
       "timeout": "Urządzenie nie odpowiedziało na czas. Sprawdź połączenie sieciowe i adres.",
-      "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły."
+      "unknown": "Nieoczekiwany błąd. Sprawdź logi, aby zobaczyć szczegóły."
     },
     "step": {
       "confirm": {
@@ -67,7 +67,7 @@
           "connection_mode": "Tryb połączenia",
           "host": "Adres IP",
           "port": "Port",
-          "slave_id": "ID Urządzenia",
+          "slave_id": "ID urządzenia",
           "name": "Nazwa",
           "serial_port": "Port szeregowy",
           "baud_rate": "Prędkość (baud)",
@@ -89,7 +89,7 @@
           "parity": "Ustawienie parzystości dla Modbus RTU",
           "stop_bits": "Liczba bitów stopu dla Modbus RTU",
           "deep_scan": "Odczytaj wszystkie rejestry do diagnostyki (może być wolne)",
-          "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"
+          "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1–16)"
         },
         "description": "Skonfiguruj połączenie z ThesslaGreen AirPack przez Modbus TCP lub Modbus RTU. Integracja automatycznie wykryje funkcje i rejestry urządzenia."
       },
@@ -133,10 +133,10 @@
         "name": "Czujnik zanieczyszczeń"
       },
       "dp_ahu_filter_overflow": {
-        "name": "Przepełnienie filtra AHU"
+        "name": "Alarm ciśnieniowy filtra AHU"
       },
       "dp_duct_filter_overflow": {
-        "name": "Przepełnienie filtra kanałowego"
+        "name": "Alarm ciśnieniowy filtra kanałowego"
       },
       "duct_heater_protection": {
         "name": "Ochrona nagrzewnicy kanałowej"
@@ -211,7 +211,7 @@
         "name": "E251: Wymagana wymiana filtra kanałowego"
       },
       "e_252": {
-        "name": "E252: Wymagana wymiana filtrów (z presostarem)"
+        "name": "E252: Wymagana wymiana filtrów (z presostatem)"
       },
       "e_99": {
         "name": "E99: Wymagany klucz produktu AirPack"
@@ -223,7 +223,7 @@
         "name": "Błąd S"
       },
       "expansion": {
-        "name": "Ekspansja"
+        "name": "Moduł rozszerzeń"
       },
       "fan_speed_1": {
         "name": "Prędkość wentylatora 1"
@@ -274,7 +274,7 @@
         "name": "S16: Ochrona termiczna nagrzewnicy el. (FPX aktywny)"
       },
       "s_17": {
-        "name": "S17: Filtry niezmienione (z presostarem)"
+        "name": "S17: Filtry niezmienione (z presostatem)"
       },
       "s_19": {
         "name": "S19: Filtry niezmienione (bez presostatu)"
@@ -416,7 +416,7 @@
     },
     "number": {
       "air_flow_rate_manual": {
-        "name": "Przepływ powietrza manualnie"
+        "name": "Ręczny przepływ powietrza"
       },
       "air_flow_rate_temporary": {
         "name": "Intensywność wentylacji (tryb chwilowy)"
@@ -527,7 +527,7 @@
         "name": "Kalibracja zegara RTC"
       },
       "supply_air_temperature_manual": {
-        "name": "Temperatura nawiewu manualnie"
+        "name": "Ręczna temperatura nawiewu"
       },
       "supply_air_temperature_temporary": {
         "name": "Temperatura nawiewu (tryb chwilowy)"
@@ -599,16 +599,16 @@
         "name": "Tryb konfiguracji 1",
         "state": {
           "auto": "Automatyczny",
-          "manual": "Manualny",
-          "temporary": "Chwilowy"
+          "manual": "Ręczny",
+          "temporary": "Tymczasowy"
         }
       },
       "cfg_mode_2": {
         "name": "Tryb konfiguracji 2",
         "state": {
           "auto": "Automatyczny",
-          "manual": "Manualny",
-          "temporary": "Chwilowy"
+          "manual": "Ręczny",
+          "temporary": "Tymczasowy"
         }
       },
       "configuration_mode": {
@@ -663,7 +663,7 @@
           "airing_air_quality": "Wietrzenie (czujnik jakości pow.)",
           "airing_manual": "Wietrzenie (aktywacja ręczna)",
           "airing_auto": "Wietrzenie (tryb automatyczny)",
-          "airing_manual_timed": "Wietrzenie (tryb manualny)",
+          "airing_manual_timed": "Wietrzenie (tryb ręczny)",
           "open_windows": "Otwarte okna",
           "empty_house": "Pusty dom"
         }
@@ -1066,7 +1066,7 @@
         "name": "Strumień powietrza nawiewnego"
       },
       "supply_air_temperature_manual": {
-        "name": "Temperatura nawiewu manualnie"
+        "name": "Ręczna temperatura nawiewu"
       },
       "supply_flow_rate_m3h": {
         "name": "Przepływ nawiewu (m³/h)"
@@ -1479,7 +1479,7 @@
   },
   "options": {
     "error": {
-      "max_registers_range": "Maksymalna liczba rejestrów na żądanie musi mieścić się w zakresie 1-16."
+      "max_registers_range": "Maksymalna liczba rejestrów na żądanie musi mieścić się w zakresie 1–16."
     },
     "step": {
       "init": {
@@ -1497,26 +1497,30 @@
           "sync_device_clock_interval_hours": "Interwał synchronizacji zegara (godziny)",
           "sync_device_clock_max_drift_seconds": "Maksymalne dozwolone odchylenie zegara (s)",
           "sync_device_clock_on_start": "Synchronizuj zegar przy uruchomieniu integracji",
-          "timeout": "Limit czasu połączenia (s)"
+          "timeout": "Limit czasu połączenia (s)",
+          "scan_uart_settings": "Skanuj ustawienia portów UART",
+          "airflow_unit": "Jednostka przepływu powietrza"
         },
         "data_description": {
           "deep_scan": "Odczyt surowych rejestrów 0-300 do diagnostyki",
           "enable_device_scan": "Włącz automatyczne skanowanie urządzenia podczas konfiguracji",
           "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)",
           "log_level": "Ustaw poziom szczegółowości logów integracji",
-          "max_registers_per_request": "Wybierz maksymalną liczbę rejestrów w zapytaniu (1-16)",
+          "max_registers_per_request": "Wybierz maksymalną liczbę rejestrów w zapytaniu (1–16)",
           "retry": "Liczba powtórzeń nieudanych odczytów (1-5)",
           "safe_scan": "Unikaj grupowanych odczytów rejestrów dla kompatybilności",
           "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 s)",
           "skip_missing_registers": "Nie odczytuj rejestrów, które są znane jako niedostępne",
-          "sync_device_clock_enabled": "Automatyczna synchronizacja RTC urządzenia z HA (domyślnie wyłączona)",
-          "sync_device_clock_interval_hours": "Godziny między automatycznymi synchronizacjami zegara (1-168)",
+          "sync_device_clock_enabled": "Automatyczna synchronizacja zegara RTC urządzenia z czasem HA. Domyślnie wyłączona. Gdy włączona, zapisuje czas do fizycznego zegara RTC urządzenia.",
+          "sync_device_clock_interval_hours": "Godziny między automatycznymi synchronizacjami zegara (1–168)",
           "sync_device_clock_max_drift_seconds": "Synchronizuj tylko gdy odchylenie przekracza próg (30-86400 s)",
           "sync_device_clock_on_start": "Synchronizuj raz po pierwszym połączeniu z urządzeniem",
-          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)"
+          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
+          "scan_uart_settings": "Odczytuj rejestry konfiguracji portów UART z urządzenia podczas skanowania",
+          "airflow_unit": "Jednostka wyświetlania wartości przepływu (procenty lub metry sześcienne na godzinę)"
         },
         "error": {
-          "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"
+          "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1–16)"
         },
         "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Skanowanie urządzenia włączone: {device_scan_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}. Głęboki skan: {deep_scan_enabled}. Bezpieczny skan: {safe_scan_enabled}. Maksymalna liczba rejestrów na żądanie: {current_max_registers_per_request}. Poziom logowania: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "Opcje ThesslaGreen Modbus"
@@ -1817,14 +1821,14 @@
       "name": "Ustaw nazwę urządzenia"
     },
     "sync_time": {
-      "description": "Synchronizuje zegar rekuperatora AirPack z aktualnym czasem Home Assistant. Przydatne po zaniku zasilania.",
+      "description": "Synchronizuje zegar rekuperatora AirPack z aktualnym czasem Home Assistant. Przydatne po zaniku zasilania. Ta usługa jest przestarzała; użyj sync_device_clock.",
       "fields": {
         "entity_id": {
           "description": "Encja climate urządzenia AirPack.",
           "name": "Encja"
         }
       },
-      "name": "Synchronizuj zegar urządzenia"
+      "name": "Synchronizuj zegar urządzenia (przestarzałe)"
     },
     "refresh_device_data": {
       "description": "Wymuś natychmiastowe odświeżenie danych.",
@@ -1863,10 +1867,10 @@
       "name": "Ustaw debugowanie logów"
     },
     "sync_device_clock": {
-      "description": "Synchronizuje zegar RTC urządzenia AirPack z aktualnym czasem lokalnym HA. UWAGA: nadpisuje fizyczny zegar RTC urządzenia.",
+      "description": "Synchronizuje zegar RTC urządzenia AirPack z aktualnym czasem lokalnym HA. Zapisuje czas do fizycznego zegara RTC urządzenia. Automatyczna synchronizacja jest domyślnie wyłączona; włącz ją w opcjach integracji.",
       "fields": {
         "force": {
-          "description": "Zapisz zegar nawet gdy odchylenie jest w granicach progu",
+          "description": "Zapisz zegar nawet gdy odchylenie mieści się w skonfigurowanym progu. Gdy wyłączone, synchronizacja jest pomijana jeśli odchylenie jest w granicach progu.",
           "name": "Wymuś"
         }
       },

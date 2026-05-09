@@ -88,7 +88,7 @@
           "parity": "Parity setting for Modbus RTU communication",
           "stop_bits": "Stop bits for Modbus RTU communication",
           "deep_scan": "Read all registers for diagnostics (may be slow)",
-          "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
+          "max_registers_per_request": "Maximum registers per Modbus request (1–16)"
         },
         "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP or Modbus RTU. The integration automatically detects device functions and registers.",
         "title": "ThesslaGreen Modbus Configuration"
@@ -133,10 +133,10 @@
         "name": "Contamination Sensor"
       },
       "dp_ahu_filter_overflow": {
-        "name": "AHU Filter Overflow"
+        "name": "AHU Filter Pressure Alarm"
       },
       "dp_duct_filter_overflow": {
-        "name": "Duct Filter Overflow"
+        "name": "Duct Filter Pressure Alarm"
       },
       "duct_heater_protection": {
         "name": "Duct Heater Protection"
@@ -190,10 +190,10 @@
         "name": "Error E199"
       },
       "e_200": {
-        "name": "E200: Central Heater Overprotection"
+        "name": "E200: Central Heater Thermal Protection"
       },
       "e_201": {
-        "name": "E201: Duct Heater Overprotection"
+        "name": "E201: Duct Heater Thermal Protection"
       },
       "e_202": {
         "name": "E202: Secondary Heater Control Failure"
@@ -256,7 +256,7 @@
         "name": "Unit Operation Confirmation"
       },
       "power_supply_fans": {
-        "name": "Power Supply Fans"
+        "name": "Fan Power Supply"
       },
       "s_10": {
         "name": "S10: Fire Protection Sensor Activated"
@@ -271,7 +271,7 @@
         "name": "S15: Water Heater Anti-Freeze Not Effective"
       },
       "s_16": {
-        "name": "S16: Electric Heater Overprotection (FPX Active)"
+        "name": "S16: Electric Heater Thermal Protection (FPX Active)"
       },
       "s_17": {
         "name": "S17: AHU Filters Not Replaced (With Pressure Switch)"
@@ -313,7 +313,7 @@
         "name": "S32: No TG-02 Module Communication"
       },
       "s_6": {
-        "name": "S6: FPX Heater Overprotection"
+        "name": "S6: FPX Heater Thermal Protection"
       },
       "s_7": {
         "name": "S7: Calibration Not Possible (Low Outdoor Temp)"
@@ -416,31 +416,31 @@
     },
     "number": {
       "air_flow_rate_manual": {
-        "name": "Air Flow Rate Manual"
+        "name": "Manual Air Flow Rate"
       },
       "air_flow_rate_temporary": {
         "name": "Temporary Air Flow Rate"
       },
       "air_flow_rate_temporary_4401": {
-        "name": "Temporary Air Flow Rate (Ext.)"
+        "name": "Temporary Air Flow Rate (Extended)"
       },
       "air_temperature_summer_free_cooling": {
-        "name": "Air Temperature Summer Free Cooling"
+        "name": "Bypass Temperature (Free Cooling)"
       },
       "air_temperature_summer_free_heating": {
-        "name": "Air Temperature Summer Free Heating"
+        "name": "Bypass Temperature (Free Heating)"
       },
       "airing_bathroom_coef": {
-        "name": "Airing Bathroom Coef"
+        "name": "Airing Bathroom Coefficient"
       },
       "airing_coef": {
-        "name": "Airing Coef"
+        "name": "Airing Coefficient"
       },
       "airing_panel_mode_time": {
         "name": "Airing Panel Mode Time"
       },
       "airing_switch_coef": {
-        "name": "Airing Switch Coef"
+        "name": "Airing Switch Coefficient"
       },
       "airing_switch_mode_off_delay": {
         "name": "Airing Switch Mode Off Delay"
@@ -452,19 +452,19 @@
         "name": "Airing Switch Mode Time"
       },
       "bypass_coef_1": {
-        "name": "Bypass Coef 1"
+        "name": "Bypass Coefficient 1"
       },
       "bypass_coef_2": {
-        "name": "Bypass Coef 2"
+        "name": "Bypass Coefficient 2"
       },
       "contamination_coef": {
-        "name": "Contamination Coef"
+        "name": "Contamination Coefficient"
       },
       "delta_t_gwc": {
         "name": "GWC Activation Temperature Differential"
       },
       "empty_house_coef": {
-        "name": "Empty House Coef"
+        "name": "Empty House Coefficient"
       },
       "fan_speed_1_coef": {
         "name": "Fan Speed 1 Coefficient"
@@ -479,7 +479,7 @@
         "name": "Fireplace Mode Time"
       },
       "fireplace_supply_coef": {
-        "name": "Fireplace Supply Coef"
+        "name": "Fireplace Supply Coefficient"
       },
       "gwc_regen_period": {
         "name": "GWC Regeneration Period"
@@ -491,7 +491,7 @@
         "name": "Hood Supply Coefficient"
       },
       "lock_pass": {
-        "name": "Lock Pass"
+        "name": "Lock Code"
       },
       "max_exhaust_air_flow_rate": {
         "name": "Max Exhaust Air Flow Rate"
@@ -527,19 +527,19 @@
         "name": "Nominal Supply Air Flow (GWC)"
       },
       "open_window_coef": {
-        "name": "Open Window Coef"
+        "name": "Open Window Coefficient"
       },
       "rtc_cal": {
-        "name": "Rtc Cal"
+        "name": "RTC Calibration"
       },
       "supply_air_temperature_manual": {
-        "name": "Supply Air Temperature Manual"
+        "name": "Manual Supply Air Temperature"
       },
       "supply_air_temperature_temporary": {
         "name": "Temporary Supply Air Temperature"
       },
       "supply_air_temperature_temporary_4404": {
-        "name": "Temporary Supply Air Temperature (Ext.)"
+        "name": "Temporary Supply Air Temperature (Extended)"
       },
       "uart_0_id": {
         "name": "Port 0 Device ID"
@@ -632,7 +632,7 @@
         }
       },
       "pres_check_day_4432": {
-        "name": "Filter Check Day of Week (Ext.)",
+        "name": "Filter Check Day of Week (Extended)",
         "state": {
           "monday": "Monday",
           "tuesday": "Tuesday",
@@ -927,10 +927,10 @@
         "name": "Required Temperature"
       },
       "air_temperature_summer_free_cooling": {
-        "name": "Air Temperature Summer Free Cooling"
+        "name": "Bypass Temperature (Free Cooling)"
       },
       "air_temperature_summer_free_heating": {
-        "name": "Air Temperature Summer Free Heating"
+        "name": "Bypass Temperature (Free Heating)"
       },
       "ambient_temperature": {
         "name": "Ambient Temperature"
@@ -1066,7 +1066,7 @@
         "name": "Supply Air Flow"
       },
       "supply_air_temperature_manual": {
-        "name": "Supply Air Temperature Manual"
+        "name": "Manual Supply Air Temperature"
       },
       "supply_flow_rate_m3h": {
         "name": "Supply Flow Rate (m³/h)"
@@ -1190,52 +1190,52 @@
         "name": "Filter Check Start Time"
       },
       "pres_check_time_ggmm": {
-        "name": "Filter Check Start Time (Ext.)"
+        "name": "Filter Check Start Time (Extended)"
       },
       "manual_airing_time_to_start": {
         "name": "Manual Airing Time To Start"
       },
       "airing_summer_mon": {
-        "name": "Airing Summer Mon"
+        "name": "Airing Summer Monday"
       },
       "airing_summer_tue": {
-        "name": "Airing Summer Tue"
+        "name": "Airing Summer Tuesday"
       },
       "airing_summer_wed": {
-        "name": "Airing Summer Wed"
+        "name": "Airing Summer Wednesday"
       },
       "airing_summer_thu": {
-        "name": "Airing Summer Thu"
+        "name": "Airing Summer Thursday"
       },
       "airing_summer_fri": {
-        "name": "Airing Summer Fri"
+        "name": "Airing Summer Friday"
       },
       "airing_summer_sat": {
-        "name": "Airing Summer Sat"
+        "name": "Airing Summer Saturday"
       },
       "airing_summer_sun": {
-        "name": "Airing Summer Sun"
+        "name": "Airing Summer Sunday"
       },
       "airing_winter_mon": {
-        "name": "Airing Winter Mon"
+        "name": "Airing Winter Monday"
       },
       "airing_winter_tue": {
-        "name": "Airing Winter Tue"
+        "name": "Airing Winter Tuesday"
       },
       "airing_winter_wed": {
-        "name": "Airing Winter Wed"
+        "name": "Airing Winter Wednesday"
       },
       "airing_winter_thu": {
-        "name": "Airing Winter Thu"
+        "name": "Airing Winter Thursday"
       },
       "airing_winter_fri": {
-        "name": "Airing Winter Fri"
+        "name": "Airing Winter Friday"
       },
       "airing_winter_sat": {
-        "name": "Airing Winter Sat"
+        "name": "Airing Winter Saturday"
       },
       "airing_winter_sun": {
-        "name": "Airing Winter Sun"
+        "name": "Airing Winter Sunday"
       },
       "start_gwc_regen_summer_time": {
         "name": "GWC Regeneration Start (Summer)"
@@ -1497,26 +1497,30 @@
           "sync_device_clock_interval_hours": "Clock sync interval (hours)",
           "sync_device_clock_max_drift_seconds": "Maximum allowed clock drift (seconds)",
           "sync_device_clock_on_start": "Sync clock on integration start",
-          "timeout": "Connection Timeout (seconds)"
+          "timeout": "Connection Timeout (seconds)",
+          "scan_uart_settings": "Scan UART Port Settings",
+          "airflow_unit": "Airflow Unit"
         },
         "data_description": {
           "deep_scan": "Read raw registers 0-300 for diagnostics",
           "enable_device_scan": "Enable automatic device scan during setup",
           "force_full_register_list": "Skip scanning and load all registers (may cause errors)",
           "log_level": "Set integration log verbosity",
-          "max_registers_per_request": "Select maximum registers per request (1-16)",
+          "max_registers_per_request": "Select maximum registers per request (1–16)",
           "retry": "How many times to retry failed reads (1-5 attempts)",
           "safe_scan": "Avoid grouped register reads for compatibility",
           "scan_interval": "How often to read data from device (10-300 seconds)",
           "skip_missing_registers": "Do not poll registers known to be unavailable",
-          "sync_device_clock_enabled": "Automatically sync device RTC from HA time (disabled by default)",
-          "sync_device_clock_interval_hours": "Hours between automatic clock syncs (1-168)",
+          "sync_device_clock_enabled": "Automatically sync device RTC clock from HA time. Disabled by default. When enabled, this writes to the physical device RTC clock.",
+          "sync_device_clock_interval_hours": "Hours between automatic clock syncs (1–168)",
           "sync_device_clock_max_drift_seconds": "Only sync if drift exceeds this threshold (30-86400 s)",
           "sync_device_clock_on_start": "Sync once after first successful device connection",
-          "timeout": "Maximum time to wait for response (5-60 seconds)"
+          "timeout": "Maximum time to wait for response (5-60 seconds)",
+          "scan_uart_settings": "Read UART port configuration registers from the device during scanning",
+          "airflow_unit": "Unit for displaying airflow values (percentage or cubic metres per hour)"
         },
         "error": {
-          "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
+          "max_registers_per_request": "Maximum registers per Modbus request (1–16)"
         },
         "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Device scan enabled: {device_scan_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Safe scan: {safe_scan_enabled}. Max registers per request: {current_max_registers_per_request}. Log level: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "ThesslaGreen Modbus Options"
@@ -1817,14 +1821,14 @@
       "name": "Set Device Name"
     },
     "sync_time": {
-      "description": "Synchronise the AirPack real-time clock to the current Home Assistant time. Useful after power loss.",
+      "description": "Synchronize the AirPack real-time clock with the current Home Assistant time. Useful after power loss. This is a legacy service; use sync_device_clock instead.",
       "fields": {
         "entity_id": {
           "description": "The climate entity of the AirPack device.",
           "name": "Entity"
         }
       },
-      "name": "Sync Device Clock"
+      "name": "Sync Device Clock (Legacy)"
     },
     "refresh_device_data": {
       "description": "Force immediate data refresh.",
@@ -1863,10 +1867,10 @@
       "name": "Set Debug Logging"
     },
     "sync_device_clock": {
-      "description": "Synchronises the AirPack real-time clock to current HA local time. CAUTION: overwrites device RTC clock.",
+      "description": "Synchronize the AirPack real-time clock with the current Home Assistant local time. This writes to the physical device RTC clock. Automatic sync is disabled by default; enable it in integration options.",
       "fields": {
         "force": {
-          "description": "Write clock even if drift is within threshold",
+          "description": "Write the clock even when drift is already within the configured threshold. When false, sync is skipped if drift is within the maximum drift limit.",
           "name": "Force"
         }
       },

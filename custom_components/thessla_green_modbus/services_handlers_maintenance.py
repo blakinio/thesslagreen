@@ -322,7 +322,10 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
             if hasattr(coordinator, "entry") and coordinator.entry is not None:
                 opts = getattr(coordinator.entry, "options", {}) or {}
             max_drift = int(
-                opts.get(CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS, DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS)
+                opts.get(
+                    CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
+                    DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
+                )
             )
             try:
                 ok = await async_perform_clock_sync(
