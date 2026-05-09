@@ -34,7 +34,7 @@ async def run_with_retry(
             if inspect.isawaitable(result):
                 return await result
             return result
-        except BaseException as exc:
+        except BaseException as exc:  # intentional: must see asyncio.CancelledError to re-raise it
             decision = classify_transport_error(exc)
             if decision.kind is ErrorKind.CANCELLED:
                 raise

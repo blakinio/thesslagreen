@@ -63,11 +63,10 @@ The following constraints remain active and must be preserved:
 
 ## Branch note
 
-- Target branch for ongoing work and PR base is **dev**.
-- `main` is not authoritative for this stream.
-- No `main -> dev` merge is recommended by this audit.
+- Target branch for all ongoing work and PR bases is **main**.
+- `main` is the authoritative branch for this integration.
 
 ## Readiness caveats
 
-- **HACS/hassfest readiness:** not claimable (not executed in this run).
-- **Real-device readiness:** not claimable from this verification run; no new on-device evidence captured.
+- **HACS/hassfest readiness:** CI validates these on every push; check the Actions tab for current status.
+- **Real-device readiness:** no on-device evidence was captured during this audit run. The `quality_scale: silver` in `manifest.json` is a self-assessed value.

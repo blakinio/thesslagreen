@@ -5,7 +5,6 @@ Includes the same translated error and status codes as exposed by the ``error_co
 
 from __future__ import annotations
 
-import asyncio
 import copy
 import ipaddress
 import logging
@@ -114,9 +113,7 @@ async def _load_translations(hass: HomeAssistant) -> dict[str, str]:
         )
     except (OSError, ValueError, HomeAssistantError, RuntimeError) as err:
         _LOGGER.debug("Translation load failed: %s", err)
-    except BaseException as err:  # pragma: no cover
-        if isinstance(err, KeyboardInterrupt | SystemExit | asyncio.CancelledError):
-            raise
+    except Exception as err:  # pragma: no cover  # noqa: BLE001
         _LOGGER.debug("Translation load failed unexpectedly: %s", err)
     return {}
 

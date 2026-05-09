@@ -117,11 +117,10 @@ Date: 2026-05-05
 
 ## Branch note (authoritative target)
 
-- The working target branch is **dev**.
-- **main** is not authoritative for this refactor/audit track.
-- No `main -> dev` merge is recommended as part of this audit.
+- The authoritative target branch is **main**.
+- All active development and PR bases target `main` directly.
 
 ## Release readiness caveats
 
-- **HACS/hassfest readiness is not proven** in this audit because those validations were not run.
-- **Real-device validation is not proven** in this audit unless explicitly documented with device evidence.
+- **HACS/hassfest readiness:** CI runs hassfest and HACS validation on every push; check the Actions tab for the current status.
+- **Real-device validation:** the `quality_scale: silver` in `manifest.json` is a self-assessed declaration. Independent real-device evidence has not been collected as part of this audit. Evidence should be documented in a dedicated section before claiming a higher quality scale.
