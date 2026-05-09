@@ -1,6 +1,6 @@
 # Refactor status (current)
 
-Last reviewed: 2026-05-08 (final cleanup release PR — phases A–G, Python 3.13.12).
+Last reviewed: 2026-05-08 (final cleanup release PR — phases A, B, E + docs, Python 3.13.12).
 
 Related document: `docs/maintainability_audit.md`
 
@@ -34,27 +34,31 @@ The following constraints remain active and must be preserved:
 - HA imports in `core/transport/registers/scanner`: **none detected**.
 - Entity mapping invariant: **366 entities**.
 
-## Latest merged refactor snapshot
+## Latest PR snapshot
 
-Latest PR (this document): **final cleanup release — phases B–E + docs**.
+Latest PR (this document): **final cleanup release — phases B, E + docs**.
 
 Changes in this PR:
 
-- **Phase B** (`scanner/io_read.py`): extracted `_handle_register_error_response` from `_process_register_response`; 4 new tests.
-- **Phase C** (`coordinator/coordinator.py` + `_coordinator_init.py`): extracted `apply_coordinator_config`; `__init__` reduced 61→47 lines.
-- **Phase D** (`mappings/_mapping_builders.py`): extracted `_route_holding_register_to_mapping` from `_extend_entity_mappings_from_registers`; latter reduced 83→59 lines.
-- **Phase E** (`scanner/selection.py`): extracted `_split_groups_around_missing` from `group_registers_for_batch_read`; 6 new tests.
+- **Phase B** (`scanner/io_read.py`): extracted `_run_word_read_single_attempt` from
+  `_run_word_read_retry_loop` (87→56 lines); inlined 3 thin wrappers
+  (`_validate_register_response`, `_handle_terminal_read_failure`,
+  `_extend_or_abort_register_results`); updated `test_scanner_io.py`.
+- **Phase C** (scanner/core.py): SKIPPED — all functions within maintainability limits.
+- **Phase D** (coordinator/coordinator.py): SKIPPED — all functions within maintainability limits.
+- **Phase E** (`coordinator/schedule.py`): extracted `_locked_single_register_write` from
+  `async_write_register` (49→30 lines).
+- **Phase F** (config_flow.py): SKIPPED — all functions within maintainability limits.
 
 Current file-size snapshot:
 
-| Area | Size (non-empty lines) |
-|---|---:|
-| `coordinator/coordinator.py` | 596 |
-| `coordinator/schedule.py` | 367 |
-| `scanner/io_read.py` | 713 |
-| `scanner/selection.py` | 119 |
-| `mappings/_mapping_builders.py` | 466 |
-| `scanner/core.py` | 433 |
+| Area | Total lines | Non-empty lines |
+|---|---:|---:|
+| `coordinator/coordinator.py` | 675 | 596 |
+| `coordinator/schedule.py` | 433 | 380 |
+| `scanner/io_read.py` | 813 | 732 |
+| `scanner/core.py` | 478 | 433 |
+| `config_flow.py` | 467 | 387 |
 
 ## Required gate status snapshot
 
@@ -70,17 +74,11 @@ Last complete successful validation (Python 3.13.12):
 
 ## Remaining hotspots
 
-1. `scanner/io_read.py` — `_run_word_read_retry_loop` (87 lines), `read_bit_registers` (64 lines).
+1. `scanner/io_read.py` — `_run_word_read_single_attempt` (70 lines, new), `read_bit_registers` (64 lines).
 2. `scanner/core.py` — `__init__` (68 lines), `create` (52 lines) — mostly long parameter lists.
 3. `coordinator/coordinator.py` — `from_params` (54 lines) — long parameter list pass-through.
-4. `coordinator/schedule.py` — `async_write_register` (49 lines), `_handle_write_attempt_exception` (45 lines).
-5. Config-flow branching: `config_flow.py`.
-
-## Recommended next work
-
-1. Consider extracting `_handle_bit_attempt_exception` from `read_bit_registers` in `scanner/io_read.py`.
-2. `coordinator/schedule.py` write-path complexity still has extraction candidates.
-3. Keep each PR narrow: one production extraction plus focused tests and refreshed docs.
+4. `coordinator/schedule.py` — `_handle_write_attempt_exception` (45 lines).
+5. Config-flow branching: `config_flow.py` — all within limits.
 
 ## Non-required tool status
 

@@ -289,6 +289,38 @@ class _CoordinatorScheduleMixin:
             return response
         return await self._write_holding_single(address, scalar_value, attempt)
 
+    async def _locked_single_register_write(
+        self,
+        *,
+        register_name: str,
+        value: float | str | list[int] | tuple[int, ...],
+        offset: int,
+        refresh: bool,
+    ) -> tuple[bool, bool]:
+        """Execute single-register write within an already-acquired lock.
+
+        Returns (success, refresh_after_write).
+        """
+        definition = self._resolve_write_definition(register_name)
+        if definition is None:
+            return False, False
+
+        await self._ensure_connection()
+        self._assert_write_connection_ready()
+
+        encoded_values, scalar_value = encode_write_value(register_name, definition, value, offset)
+        if encoded_values is None and scalar_value is None:
+            return False, False
+
+        plan = SingleWritePlan(
+            register_name=register_name,
+            address=definition.address + offset,
+            encoded_values=encoded_values,
+            scalar_value=scalar_value,
+            original_value=value,
+        )
+        return await run_single_write_attempts(self, definition, plan, refresh)
+
     async def async_write_register(
         self,
         register_name: str,
@@ -303,36 +335,17 @@ class _CoordinatorScheduleMixin:
         definition's :meth:`encode` method is used to convert it to the raw
         Modbus representation before sending to the device.
         """
-
         refresh_after_write = False
         async with self._write_lock:
             try:
-                definition = self._resolve_write_definition(register_name)
-                if definition is None:
-                    return False
-
-                await self._ensure_connection()
-                self._assert_write_connection_ready()
-
-                encoded_values, scalar_value = encode_write_value(
-                    register_name, definition, value, offset
-                )
-                if encoded_values is None and scalar_value is None:
-                    return False
-
-                plan = SingleWritePlan(
+                success, refresh_after_write = await self._locked_single_register_write(
                     register_name=register_name,
-                    address=definition.address + offset,
-                    encoded_values=encoded_values,
-                    scalar_value=scalar_value,
-                    original_value=value,
-                )
-                success, refresh_after_write = await run_single_write_attempts(
-                    self, definition, plan, refresh
+                    value=value,
+                    offset=offset,
+                    refresh=refresh,
                 )
                 if not success:
                     return False
-
             except (ModbusException, ConnectionException):  # pragma: no cover - safety
                 _LOGGER.exception("Failed to write register %s", register_name)
                 return False

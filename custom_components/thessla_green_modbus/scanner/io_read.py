@@ -55,15 +55,6 @@ def _handle_error_response(
     mark_failed_addresses(scanner, register_type, start, end)
 
 
-def _validate_register_response(response: Any) -> tuple[bool, int | None]:
-    """Return (is_error, exception_code) for a Modbus response-like object."""
-    if response is None:
-        return False, None
-    if response.isError():
-        return True, getattr(response, "exception_code", None)
-    return False, None
-
-
 def _should_abort_input_exception(exc: Exception) -> bool:
     """Return True when input reads should stop retries immediately."""
     if isinstance(exc, ModbusIOException):
@@ -118,16 +109,6 @@ async def _attempt_bit_reconnect(scanner: Any, client: Any) -> Any:
     ):
         pass
     return client
-
-
-def _extend_or_abort_register_results(
-    results: list[int], block: list[int] | None
-) -> tuple[bool, list[int] | None]:
-    """Append block values and indicate whether read batching should continue."""
-    can_continue = append_read_block(results, block)
-    if not can_continue:
-        return False, None
-    return True, results
 
 
 def _handle_register_error_response(
@@ -194,8 +175,8 @@ def _process_register_response(
     if response is None:
         return False, None
 
-    is_error, code = _validate_register_response(response)
-    if is_error:
+    if response.isError():
+        code = getattr(response, "exception_code", None)
         return _handle_register_error_response(
             scanner,
             register_type=register_type,
@@ -217,11 +198,6 @@ def _process_register_response(
     return True, build_success_result(response)
 
 
-def _handle_terminal_read_failure(scanner: Any, register_type: str, start: int, end: int) -> None:
-    """Mark all addresses in a terminally failed read range."""
-    mark_failed_addresses(scanner, register_type, start, end)
-
-
 def _finalize_register_read_failure(
     scanner: Any,
     *,
@@ -241,7 +217,7 @@ def _finalize_register_read_failure(
         return
 
     log_read_failure(kind, start, end, retry)
-    _handle_terminal_read_failure(scanner, register_type, start, end)
+    mark_failed_addresses(scanner, register_type, start, end)
 
 
 def _should_skip_input_range(
@@ -283,7 +259,7 @@ def _prepare_input_read(scanner: Any, start: int, end: int, skip_cache: bool) ->
     ) not in scanner._input_skip_log_ranges:
         _LOGGER.debug("Skipping cached failed input registers %d-%d", skip_start, skip_end)
         scanner._input_skip_log_ranges.add((skip_start, skip_end))
-    _handle_terminal_read_failure(scanner, "input_registers", skip_start, skip_end)
+    mark_failed_addresses(scanner, "input_registers", skip_start, skip_end)
     return True
 
 
@@ -375,6 +351,78 @@ async def _execute_word_read_attempt(
     )
 
 
+async def _run_word_read_single_attempt(
+    scanner: Any,
+    *,
+    transport: Any,
+    client: Any,
+    method_name: str,
+    address: int,
+    count: int,
+    start: int,
+    end: int,
+    skip_cache: bool,
+    register_type: str,
+    handle_attempt_exception: Any,
+    log_success: bool,
+    attempt: int,
+) -> tuple[bool, bool, bool, list[int] | None]:
+    """Execute one iteration of the word-register read retry loop.
+
+    Returns (done, aborted_transiently, stop_retries, payload).
+    """
+    try:
+        response = await _execute_word_read_attempt(
+            scanner,
+            transport=transport,
+            client=client,
+            method_name=method_name,
+            address=address,
+            count=count,
+            attempt=attempt,
+        )
+        done, payload = _process_register_response(
+            scanner,
+            response=response,
+            register_type=register_type,
+            start=start,
+            end=end,
+            address=address,
+            count=count,
+            skip_cache=skip_cache,
+        )
+        if done:
+            if log_success and payload is not None:
+                _LOGGER.debug(
+                    "Read %s %d-%d: %s",
+                    register_type.replace("_", " "),
+                    start,
+                    end,
+                    payload,
+                )
+            return True, False, False, payload
+        return False, False, False, None
+    except asyncio.CancelledError:
+        raise
+    except (
+        TimeoutError,
+        ModbusIOException,
+        OSError,
+        ModbusException,
+        ConnectionException,
+    ) as exc:
+        aborted, stop = handle_attempt_exception(
+            scanner,
+            exc,
+            start=start,
+            end=end,
+            address=address,
+            count=count,
+            attempt=attempt,
+        )
+        return False, aborted, stop, None
+
+
 async def _run_word_read_retry_loop(
     scanner: Any,
     *,
@@ -395,57 +443,26 @@ async def _run_word_read_retry_loop(
     aborted_transiently = False
     for attempt in range(1, scanner.retry + 1):
         attempted_reads = attempt
-        try:
-            response = await _execute_word_read_attempt(
-                scanner,
-                transport=transport,
-                client=client,
-                method_name=method_name,
-                address=address,
-                count=count,
-                attempt=attempt,
-            )
-            done, payload = _process_register_response(
-                scanner,
-                response=response,
-                register_type=register_type,
-                start=start,
-                end=end,
-                address=address,
-                count=count,
-                skip_cache=skip_cache,
-            )
-            if done:
-                if log_success and payload is not None:
-                    _LOGGER.debug(
-                        "Read %s %d-%d: %s",
-                        register_type.replace("_", " "),
-                        start,
-                        end,
-                        payload,
-                    )
-                return payload
-        except asyncio.CancelledError:
-            raise
-        except (
-            TimeoutError,
-            ModbusIOException,
-            OSError,
-            ModbusException,
-            ConnectionException,
-        ) as exc:
-            aborted, stop = handle_attempt_exception(
-                scanner,
-                exc,
-                start=start,
-                end=end,
-                address=address,
-                count=count,
-                attempt=attempt,
-            )
-            aborted_transiently = aborted_transiently or aborted
-            if stop:
-                break
+        done, aborted, stop, payload = await _run_word_read_single_attempt(
+            scanner,
+            transport=transport,
+            client=client,
+            method_name=method_name,
+            address=address,
+            count=count,
+            start=start,
+            end=end,
+            skip_cache=skip_cache,
+            register_type=register_type,
+            handle_attempt_exception=handle_attempt_exception,
+            log_success=log_success,
+            attempt=attempt,
+        )
+        if done:
+            return payload
+        aborted_transiently = aborted_transiently or aborted
+        if stop:
+            break
         await _sleep_retry_backoff(
             backoff=scanner.backoff,
             backoff_jitter=scanner.backoff_jitter,
@@ -551,8 +568,7 @@ async def read_register_block(
             if active_client is None
             else read_fn(active_client, chunk_start, chunk_count)
         )
-        can_continue, _ = _extend_or_abort_register_results(results, block)
-        if not can_continue:
+        if not append_read_block(results, block):
             return None
     return results
 
@@ -563,7 +579,7 @@ def _prepare_holding_read(
     """Return True when holding read should short-circuit as failed/unsupported."""
     should_skip, skip_start, skip_end = _should_skip_holding_range(scanner, start, end, skip_cache)
     if should_skip:
-        _handle_terminal_read_failure(scanner, "holding_registers", skip_start, skip_end)
+        mark_failed_addresses(scanner, "holding_registers", skip_start, skip_end)
         return True
 
     failures = scanner._holding_failures.get(address, 0)
