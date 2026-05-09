@@ -357,3 +357,21 @@ sync_time:
         entity:
           domain: climate
           integration: thessla_green_modbus
+
+sync_device_clock:
+  name: Sync Device Clock (Safe)
+  description: >
+    Synchronise the AirPack real-time clock to the current Home Assistant local
+    time. Writes all four RTC registers, reads back the device clock and
+    validates the drift against the configured threshold.
+    WARNING: this writes to the device RTC.
+  target: *tg_target
+  fields:
+    entity_id:
+      name: Entity
+      description: The climate entity of the AirPack device.
+      required: true
+      selector:
+        entity:
+          domain: climate
+          integration: thessla_green_modbus

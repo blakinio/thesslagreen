@@ -18,14 +18,23 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from .coordinator import ThesslaGreenModbusCoordinator
 
+from .clock_sync import (
+    async_sync_device_clock,
+    clock_sync_options,
+    should_auto_sync,
+    should_sync_on_start,
+    sync_interval,
+)
 from .const import (
     CONF_LOG_LEVEL,
     CONF_SAFE_SCAN,
     CONF_SCAN_INTERVAL,
+    CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
     DEFAULT_LOG_LEVEL,
     DEFAULT_NAME,
     DEFAULT_SAFE_SCAN,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
     DOMAIN,
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
@@ -81,6 +90,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await async_setup_services(hass)
 
     entry.async_on_unload(entry.add_update_listener(async_update_options))
+
+    await _async_setup_clock_sync(hass, entry, coordinator)
+
     _LOGGER.info("ThesslaGreen Modbus integration setup completed successfully")
     return True
 
@@ -142,6 +154,45 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
         await coordinator.async_request_refresh()
 
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def _async_setup_clock_sync(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: ThesslaGreenModbusCoordinator,
+) -> None:
+    """Set up automatic device clock synchronisation if enabled in options."""
+    from homeassistant.helpers.event import async_track_time_interval
+    from homeassistant.util import dt as dt_util
+
+    opts = clock_sync_options(entry.options)
+    if not should_auto_sync(opts):
+        return
+
+    max_drift = int(
+        opts.get(CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS, DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS)
+    )
+
+    if should_sync_on_start(opts):
+        _LOGGER.info("Clock sync on start: syncing device clock now")
+        now = dt_util.now().replace(tzinfo=None)
+        await async_sync_device_clock(coordinator, now, max_drift, raise_on_failure=False)
+
+    interval = sync_interval(opts)
+
+    async def _periodic_sync(_now: object) -> None:
+        if not should_auto_sync(clock_sync_options(entry.options)):
+            return
+        now = dt_util.now().replace(tzinfo=None)
+        _LOGGER.debug("Periodic device clock sync triggered")
+        await async_sync_device_clock(coordinator, now, max_drift, raise_on_failure=False)
+
+    cancel = async_track_time_interval(hass, _periodic_sync, interval)
+    entry.async_on_unload(cancel)
+    _LOGGER.info(
+        "Automatic device clock sync scheduled every %s",
+        interval,
+    )
 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:

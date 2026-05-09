@@ -27,6 +27,10 @@ from .const import (
     CONF_SERIAL_PORT,
     CONF_SKIP_MISSING_REGISTERS,
     CONF_STOP_BITS,
+    CONF_SYNC_DEVICE_CLOCK_ENABLED,
+    CONF_SYNC_DEVICE_CLOCK_INTERVAL_HOURS,
+    CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
+    CONF_SYNC_DEVICE_CLOCK_ON_START,
     CONF_TIMEOUT,
     CONNECTION_MODE_AUTO,
     CONNECTION_MODE_TCP_RTU,
@@ -47,6 +51,10 @@ from .const import (
     DEFAULT_SERIAL_PORT,
     DEFAULT_SKIP_MISSING_REGISTERS,
     DEFAULT_STOP_BITS,
+    DEFAULT_SYNC_DEVICE_CLOCK_ENABLED,
+    DEFAULT_SYNC_DEVICE_CLOCK_INTERVAL_HOURS,
+    DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
+    DEFAULT_SYNC_DEVICE_CLOCK_ON_START,
     DEFAULT_TIMEOUT,
     DOMAIN,
     MAX_BATCH_REGISTERS,
@@ -81,6 +89,18 @@ def build_options_defaults(
         ),
         CONF_SAFE_SCAN: entry_options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN),
         CONF_LOG_LEVEL: entry_options.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL),
+        CONF_SYNC_DEVICE_CLOCK_ENABLED: entry_options.get(
+            CONF_SYNC_DEVICE_CLOCK_ENABLED, DEFAULT_SYNC_DEVICE_CLOCK_ENABLED
+        ),
+        CONF_SYNC_DEVICE_CLOCK_ON_START: entry_options.get(
+            CONF_SYNC_DEVICE_CLOCK_ON_START, DEFAULT_SYNC_DEVICE_CLOCK_ON_START
+        ),
+        CONF_SYNC_DEVICE_CLOCK_INTERVAL_HOURS: entry_options.get(
+            CONF_SYNC_DEVICE_CLOCK_INTERVAL_HOURS, DEFAULT_SYNC_DEVICE_CLOCK_INTERVAL_HOURS
+        ),
+        CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS: entry_options.get(
+            CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS, DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS
+        ),
         CONF_CONNECTION_TYPE: entry_data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE),
         CONF_CONNECTION_MODE: entry_options.get(
             CONF_CONNECTION_MODE, entry_data.get(CONF_CONNECTION_MODE)
@@ -176,6 +196,28 @@ def build_options_schema(values: dict[str, Any]) -> vol.Schema:
                     "selector": {"number": {"min": 1, "max": MAX_BATCH_REGISTERS, "step": 1}},
                 },
             ): int,
+            vol.Optional(
+                CONF_SYNC_DEVICE_CLOCK_ENABLED,
+                default=values[CONF_SYNC_DEVICE_CLOCK_ENABLED],
+            ): bool,
+            vol.Optional(
+                CONF_SYNC_DEVICE_CLOCK_ON_START,
+                default=values[CONF_SYNC_DEVICE_CLOCK_ON_START],
+            ): bool,
+            vol.Optional(
+                CONF_SYNC_DEVICE_CLOCK_INTERVAL_HOURS,
+                default=values[CONF_SYNC_DEVICE_CLOCK_INTERVAL_HOURS],
+                description={
+                    "selector": {"number": {"min": 1, "max": 168, "step": 1}},
+                },
+            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=168)),
+            vol.Optional(
+                CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
+                default=values[CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS],
+                description={
+                    "selector": {"number": {"min": 30, "max": 86400, "step": 1}},
+                },
+            ): vol.All(vol.Coerce(int), vol.Range(min=30, max=86400)),
         }
     )
 

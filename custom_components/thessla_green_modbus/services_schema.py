@@ -146,6 +146,7 @@ SET_DEVICE_NAME_SCHEMA = vol.Schema(
 )
 
 SYNC_TIME_SCHEMA = vol.Schema({vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR})
+SYNC_DEVICE_CLOCK_SCHEMA = vol.Schema({vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR})
 REFRESH_DEVICE_DATA_SCHEMA = vol.Schema({vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR})
 SCAN_ALL_REGISTERS_SCHEMA = vol.Schema({vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR})
 SET_LOG_LEVEL_SCHEMA = vol.Schema(

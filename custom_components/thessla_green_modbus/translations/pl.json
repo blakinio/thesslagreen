@@ -1417,6 +1417,11 @@
       "device_name": {
         "name": "Nazwa urządzenia"
       }
+    },
+    "button": {
+      "sync_device_clock": {
+        "name": "Synchronizuj zegar urządzenia"
+      }
     }
   },
   "codes": {
@@ -1488,7 +1493,11 @@
           "safe_scan": "Bezpieczny skan (bez grupowania)",
           "scan_interval": "Interwał skanowania (s)",
           "skip_missing_registers": "Pomijaj znane brakujące rejestry",
-          "timeout": "Limit czasu połączenia (s)"
+          "timeout": "Limit czasu połączenia (s)",
+          "sync_device_clock_enabled": "Synchronizuj zegar urządzenia (auto)",
+          "sync_device_clock_on_start": "Synchronizuj zegar przy starcie",
+          "sync_device_clock_interval_hours": "Interwał synchronizacji zegara (godziny)",
+          "sync_device_clock_max_drift_seconds": "Maks. dryft synchronizacji zegara (sekundy)"
         },
         "data_description": {
           "deep_scan": "Odczyt surowych rejestrów 0-300 do diagnostyki",
@@ -1500,7 +1509,11 @@
           "safe_scan": "Unikaj grupowanych odczytów rejestrów dla kompatybilności",
           "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 s)",
           "skip_missing_registers": "Nie odczytuj rejestrów, które są znane jako niedostępne",
-          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)"
+          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
+          "sync_device_clock_enabled": "Automatycznie synchronizuj zegar RTC urządzenia w skonfigurowanym interwale",
+          "sync_device_clock_on_start": "Synchronizuj zegar urządzenia przy starcie integracji",
+          "sync_device_clock_interval_hours": "Jak często synchronizować zegar (1-168 godzin)",
+          "sync_device_clock_max_drift_seconds": "Maksymalny dopuszczalny dryft po synchronizacji (30-86400 sekund)"
         },
         "error": {
           "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"
@@ -1848,6 +1861,16 @@
         }
       },
       "name": "Ustaw debugowanie logów"
+    },
+    "sync_device_clock": {
+      "description": "Synchronizuje zegar RTC urządzenia AirPack z aktualnym lokalnym czasem Home Assistant. Odczytuje zegar i waliduje dryft. UWAGA: zapisuje do zegara RTC urządzenia.",
+      "fields": {
+        "entity_id": {
+          "description": "Encja klimatyzatora urządzenia AirPack.",
+          "name": "Encja"
+        }
+      },
+      "name": "Synchronizuj zegar urządzenia (bezpiecznie)"
     }
   },
   "title": "ThesslaGreen Modbus"

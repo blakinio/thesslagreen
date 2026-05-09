@@ -21,6 +21,7 @@ except ModuleNotFoundError:  # pragma: no cover - test/runtime fallback without 
 
     class _FallbackPlatform:
         BINARY_SENSOR = "binary_sensor"
+        BUTTON = "button"
         CLIMATE = "climate"
         FAN = "fan"
         NUMBER = "number"
@@ -264,6 +265,7 @@ KNOWN_MISSING_REGISTERS = {
 PLATFORMS: list[Any] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
+    Platform.BUTTON,
     Platform.CLIMATE,
     Platform.FAN,
     Platform.SELECT,

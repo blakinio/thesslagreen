@@ -1417,6 +1417,11 @@
       "device_name": {
         "name": "Device Name"
       }
+    },
+    "button": {
+      "sync_device_clock": {
+        "name": "Sync Device Clock"
+      }
     }
   },
   "codes": {
@@ -1488,7 +1493,11 @@
           "safe_scan": "Safe Scan (no grouping)",
           "scan_interval": "Scan Interval (seconds)",
           "skip_missing_registers": "Skip Known Missing Registers",
-          "timeout": "Connection Timeout (seconds)"
+          "timeout": "Connection Timeout (seconds)",
+          "sync_device_clock_enabled": "Sync Device Clock (auto)",
+          "sync_device_clock_on_start": "Sync Clock on Start",
+          "sync_device_clock_interval_hours": "Clock Sync Interval (hours)",
+          "sync_device_clock_max_drift_seconds": "Clock Sync Max Drift (seconds)"
         },
         "data_description": {
           "deep_scan": "Read raw registers 0-300 for diagnostics",
@@ -1500,7 +1509,11 @@
           "safe_scan": "Avoid grouped register reads for compatibility",
           "scan_interval": "How often to read data from device (10-300 seconds)",
           "skip_missing_registers": "Do not poll registers known to be unavailable",
-          "timeout": "Maximum time to wait for response (5-60 seconds)"
+          "timeout": "Maximum time to wait for response (5-60 seconds)",
+          "sync_device_clock_enabled": "Automatically synchronise device RTC at the configured interval",
+          "sync_device_clock_on_start": "Synchronise device clock when integration starts",
+          "sync_device_clock_interval_hours": "How often to sync the device clock (1-168 hours)",
+          "sync_device_clock_max_drift_seconds": "Maximum allowed drift after sync before raising an error (30-86400 seconds)"
         },
         "error": {
           "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
@@ -1848,6 +1861,16 @@
         }
       },
       "name": "Set Debug Logging"
+    },
+    "sync_device_clock": {
+      "description": "Synchronise the AirPack real-time clock to current Home Assistant local time. Reads back the device clock and validates drift. WARNING: writes to device RTC.",
+      "fields": {
+        "entity_id": {
+          "description": "The climate entity of the AirPack device.",
+          "name": "Entity"
+        }
+      },
+      "name": "Sync Device Clock (Safe)"
     }
   },
   "title": "ThesslaGreen Modbus"

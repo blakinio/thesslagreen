@@ -7,6 +7,11 @@ from datetime import datetime as _dt
 
 from homeassistant.core import HomeAssistant, ServiceCall
 
+from .clock_sync import async_sync_device_clock
+from .const import (
+    CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
+    DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
+)
 from .modbus_exceptions import ConnectionException, ModbusException
 from .services_dispatch import (
     refresh_and_log_success,
@@ -21,6 +26,7 @@ from .services_schema import (
     SET_DEVICE_NAME_SCHEMA,
     SET_MODBUS_PARAMETERS_SCHEMA,
     START_PRESSURE_TEST_SCHEMA,
+    SYNC_DEVICE_CLOCK_SCHEMA,
     SYNC_TIME_SCHEMA,
 )
 from .services_validation import (
@@ -60,6 +66,7 @@ def _maintenance_registrations():
         ("set_modbus_parameters", SET_MODBUS_PARAMETERS_SCHEMA),
         ("set_device_name", SET_DEVICE_NAME_SCHEMA),
         ("sync_time", SYNC_TIME_SCHEMA),
+        ("sync_device_clock", SYNC_DEVICE_CLOCK_SCHEMA),
     ]
 
 
@@ -76,6 +83,7 @@ def _maintenance_handlers(
     set_modbus_parameters: object,
     set_device_name: object,
     sync_time: object,
+    sync_device_clock: object,
 ) -> dict[str, object]:
     """Return maintenance service handlers keyed by service name."""
     return {
@@ -85,6 +93,7 @@ def _maintenance_handlers(
         "set_modbus_parameters": set_modbus_parameters,
         "set_device_name": set_device_name,
         "sync_time": sync_time,
+        "sync_device_clock": sync_device_clock,
     }
 
 
@@ -304,6 +313,30 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
 
         await _run_for_targets(hass, call, deps, _sync_time_for_target)
 
+    def _build_sync_device_clock_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
+        async def sync_device_clock(call: ServiceCall) -> None:
+            for entity_id, coordinator in _iter_targets(hass, call, deps):
+                now = deps.dt_now().replace(tzinfo=None)
+                max_drift = int(
+                    (getattr(coordinator, "entry", None)
+                    and coordinator.entry.options.get(
+                        CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
+                        DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
+                    ))
+                    or DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS
+                )
+                await async_sync_device_clock(
+                    coordinator,
+                    now,
+                    max_drift,
+                    raise_on_failure=True,
+                    entity_id=entity_id,
+                )
+
+        return sync_device_clock
+
+    sync_device_clock_handler = _build_sync_device_clock_handler(hass, deps)
+
     handlers = _maintenance_handlers(
         reset_filters,
         reset_settings,
@@ -311,5 +344,6 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
         set_modbus_parameters,
         set_device_name,
         sync_time,
+        sync_device_clock_handler,
     )
     _register_maintenance_bindings(hass, deps, handlers)
