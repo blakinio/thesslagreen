@@ -105,6 +105,11 @@
     }
   },
   "entity": {
+    "button": {
+      "sync_device_clock": {
+        "name": "Sync device clock"
+      }
+    },
     "binary_sensor": {
       "ahu_filter_protection": {
         "name": "AHU Filter Protection"
@@ -1488,6 +1493,10 @@
           "safe_scan": "Safe Scan (no grouping)",
           "scan_interval": "Scan Interval (seconds)",
           "skip_missing_registers": "Skip Known Missing Registers",
+          "sync_device_clock_enabled": "Enable automatic clock sync",
+          "sync_device_clock_interval_hours": "Clock sync interval (hours)",
+          "sync_device_clock_max_drift_seconds": "Maximum allowed clock drift (seconds)",
+          "sync_device_clock_on_start": "Sync clock on integration start",
           "timeout": "Connection Timeout (seconds)"
         },
         "data_description": {
@@ -1500,6 +1509,10 @@
           "safe_scan": "Avoid grouped register reads for compatibility",
           "scan_interval": "How often to read data from device (10-300 seconds)",
           "skip_missing_registers": "Do not poll registers known to be unavailable",
+          "sync_device_clock_enabled": "Automatically sync device RTC from HA time (disabled by default)",
+          "sync_device_clock_interval_hours": "Hours between automatic clock syncs (1-168)",
+          "sync_device_clock_max_drift_seconds": "Only sync if drift exceeds this threshold (30-86400 s)",
+          "sync_device_clock_on_start": "Sync once after first successful device connection",
           "timeout": "Maximum time to wait for response (5-60 seconds)"
         },
         "error": {
@@ -1848,6 +1861,16 @@
         }
       },
       "name": "Set Debug Logging"
+    },
+    "sync_device_clock": {
+      "description": "Synchronises the AirPack real-time clock to current HA local time. CAUTION: overwrites device RTC clock.",
+      "fields": {
+        "force": {
+          "description": "Write clock even if drift is within threshold",
+          "name": "Force"
+        }
+      },
+      "name": "Sync Device Clock"
     }
   },
   "title": "ThesslaGreen Modbus"

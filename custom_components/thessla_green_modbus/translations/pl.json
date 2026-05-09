@@ -105,6 +105,11 @@
     }
   },
   "entity": {
+    "button": {
+      "sync_device_clock": {
+        "name": "Synchronizuj zegar urządzenia"
+      }
+    },
     "binary_sensor": {
       "ahu_filter_protection": {
         "name": "Ochrona filtra AHU"
@@ -1488,6 +1493,10 @@
           "safe_scan": "Bezpieczny skan (bez grupowania)",
           "scan_interval": "Interwał skanowania (s)",
           "skip_missing_registers": "Pomijaj znane brakujące rejestry",
+          "sync_device_clock_enabled": "Włącz automatyczną synchronizację zegara",
+          "sync_device_clock_interval_hours": "Interwał synchronizacji zegara (godziny)",
+          "sync_device_clock_max_drift_seconds": "Maksymalne dozwolone odchylenie zegara (s)",
+          "sync_device_clock_on_start": "Synchronizuj zegar przy uruchomieniu integracji",
           "timeout": "Limit czasu połączenia (s)"
         },
         "data_description": {
@@ -1500,6 +1509,10 @@
           "safe_scan": "Unikaj grupowanych odczytów rejestrów dla kompatybilności",
           "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 s)",
           "skip_missing_registers": "Nie odczytuj rejestrów, które są znane jako niedostępne",
+          "sync_device_clock_enabled": "Automatyczna synchronizacja RTC urządzenia z HA (domyślnie wyłączona)",
+          "sync_device_clock_interval_hours": "Godziny między automatycznymi synchronizacjami zegara (1-168)",
+          "sync_device_clock_max_drift_seconds": "Synchronizuj tylko gdy odchylenie przekracza próg (30-86400 s)",
+          "sync_device_clock_on_start": "Synchronizuj raz po pierwszym połączeniu z urządzeniem",
           "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)"
         },
         "error": {
@@ -1848,6 +1861,16 @@
         }
       },
       "name": "Ustaw debugowanie logów"
+    },
+    "sync_device_clock": {
+      "description": "Synchronizuje zegar RTC urządzenia AirPack z aktualnym czasem lokalnym HA. UWAGA: nadpisuje fizyczny zegar RTC urządzenia.",
+      "fields": {
+        "force": {
+          "description": "Zapisz zegar nawet gdy odchylenie jest w granicach progu",
+          "name": "Wymuś"
+        }
+      },
+      "name": "Synchronizuj zegar urządzenia"
     }
   },
   "title": "ThesslaGreen Modbus"

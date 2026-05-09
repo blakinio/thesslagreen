@@ -142,6 +142,7 @@ SERVICE_REGISTRATION_GROUPS: tuple[ServiceRegistrationGroup, ...] = (
             "set_modbus_parameters",
             "set_device_name",
             "sync_time",
+            "sync_device_clock",
         ),
     ),
     ServiceRegistrationGroup(
