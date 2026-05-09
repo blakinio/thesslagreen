@@ -77,12 +77,10 @@ from .const import (
     DEFAULT_TIMEOUT,
     DOMAIN,
     MAX_BATCH_REGISTERS,
-    MODBUS_BAUD_RATES,
-    MODBUS_PARITY,
-    MODBUS_STOP_BITS,
 )
 from .errors import CannotConnect, InvalidAuth
 from .modbus_exceptions import ModbusIOException
+from .options import MODBUS_BAUD_RATES, MODBUS_PARITY, MODBUS_STOP_BITS
 
 _LOGGER = logging.getLogger(__name__)
 __all__ = ["VOL_INVALID", "CannotConnect", "ConfigFlow", "InvalidAuth", "validate_input"]

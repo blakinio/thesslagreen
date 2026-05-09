@@ -22,10 +22,10 @@ from .const import (
     TEMPERATURE_MAX_C,
     TEMPERATURE_MIN_C,
     TEMPERATURE_STEP_C,
-    holding_registers,
 )
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+from .registers.maps import holding_registers
 
 _FEATURE_TARGET_TEMPERATURE = ClimateEntityFeature.TARGET_TEMPERATURE
 _FEATURE_FAN_MODE = ClimateEntityFeature.FAN_MODE
