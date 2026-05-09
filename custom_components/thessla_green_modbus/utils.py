@@ -14,6 +14,7 @@ __all__ = [
     "decode_temp_01c",
     "default_connection_mode",
     "encode_bcd_time",
+    "encode_datetime_to_rtc_registers",
     "resolve_connection_settings",
     "utcnow",
 ]
@@ -135,6 +136,29 @@ def encode_bcd_time(value: time) -> int:
         return ((val // 10) << 4) | (val % 10)
 
     return (_int_to_bcd(value.hour) << 8) | _int_to_bcd(value.minute)
+
+
+def _to_bcd(value: int) -> int:
+    """Encode an integer (0-99) into a two-nibble BCD byte."""
+    return ((value // 10) << 4) | (value % 10)
+
+
+def encode_datetime_to_rtc_registers(dt: datetime) -> list[int]:
+    """Encode a local datetime into the four RTC holding registers.
+
+    Register layout (consistent with the existing decoder in
+    ``_CoordinatorCapabilitiesMixin._decode_device_clock``):
+
+    * reg 0 (date_time):     YY MM  — BCD tens/units of year, BCD month
+    * reg 1 (date_time_ddtt): DD WW  — BCD day of month, BCD weekday (Mon=0)
+    * reg 2 (date_time_ggmm): HH mm  — BCD hour, BCD minute
+    * reg 3 (date_time_sscc): SS cc  — BCD second, BCD centiseconds (always 0)
+    """
+    reg_yymm = (_to_bcd(dt.year % 100) << 8) | _to_bcd(dt.month)
+    reg_ddtt = (_to_bcd(dt.day) << 8) | _to_bcd(dt.weekday())
+    reg_ggmm = (_to_bcd(dt.hour) << 8) | _to_bcd(dt.minute)
+    reg_sscc = (_to_bcd(dt.second) << 8) | 0x00
+    return [reg_yymm, reg_ddtt, reg_ggmm, reg_sscc]
 
 
 def _decode_aatt(value: int) -> dict[str, float | int] | None:

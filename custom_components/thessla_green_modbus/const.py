@@ -201,6 +201,17 @@ CONF_DEEP_SCAN = "deep_scan"  # Perform exhaustive raw register scan for diagnos
 CONF_MAX_REGISTERS_PER_REQUEST = "max_registers_per_request"
 CONF_LOG_LEVEL = "log_level"
 
+# Clock synchronization options
+CONF_SYNC_DEVICE_CLOCK_ENABLED = "sync_device_clock_enabled"
+CONF_SYNC_DEVICE_CLOCK_ON_START = "sync_device_clock_on_start"
+CONF_SYNC_DEVICE_CLOCK_INTERVAL_HOURS = "sync_device_clock_interval_hours"
+CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS = "sync_device_clock_max_drift_seconds"
+
+DEFAULT_SYNC_DEVICE_CLOCK_ENABLED = False
+DEFAULT_SYNC_DEVICE_CLOCK_ON_START = False
+DEFAULT_SYNC_DEVICE_CLOCK_INTERVAL_HOURS = 24
+DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS = 300
+
 AIRFLOW_UNIT_M3H = "m3h"
 AIRFLOW_UNIT_PERCENTAGE = "percentage"
 DEFAULT_AIRFLOW_UNIT = AIRFLOW_UNIT_M3H
