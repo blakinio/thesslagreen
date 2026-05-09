@@ -305,6 +305,7 @@ def test_maintenance_registrations_service_order_and_schema_count():
         "set_modbus_parameters",
         "set_device_name",
         "sync_time",
+        "sync_device_clock",
     ]
 
 
@@ -319,6 +320,7 @@ def test_maintenance_handlers_keys_stable_and_bound():
             "set_modbus_parameters",
             "set_device_name",
             "sync_time",
+            "sync_device_clock",
         ]
     }
 
@@ -329,6 +331,7 @@ def test_maintenance_handlers_keys_stable_and_bound():
         handlers["set_modbus_parameters"],
         handlers["set_device_name"],
         handlers["sync_time"],
+        handlers["sync_device_clock"],
     )
 
     assert list(bound) == [
@@ -338,12 +341,15 @@ def test_maintenance_handlers_keys_stable_and_bound():
         "set_modbus_parameters",
         "set_device_name",
         "sync_time",
+        "sync_device_clock",
     ]
     assert bound == handlers
 
 
 def test_iter_maintenance_service_bindings_keeps_order_and_schema_binding():
     """Service binding helper keeps registration order and uses matching handler names."""
+    from custom_components.thessla_green_modbus.services_schema import SYNC_DEVICE_CLOCK_SCHEMA
+
     handlers = {
         "reset_filters": object(),
         "reset_settings": object(),
@@ -351,6 +357,7 @@ def test_iter_maintenance_service_bindings_keeps_order_and_schema_binding():
         "set_modbus_parameters": object(),
         "set_device_name": object(),
         "sync_time": object(),
+        "sync_device_clock": object(),
     }
 
     assert list(_iter_maintenance_service_bindings(handlers)) == [
@@ -360,6 +367,7 @@ def test_iter_maintenance_service_bindings_keeps_order_and_schema_binding():
         ("set_modbus_parameters", SET_MODBUS_PARAMETERS_SCHEMA, handlers["set_modbus_parameters"]),
         ("set_device_name", SET_DEVICE_NAME_SCHEMA, handlers["set_device_name"]),
         ("sync_time", SYNC_TIME_SCHEMA, handlers["sync_time"]),
+        ("sync_device_clock", SYNC_DEVICE_CLOCK_SCHEMA, handlers["sync_device_clock"]),
     ]
 
 
