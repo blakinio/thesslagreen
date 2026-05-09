@@ -1,7 +1,7 @@
 # Release Readiness Audit
 
 Date: 2026-05-09
-Branch: `claude/release-readiness-audit-5xXvn` → PR base: `dev`
+Branch: `claude/finalize-release-readiness-ozgQt` → PR base: `dev`
 
 ---
 
@@ -17,13 +17,13 @@ Branch: `claude/release-readiness-audit-5xXvn` → PR base: `dev`
 
 ## 2. Python Interpreter
 
-Python 3.13.12 (via `python3.13`; venv at `/tmp/thessla_venv`).
+Python 3.13.12 (via `python3.13`; venv at `/tmp/venv_thessla`).
 
 ---
 
 ## 3. Full Gate Results
 
-All gates run locally with Python 3.13.12.
+All gates run locally with Python 3.13.12 / venv.
 
 ### Import gate
 
@@ -78,92 +78,133 @@ OK homeassistant: installed
 
 ---
 
-## 5. HACS Validation
+## 5. Hassfest Validation
 
-**Not proven locally — tooling unavailable.**
+**CI gate added — pending first CI run.**
 
-- `hacs` CLI: not found (`hacs --help` → command not found).
-- `hacs` pip package: not installed in dev environment.
-- CI workflow (`ci.yaml`): installs `hacs` as a pip package for test infrastructure only. **No `hacs/action@main` or equivalent HACS validation workflow step exists.**
-- `hacs.json` is structurally valid and all known required fields (`name`, `content_in_root`, `render_readme`) are present.
+- `hassfest` CLI: not available locally.
+- CI workflow (`ci.yaml`): **`hassfest` job added** using `home-assistant/actions/hassfest@main`.
+  - This job runs on every PR and on pushes to `main`, `master`, and `dev`.
+  - It validates `manifest.json` structure and integration requirements via the
+    official Home Assistant hassfest tooling.
+- Result of first CI run: **pending** (job will run when this PR is pushed to GitHub).
+- `manifest.json` was manually reviewed against known hassfest schema requirements;
+  all structurally required and recommended fields are present (domain, name, version,
+  codeowners, config_flow, homeassistant, iot_class, requirements, documentation,
+  issue_tracker, integration_type, quality_scale, after_dependencies, loggers,
+  dhcp, zeroconf, files).
 
 ---
 
-## 6. Hassfest Validation
+## 6. HACS Validation
 
-**Not proven locally — tooling unavailable.**
+**CI gate added — pending first CI run.**
 
-- `hassfest` CLI: not found (`hassfest --help` → command not found).
-- `hassfest` pip package: not installed in dev environment.
-- CI workflow (`ci.yaml`): **no `home-assistant/hassfest` GitHub Actions step exists.**
-- `manifest.json` was manually reviewed against known hassfest schema requirements; all structurally required and recommended fields are present (domain, name, version, codeowners, config_flow, homeassistant, iot_class, requirements, documentation, issue_tracker, integration_type, quality_scale, after_dependencies, loggers, dhcp, zeroconf, files).
+- `hacs` CLI: not available locally.
+- CI workflow (`ci.yaml`): **`hacs` job added** using `hacs/action@main`
+  with `category: integration`.
+  - This job runs on every PR and on pushes to `main`, `master`, and `dev`.
+  - It validates `hacs.json` fields and HACS repository requirements.
+- Result of first CI run: **pending** (job will run when this PR is pushed to GitHub).
+- `hacs.json` is structurally valid with all required fields (`name`, `content_in_root`,
+  `render_readme`). `content_in_root: false` is correct because the integration lives
+  under `custom_components/thessla_green_modbus/`.
 
 ---
 
 ## 7. Real-Device Validation
 
-**Not proven.**
+**Not proven — checklist template created.**
 
-No evidence of on-device testing against a physical ThesslaGreen AirPack device was found in `docs/`, `README.md`, `README_en.md`, `CHANGELOG.md`, or any test file.
+No evidence of on-device testing against a physical ThesslaGreen AirPack device
+exists. A structured checklist and evidence template has been created:
 
-### Manual real-device validation checklist
+→ **[docs/real_device_validation.md](real_device_validation.md)**
 
-1. Install integration from HACS custom repository on Home Assistant ≥ 2026.1.0.
-2. Add integration via UI config flow; provide controller IP and port.
-3. Verify TCP connection to ThesslaGreen controller is established (no repeated exceptions in logs).
-4. Verify entity creation count matches expected (~366 mapped entities for AirPack).
-5. Verify fan, climate, and sensor entities update on state changes.
-6. Verify single register write path (e.g., fan speed change).
-7. Verify multi-register write path if applicable.
-8. Verify automatic reconnect after controller restart or network loss.
-9. Verify logs contain no repeated exceptions during steady-state polling.
-10. Verify unload and reload of the integration.
-11. Verify Home Assistant restart recovery (integration re-initialises cleanly).
+The checklist covers:
+- Installation via HACS
+- UI config flow
+- TCP connection verification
+- Entity creation (~366 entities)
+- Sensor state updates
+- Fan/climate control writes
+- Single and multi-register write paths
+- Reconnect after controller/network disruption
+- Unload/reload
+- HA restart recovery
+- Full log review
+
+Real-device validation remains **open blocker B4** until the Evidence Record
+in that document is completed by a human tester with physical hardware.
 
 ---
 
-## 8. Release Blockers
+## 8. Release Notes / Tag Status
 
-| # | Blocker | Detail |
+- **CHANGELOG.md**: 2.8.0 entry exists and has been updated with a
+  "CI / Release Readiness" section covering: hassfest gate, HACS gate, `dev`
+  push trigger, `docs/real_device_validation.md`, validation suite results,
+  pydantic pin confirmation, and release caveats.
+- **GitHub release tag**: `v2.8.0` tag and GitHub release **not yet created**.
+  This must be done separately via GitHub UI or CLI after HACS/hassfest CI jobs
+  pass and real-device validation is complete.
+- HACS will not distribute version 2.8.0 until a GitHub release with a matching
+  tag exists.
+
+---
+
+## 9. Remaining Blockers
+
+| # | Blocker | Status |
 |---|---------|--------|
-| **B1** | No hassfest validation in CI | No `home-assistant/hassfest` action step in `.github/workflows/ci.yaml`. Required to confirm manifest machine-validity before HACS listing. |
-| **B2** | No HACS validation action in CI | No `hacs/action@main` workflow step. CI installs `hacs` as pip test infra only, which is not equivalent to HACS manifest validation. |
-| **B3** | No GitHub release tag for `2.8.0` | No git tag `2.8.0` or `v2.8.0`. HACS requires a GitHub release with matching tag to distribute. |
-| **B4** | Real-device validation undocumented | No evidence of testing against a physical ThesslaGreen device. Required for credible release notes and `quality_scale: silver` maintenance. |
+| **B1** | Hassfest validation in CI | ✅ **ADDRESSED** — `hassfest` job added to CI; pending first CI run result. |
+| **B2** | HACS validation in CI | ✅ **ADDRESSED** — `hacs` job added to CI; pending first CI run result. |
+| **B3** | No GitHub release tag for `2.8.0` | ⛔ **OPEN** — Tag `v2.8.0` and GitHub release not yet created. Must be done separately after CI is green and real-device validation is complete. Do not create in this PR. |
+| **B4** | Real-device validation undocumented/unproven | ⚠️ **PARTIALLY ADDRESSED** — Checklist template created at `docs/real_device_validation.md`. Evidence from a real device is still required to close this blocker. |
 
 ---
 
-## 9. Non-Blocking Follow-Ups
+## 10. Non-Blocking Follow-Ups
 
 | # | Item |
 |---|------|
-| N1 | **Dependabot PR #1567** (pydantic update) remains separate and untouched by this audit. |
-| N2 | CHANGELOG heading for 2.8.0 uses `## 2.8.0 —` format; older entries use `## [X.Y.Z] - date` anchored format. Cosmetic inconsistency — may affect automated changelog tooling. |
-| N3 | CI `push` trigger only covers `main`/`master`; does not trigger on push to `dev`. |
-| N4 | No GitHub release tag or release notes entry for `v2.8.0`. |
+| N1 | **Dependabot PR #1567** (pydantic update) remains separate and untouched. |
+| N2 | CHANGELOG heading style is consistent across 2.8.0 and prior entries. |
+| N3 | `dev` push trigger now added to CI (`push: branches: ["main", "master", "dev"]`). |
+| N4 | GitHub release tag and release notes for `v2.8.0` must be created via GitHub UI/CLI after remaining blockers are resolved. |
 
 ---
 
-## 10. Confirmations
+## 11. Confirmations
 
 - **pydantic**: unchanged. Still pinned at `2.12.2`. No version bump, no dependency changes.
 - **PR #1567**: untouched. Not referenced, not cherry-picked, not merged.
-- **main branch**: not used. All work is on `claude/release-readiness-audit-5xXvn` targeting `dev`. `main` was not read as source of truth, not merged, not compared.
-- **Runtime code**: unchanged. Only documentation files created/modified in this audit.
-- **CI**: not weakened. `.github/workflows/ci.yaml` was not modified.
+- **main branch**: not used. All work is on `claude/finalize-release-readiness-ozgQt`
+  targeting `dev`. `main` was not read as source of truth, not merged, not compared.
+- **Runtime code**: unchanged. Only CI workflow, documentation, and CHANGELOG were
+  modified in this PR.
+- **CI**: not weakened. New jobs (`hassfest`, `hacs`) added; existing jobs unchanged.
+  Push trigger extended to include `dev`. No existing job removed or made
+  `continue-on-error`.
 - **Tests**: not removed, not skipped, not xfailed.
 
 ---
 
-## 11. Files Changed in This Audit
+## 12. Files Changed in This PR
 
-- `docs/release_readiness.md` — this file (new)
+| File | Change |
+|------|--------|
+| `.github/workflows/ci.yaml` | Added `hassfest` and `hacs` CI jobs; added `dev` to push trigger branches |
+| `CHANGELOG.md` | Added "CI / Release Readiness" and "Release caveats" sections to 2.8.0 entry |
+| `docs/real_device_validation.md` | **New file** — real-device validation checklist and evidence template |
+| `docs/release_readiness.md` | Updated with current date, branch, CI job status, real-device checklist link, and revised blocker table |
 
-No production code, tests, CI workflows, manifest.json, hacs.json, or dependency files were modified.
+No production runtime code, tests, manifest.json, hacs.json, or dependency files
+were modified.
 
 ---
 
-## 12. PR Target Branch
+## 13. PR Target Branch
 
 **PR base: `dev`**
 
