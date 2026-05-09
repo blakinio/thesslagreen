@@ -1,7 +1,7 @@
 # Release Readiness Audit
 
-Date: 2026-05-09
-Branch: `dev` (working branch: `claude/setup-dev-workflow-yd3k6`)
+Date: 2026-05-09 (refreshed after CI results and quality fixes)
+Branch: `dev` (working branch: `claude/finalize-release-readiness-ozgQt` — second pass)
 
 > **Related:** [HA Quality Scale Audit](ha_quality_scale_audit.md) — full rule-by-rule Bronze/Silver/Gold evaluation added 2026-05-09.
 
@@ -82,35 +82,32 @@ OK homeassistant: installed
 
 ## 5. Hassfest Validation
 
-**CI gate added — pending first CI run.**
+**CI gate FAILED on first run — root cause identified and fixed.**
 
-- `hassfest` CLI: not available locally.
-- CI workflow (`ci.yaml`): **`hassfest` job added** using `home-assistant/actions/hassfest@main`.
-  - This job runs on every PR and on pushes to `main`, `master`, and `dev`.
-  - It validates `manifest.json` structure and integration requirements via the
-    official Home Assistant hassfest tooling.
-- Result of first CI run: **pending** (job will run when this PR is pushed to GitHub).
-- `manifest.json` was manually reviewed against known hassfest schema requirements;
-  all structurally required and recommended fields are present (domain, name, version,
-  codeowners, config_flow, homeassistant, iot_class, requirements, documentation,
-  issue_tracker, integration_type, quality_scale, after_dependencies, loggers,
-  dhcp, zeroconf, files).
+- First run (PR #1602): **FAILED** in ~2 seconds.
+  - Root cause: `files` key in `manifest.json` is not a valid HA manifest field
+    (not in `homeassistant.loader.Manifest` TypedDict). Hassfest rejects unknown keys.
+  - Fix applied: `files` key removed from `manifest.json` in this PR.
+  - `test_manifest_files.py` updated: `test_manifest_files_list_is_complete` →
+    replaced with `test_manifest_does_not_have_files_key` + `test_required_static_files_exist_on_disk`.
+- CI job: `home-assistant/actions/hassfest@main` — runs on every PR and push to `main`/`master`/`dev`.
+- Awaiting re-run CI result to confirm fix resolves the failure.
 
 ---
 
 ## 6. HACS Validation
 
-**CI gate added — pending first CI run.**
+**CI gate FAILED on first run — root cause identified and fixed.**
 
-- `hacs` CLI: not available locally.
-- CI workflow (`ci.yaml`): **`hacs` job added** using `hacs/action@main`
-  with `category: integration`.
-  - This job runs on every PR and on pushes to `main`, `master`, and `dev`.
-  - It validates `hacs.json` fields and HACS repository requirements.
-- Result of first CI run: **pending** (job will run when this PR is pushed to GitHub).
+- First run (PR #1602): **FAILED** in ~43 seconds.
+  - Root cause: `files` key in `manifest.json` likely rejected during HACS manifest validation.
+  - Fix applied: `files` key removed from `manifest.json` in this PR. HACS installs
+    the entire `custom_components/thessla_green_modbus/` directory automatically.
+- CI job: `hacs/action@main` (`category: integration`) — runs on every PR and push.
 - `hacs.json` is structurally valid with all required fields (`name`, `content_in_root`,
   `render_readme`). `content_in_root: false` is correct because the integration lives
   under `custom_components/thessla_green_modbus/`.
+- Awaiting re-run CI result to confirm fix resolves the failure.
 
 ---
 
@@ -159,10 +156,10 @@ in that document is completed by a human tester with physical hardware.
 
 | # | Blocker | Status |
 |---|---------|--------|
-| **B1** | Hassfest validation in CI | ✅ **ADDRESSED** — `hassfest` job added to CI; pending first CI run result. |
-| **B2** | HACS validation in CI | ✅ **ADDRESSED** — `hacs` job added to CI; pending first CI run result. |
+| **B1** | Hassfest validation in CI | ⚠️ **FIX APPLIED, PENDING RE-RUN** — First CI run FAILED (PR #1602): `files` key in `manifest.json` rejected by hassfest. Fix: `files` removed from `manifest.json`. Awaiting CI re-run to confirm. |
+| **B2** | HACS validation in CI | ⚠️ **FIX APPLIED, PENDING RE-RUN** — First CI run FAILED (PR #1602). Root cause: same `files` key issue. Fix applied. Awaiting CI re-run. |
 | **B3** | No GitHub release tag for `2.8.0` | ⛔ **OPEN** — Tag `v2.8.0` and GitHub release not yet created. Must be done separately after CI is green and real-device validation is complete. Do not create in this PR. |
-| **B4** | Real-device validation undocumented/unproven | ⚠️ **PARTIALLY ADDRESSED** — Checklist template created at `docs/real_device_validation.md`. Evidence from a real device is still required to close this blocker. |
+| **B4** | Real-device validation undocumented/unproven | ⚠️ **PARTIALLY ADDRESSED** — Checklist template at `docs/real_device_validation.md`. Evidence from a real device still required to close this blocker. |
 
 ---
 

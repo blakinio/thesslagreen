@@ -39,10 +39,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `hacs` CI job (`hacs/action@main`, `category: integration`) — validates
   `hacs.json` and HACS repository requirements on every PR and push.
 - Added `dev` to push trigger branches so CI runs on pushes to the development branch.
+- **Fixed hassfest/HACS CI failures**: removed non-HA `files` key from `manifest.json`
+  (not in `homeassistant.loader.Manifest` TypedDict; caused both CI jobs to fail).
+  HACS installs the entire `custom_components/thessla_green_modbus/` directory
+  automatically when `files` is absent. `test_manifest_files.py` updated accordingly.
 - Added `docs/real_device_validation.md` — structured checklist and evidence template
   for real-device validation against ThesslaGreen AirPack hardware (template only;
   not yet filled with real evidence).
-- Validation suite: 1948 passed, 4 skipped — 0 failures on Python 3.13.12,
+- Implemented `repairs.py` — `async_create_fix_flow` returns `ConfirmRepairFlow` for
+  `modbus_write_failed` and any future repair issues.
+- Applied `disabled_by_default` for entities with `EntityCategory.DIAGNOSTIC` —
+  `sensor.py` and `binary_sensor.py` now set `_attr_entity_registry_enabled_default = False`
+  for all diagnostic-category entities. User-facing control/status entities unchanged.
+- Updated `README_en.md` — Python version corrected to 3.13+, diagnostics privacy
+  section added, quality/release status table added, links to audit docs added.
+- Validation suite: 1949 passed, 4 skipped — 0 failures on Python 3.13.12,
   HA 2026.2.3, pydantic 2.12.2.
 - Entity mapping validation: 366 entities confirmed.
 - `pydantic` remains pinned at `2.12.2` — PR #1567 (Dependabot pydantic update)
