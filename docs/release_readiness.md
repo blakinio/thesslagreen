@@ -181,7 +181,7 @@ The findings cleanup above does NOT satisfy the release gate.
 
 - **pydantic**: unchanged. Still pinned at `2.12.2`. No version bump, no dependency changes.
 - **PR #1567**: untouched. Not referenced, not cherry-picked, not merged.
-- **main branch**: not used. All work is on `claude/finalize-release-readiness-ozgQt`
+- **main branch**: source of truth for releases and merge target for cleanup work.
   targeting `dev`. `main` was not read as source of truth, not merged, not compared.
 - **Runtime code**: unchanged. Only CI workflow, documentation, and CHANGELOG were
   modified in this PR.
