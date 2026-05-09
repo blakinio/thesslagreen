@@ -1,30 +1,4 @@
 {
-  "auto_detected_note_limited": "Ograniczone automatyczne wykrywanie - niektóre rejestry mogą być pominięte.",
-  "auto_detected_note_success": "Automatyczne wykrywanie zakończone sukcesem!",
-  "connection_type_tcp": "Modbus TCP",
-  "connection_type_tcp_rtu": "Modbus TCP RTU",
-  "connection_type_rtu": "Modbus RTU",
-  "connection_type_tcp_label": "Modbus TCP",
-  "connection_type_tcp_rtu_label": "Modbus TCP RTU",
-  "connection_type_rtu_label": "Modbus RTU",
-  "connection_mode_tcp": "Modbus TCP (bramka)",
-  "connection_mode_tcp_rtu": "RTU po TCP (RAW)",
-  "connection_mode_auto": "Automatyczny",
-  "connection_mode_auto_label": "Modbus TCP (Auto)",
-  "log_level_debug": "Debug",
-  "log_level_info": "Info",
-  "log_level_warning": "Ostrzeżenia",
-  "log_level_error": "Błędy",
-  "diagnostics": {
-    "registers_hash": "Suma kontrolna rejestrów",
-    "capabilities": "Możliwości urządzenia",
-    "effective_batch": "Efektywny rozmiar partii",
-    "total_registers_json": "Łączna liczba rejestrów w JSON",
-    "total_available_registers": "Łączna liczba dostępnych rejestrów",
-    "deep_scan": "Włączony głęboki skan",
-    "force_full_register_list": "Wymuś pełną listę rejestrów",
-    "error_statistics": "Statystyki błędów"
-  },
   "config": {
     "abort": {
       "already_configured": "Urządzenie z tym adresem IP i ID urządzenia jest już skonfigurowane."
@@ -390,23 +364,7 @@
     },
     "climate": {
       "thessla_green_climate": {
-        "name": "Sterowanie klimatem",
-        "state_attributes": {
-          "preset_mode": {
-            "away": "Nieobecność",
-            "bathroom": "Łazienka",
-            "boost": "Boost",
-            "eco": "Eco",
-            "fireplace": "Kominek",
-            "hood": "Okap",
-            "kitchen": "Kuchnia",
-            "none": "Brak",
-            "party": "Impreza",
-            "sleep": "Sen",
-            "summer": "Lato",
-            "winter": "Zima"
-          }
-        }
+        "name": "Sterowanie klimatem"
       }
     },
     "fan": {
@@ -1533,17 +1491,7 @@
       "fields": {
         "filter_type": {
           "description": "Typ filtra do zresetowania",
-          "name": "Typ filtra",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.filter_type_cleanpad": "CleanPad",
-                "thessla_green_modbus.filter_type_cleanpad_pure": "CleanPad Pure",
-                "thessla_green_modbus.filter_type_flat_filters": "Filtry płaskie",
-                "thessla_green_modbus.filter_type_presostat": "Presostat"
-              }
-            }
-          }
+          "name": "Typ filtra"
         }
       },
       "name": "Resetuj licznik filtrów"
@@ -1553,16 +1501,7 @@
       "fields": {
         "reset_type": {
           "description": "Zakres ustawień do zresetowania",
-          "name": "Rodzaj resetu",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.reset_type_all_settings": "Wszystkie ustawienia",
-                "thessla_green_modbus.reset_type_schedule_settings": "Ustawienia harmonogramu",
-                "thessla_green_modbus.reset_type_user_settings": "Ustawienia użytkownika"
-              }
-            }
-          }
+          "name": "Rodzaj resetu"
         }
       },
       "name": "Resetuj ustawienia"
@@ -1598,20 +1537,7 @@
         },
         "day": {
           "description": "Dzień tygodnia do konfiguracji",
-          "name": "Dzień tygodnia",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.day_friday": "Piątek",
-                "thessla_green_modbus.day_monday": "Poniedziałek",
-                "thessla_green_modbus.day_saturday": "Sobota",
-                "thessla_green_modbus.day_sunday": "Niedziela",
-                "thessla_green_modbus.day_thursday": "Czwartek",
-                "thessla_green_modbus.day_tuesday": "Wtorek",
-                "thessla_green_modbus.day_wednesday": "Środa"
-              }
-            }
-          }
+          "name": "Dzień tygodnia"
         },
         "end_time": {
           "description": "Czas zakończenia okresu (HH:MM)",
@@ -1619,15 +1545,7 @@
         },
         "period": {
           "description": "Numer przedziału dnia (1-4)",
-          "name": "Okres",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.period_1": "Okres 1",
-                "thessla_green_modbus.period_2": "Okres 2"
-              }
-            }
-          }
+          "name": "Okres"
         },
         "season": {
           "description": "Wybierz bank harmonogramu lato/zima",
@@ -1653,16 +1571,7 @@
         },
         "mode": {
           "description": "Tryb pracy obejścia",
-          "name": "Tryb bypassu",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.bypass_mode_auto": "Automatyczny",
-                "thessla_green_modbus.bypass_mode_closed": "Zamknięty",
-                "thessla_green_modbus.bypass_mode_open": "Otwarty"
-              }
-            }
-          }
+          "name": "Tryb bypassu"
         }
       },
       "name": "Ustaw parametry bypassu"
@@ -1680,16 +1589,7 @@
         },
         "mode": {
           "description": "Tryb pracy gruntowego wymiennika ciepła",
-          "name": "Tryb GWC",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.gwc_mode_auto": "Automatyczny",
-                "thessla_green_modbus.gwc_mode_forced": "Wymuszony",
-                "thessla_green_modbus.gwc_mode_off": "Wyłączony"
-              }
-            }
-          }
+          "name": "Tryb GWC"
         }
       },
       "name": "Ustaw parametry GWC"
@@ -1699,59 +1599,19 @@
       "fields": {
         "baud_rate": {
           "description": "Prędkość transmisji Modbus",
-          "name": "Szybkość transmisji",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.modbus_baud_rate_4800": "4800",
-                "thessla_green_modbus.modbus_baud_rate_9600": "9600",
-                "thessla_green_modbus.modbus_baud_rate_14400": "14400",
-                "thessla_green_modbus.modbus_baud_rate_19200": "19200",
-                "thessla_green_modbus.modbus_baud_rate_28800": "28800",
-                "thessla_green_modbus.modbus_baud_rate_38400": "38400",
-                "thessla_green_modbus.modbus_baud_rate_57600": "57600",
-                "thessla_green_modbus.modbus_baud_rate_76800": "76800",
-                "thessla_green_modbus.modbus_baud_rate_115200": "115200"
-              }
-            }
-          }
+          "name": "Szybkość transmisji"
         },
         "parity": {
           "description": "Bit parzystości",
-          "name": "Parzystość",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.modbus_parity_none": "Brak",
-                "thessla_green_modbus.modbus_parity_even": "Parzysta",
-                "thessla_green_modbus.modbus_parity_odd": "Nieparzysta"
-              }
-            }
-          }
+          "name": "Parzystość"
         },
         "port": {
           "description": "Port Modbus (Air-B lub Air++)",
-          "name": "Port",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.modbus_port_air_b": "Air-B",
-                "thessla_green_modbus.modbus_port_air_plus": "Air++"
-              }
-            }
-          }
+          "name": "Port"
         },
         "stop_bits": {
           "description": "Liczba bitów stopu",
-          "name": "Bity stopu",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.modbus_stop_bits_1": "1",
-                "thessla_green_modbus.modbus_stop_bits_2": "2"
-              }
-            }
-          }
+          "name": "Bity stopu"
         }
       },
       "name": "Ustaw parametry Modbus"
@@ -1765,25 +1625,7 @@
         },
         "mode": {
           "description": "Rodzaj trybu specjalnego do aktywacji",
-          "name": "Tryb specjalny",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.special_mode_none": "Brak",
-                "thessla_green_modbus.special_mode_boost": "Boost",
-                "thessla_green_modbus.special_mode_eco": "Eco",
-                "thessla_green_modbus.special_mode_away": "Nieobecność",
-                "thessla_green_modbus.special_mode_sleep": "Sen",
-                "thessla_green_modbus.special_mode_fireplace": "Kominek",
-                "thessla_green_modbus.special_mode_hood": "Okap",
-                "thessla_green_modbus.special_mode_party": "Impreza",
-                "thessla_green_modbus.special_mode_bathroom": "Łazienka",
-                "thessla_green_modbus.special_mode_kitchen": "Kuchnia",
-                "thessla_green_modbus.special_mode_summer": "Lato",
-                "thessla_green_modbus.special_mode_winter": "Zima"
-              }
-            }
-          }
+          "name": "Tryb specjalny"
         }
       },
       "name": "Ustaw tryb specjalny"
@@ -1851,17 +1693,7 @@
         },
         "level": {
           "description": "Poziom logowania używany podczas debugowania.",
-          "name": "Poziom logów",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.debug": "Debug",
-                "thessla_green_modbus.info": "Info",
-                "thessla_green_modbus.warning": "Ostrzeżenie",
-                "thessla_green_modbus.error": "Błąd"
-              }
-            }
-          }
+          "name": "Poziom logów"
         }
       },
       "name": "Ustaw debugowanie logów"
