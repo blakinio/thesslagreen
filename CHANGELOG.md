@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Legacy service call entity IDs (`rekuperator_*` old names) no longer mapped —
   update automations to use current entity names.
 
+### Requirements
+- Home Assistant ≥ 2026.1.0
+- Python 3.13 (required by `pyproject.toml`; tested on 3.13.12)
+- pymodbus ≥ 3.6.0
+
 ### Removed
 - Entity registry migrations (`async_migrate_entity_ids`, `async_migrate_unique_ids`)
   no longer run on startup — idempotent since 2022, dead after 2+ years.
@@ -32,6 +37,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `test_config_flow.py`: consolidated duplicate register loader stubs.
 - `test_coordinator_coverage.py`: replaced `is not None` assertions with type checks.
 - `test_optimized_integration.py`: replaced `CoordinatorMock` with `MagicMock`.
+
+### CI & Validation
+- All gates green: ruff, ruff import-order, ruff format, compileall, compare_registers,
+  check_maintainability, validate_entity_mappings (366 entities), pytest (1948 passed, 4 skipped).
+- Added `home-assistant/actions/hassfest@master` job to CI — validates integration
+  manifest and structure via HA's own tooling on every PR.
+- Added `hacs/action@main` job to CI — validates repository structure for HACS
+  compatibility on every PR.
+- Added `dev` branch to CI push trigger.
+
+### Release caveats
+- **No GitHub release tag yet.** HACS distribution requires a GitHub release with tag
+  `v2.8.0` or `2.8.0`. Tag and release must be created separately after final review.
+- **Real-device validation not yet proven.** See `docs/real_device_validation.md` for
+  the evidence checklist. Do not claim hardware validation until that checklist is
+  filled with real evidence.
+- **hassfest result pending.** The CI job will run on first PR merge to dev; its result
+  is not pre-validated locally (hassfest is not a PyPI-installable tool).
+- **HACS validation result pending.** Same as above — result depends on CI run.
 
 ---
 

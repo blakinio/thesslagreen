@@ -149,10 +149,10 @@ Extraction: `_locked_single_register_write` pulled from `async_write_register`.
 |---|---|
 | manifest.json | present, version 2.8.0, consistent |
 | hacs.json | present |
-| HACS validation | **not proven** (CLI unavailable locally; CI runs it) |
-| hassfest validation | **not proven** (CLI unavailable locally; CI runs it) |
-| Real-device validation | **not proven** |
-| Release notes / tag | **not finalized** |
+| HACS validation | CI job added (`hacs/action@main`); **result pending first CI run** |
+| hassfest validation | CI job added (`home-assistant/actions/hassfest@master`); **result pending first CI run** |
+| Real-device validation | **not proven** — see `docs/real_device_validation.md` |
+| Release notes / tag | CHANGELOG 2.8.0 draft updated; **tag not created** |
 | Dependabot #1567 | not touched; pydantic version unchanged |
 
 ## Branch note

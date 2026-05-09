@@ -85,8 +85,8 @@ Last complete successful validation (Python 3.13.12):
 - `black`: not executed.
 - `isort`: not executed.
 - `mypy`: not executed.
-- `hassfest`: not available locally — CI runs it via GitHub Actions.
-- `HACS`: not available locally — CI runs it via GitHub Actions.
+- `hassfest`: not available locally — `home-assistant/actions/hassfest@master` CI job added; result pending first CI run.
+- `HACS`: not available locally — `hacs/action@main` CI job added; result pending first CI run.
 
 ## Branch note
 
@@ -96,9 +96,9 @@ Last complete successful validation (Python 3.13.12):
 
 ## Readiness caveats
 
-- **HACS/hassfest readiness:** not claimable from local verification; CI runs those gates.
-- **Real-device readiness:** not claimable from these refactor validations unless separate on-device evidence is captured.
-- **Release notes/tag:** not finalized.
+- **HACS/hassfest readiness:** CI jobs now exist for both; actual pass/fail not claimable until CI runs.
+- **Real-device readiness:** not claimable — see `docs/real_device_validation.md` for evidence template.
+- **Release notes/tag:** CHANGELOG 2.8.0 entry updated with caveats; tag not created.
 
 ## Dependabot note
 

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main", "master", "dev"]
   pull_request:
   workflow_dispatch:
 
@@ -159,3 +159,25 @@ jobs:
 
       - name: Ruff format drift (informational)
         run: ruff format --check custom_components tests tools
+
+  hassfest:
+    name: Hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Hassfest validation
+        uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS Action
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: HACS Action
+        uses: hacs/action@main
+        with:
+          category: integration
