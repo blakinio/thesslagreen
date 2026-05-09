@@ -1,1 +1,1 @@
-"""TODO: module scaffold for branch test refactor."""
+"""Core namespace reserved for future internal modules."""

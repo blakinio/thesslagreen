@@ -204,6 +204,8 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
                 self._attr_entity_category = _ec
         else:
             self._attr_entity_category = None
+        if self._attr_entity_category is EntityCategory.DIAGNOSTIC:
+            self._attr_entity_registry_enabled_default = False
         if "suggested_display_precision" in sensor_definition:
             self._attr_suggested_display_precision = sensor_definition[
                 "suggested_display_precision"
@@ -406,14 +408,24 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | None:
-        """Return comma-separated list of active E/S code identifiers."""
+        """Return comma-separated list of active E/S code identifiers.
+
+        Returns "none" (not Python None) when no codes are active and the
+        coordinator has been successfully updated, so HA shows a clear
+        "no active errors" state rather than the misleading "unknown".
+        Returns None only when the coordinator has not yet delivered data.
+        """
         codes = [
             key
             for key, value in self.coordinator.data.items()
             if value and _is_error_or_status_register(key)
         ]
         labels = [_format_error_status_code(code) for code in codes]
-        return ", ".join(sorted(labels)) if labels else None
+        if labels:
+            return ", ".join(sorted(labels))
+        if self.coordinator.last_update_success:
+            return "none"
+        return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

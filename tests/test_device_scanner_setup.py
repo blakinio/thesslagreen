@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from custom_components.thessla_green_modbus.const import CONNECTION_MODE_AUTO
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
+from custom_components.thessla_green_modbus.scanner import setup as scanner_setup
 from custom_components.thessla_green_modbus.scanner import state as scanner_state
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
@@ -97,3 +98,41 @@ def test_resolve_connection_configuration_auto_mode():
     assert resolved_type == "tcp"
     assert resolved_mode == CONNECTION_MODE_AUTO
     assert resolved_fixed_mode is None
+
+
+# ---------------------------------------------------------------------------
+# normalize_effective_batch unit tests
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_effective_batch_clamps_to_max():
+    """Values above max_batch are clamped to max_batch."""
+    assert scanner_setup.normalize_effective_batch(200, max_batch=16) == 16
+
+
+def test_normalize_effective_batch_preserves_valid():
+    """Values within range are returned as-is."""
+    assert scanner_setup.normalize_effective_batch(10, max_batch=16) == 10
+
+
+def test_normalize_effective_batch_clamps_to_one():
+    """Values below 1 are clamped to 1."""
+    assert scanner_setup.normalize_effective_batch(0, max_batch=16) == 1
+    assert scanner_setup.normalize_effective_batch(-5, max_batch=16) == 1
+
+
+def test_normalize_effective_batch_non_integer_type():
+    """Non-integer that can be coerced is accepted."""
+    assert scanner_setup.normalize_effective_batch("8", max_batch=16) == 8
+
+
+def test_normalize_effective_batch_invalid_falls_back_to_max():
+    """Non-numeric input returns max_batch."""
+    assert scanner_setup.normalize_effective_batch("bad", max_batch=16) == 16
+    assert scanner_setup.normalize_effective_batch(None, max_batch=16) == 16
+
+
+def test_normalize_effective_batch_boundary_one():
+    """max_batch=1 always returns 1."""
+    assert scanner_setup.normalize_effective_batch(5, max_batch=1) == 1
+    assert scanner_setup.normalize_effective_batch(0, max_batch=1) == 1

@@ -3,7 +3,7 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![GitHub release](https://img.shields.io/github/release/blakinio/thesslagreen.svg)](https://github.com/blakinio/thesslagreen/releases)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.1.0%2B-blue.svg)](https://home-assistant.io/)
-[![Python](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://python.org/)
+[![Python](https://img.shields.io/badge/Python-3.13%2B-blue.svg)](https://python.org/)
 
 ## ✨ Complete ThesslaGreen AirPack integration for Home Assistant
 
@@ -49,7 +49,7 @@ The integration works as a **hub** in Home Assistant.
 - ✅ **Minimum Home Assistant version: 2026.1.0**
 - ✅ **Tested with: 2026.1.x**
 - ✅ **pymodbus 3.5.0+** – latest Modbus library
-- ✅ **Python 3.12+** – modern standards
+- ✅ **Python 3.13+** – required (see `pyproject.toml → requires-python`)
 - ✅ **Standard AsyncModbusTcpClient** – no custom Modbus client required
 
 ## 🚀 Installation
@@ -357,6 +357,30 @@ Optional properties: `enum`, `multiplier`, `resolution`, `min`, `max`.
 ```bash
 pytest tests/test_register_loader.py
 ```
+
+## 🔒 Diagnostics privacy
+
+When you download diagnostics via **Settings → Devices & Services → ThesslaGreen Modbus → ⋮ → Download diagnostics**, the file contains:
+- Device capability flags and register availability
+- Error statistics and timing metrics
+- Integration configuration (IP address and port are included — redact before sharing publicly)
+- No register values or sensor readings are included in the diagnostics snapshot
+
+## 📊 Quality and release status
+
+| Item | Status |
+|------|--------|
+| HA Quality Scale claimed | Silver |
+| hassfest CI | Added (see `.github/workflows/ci.yaml`) — result pending |
+| HACS CI | Added (see `.github/workflows/ci.yaml`) — result pending |
+| Real-device validation | Not yet proven — see [docs/real_device_validation.md](docs/real_device_validation.md) |
+| GitHub release tag v2.8.0 | Not yet created |
+| Validation suite | 1949 tests passed, 4 skipped (Python 3.13.12) |
+
+For the full audit see:
+- [HA Quality Scale Audit](docs/ha_quality_scale_audit.md)
+- [Release Readiness](docs/release_readiness.md)
+- [Real-Device Validation Checklist](docs/real_device_validation.md)
 
 ## 📄 License
 

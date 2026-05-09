@@ -4,6 +4,9 @@ import logging
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from custom_components.thessla_green_modbus.scanner.selection import (
+    _split_groups_around_missing,
+)
 
 from .test_scanner_coverage import _make_scanner, _run_minimal_scan
 
@@ -423,6 +426,52 @@ async def test_scan_holding_probe_type_error_fallback():
         result = await scanner.scan()
 
     assert "fake_holding" in result["available_registers"]["holding_registers"]
+
+
+# ---------------------------------------------------------------------------
+# _split_groups_around_missing unit tests
+# ---------------------------------------------------------------------------
+
+
+def test_split_groups_no_missing_returns_groups_unchanged():
+    """Empty known_missing_addresses leaves groups untouched."""
+    groups = [(10, 5), (20, 3)]
+    assert _split_groups_around_missing(groups, set()) == groups
+
+
+def test_split_groups_missing_at_start_of_group():
+    """Missing address at start splits it into [single, rest]."""
+    groups = [(10, 4)]  # addresses 10-13
+    result = _split_groups_around_missing(groups, {10})
+    assert result == [(10, 1), (11, 3)]
+
+
+def test_split_groups_missing_at_end_of_group():
+    """Missing address at end splits it into [prefix, single]."""
+    groups = [(10, 4)]  # addresses 10-13
+    result = _split_groups_around_missing(groups, {13})
+    assert result == [(10, 3), (13, 1)]
+
+
+def test_split_groups_missing_in_middle():
+    """Missing address in middle creates three groups."""
+    groups = [(10, 5)]  # addresses 10-14
+    result = _split_groups_around_missing(groups, {12})
+    assert result == [(10, 2), (12, 1), (13, 2)]
+
+
+def test_split_groups_multiple_missing_in_one_group():
+    """Multiple missing addresses in one group are all isolated."""
+    groups = [(0, 6)]  # addresses 0-5
+    result = _split_groups_around_missing(groups, {1, 3})
+    assert result == [(0, 1), (1, 1), (2, 1), (3, 1), (4, 2)]
+
+
+def test_split_groups_missing_not_in_group_ignored():
+    """Missing addresses outside any group range have no effect."""
+    groups = [(10, 3)]
+    result = _split_groups_around_missing(groups, {5, 20})
+    assert result == [(10, 3)]
 
 
 # ---------------------------------------------------------------------------

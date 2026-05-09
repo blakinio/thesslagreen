@@ -1,30 +1,4 @@
 {
-  "auto_detected_note_limited": "Limited auto-detection - some registers may be missing.",
-  "auto_detected_note_success": "Auto-detection successful!",
-  "connection_type_tcp": "Modbus TCP",
-  "connection_type_tcp_rtu": "Modbus TCP RTU",
-  "connection_type_rtu": "Modbus RTU",
-  "connection_type_tcp_label": "Modbus TCP",
-  "connection_type_tcp_rtu_label": "Modbus TCP RTU",
-  "connection_type_rtu_label": "Modbus RTU",
-  "connection_mode_tcp": "Modbus TCP (Gateway)",
-  "connection_mode_tcp_rtu": "RTU over TCP (RAW)",
-  "connection_mode_auto": "Auto-detect",
-  "connection_mode_auto_label": "Modbus TCP (Auto)",
-  "log_level_debug": "Debug",
-  "log_level_info": "Info",
-  "log_level_warning": "Warning",
-  "log_level_error": "Error",
-  "diagnostics": {
-    "registers_hash": "Register definitions hash",
-    "capabilities": "Device capabilities",
-    "effective_batch": "Effective batch size",
-    "total_registers_json": "Total registers in JSON",
-    "total_available_registers": "Total available registers",
-    "deep_scan": "Deep scan enabled",
-    "force_full_register_list": "Force full register list",
-    "error_statistics": "Error statistics"
-  },
   "config": {
     "abort": {
       "already_configured": "Device with this IP address and Device ID is already configured."
@@ -88,7 +62,7 @@
           "parity": "Parity setting for Modbus RTU communication",
           "stop_bits": "Stop bits for Modbus RTU communication",
           "deep_scan": "Read all registers for diagnostics (may be slow)",
-          "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
+          "max_registers_per_request": "Maximum registers per Modbus request (1–16)"
         },
         "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP or Modbus RTU. The integration automatically detects device functions and registers.",
         "title": "ThesslaGreen Modbus Configuration"
@@ -105,6 +79,11 @@
     }
   },
   "entity": {
+    "button": {
+      "sync_device_clock": {
+        "name": "Sync device clock"
+      }
+    },
     "binary_sensor": {
       "ahu_filter_protection": {
         "name": "AHU Filter Protection"
@@ -128,10 +107,10 @@
         "name": "Contamination Sensor"
       },
       "dp_ahu_filter_overflow": {
-        "name": "AHU Filter Overflow"
+        "name": "AHU Filter Pressure Alarm"
       },
       "dp_duct_filter_overflow": {
-        "name": "Duct Filter Overflow"
+        "name": "Duct Filter Pressure Alarm"
       },
       "duct_heater_protection": {
         "name": "Duct Heater Protection"
@@ -185,10 +164,10 @@
         "name": "Error E199"
       },
       "e_200": {
-        "name": "E200: Central Heater Overprotection"
+        "name": "E200: Central Heater Thermal Protection"
       },
       "e_201": {
-        "name": "E201: Duct Heater Overprotection"
+        "name": "E201: Duct Heater Thermal Protection"
       },
       "e_202": {
         "name": "E202: Secondary Heater Control Failure"
@@ -251,7 +230,7 @@
         "name": "Unit Operation Confirmation"
       },
       "power_supply_fans": {
-        "name": "Power Supply Fans"
+        "name": "Fan Power Supply"
       },
       "s_10": {
         "name": "S10: Fire Protection Sensor Activated"
@@ -266,7 +245,7 @@
         "name": "S15: Water Heater Anti-Freeze Not Effective"
       },
       "s_16": {
-        "name": "S16: Electric Heater Overprotection (FPX Active)"
+        "name": "S16: Electric Heater Thermal Protection (FPX Active)"
       },
       "s_17": {
         "name": "S17: AHU Filters Not Replaced (With Pressure Switch)"
@@ -308,7 +287,7 @@
         "name": "S32: No TG-02 Module Communication"
       },
       "s_6": {
-        "name": "S6: FPX Heater Overprotection"
+        "name": "S6: FPX Heater Thermal Protection"
       },
       "s_7": {
         "name": "S7: Calibration Not Possible (Low Outdoor Temp)"
@@ -385,23 +364,7 @@
     },
     "climate": {
       "thessla_green_climate": {
-        "name": "Climate Control",
-        "state_attributes": {
-          "preset_mode": {
-            "away": "Away",
-            "bathroom": "Bathroom",
-            "boost": "Boost",
-            "eco": "Eco",
-            "fireplace": "Fireplace",
-            "hood": "Hood",
-            "kitchen": "Kitchen",
-            "none": "None",
-            "party": "Party",
-            "sleep": "Sleep",
-            "summer": "Summer",
-            "winter": "Winter"
-          }
-        }
+        "name": "Climate Control"
       }
     },
     "fan": {
@@ -411,13 +374,13 @@
     },
     "number": {
       "air_flow_rate_manual": {
-        "name": "Air Flow Rate Manual"
+        "name": "Manual Air Flow Rate"
       },
       "air_flow_rate_temporary": {
         "name": "Temporary Air Flow Rate"
       },
       "air_flow_rate_temporary_4401": {
-        "name": "Temporary Air Flow Rate (Ext.)"
+        "name": "Temporary Air Flow Rate (Extended)"
       },
       "air_temperature_summer_free_cooling": {
         "name": "Bypass Temperature (Free Cooling)"
@@ -426,16 +389,16 @@
         "name": "Bypass Temperature (Free Heating)"
       },
       "airing_bathroom_coef": {
-        "name": "Airing Bathroom Coef"
+        "name": "Airing Bathroom Coefficient"
       },
       "airing_coef": {
-        "name": "Airing Coef"
+        "name": "Airing Coefficient"
       },
       "airing_panel_mode_time": {
         "name": "Airing Panel Mode Time"
       },
       "airing_switch_coef": {
-        "name": "Airing Switch Coef"
+        "name": "Airing Switch Coefficient"
       },
       "airing_switch_mode_off_delay": {
         "name": "Airing Switch Mode Off Delay"
@@ -447,13 +410,13 @@
         "name": "Airing Switch Mode Time"
       },
       "contamination_coef": {
-        "name": "Contamination Coef"
+        "name": "Contamination Coefficient"
       },
       "delta_t_gwc": {
         "name": "GWC Activation Temperature Differential"
       },
       "empty_house_coef": {
-        "name": "Empty House Coef"
+        "name": "Empty House Coefficient"
       },
       "fan_speed_1_coef": {
         "name": "Fan Speed 1 Coefficient"
@@ -468,7 +431,7 @@
         "name": "Fireplace Mode Time"
       },
       "fireplace_supply_coef": {
-        "name": "Fireplace Supply Coef"
+        "name": "Fireplace Supply Coefficient"
       },
       "gwc_regen_period": {
         "name": "GWC Regeneration Period"
@@ -480,7 +443,7 @@
         "name": "Hood Supply Coefficient"
       },
       "lock_pass": {
-        "name": "Lock Pass"
+        "name": "Lock Code"
       },
       "max_exhaust_air_flow_rate": {
         "name": "Max Exhaust Air Flow Rate"
@@ -516,19 +479,19 @@
         "name": "Nominal Supply Air Flow (GWC)"
       },
       "open_window_coef": {
-        "name": "Open Window Coef"
+        "name": "Open Window Coefficient"
       },
       "rtc_cal": {
-        "name": "Rtc Cal"
+        "name": "RTC Calibration"
       },
       "supply_air_temperature_manual": {
-        "name": "Supply Air Temperature Manual"
+        "name": "Manual Supply Air Temperature"
       },
       "supply_air_temperature_temporary": {
         "name": "Temporary Supply Air Temperature"
       },
       "supply_air_temperature_temporary_4404": {
-        "name": "Temporary Supply Air Temperature (Ext.)"
+        "name": "Temporary Supply Air Temperature (Extended)"
       },
       "uart_0_id": {
         "name": "Port 0 Device ID"
@@ -543,10 +506,10 @@
         "name": "Exhaust Filter Wear"
       },
       "bypass_coef_1": {
-        "name": "Bypass Coef 1"
+        "name": "Bypass Coefficient 1"
       },
       "bypass_coef_2": {
-        "name": "Bypass Coef 2"
+        "name": "Bypass Coefficient 2"
       }
     },
     "select": {
@@ -627,7 +590,7 @@
         }
       },
       "pres_check_day_4432": {
-        "name": "Filter Check Day of Week (Ext.)",
+        "name": "Filter Check Day of Week (Extended)",
         "state": {
           "monday": "Monday",
           "tuesday": "Tuesday",
@@ -1061,7 +1024,7 @@
         "name": "Supply Air Flow"
       },
       "supply_air_temperature_manual": {
-        "name": "Supply Air Temperature Manual"
+        "name": "Manual Supply Air Temperature"
       },
       "supply_flow_rate_m3h": {
         "name": "Supply Flow Rate (m³/h)"
@@ -1156,10 +1119,10 @@
         "name": "Winter"
       },
       "bypass_off": {
-        "name": "Bypass Active"
+        "name": "Bypass Locked"
       },
       "gwc_off": {
-        "name": "GWC Active"
+        "name": "GWC Locked"
       },
       "hard_reset_settings": {
         "name": "Hard Reset Settings"
@@ -1185,52 +1148,52 @@
         "name": "Filter Check Start Time"
       },
       "pres_check_time_ggmm": {
-        "name": "Filter Check Start Time (Ext.)"
+        "name": "Filter Check Start Time (Extended)"
       },
       "manual_airing_time_to_start": {
         "name": "Manual Airing Time To Start"
       },
       "airing_summer_mon": {
-        "name": "Airing Summer Mon"
+        "name": "Airing Summer Monday"
       },
       "airing_summer_tue": {
-        "name": "Airing Summer Tue"
+        "name": "Airing Summer Tuesday"
       },
       "airing_summer_wed": {
-        "name": "Airing Summer Wed"
+        "name": "Airing Summer Wednesday"
       },
       "airing_summer_thu": {
-        "name": "Airing Summer Thu"
+        "name": "Airing Summer Thursday"
       },
       "airing_summer_fri": {
-        "name": "Airing Summer Fri"
+        "name": "Airing Summer Friday"
       },
       "airing_summer_sat": {
-        "name": "Airing Summer Sat"
+        "name": "Airing Summer Saturday"
       },
       "airing_summer_sun": {
-        "name": "Airing Summer Sun"
+        "name": "Airing Summer Sunday"
       },
       "airing_winter_mon": {
-        "name": "Airing Winter Mon"
+        "name": "Airing Winter Monday"
       },
       "airing_winter_tue": {
-        "name": "Airing Winter Tue"
+        "name": "Airing Winter Tuesday"
       },
       "airing_winter_wed": {
-        "name": "Airing Winter Wed"
+        "name": "Airing Winter Wednesday"
       },
       "airing_winter_thu": {
-        "name": "Airing Winter Thu"
+        "name": "Airing Winter Thursday"
       },
       "airing_winter_fri": {
-        "name": "Airing Winter Fri"
+        "name": "Airing Winter Friday"
       },
       "airing_winter_sat": {
-        "name": "Airing Winter Sat"
+        "name": "Airing Winter Saturday"
       },
       "airing_winter_sun": {
-        "name": "Airing Winter Sun"
+        "name": "Airing Winter Sunday"
       },
       "start_gwc_regen_summer_time": {
         "name": "GWC Regeneration Start (Summer)"
@@ -1488,22 +1451,34 @@
           "safe_scan": "Safe Scan (no grouping)",
           "scan_interval": "Scan Interval (seconds)",
           "skip_missing_registers": "Skip Known Missing Registers",
-          "timeout": "Connection Timeout (seconds)"
+          "sync_device_clock_enabled": "Enable automatic clock sync",
+          "sync_device_clock_interval_hours": "Clock sync interval (hours)",
+          "sync_device_clock_max_drift_seconds": "Maximum allowed clock drift (seconds)",
+          "sync_device_clock_on_start": "Sync clock on integration start",
+          "timeout": "Connection Timeout (seconds)",
+          "scan_uart_settings": "Scan UART Port Settings",
+          "airflow_unit": "Airflow Unit"
         },
         "data_description": {
           "deep_scan": "Read raw registers 0-300 for diagnostics",
           "enable_device_scan": "Enable automatic device scan during setup",
           "force_full_register_list": "Skip scanning and load all registers (may cause errors)",
           "log_level": "Set integration log verbosity",
-          "max_registers_per_request": "Select maximum registers per request (1-16)",
+          "max_registers_per_request": "Select maximum registers per request (1–16)",
           "retry": "How many times to retry failed reads (1-5 attempts)",
           "safe_scan": "Avoid grouped register reads for compatibility",
           "scan_interval": "How often to read data from device (10-300 seconds)",
           "skip_missing_registers": "Do not poll registers known to be unavailable",
-          "timeout": "Maximum time to wait for response (5-60 seconds)"
+          "sync_device_clock_enabled": "Automatically sync device RTC clock from HA time. Disabled by default. When enabled, this writes to the physical device RTC clock.",
+          "sync_device_clock_interval_hours": "Hours between automatic clock syncs (1–168)",
+          "sync_device_clock_max_drift_seconds": "Only sync if drift exceeds this threshold (30-86400 s)",
+          "sync_device_clock_on_start": "Sync once after first successful device connection",
+          "timeout": "Maximum time to wait for response (5-60 seconds)",
+          "scan_uart_settings": "Read UART port configuration registers from the device during scanning",
+          "airflow_unit": "Unit for displaying airflow values (percentage or cubic metres per hour)"
         },
         "error": {
-          "max_registers_per_request": "Maximum registers per Modbus request (1-16)"
+          "max_registers_per_request": "Maximum registers per Modbus request (1–16)"
         },
         "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Device scan enabled: {device_scan_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Safe scan: {safe_scan_enabled}. Max registers per request: {current_max_registers_per_request}. Log level: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "ThesslaGreen Modbus Options"
@@ -1516,17 +1491,7 @@
       "fields": {
         "filter_type": {
           "description": "Type of filter to reset",
-          "name": "Filter Type",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.filter_type_cleanpad": "CleanPad",
-                "thessla_green_modbus.filter_type_cleanpad_pure": "CleanPad Pure",
-                "thessla_green_modbus.filter_type_flat_filters": "Flat Filters",
-                "thessla_green_modbus.filter_type_presostat": "Pressure switch"
-              }
-            }
-          }
+          "name": "Filter Type"
         }
       },
       "name": "Reset Filter Counter"
@@ -1536,16 +1501,7 @@
       "fields": {
         "reset_type": {
           "description": "Type of settings to reset",
-          "name": "Reset Type",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.reset_type_all_settings": "All settings",
-                "thessla_green_modbus.reset_type_schedule_settings": "Schedule settings",
-                "thessla_green_modbus.reset_type_user_settings": "User settings"
-              }
-            }
-          }
+          "name": "Reset Type"
         }
       },
       "name": "Reset Settings"
@@ -1581,20 +1537,7 @@
         },
         "day": {
           "description": "Day of week to configure",
-          "name": "Day of Week",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.day_friday": "Friday",
-                "thessla_green_modbus.day_monday": "Monday",
-                "thessla_green_modbus.day_saturday": "Saturday",
-                "thessla_green_modbus.day_sunday": "Sunday",
-                "thessla_green_modbus.day_thursday": "Thursday",
-                "thessla_green_modbus.day_tuesday": "Tuesday",
-                "thessla_green_modbus.day_wednesday": "Wednesday"
-              }
-            }
-          }
+          "name": "Day of Week"
         },
         "end_time": {
           "description": "End time for the period (HH:MM)",
@@ -1602,15 +1545,7 @@
         },
         "period": {
           "description": "Day slot number (1-4)",
-          "name": "Period",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.period_1": "Period 1",
-                "thessla_green_modbus.period_2": "Period 2"
-              }
-            }
-          }
+          "name": "Period"
         },
         "season": {
           "description": "Select summer or winter schedule bank",
@@ -1636,16 +1571,7 @@
         },
         "mode": {
           "description": "Bypass operating mode",
-          "name": "Bypass Mode",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.bypass_mode_auto": "Automatic",
-                "thessla_green_modbus.bypass_mode_closed": "Closed",
-                "thessla_green_modbus.bypass_mode_open": "Open"
-              }
-            }
-          }
+          "name": "Bypass Mode"
         }
       },
       "name": "Set Bypass Parameters"
@@ -1663,16 +1589,7 @@
         },
         "mode": {
           "description": "Ground heat exchanger operating mode",
-          "name": "GWC Mode",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.gwc_mode_auto": "Automatic",
-                "thessla_green_modbus.gwc_mode_forced": "Forced",
-                "thessla_green_modbus.gwc_mode_off": "Off"
-              }
-            }
-          }
+          "name": "GWC Mode"
         }
       },
       "name": "Set GWC Parameters"
@@ -1682,59 +1599,19 @@
       "fields": {
         "baud_rate": {
           "description": "Modbus transmission speed",
-          "name": "Baud Rate",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.modbus_baud_rate_4800": "4800",
-                "thessla_green_modbus.modbus_baud_rate_9600": "9600",
-                "thessla_green_modbus.modbus_baud_rate_14400": "14400",
-                "thessla_green_modbus.modbus_baud_rate_19200": "19200",
-                "thessla_green_modbus.modbus_baud_rate_28800": "28800",
-                "thessla_green_modbus.modbus_baud_rate_38400": "38400",
-                "thessla_green_modbus.modbus_baud_rate_57600": "57600",
-                "thessla_green_modbus.modbus_baud_rate_76800": "76800",
-                "thessla_green_modbus.modbus_baud_rate_115200": "115200"
-              }
-            }
-          }
+          "name": "Baud Rate"
         },
         "parity": {
           "description": "Parity bit",
-          "name": "Parity",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.modbus_parity_none": "None",
-                "thessla_green_modbus.modbus_parity_even": "Even",
-                "thessla_green_modbus.modbus_parity_odd": "Odd"
-              }
-            }
-          }
+          "name": "Parity"
         },
         "port": {
           "description": "Modbus port (Air-B or Air++)",
-          "name": "Port",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.modbus_port_air_b": "Air-B",
-                "thessla_green_modbus.modbus_port_air_plus": "Air++"
-              }
-            }
-          }
+          "name": "Port"
         },
         "stop_bits": {
           "description": "Number of stop bits",
-          "name": "Stop Bits",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.modbus_stop_bits_1": "1",
-                "thessla_green_modbus.modbus_stop_bits_2": "2"
-              }
-            }
-          }
+          "name": "Stop Bits"
         }
       },
       "name": "Set Modbus Parameters"
@@ -1748,25 +1625,7 @@
         },
         "mode": {
           "description": "Type of special mode to activate",
-          "name": "Special Mode",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.special_mode_none": "None",
-                "thessla_green_modbus.special_mode_boost": "Boost",
-                "thessla_green_modbus.special_mode_eco": "Eco",
-                "thessla_green_modbus.special_mode_away": "Away",
-                "thessla_green_modbus.special_mode_sleep": "Sleep",
-                "thessla_green_modbus.special_mode_fireplace": "Fireplace",
-                "thessla_green_modbus.special_mode_hood": "Hood",
-                "thessla_green_modbus.special_mode_party": "Party",
-                "thessla_green_modbus.special_mode_bathroom": "Bathroom",
-                "thessla_green_modbus.special_mode_kitchen": "Kitchen",
-                "thessla_green_modbus.special_mode_summer": "Summer",
-                "thessla_green_modbus.special_mode_winter": "Winter"
-              }
-            }
-          }
+          "name": "Special Mode"
         }
       },
       "name": "Set Special Mode"
@@ -1804,14 +1663,14 @@
       "name": "Set Device Name"
     },
     "sync_time": {
-      "description": "Synchronise the AirPack real-time clock to the current Home Assistant time. Useful after power loss.",
+      "description": "Synchronize the AirPack real-time clock with the current Home Assistant time. Useful after power loss. This is a legacy service; use sync_device_clock instead.",
       "fields": {
         "entity_id": {
           "description": "The climate entity of the AirPack device.",
           "name": "Entity"
         }
       },
-      "name": "Sync Device Clock"
+      "name": "Sync Device Clock (Legacy)"
     },
     "refresh_device_data": {
       "description": "Force immediate data refresh.",
@@ -1834,20 +1693,20 @@
         },
         "level": {
           "description": "Log level to apply during debugging.",
-          "name": "Log Level",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.debug": "Debug",
-                "thessla_green_modbus.info": "Info",
-                "thessla_green_modbus.warning": "Warning",
-                "thessla_green_modbus.error": "Error"
-              }
-            }
-          }
+          "name": "Log Level"
         }
       },
       "name": "Set Debug Logging"
+    },
+    "sync_device_clock": {
+      "description": "Synchronize the AirPack real-time clock with the current Home Assistant local time. This writes to the physical device RTC clock. Automatic sync is disabled by default; enable it in integration options.",
+      "fields": {
+        "force": {
+          "description": "Write the clock even when drift is already within the configured threshold. When false, sync is skipped if drift is within the maximum drift limit.",
+          "name": "Force"
+        }
+      },
+      "name": "Sync Device Clock"
     }
   },
   "title": "ThesslaGreen Modbus"

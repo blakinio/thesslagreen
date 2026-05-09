@@ -52,9 +52,7 @@ def _make_coordinator(data: dict | None = None) -> MagicMock:
     coord.available_registers = {"holding_registers": set()}
     coord.async_write_register = AsyncMock(return_value=True)
     coord.async_request_refresh = AsyncMock()
-    coord.get_register_map = lambda rtype: (
-        HOLDING_REGISTERS if rtype == "holding_registers" else {}
-    )
+    coord.get_register_map = lambda rtype: HOLDING_REGISTERS if rtype == "holding_registers" else {}
     coord.get_device_info = lambda: {}
     return coord
 

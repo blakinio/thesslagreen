@@ -113,6 +113,67 @@ def test_get_device_info_fallback(monkeypatch):
     assert device_info["model"] == "AirPack Home"
 
 
+def test_sw_version_uses_version_registers_when_firmware_unknown():
+    """Real-device finding: sw_version built from version_major/minor/cf_version.
+
+    When device_info has no firmware string, coordinator_diagnostics should
+    assemble a version string from available data registers.
+    """
+    from custom_components.thessla_green_modbus.coordinator_diagnostics import _resolve_sw_version
+
+    coord = _make_coordinator()
+    coord.device_info = {}
+    coord.data = {"version_major": 3, "version_minor": 11, "cf_version": 13}
+
+    result = _resolve_sw_version(coord)
+    assert result == "3.11 CF13"
+
+
+def test_sw_version_prefers_firmware_string_over_registers():
+    """If firmware string is present, it takes priority over version registers."""
+    from custom_components.thessla_green_modbus.coordinator_diagnostics import _resolve_sw_version
+
+    coord = _make_coordinator()
+    coord.device_info = {"firmware": "v3.11-stable"}
+    coord.data = {"version_major": 3, "version_minor": 11, "cf_version": 13}
+
+    assert _resolve_sw_version(coord) == "v3.11-stable"
+
+
+def test_sw_version_falls_back_to_unknown_when_no_data():
+    """No firmware string and no version registers → 'Unknown'."""
+    from custom_components.thessla_green_modbus.coordinator_diagnostics import _resolve_sw_version
+
+    coord = _make_coordinator()
+    coord.device_info = {}
+    coord.data = {}
+
+    assert _resolve_sw_version(coord) == "Unknown"
+
+
+def test_sw_version_partial_registers():
+    """Only major/minor without cf_version produces 'major.minor'."""
+    from custom_components.thessla_green_modbus.coordinator_diagnostics import _resolve_sw_version
+
+    coord = _make_coordinator()
+    coord.device_info = {}
+    coord.data = {"version_major": 3, "version_minor": 11}
+
+    assert _resolve_sw_version(coord) == "3.11"
+
+
+def test_get_device_info_uses_version_registers_for_sw_version():
+    """get_device_info exposes version-register-assembled sw_version."""
+    coord = _make_coordinator()
+    coord.device_info = {}
+    coord.data = {"version_major": 3, "version_minor": 11, "cf_version": 13}
+    coord.device_scan_result = {}
+    coord.entry = None
+
+    info = coord.get_device_info()
+    assert info["sw_version"] == "3.11 CF13"
+
+
 def test_register_value_processing(coordinator):
     """Test register value processing."""
     temp_result = coordinator._process_register_value("outside_temperature", 250)

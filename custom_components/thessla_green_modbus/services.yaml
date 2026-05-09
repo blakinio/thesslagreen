@@ -345,8 +345,10 @@ set_debug_logging:
           step: 60
 
 sync_time:
-  name: Sync Device Clock
-  description: Synchronise the AirPack real-time clock to the current Home Assistant time. Useful after power loss.
+  name: Sync Device Clock (Legacy)
+  description: >-
+    Synchronize the AirPack real-time clock with the current Home Assistant time.
+    Useful after power loss. This is a legacy service; use sync_device_clock instead.
   target: *tg_target
   fields:
     entity_id:
@@ -357,3 +359,21 @@ sync_time:
         entity:
           domain: climate
           integration: thessla_green_modbus
+
+sync_device_clock:
+  name: Sync Device Clock
+  description: >-
+    Synchronize the AirPack real-time clock with the current Home Assistant local time.
+    This writes to the physical device RTC clock.
+    Automatic sync is disabled by default; enable it in integration options.
+  target: *tg_target
+  fields:
+    force:
+      name: Force
+      description: >-
+        Write the clock even when drift is already within the configured threshold.
+        When false, sync is skipped if drift is within the maximum drift limit.
+      required: false
+      default: false
+      selector:
+        boolean:

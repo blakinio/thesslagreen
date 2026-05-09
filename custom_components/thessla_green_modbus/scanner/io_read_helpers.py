@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any, cast
+
+from ..modbus_helpers import chunk_register_range
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -24,6 +29,15 @@ def build_read_attempt_meta(address: int, count: int) -> ReadAttemptMeta:
 def iter_grouped_read_chunks(start: int, count: int, chunk_builder: Any) -> list[tuple[int, int]]:
     """Create grouped chunk plan for optimized/batched reads."""
     return list(chunk_builder(start, count))
+
+
+def build_register_chunks(start: int, count: int, batch_size: int) -> list[tuple[int, int]]:
+    """Build a batched chunk plan for a contiguous register range."""
+    return iter_grouped_read_chunks(
+        start,
+        count,
+        lambda chunk_start, chunk_count: chunk_register_range(chunk_start, chunk_count, batch_size),
+    )
 
 
 def append_read_block(results: list[int], block: list[int] | None) -> bool:
@@ -75,3 +89,25 @@ def should_log_terminal_failure(register_type: str, aborted_transiently: bool) -
     if not aborted_transiently:
         return True
     return register_type == "holding_registers"
+
+
+def mark_failed_addresses(scanner: Any, register_type: str, start: int, end: int) -> None:
+    """Track read failures for a contiguous address range."""
+    scanner.failed_addresses["modbus_exceptions"][register_type].update(range(start, end + 1))
+
+
+def log_read_abort(kind: str, start: int, end: int, attempt: int, retry: int) -> None:
+    """Log a transiently aborted read due to timeout/cancellation."""
+    _LOGGER.warning(
+        "Aborted reading %s registers %d-%d after %d/%d attempts due to timeout/cancellation",
+        kind,
+        start,
+        end,
+        attempt,
+        retry,
+    )
+
+
+def log_read_failure(kind: str, start: int, end: int, retry: int) -> None:
+    """Log terminal read failure after retry budget is exhausted."""
+    _LOGGER.error("Failed to read %s registers %d-%d after %d retries", kind, start, end, retry)

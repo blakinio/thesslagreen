@@ -18,6 +18,7 @@ from .._coordinator_connection_test import run_connection_test as _run_connectio
 from .._coordinator_device_info import run_device_scan as _run_device_scan_impl
 from .._coordinator_device_info import warn_missing_device_info as _warn_missing_device_info_impl
 from .._coordinator_factory import build_config_from_params as _build_config_from_params_impl
+from .._coordinator_init import apply_coordinator_config as _apply_coordinator_config_impl
 from .._coordinator_init import normalize_runtime_config as _normalize_runtime_config_impl
 from .._coordinator_register_groups import (
     compute_register_groups as _compute_register_groups_impl,
@@ -81,7 +82,6 @@ from ..coordinator_state import (
 from ..coordinator_state import normalize_serial_settings as _normalize_serial_settings_impl
 from ..coordinator_state import resolve_effective_batch as _resolve_effective_batch_impl
 from ..errors import CannotConnect
-from ..modbus_exceptions import ConnectionException
 from ..modbus_helpers import group_reads
 from ..modbus_transport import (
     BaseModbusTransport,
@@ -95,6 +95,7 @@ from ..scanner import (
 )
 from ..utils import resolve_connection_settings
 from .capabilities import _CoordinatorCapabilitiesMixin
+from .config_properties import _CoordinatorConfigPropertiesMixin
 from .connection import (
     build_rtu_transport as _build_rtu_transport_impl,
 )
@@ -194,6 +195,7 @@ _LOGGER = logging.getLogger(__name__)
 class ThesslaGreenModbusCoordinator(
     _ModbusIOMixin,
     _CoordinatorCapabilitiesMixin,
+    _CoordinatorConfigPropertiesMixin,
     _CoordinatorScheduleMixin,
     DataUpdateCoordinator[dict[str, Any]],
 ):
@@ -239,112 +241,17 @@ class ThesslaGreenModbusCoordinator(
             )
         self.hass = hass
 
-        self._device_name = normalized_cfg.name
-        self.config = normalized_cfg
-        self._resolved_connection_mode = resolved_connection_mode
-        self.timeout = normalized_cfg.timeout
-        self.retry = normalized_cfg.retry
-        self.backoff = _normalize_backoff_impl(normalized_cfg.backoff)
-
-        self.backoff_jitter = self._parse_backoff_jitter(normalized_cfg.backoff_jitter)
-        self.force_full_register_list = normalized_cfg.force_full_register_list
-        self.scan_uart_settings = normalized_cfg.scan_uart_settings
-        self.deep_scan = normalized_cfg.deep_scan
-        self.safe_scan = normalized_cfg.safe_scan
-        self.entry = entry
-        self.skip_missing_registers = normalized_cfg.skip_missing_registers
-
-        self.effective_batch = _resolve_effective_batch_impl(
-            entry, normalized_cfg.max_registers_per_request
+        _apply_coordinator_config_impl(
+            self,
+            normalized_cfg,
+            resolved_connection_mode,
+            entry,
+            normalize_backoff_fn=_normalize_backoff_impl,
+            parse_backoff_jitter_fn=_parse_backoff_jitter_impl,
+            resolve_effective_batch_fn=_resolve_effective_batch_impl,
         )
-        self.max_registers_per_request = self.effective_batch
-
-        self.config.max_registers_per_request = self.max_registers_per_request
-        self.config.backoff = self.backoff
-        self.config.backoff_jitter = self.backoff_jitter
 
         _initialize_runtime_state_impl(self, entry=entry)
-
-    @property
-    def host(self) -> str:
-        """Host accessor backed by CoordinatorConfig."""
-        return self.config.host
-
-    @host.setter
-    def host(self, value: str) -> None:
-        self.config.host = value
-
-    @property
-    def port(self) -> int:
-        """Port accessor backed by CoordinatorConfig."""
-        return self.config.port
-
-    @port.setter
-    def port(self, value: int) -> None:
-        self.config.port = value
-
-    @property
-    def slave_id(self) -> int:
-        """Slave ID accessor backed by CoordinatorConfig."""
-        return self.config.slave_id
-
-    @slave_id.setter
-    def slave_id(self, value: int) -> None:
-        self.config.slave_id = value
-
-    @property
-    def connection_type(self) -> str:
-        """Connection type accessor backed by CoordinatorConfig."""
-        return self.config.connection_type
-
-    @connection_type.setter
-    def connection_type(self, value: str) -> None:
-        self.config.connection_type = value
-
-    @property
-    def connection_mode(self) -> str | None:
-        """Connection mode accessor backed by CoordinatorConfig."""
-        return self.config.connection_mode
-
-    @connection_mode.setter
-    def connection_mode(self, value: str | None) -> None:
-        self.config.connection_mode = value
-
-    @property
-    def serial_port(self) -> str:
-        """Serial port accessor backed by CoordinatorConfig."""
-        return self.config.serial_port
-
-    @serial_port.setter
-    def serial_port(self, value: str) -> None:
-        self.config.serial_port = value
-
-    @property
-    def baud_rate(self) -> int:
-        """Baud rate accessor backed by CoordinatorConfig."""
-        return self.config.baud_rate
-
-    @baud_rate.setter
-    def baud_rate(self, value: int) -> None:
-        self.config.baud_rate = value
-
-    @property
-    def parity(self) -> str:
-        """Parity accessor backed by CoordinatorConfig."""
-        return self.config.parity
-
-    @parity.setter
-    def parity(self, value: str) -> None:
-        self.config.parity = value
-
-    @property
-    def stop_bits(self) -> int:
-        """Stop bits accessor backed by CoordinatorConfig."""
-        return self.config.stop_bits
-
-    @stop_bits.setter
-    def stop_bits(self, value: int) -> None:
-        self.config.stop_bits = value
 
     @classmethod
     def from_params(
@@ -425,57 +332,18 @@ class ThesslaGreenModbusCoordinator(
 
     def _get_client_method(self, name: str) -> Callable[..., Any]:
         """Return a Modbus method from transport/client or a no-op placeholder."""
-
-        transport = self._transport
-        transport_method = getattr(transport, name, None) if transport is not None else None
-        if callable(transport_method):
-            return cast(Callable[..., Any], transport_method)
-        """Return a Modbus client method or a no-op async placeholder."""
-
-        client = self.client
-        method = getattr(client, name, None) if client is not None else None
-        if callable(method):
-            return cast(Callable[..., Any], method)
+        for obj in (self._transport, self.client):
+            if obj is None:
+                continue
+            method = getattr(obj, name, None)
+            if callable(method):
+                return cast(Callable[..., Any], method)
 
         async def _missing_method(*_args: Any, **_kwargs: Any) -> Any:
             return None
 
         _missing_method.__name__ = name
         return _missing_method
-
-    async def _read_coils_transport(
-        self,
-        _slave_id: int,
-        address: int,
-        *,
-        count: int,
-        attempt: int = 1,
-    ) -> Any:
-        if not self.client:
-            raise ConnectionException("Modbus client is not connected")
-        return await self._call_modbus(
-            self.client.read_coils,
-            address,
-            count=count,
-            attempt=attempt,
-        )
-
-    async def _read_discrete_inputs_transport(
-        self,
-        _slave_id: int,
-        address: int,
-        *,
-        count: int,
-        attempt: int = 1,
-    ) -> Any:
-        if not self.client:
-            raise ConnectionException("Modbus client is not connected")
-        return await self._call_modbus(
-            self.client.read_discrete_inputs,
-            address,
-            count=count,
-            attempt=attempt,
-        )
 
     def _build_scanner_kwargs(self) -> dict[str, Any]:
         """Return constructor kwargs shared by all scanner creation paths."""
@@ -648,8 +516,8 @@ class ThesslaGreenModbusCoordinator(
         transport, mode = await _select_auto_transport_impl(
             resolved_connection_mode=self._resolved_connection_mode,
             build_tcp_transport=self._build_tcp_transport,
-            try_direct_client_connect=lambda allow_parameterless_ctor: self._try_direct_client_connect(
-                allow_parameterless_ctor=allow_parameterless_ctor
+            try_direct_client_connect=lambda allow_parameterless_ctor: (
+                self._try_direct_client_connect(allow_parameterless_ctor=allow_parameterless_ctor)
             ),
             port=self.config.port,
             timeout=self.timeout,
@@ -662,54 +530,59 @@ class ThesslaGreenModbusCoordinator(
         if mode is not None:
             self._resolved_connection_mode = mode
 
-    async def _ensure_connected(self) -> None:
-        """Ensure Modbus connection is established using the shared client."""
+    def _build_transport_selector_fn(self) -> Any:
+        """Return the transport selector callable for the connection lifecycle.
 
+        Computes parity and stop-bits from current config at call time so that
+        the returned callable always reflects the live coordinator settings.
+        """
         parity = SERIAL_PARITY_MAP.get(self.config.parity, SERIAL_PARITY_MAP[DEFAULT_PARITY])
         stop_bits = SERIAL_STOP_BITS_MAP.get(
             self.config.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
         )
-
-        def _ensure_transport_selected() -> Any:
-            return lambda: _ensure_transport_selected_impl(
-                current_transport=self._transport,
-                connection_type=self.config.connection_type,
-                connection_mode=self.config.connection_mode,
-                host=self.config.host,
-                port=self.config.port,
-                serial_port=self.config.serial_port,
-                baudrate=self.config.baud_rate,
-                parity=parity,
-                stopbits=stop_bits,
-                retry=self.retry,
-                backoff=self.backoff,
-                max_backoff=DEFAULT_MAX_BACKOFF,
-                timeout=self.timeout,
-                offline_state=self.offline_state,
-                connection_type_rtu=CONNECTION_TYPE_RTU,
-                connection_mode_auto=CONNECTION_MODE_AUTO,
-                connection_mode_tcp=CONNECTION_MODE_TCP,
-                build_rtu_transport_fn=_build_rtu_transport_impl,
-                build_tcp_transport_fn=self._build_tcp_transport,
-                select_auto_transport_fn=lambda: _select_auto_transport_impl(
-                    resolved_connection_mode=self._resolved_connection_mode,
-                    build_tcp_transport=self._build_tcp_transport,
-                    try_direct_client_connect=lambda allow_parameterless_ctor: self._try_direct_client_connect(
+        return lambda: _ensure_transport_selected_impl(
+            current_transport=self._transport,
+            connection_type=self.config.connection_type,
+            connection_mode=self.config.connection_mode,
+            host=self.config.host,
+            port=self.config.port,
+            serial_port=self.config.serial_port,
+            baudrate=self.config.baud_rate,
+            parity=parity,
+            stopbits=stop_bits,
+            retry=self.retry,
+            backoff=self.backoff,
+            max_backoff=DEFAULT_MAX_BACKOFF,
+            timeout=self.timeout,
+            offline_state=self.offline_state,
+            connection_type_rtu=CONNECTION_TYPE_RTU,
+            connection_mode_auto=CONNECTION_MODE_AUTO,
+            connection_mode_tcp=CONNECTION_MODE_TCP,
+            build_rtu_transport_fn=_build_rtu_transport_impl,
+            build_tcp_transport_fn=self._build_tcp_transport,
+            select_auto_transport_fn=lambda: _select_auto_transport_impl(
+                resolved_connection_mode=self._resolved_connection_mode,
+                build_tcp_transport=self._build_tcp_transport,
+                try_direct_client_connect=lambda allow_parameterless_ctor: (
+                    self._try_direct_client_connect(
                         allow_parameterless_ctor=allow_parameterless_ctor
-                    ),
-                    port=self.config.port,
-                    timeout=self.timeout,
-                    slave_id=self.config.slave_id,
-                    host=self.config.host,
-                    logger=_LOGGER,
+                    )
                 ),
-            )
+                port=self.config.port,
+                timeout=self.timeout,
+                slave_id=self.config.slave_id,
+                host=self.config.host,
+                logger=_LOGGER,
+            ),
+        )
 
+    async def _ensure_connected(self) -> None:
+        """Ensure Modbus connection is established using the shared client."""
         await _ensure_connected_lifecycle_impl(
             self,
             ensure_connected_runtime_fn=_ensure_connected_runtime_impl,
             reconnect_client_if_needed_fn=_reconnect_client_if_needed_impl,
-            ensure_transport_selected_fn_factory=_ensure_transport_selected,
+            ensure_transport_selected_fn_factory=self._build_transport_selector_fn,
             connect_transport_or_client_fn=_connect_transport_or_client_impl,
             mark_connection_established_fn=lambda: _mark_connection_established_impl(
                 offline_state_setter=lambda value: setattr(self, "offline_state", value)

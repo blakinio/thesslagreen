@@ -139,6 +139,8 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
 
         _ec = sensor_definition.get("entity_category")
         self._attr_entity_category = EntityCategory(_ec) if _ec else None
+        if self._attr_entity_category is EntityCategory.DIAGNOSTIC:
+            self._attr_entity_registry_enabled_default = False
 
         # Translation setup
         self._attr_translation_key = sensor_definition.get("translation_key")

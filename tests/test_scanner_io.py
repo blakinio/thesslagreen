@@ -4,16 +4,22 @@ import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
+from custom_components.thessla_green_modbus.modbus_exceptions import (
+    ConnectionException,
+    ModbusException,
+    ModbusIOException,
+)
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.scanner.io_read import (
-    _build_register_chunks,
-    _extend_or_abort_register_results,
+    _attempt_bit_reconnect,
     _finalize_register_read_failure,
     _handle_input_attempt_exception,
+    _handle_register_error_response,
 )
 from custom_components.thessla_green_modbus.scanner.io_read_helpers import (
+    append_read_block,
     build_read_attempt_meta,
+    build_register_chunks,
     classify_skip_range,
     normalize_bit_read_result,
     should_log_terminal_failure,
@@ -279,21 +285,27 @@ def test_finalize_register_read_failure_holding_non_aborted_marks_and_logs(caplo
 
 def test_build_register_chunks_uses_effective_batch():
     """Chunk construction should respect effective batch size boundaries."""
-    scanner = MagicMock()
-    scanner.effective_batch = 2
-    assert _build_register_chunks(scanner, 10, 5) == [(10, 2), (12, 2), (14, 1)]
+    assert build_register_chunks(10, 5, 2) == [(10, 2), (12, 2), (14, 1)]
 
 
-def test_extend_or_abort_register_results_handles_none_and_appends():
-    """Result helper should abort on None and append successful blocks."""
+def test_build_register_chunks_single_chunk_when_count_fits():
+    """Single chunk produced when count does not exceed batch size."""
+    assert build_register_chunks(0, 3, 10) == [(0, 3)]
+
+
+def test_build_register_chunks_exact_multiple():
+    """Produces even chunks when count is an exact multiple of batch size."""
+    assert build_register_chunks(5, 6, 3) == [(5, 3), (8, 3)]
+
+
+def test_append_read_block_handles_none_and_appends():
+    """append_read_block should return False on None block and append successful blocks."""
     results = [1]
-    can_continue, payload = _extend_or_abort_register_results(results, None)
-    assert (can_continue, payload) == (False, None)
+    assert append_read_block(results, None) is False
     assert results == [1]
 
-    can_continue, payload = _extend_or_abort_register_results(results, [2, 3])
-    assert can_continue is True
-    assert payload == [1, 2, 3]
+    assert append_read_block(results, [2, 3]) is True
+    assert results == [1, 2, 3]
 
 
 def test_build_read_attempt_meta_sets_expected_range():
@@ -361,3 +373,150 @@ def test_should_log_terminal_failure_tracks_holding_vs_input_aborts():
     assert should_log_terminal_failure("input_registers", True) is False
     assert should_log_terminal_failure("holding_registers", True) is True
     assert should_log_terminal_failure("input_registers", False) is True
+
+
+async def test_attempt_bit_reconnect_no_transport_returns_original_client():
+    """Returns original client unchanged when scanner has no transport."""
+    scanner = MagicMock()
+    scanner._transport = None
+    original = AsyncMock()
+    result = await _attempt_bit_reconnect(scanner, original)
+    assert result is original
+
+
+async def test_attempt_bit_reconnect_with_transport_returns_transport_client():
+    """Returns transport client and updates scanner._client when reconnect succeeds."""
+    scanner = MagicMock()
+    transport_client = AsyncMock()
+    mock_transport = MagicMock()
+    mock_transport.ensure_connected = AsyncMock()
+    mock_transport.client = transport_client
+    scanner._transport = mock_transport
+
+    original = AsyncMock()
+    result = await _attempt_bit_reconnect(scanner, original)
+
+    assert result is transport_client
+    assert scanner._client is transport_client
+    mock_transport.ensure_connected.assert_called_once()
+
+
+async def test_attempt_bit_reconnect_transport_no_client_attr_returns_original():
+    """Returns original client when transport has no .client attribute."""
+    scanner = MagicMock()
+    mock_transport = MagicMock()
+    mock_transport.ensure_connected = AsyncMock()
+    mock_transport.client = None
+    scanner._transport = mock_transport
+
+    original = AsyncMock()
+    result = await _attempt_bit_reconnect(scanner, original)
+
+    assert result is original
+
+
+async def test_attempt_bit_reconnect_ensure_connected_raises_returns_original():
+    """Returns original client when ensure_connected raises any connection error."""
+    scanner = MagicMock()
+    mock_transport = MagicMock()
+    mock_transport.ensure_connected = AsyncMock(side_effect=ModbusException("lost"))
+    scanner._transport = mock_transport
+
+    original = AsyncMock()
+    result = await _attempt_bit_reconnect(scanner, original)
+
+    assert result is original
+
+
+async def test_attempt_bit_reconnect_connection_exception_returns_original():
+    """Returns original client when ensure_connected raises ConnectionException."""
+    scanner = MagicMock()
+    mock_transport = MagicMock()
+    mock_transport.ensure_connected = AsyncMock(side_effect=ConnectionException("down"))
+    scanner._transport = mock_transport
+
+    original = AsyncMock()
+    result = await _attempt_bit_reconnect(scanner, original)
+
+    assert result is original
+
+
+# ---------------------------------------------------------------------------
+# _handle_register_error_response
+# ---------------------------------------------------------------------------
+
+
+def _make_error_scanner():
+    scanner = MagicMock()
+    scanner._failed_input = set()
+    scanner._failed_holding = set()
+    scanner._holding_failures = {}
+    scanner.retry = 3
+    return scanner
+
+
+def test_handle_register_error_response_input_marks_failed_and_returns_done():
+    """Input register error marks range failed and signals done=True."""
+    scanner = _make_error_scanner()
+    done, payload = _handle_register_error_response(
+        scanner,
+        register_type="input_registers",
+        start=10,
+        end=10,
+        address=10,
+        count=1,
+        code=2,
+    )
+    assert done is True
+    assert payload is None
+    scanner._mark_input_unsupported.assert_called_once()
+
+
+def test_handle_register_error_response_code2_holding_marks_failed():
+    """Exception code 2 on holding registers marks range failed and signals done=True."""
+    scanner = _make_error_scanner()
+    done, payload = _handle_register_error_response(
+        scanner,
+        register_type="holding_registers",
+        start=20,
+        end=20,
+        address=20,
+        count=1,
+        code=2,
+    )
+    assert done is True
+    assert payload is None
+    scanner._mark_holding_unsupported.assert_called_once()
+
+
+def test_handle_register_error_response_holding_non_code2_returns_retry():
+    """Holding register error with non-code-2 and count>1 returns done=False (retry)."""
+    scanner = _make_error_scanner()
+    done, payload = _handle_register_error_response(
+        scanner,
+        register_type="holding_registers",
+        start=30,
+        end=35,
+        address=30,
+        count=6,
+        code=None,
+    )
+    assert done is False
+    assert payload is None
+
+
+def test_handle_register_error_response_holding_single_exhausted_marks_done():
+    """Holding register single-address error returns done=True after failure threshold."""
+    scanner = _make_error_scanner()
+    scanner._failed_holding = {50}
+    done, payload = _handle_register_error_response(
+        scanner,
+        register_type="holding_registers",
+        start=50,
+        end=50,
+        address=50,
+        count=1,
+        code=None,
+    )
+    assert done is True
+    assert payload is None
