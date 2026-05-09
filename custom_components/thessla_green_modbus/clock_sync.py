@@ -199,11 +199,25 @@ class ClockSyncManager:
             DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
             DEFAULT_SYNC_DEVICE_CLOCK_ON_START,
         )
+
         return {
-            "enabled": bool(opts.get(CONF_SYNC_DEVICE_CLOCK_ENABLED, DEFAULT_SYNC_DEVICE_CLOCK_ENABLED)),
-            "on_start": bool(opts.get(CONF_SYNC_DEVICE_CLOCK_ON_START, DEFAULT_SYNC_DEVICE_CLOCK_ON_START)),
-            "interval_hours": int(opts.get(CONF_SYNC_DEVICE_CLOCK_INTERVAL_HOURS, DEFAULT_SYNC_DEVICE_CLOCK_INTERVAL_HOURS)),
-            "max_drift": int(opts.get(CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS, DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS)),
+            "enabled": bool(
+                opts.get(CONF_SYNC_DEVICE_CLOCK_ENABLED, DEFAULT_SYNC_DEVICE_CLOCK_ENABLED)
+            ),
+            "on_start": bool(
+                opts.get(CONF_SYNC_DEVICE_CLOCK_ON_START, DEFAULT_SYNC_DEVICE_CLOCK_ON_START)
+            ),
+            "interval_hours": int(
+                opts.get(
+                    CONF_SYNC_DEVICE_CLOCK_INTERVAL_HOURS, DEFAULT_SYNC_DEVICE_CLOCK_INTERVAL_HOURS
+                )
+            ),
+            "max_drift": int(
+                opts.get(
+                    CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
+                    DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
+                )
+            ),
         }
 
     def _on_update(self) -> None:
@@ -228,7 +242,9 @@ class ClockSyncManager:
         else:
             from homeassistant.util import dt as dt_util
 
-            elapsed = (dt_util.now().replace(tzinfo=None) - self._last_sync.replace(tzinfo=None)).total_seconds()
+            elapsed = (
+                dt_util.now().replace(tzinfo=None) - self._last_sync.replace(tzinfo=None)
+            ).total_seconds()
             if elapsed >= opts["interval_hours"] * 3600:
                 should_sync = True
 

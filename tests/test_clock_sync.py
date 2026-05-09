@@ -501,8 +501,13 @@ def test_options_form_has_clock_sync_defaults():
     defaults = build_options_defaults({}, {})
     assert defaults[CONF_SYNC_DEVICE_CLOCK_ENABLED] == DEFAULT_SYNC_DEVICE_CLOCK_ENABLED
     assert defaults[CONF_SYNC_DEVICE_CLOCK_ON_START] == DEFAULT_SYNC_DEVICE_CLOCK_ON_START
-    assert defaults[CONF_SYNC_DEVICE_CLOCK_INTERVAL_HOURS] == DEFAULT_SYNC_DEVICE_CLOCK_INTERVAL_HOURS
-    assert defaults[CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS] == DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS
+    assert (
+        defaults[CONF_SYNC_DEVICE_CLOCK_INTERVAL_HOURS] == DEFAULT_SYNC_DEVICE_CLOCK_INTERVAL_HOURS
+    )
+    assert (
+        defaults[CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS]
+        == DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS
+    )
 
 
 def test_options_form_default_sync_enabled_is_false():
