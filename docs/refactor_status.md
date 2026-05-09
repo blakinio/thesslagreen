@@ -90,17 +90,10 @@ Last complete successful validation (Python 3.13.12):
 
 ## Branch note
 
-- Target branch for ongoing work and PR base is **dev**.
-- `main` is not authoritative for this stream.
-- No `main -> dev` merge is recommended by this status document.
+- Target branch for all ongoing work and PR bases is **main**.
+- `main` is the authoritative branch for this integration.
 
 ## Readiness caveats
 
-- **HACS/hassfest readiness:** not claimable from local verification; CI runs those gates.
-- **Real-device readiness:** not claimable from these refactor validations unless separate on-device evidence is captured.
-- **Release notes/tag:** not finalized.
-
-## Dependabot note
-
-- PR #1567 is still separate from this refactor stream.
-- Pydantic remains pinned at 2.12.2; this document does not change dependency versions.
+- **HACS/hassfest readiness:** CI validates these on every push; check the Actions tab for current status.
+- **Real-device readiness:** no on-device evidence was captured during this audit run. The `quality_scale: silver` in `manifest.json` is a self-assessed value.

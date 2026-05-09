@@ -157,12 +157,10 @@ Extraction: `_locked_single_register_write` pulled from `async_write_register`.
 
 ## Branch note
 
-- The working target branch is **dev**.
-- **main** is **not** authoritative for this refactor/audit track.
-- No `main -> dev` merge is recommended as part of this audit.
+- The authoritative target branch is **main**.
+- All active development and PR bases target `main` directly.
 
 ## Dependabot note
 
-- PR #1567 remains separate from this refactor/audit stream.
-- This audit cleanup does not change dependency versions.
-- pydantic version unchanged at 2.12.2.
+- **HACS/hassfest readiness:** CI runs hassfest and HACS validation on every push; check the Actions tab for the current status.
+- **Real-device validation:** the `quality_scale: silver` in `manifest.json` is a self-assessed declaration. Independent real-device evidence has not been collected as part of this audit. Evidence should be documented in a dedicated section before claiming a higher quality scale.

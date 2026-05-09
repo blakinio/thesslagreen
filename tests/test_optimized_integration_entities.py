@@ -48,7 +48,11 @@ class TestThesslaGreenClimate:
         from homeassistant.components.climate import HVACMode
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
-        assert climate.name == "Test AirPack Rekuperator"
+        # Name is delegated to HA via _attr_has_entity_name + _attr_translation_key;
+        # the entity must not hard-code a Polish device-type label.
+        assert climate._attr_has_entity_name is True  # nosec B101
+        assert climate._attr_translation_key == "thessla_green_climate"  # nosec B101
+        assert "Rekuperator" not in (climate.__dict__.get("_attr_name") or "")  # nosec B101
         assert HVACMode.AUTO in climate.hvac_modes
         assert HVACMode.FAN_ONLY in climate.hvac_modes
         assert HVACMode.OFF in climate.hvac_modes

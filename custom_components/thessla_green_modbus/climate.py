@@ -284,20 +284,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             await self.coordinator.async_request_refresh()
 
     @property
-    def name(self) -> str:
-        scan_name = (
-            getattr(self.coordinator, "device_scan_result", {})
-            .get("device_info", {})
-            .get("device_name")
-        )
-        base = scan_name or getattr(
-            self.coordinator,
-            "device_name",
-            getattr(self.coordinator, "_device_name", "ThesslaGreen"),
-        )
-        return f"{base} Rekuperator"
-
-    @property
     def hvac_modes(self) -> list[HVACMode]:
         return list(getattr(self, "_attr_hvac_modes", [HVACMode.OFF, HVACMode.AUTO]))
 
