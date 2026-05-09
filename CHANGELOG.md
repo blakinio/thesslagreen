@@ -33,6 +33,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `test_coordinator_coverage.py`: replaced `is not None` assertions with type checks.
 - `test_optimized_integration.py`: replaced `CoordinatorMock` with `MagicMock`.
 
+### CI / Release Readiness
+- Added `hassfest` CI job (`home-assistant/actions/hassfest@main`) — validates
+  `manifest.json` and integration structure on every PR and push.
+- Added `hacs` CI job (`hacs/action@main`, `category: integration`) — validates
+  `hacs.json` and HACS repository requirements on every PR and push.
+- Added `dev` to push trigger branches so CI runs on pushes to the development branch.
+- Added `docs/real_device_validation.md` — structured checklist and evidence template
+  for real-device validation against ThesslaGreen AirPack hardware (template only;
+  not yet filled with real evidence).
+- Validation suite: 1948 passed, 4 skipped — 0 failures on Python 3.13.12,
+  HA 2026.2.3, pydantic 2.12.2.
+- Entity mapping validation: 366 entities confirmed.
+- `pydantic` remains pinned at `2.12.2` — PR #1567 (Dependabot pydantic update)
+  is separate and untouched.
+
+### Release caveats (pre-tag)
+- No GitHub release tag created in this PR — tag `v2.8.0` and release notes must
+  be created separately via GitHub UI or CLI before HACS will distribute this version.
+- Real-device validation is documented as a checklist template; evidence from
+  testing against physical ThesslaGreen AirPack hardware has not yet been collected.
+
 ---
 
 ## 2.7.0 — Dead fallback & pragma cleanup
