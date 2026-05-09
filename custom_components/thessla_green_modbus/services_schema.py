@@ -7,7 +7,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.helpers import config_validation as cv
 
-from .const import (
+from .options import (
     BYPASS_MODES,
     DAYS_OF_WEEK,
     FILTER_TYPES,

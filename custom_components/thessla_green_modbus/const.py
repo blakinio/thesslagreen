@@ -2,12 +2,40 @@
 
 from __future__ import annotations
 
-import asyncio
-from functools import cache, lru_cache
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any
 
-from .registers.loader import get_registers_by_function
+# ---------------------------------------------------------------------------
+# Options loading — implementation lives in options/__init__.py.
+# Re-exported here for backward compatibility.  Prefer importing from
+# .options in new code.
+# ---------------------------------------------------------------------------
+from .options import BYPASS_MODES as BYPASS_MODES
+from .options import DAYS_OF_WEEK as DAYS_OF_WEEK
+from .options import FILTER_TYPES as FILTER_TYPES
+from .options import GWC_MODES as GWC_MODES
+from .options import MODBUS_BAUD_RATES as MODBUS_BAUD_RATES
+from .options import MODBUS_PARITY as MODBUS_PARITY
+from .options import MODBUS_PORTS as MODBUS_PORTS
+from .options import MODBUS_STOP_BITS as MODBUS_STOP_BITS
+from .options import OPTIONS_PATH as OPTIONS_PATH
+from .options import PERIODS as PERIODS
+from .options import RESET_TYPES as RESET_TYPES
+from .options import SPECIAL_MODE_OPTIONS as SPECIAL_MODE_OPTIONS
+from .options import _get_options_init_lock as _get_options_init_lock
+from .options import _load_json_option as _load_json_option
+from .options import async_setup_options as async_setup_options
+
+# ---------------------------------------------------------------------------
+# Register map helpers — implementation lives in registers/maps.py.
+# Re-exported here for backward compatibility with callers that import from
+# this module.  Prefer importing from registers.maps in new code.
+# ---------------------------------------------------------------------------
+from .registers.maps import _build_map as _build_map
+from .registers.maps import coil_registers as coil_registers
+from .registers.maps import discrete_input_registers as discrete_input_registers
+from .registers.maps import holding_registers as holding_registers
+from .registers.maps import input_registers as input_registers
+from .registers.maps import multi_register_sizes as multi_register_sizes
 from .unique_id_migration import (
     device_unique_id_prefix as _device_unique_id_prefix_impl,
 )
@@ -34,14 +62,7 @@ except ModuleNotFoundError:  # pragma: no cover - test/runtime fallback without 
 
 Platform = _HAPlatform
 
-
-if TYPE_CHECKING:  # pragma: no cover
-    from homeassistant.core import HomeAssistant
-
 # Maximum number of registers that can be read in a single request.
-# The registers loader previously created a circular dependency with
-# ``modbus_helpers`` but this has been resolved, allowing the import to
-# appear before this constant.
 # AirPack4 firmware limit: max 16 registers per FC03/FC04 request
 # (per vendor register protocol documentation — device-specific constraint,
 # lower than the Modbus spec maximum of 125).
@@ -61,37 +82,6 @@ MAX_BATCH_REGISTERS = MAX_REGISTERS_PER_REQUEST
 #   and alarm/error/filter_change (0x2000+).  Splitting here ensures alarm
 #   and error registers are always read reliably.
 HOLDING_BATCH_BOUNDARIES: frozenset[int] = frozenset({16, 8192})
-
-
-@cache
-def _build_map(fn: str) -> dict[str, int]:
-    return {r.name: r.address for r in get_registers_by_function(fn) if r.name}
-
-
-def coil_registers() -> dict[str, int]:
-    return _build_map("coil")
-
-
-def discrete_input_registers() -> dict[str, int]:
-    return _build_map("discrete")
-
-
-def holding_registers() -> dict[str, int]:
-    return _build_map("holding")
-
-
-def input_registers() -> dict[str, int]:
-    return _build_map("input")
-
-
-@lru_cache(maxsize=1)
-def multi_register_sizes() -> dict[str, int]:
-    return {
-        r.name: r.length for r in get_registers_by_function("holding") if r.name and r.length > 1
-    }
-
-
-OPTIONS_PATH = Path(__file__).parent / "options"
 
 # Integration constants
 DOMAIN = "thessla_green_modbus"
@@ -263,32 +253,38 @@ PLATFORMS: list[Any] = [
 ]
 
 
-# Migration helpers
+# ---------------------------------------------------------------------------
+# Entity lookup — implementation lives in entity_lookup.py.
+#
+# _ENTITY_LOOKUP is kept here so that test suites can inject a fake lookup
+# via monkeypatch.setattr(const_mod, "_ENTITY_LOOKUP", fake).  The wrapper
+# below checks this module-level variable first; when it is None (normal
+# runtime) it delegates to entity_lookup._build_entity_lookup().
+# ---------------------------------------------------------------------------
 _ENTITY_LOOKUP: dict[str, tuple[str, str | None, int | None]] | None = None
 
 
 def _build_entity_lookup() -> dict[str, tuple[str, str | None, int | None]]:
-    """Build mapping of entity keys to register info."""
+    """Return entity-key → register-info mapping, using any test-injected override."""
     global _ENTITY_LOOKUP
-    if _ENTITY_LOOKUP is None:
-        from .mappings import ENTITY_MAPPINGS as _MAP
+    if _ENTITY_LOOKUP is not None:
+        return _ENTITY_LOOKUP
+    from .entity_lookup import _build_entity_lookup as _impl
 
-        lookup: dict[str, tuple[str, str | None, int | None]] = {}
-        for platform in ("sensor", "binary_sensor", "switch", "select", "number"):
-            for key, cfg in _MAP.get(platform, {}).items():
-                register = cfg.get("register", key)
-                lookup[key] = (register, cfg.get("register_type"), cfg.get("bit"))
-        _ENTITY_LOOKUP = lookup
-    return _ENTITY_LOOKUP
+    return _impl()
 
 
+# ---------------------------------------------------------------------------
+# Unique-ID helpers — thin integration-specific façades over unique_id_migration.
+# Re-exported here so existing callers (including tests) continue to import
+# from this module without changes.
+# ---------------------------------------------------------------------------
 def device_unique_id_prefix(
     serial_number: str | None,
     host: str,
     port: int,
 ) -> str:
     """Return the device specific prefix used in entity unique IDs."""
-
     return _device_unique_id_prefix_impl(serial_number, host, port)
 
 
@@ -301,7 +297,6 @@ def migrate_unique_id(
     slave_id: int,
 ) -> str:
     """Migrate a historical unique_id to the current format."""
-
     return _migrate_unique_id_impl(
         unique_id,
         serial_number=serial_number,
@@ -316,99 +311,6 @@ def migrate_unique_id(
         coil_registers=coil_registers,
         discrete_input_registers=discrete_input_registers,
     )
-
-
-# Aggregated entity mappings for all platforms.  Additional platforms can be
-# added here in the future.
-# ============================================================================
-# Complete register mapping aligned with bundled register metadata.
-# ============================================================================
-
-
-def _load_json_option(filename: str) -> list[Any]:
-    """Load an option list from a JSON file in ``OPTIONS_PATH``."""
-
-    import json
-
-    try:
-        return cast(
-            list[Any],
-            json.loads((OPTIONS_PATH / filename).read_text(encoding="utf-8")),
-        )
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
-
-
-async def async_setup_options(hass: HomeAssistant | None = None) -> None:
-    """Asynchronously populate option lists from JSON files.
-
-    When ``hass`` is provided, file I/O is offloaded to the executor.
-    If Home Assistant utilities are unavailable, the lists are populated
-    synchronously when running in tests.
-    """
-
-    global SPECIAL_MODE_OPTIONS, DAYS_OF_WEEK, PERIODS, BYPASS_MODES, GWC_MODES
-    global FILTER_TYPES, RESET_TYPES, MODBUS_PORTS, MODBUS_BAUD_RATES
-    global MODBUS_PARITY, MODBUS_STOP_BITS
-
-    filenames = [
-        ("special_modes.json", "SPECIAL_MODE_OPTIONS"),
-        ("days_of_week.json", "DAYS_OF_WEEK"),
-        ("periods.json", "PERIODS"),
-        ("bypass_modes.json", "BYPASS_MODES"),
-        ("gwc_modes.json", "GWC_MODES"),
-        ("filter_types.json", "FILTER_TYPES"),
-        ("reset_types.json", "RESET_TYPES"),
-        ("modbus_ports.json", "MODBUS_PORTS"),
-        ("modbus_baud_rates.json", "MODBUS_BAUD_RATES"),
-        ("modbus_parity.json", "MODBUS_PARITY"),
-        ("modbus_stop_bits.json", "MODBUS_STOP_BITS"),
-    ]
-
-    async with _get_options_init_lock():
-        if hass is not None:
-            results = await asyncio.gather(
-                *[hass.async_add_executor_job(_load_json_option, fn) for fn, _ in filenames]
-            )
-        else:
-            results = [_load_json_option(fn) for fn, _ in filenames]
-
-        (
-            SPECIAL_MODE_OPTIONS,
-            DAYS_OF_WEEK,
-            PERIODS,
-            BYPASS_MODES,
-            GWC_MODES,
-            FILTER_TYPES,
-            RESET_TYPES,
-            MODBUS_PORTS,
-            MODBUS_BAUD_RATES,
-            MODBUS_PARITY,
-            MODBUS_STOP_BITS,
-        ) = results
-
-
-# Shared option lists loaded during setup
-SPECIAL_MODE_OPTIONS: list[Any] = []
-DAYS_OF_WEEK: list[Any] = []
-PERIODS: list[Any] = []
-BYPASS_MODES: list[Any] = []
-GWC_MODES: list[Any] = []
-FILTER_TYPES: list[Any] = []
-RESET_TYPES: list[Any] = []
-MODBUS_PORTS: list[Any] = []
-MODBUS_BAUD_RATES: list[Any] = []
-MODBUS_PARITY: list[Any] = []
-MODBUS_STOP_BITS: list[Any] = []
-_OPTIONS_INIT_LOCK: asyncio.Lock | None = None
-
-
-def _get_options_init_lock() -> asyncio.Lock:
-    """Return a shared lock guarding global options initialization."""
-    global _OPTIONS_INIT_LOCK
-    if _OPTIONS_INIT_LOCK is None:
-        _OPTIONS_INIT_LOCK = asyncio.Lock()
-    return _OPTIONS_INIT_LOCK
 
 
 # Special function enum index mappings for services.

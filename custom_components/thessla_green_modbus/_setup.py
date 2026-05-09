@@ -20,12 +20,12 @@ from .const import (
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_LOG_LEVEL,
     DOMAIN,
-    async_setup_options,
     migrate_unique_id,
 )
 from .errors import is_invalid_auth_error
 from .mappings import async_setup_entity_mappings
 from .modbus_exceptions import ConnectionException, ModbusException
+from .options import async_setup_options
 from .utils import resolve_connection_settings
 
 if TYPE_CHECKING:  # pragma: no cover
