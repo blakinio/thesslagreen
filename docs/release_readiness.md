@@ -113,28 +113,31 @@ OK homeassistant: installed
 
 ## 7. Real-Device Validation
 
-**Not proven — checklist template created.**
+**Not proven — checklist template created. Findings cleanup applied (2026-05-09).**
 
 No evidence of on-device testing against a physical ThesslaGreen AirPack device
 exists. A structured checklist and evidence template has been created:
 
 → **[docs/real_device_validation.md](real_device_validation.md)**
 
-The checklist covers:
-- Installation via HACS
-- UI config flow
-- TCP connection verification
-- Entity creation (~366 entities)
-- Sensor state updates
-- Fan/climate control writes
-- Single and multi-register write paths
-- Reconnect after controller/network disruption
-- Unload/reload
-- HA restart recovery
-- Full log review
+A real-device findings cleanup PR was applied based on exported HA state data:
+
+| Finding | Outcome |
+|---------|---------|
+| Fan percentage 109 (> 100 HA limit) | FIXED |
+| Active errors sensor «unknown» when no errors | FIXED |
+| bypass_off / gwc_off misleading display names | FIXED (translation only) |
+| sw_version «Unknown» with version registers available | FIXED |
+| fire_alarm NC contact semantics | CONFIRMED_CORRECT |
+| dp_duct_filter_overflow inversion check | CONFIRMED_CORRECT |
+| airing_coef state outside declared range | NEEDS_VENDOR_CONFIRMATION |
+| Polish "nie działa" in state labels | CONFIRMED_CORRECT |
+
+See `docs/real_device_validation.md § 6` for full details.
 
 Real-device validation remains **open blocker B4** until the Evidence Record
 in that document is completed by a human tester with physical hardware.
+The findings cleanup above does NOT satisfy the release gate.
 
 ---
 

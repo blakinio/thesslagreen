@@ -1156,10 +1156,10 @@
         "name": "Zima"
       },
       "bypass_off": {
-        "name": "Bypass aktywny"
+        "name": "Bypass zablokowany"
       },
       "gwc_off": {
-        "name": "GWC aktywny"
+        "name": "GWC zablokowany"
       },
       "hard_reset_settings": {
         "name": "Reset ustawień do domyślnych"

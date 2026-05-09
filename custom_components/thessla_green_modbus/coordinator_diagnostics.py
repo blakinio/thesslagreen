@@ -118,6 +118,35 @@ def get_diagnostic_data(coordinator: Any) -> dict[str, Any]:
     return diagnostics
 
 
+def _resolve_sw_version(coordinator: Any) -> str:
+    """Build a human-readable sw_version string.
+
+    Prefers the firmware string from the device scan result.  When that is
+    absent or 'Unknown', falls back to assembling a version string from the
+    version_major / version_minor / cf_version registers that were read from
+    the device.  Format: ``<major>.<minor> CF<cf>`` (e.g. ``3.11 CF13``).
+    """
+    firmware = coordinator.device_info.get("firmware", "Unknown")
+    if firmware and firmware != "Unknown":
+        return firmware
+
+    data: dict[str, Any] = getattr(coordinator, "data", {}) or {}
+    major = data.get("version_major")
+    minor = data.get("version_minor")
+    cf = data.get("cf_version")
+
+    parts: list[str] = []
+    if major is not None and minor is not None:
+        parts.append(f"{int(major)}.{int(minor)}")
+    elif major is not None:
+        parts.append(str(int(major)))
+
+    if cf is not None:
+        parts.append(f"CF{int(cf)}")
+
+    return " ".join(parts) if parts else "Unknown"
+
+
 def get_device_info(coordinator: Any) -> dict[str, Any]:
     """Return device info mapping for the connected unit."""
     model = coordinator.device_info.get("model")
@@ -158,7 +187,7 @@ def get_device_info(coordinator: Any) -> dict[str, Any]:
         name=device_name(coordinator),
         manufacturer=MANUFACTURER,
         model=model,
-        sw_version=coordinator.device_info.get("firmware", "Unknown"),
+        sw_version=_resolve_sw_version(coordinator),
         configuration_url=f"http://{coordinator.config.host}",
     )
 

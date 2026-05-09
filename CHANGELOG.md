@@ -5,6 +5,39 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased — Real-device findings cleanup
+
+### Fixed
+- **Fan percentage clamped to 0–100**: `fan.thesslagreen_ventilation` no longer
+  reports `percentage` > 100 to Home Assistant (device can report up to 109 %).
+  Raw value is preserved in `extra_state_attributes.supply_percentage`.
+- **Active errors sensor no longer shows «unknown»**: `sensor.rekuperator_active_errors`
+  now shows `none` when the coordinator is connected and no error codes are active,
+  instead of the misleading «unknown» state.
+- **`switch.bypass_off` / `switch.gwc_off` display names corrected**:
+  These switches were named "Bypass Active" / "GWC Active" but the underlying
+  register uses inverse semantics (value 1 = deactivated). Renamed to
+  "Bypass Locked" / "GWC Locked" (PL: "Bypass zablokowany" / "GWC zablokowany").
+  Entity IDs and unique IDs are unchanged.
+- **Device `sw_version` populated from version registers**: When the firmware
+  string is unavailable, `sw_version` is now assembled from `version_major`,
+  `version_minor`, and `cf_version` registers (e.g. `3.11 CF13`).
+
+### Confirmed correct (no code change)
+- `binary_sensor.fire_alarm`: raw True = NC contact closed = no alarm = `off` state.
+  This is correct and intentional. Documented with tests.
+- `binary_sensor.dp_duct_filter_overflow`: raw True = problem detected = `on` state.
+  Correct for a filter pressure-differential overflow. Documented with tests.
+- Polish state wording "nie działa" appears only in S30/S31 error-code sensor names,
+  not in normal inactive state labels. No change needed.
+
+### Needs vendor confirmation
+- `number.airing_coef` / `number.airing_switch_coef`: device reports values
+  (50, 0) outside the declared range 100–150. No write-range change until vendor
+  docs confirm whether these are valid set-points or factory defaults.
+
+---
+
 ## 2.8.0 — Legacy removal + test infrastructure overhaul (BREAKING)
 
 ### ⚠️ Breaking
