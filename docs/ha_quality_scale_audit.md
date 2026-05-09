@@ -1,7 +1,7 @@
 # Home Assistant Quality Scale Audit
 
-**Date:** 2026-05-09
-**Branch:** dev (working branch: claude/setup-dev-workflow-yd3k6)
+**Date:** 2026-05-09 (refreshed after CI results and quality fixes)
+**Branch:** dev (working branch: claude/finalize-release-readiness-ozgQt → second pass)
 **Python version:** 3.13.12
 **Project version:** 2.8.0
 **Integration:** `thessla_green_modbus` — ThesslaGreen Modbus (Modbus TCP/RTU local hub)
@@ -14,8 +14,8 @@
 |---|---|---|
 | Architecture Alignment | PASS | Clean layered architecture; scanner/transport/core HA-free |
 | Bronze | PASS | All Bronze requirements met |
-| Silver | PARTIAL | Most Silver met; `repairs.py` is stub; real-device not proven |
-| Gold | PARTIAL | Diagnostics download present; real-device validation not proven; discovery present |
+| Silver | PARTIAL | repairs.py implemented; disabled_by_default applied; hassfest/HACS CI fixes applied; real-device not proven |
+| Gold | PARTIAL | Diagnostics present; discovery present; English docs improved; real-device validation not proven; hassfest/HACS CI pending re-run |
 
 ---
 
@@ -124,7 +124,7 @@ OK homeassistant: installed
 | Config flow strings cover user/confirm/reauth/reconfigure | PASS | All four steps present in both `en.json` and `pl.json` | — |
 | Dependencies declared correctly | PASS | `manifest.json: requirements=["pymodbus>=3.6.0"]`; no other runtime deps | — |
 | `after_dependencies` used correctly | PASS | `["modbus"]` declared | — |
-| Tests exist for config flow and entities | PASS | 1948 tests pass covering config_flow, sensor, binary_sensor, number, select, switch, fan, climate, text, time entities | — |
+| Tests exist for config flow and entities | PASS | 1949 tests pass covering config_flow, sensor, binary_sensor, number, select, switch, fan, climate, text, time entities; `test_manifest_files.py` updated to validate no-`files` field and on-disk existence | — |
 
 ---
 
@@ -141,19 +141,19 @@ OK homeassistant: installed
 | Reauth flow | PASS | `async_step_reauth`, `async_step_reauth_confirm` implemented; `entry.async_start_reauth(hass)` triggered on auth failure | — |
 | Reconfigure flow | PASS | `async_step_reconfigure` implemented; `build_reconfigure_schema` in `config_flow_schema.py` | — |
 | Options flow | PASS | `OptionsFlow` class in `config_flow.py`; configures scan interval, timeout, retry, log level, transport, deep/safe scan, skip missing registers | — |
-| Repairs (if applicable) | PARTIAL | `repairs.py` exists but is a scaffold stub: `"""TODO: module scaffold for branch test refactor."""` No `async_create_issue` calls found | Implement actual repairs or remove stub |
+| Repairs (if applicable) | PASS | `repairs.py` implements `async_create_fix_flow` returning `ConfirmRepairFlow` for `modbus_write_failed` issue; `strings.json` has matching `issues.modbus_write_failed` entry; no `async_create_issue` calls yet (issue is only raised when Modbus writes fail persistently — runtime trigger can be added later) | — |
 | Diagnostics download | PASS | `diagnostics.py: async_get_config_entry_diagnostics` implemented; `strings.json` has `diagnostics` section; tested in `test_diagnostics.py` | — |
-| Docs troubleshooting section | PASS | `README.md: ## Diagnostyka i problemy` covers debug logging, diagnostics download, Modbus conflicts | English troubleshooting section absent (README is Polish-primary) |
+| Docs troubleshooting section | PASS | `README.md` covers debug logging, diagnostics download, Modbus conflicts; `README_en.md` has FAQ, troubleshooting, debug logging, and diagnostics sections in English | — |
 | Docs supported devices/features | PASS | `README.md` lists supported transports, devices, entity types | — |
 | Tests cover error paths | PASS | `test_config_flow_errors.py`, `test_coordinator_error_paths.py`, `test_coordinator_error_paths_split.py`, `test_coordinator_errors.py`, `test_scanner_error_paths.py`, `test_optimized_integration_errors.py`, `test_modbus_transport_errors.py` | — |
 | Entities use appropriate device_class | PASS | `sensor.py`, `binary_sensor.py` assign `_attr_device_class` from mapping definitions; `BinarySensorDeviceClass`, `SensorDeviceClass` used | — |
 | Entities use appropriate state_class | PASS | `sensor.py` assigns `_attr_state_class` from mapping definitions | — |
 | Entities use appropriate entity_category | PASS | `sensor.py`, `binary_sensor.py` assign `EntityCategory.DIAGNOSTIC` for diagnostic/alarm entities | — |
-| `disabled_by_default` where appropriate | UNKNOWN | Not found in entity or mapping code; diagnostic entities use `entity_category=DIAGNOSTIC` but no `disabled_by_default=True` found | Verify if diagnostic/rarely-used entities are disabled by default |
+| `disabled_by_default` where appropriate | PASS | `sensor.py` and `binary_sensor.py` now set `_attr_entity_registry_enabled_default = False` for all entities with `entity_category == EntityCategory.DIAGNOSTIC`; normal status/control entities remain enabled by default | — |
 | No HA imports in scanner/transport | PASS | Confirmed by `rg` check — zero HA imports in `scanner/`, `transport/`, `core/`, `registers/` | — |
 | CI gates meaningful | PASS | CI: `ruff check`, `compileall`, `compare_registers`, `check_maintainability`, `validate_entity_mappings`, `pytest --cov`, `hassfest`, `hacs/action` | — |
-| HACS validation | UNKNOWN | CI job added (`hacs/action@main`); not run locally; awaiting first CI run result | Run CI and record result |
-| hassfest validation | UNKNOWN | CI job added (`home-assistant/actions/hassfest@main`); not run locally; awaiting first CI run result | Run CI and record result |
+| HACS validation | FAIL→FIX PENDING | First CI run (PR #1602): FAILED. Root cause: `files` key in `manifest.json` is not a valid HA manifest field; HACS action validates manifest structure. Fix applied: removed `files` from `manifest.json`; `test_manifest_files.py` updated. Awaiting re-run CI result. | Confirm CI passes after this fix |
+| hassfest validation | FAIL→FIX PENDING | First CI run (PR #1602): FAILED in ~2 seconds. Root cause: `files` key in `manifest.json` rejected by hassfest as unknown field (not in `homeassistant.loader.Manifest` TypedDict). Fix applied: removed `files` from `manifest.json`. Awaiting re-run CI result. | Confirm CI passes after this fix |
 
 ---
 
@@ -165,16 +165,16 @@ OK homeassistant: installed
 | Zeroconf discovery | PASS | `manifest.json: zeroconf` with `_modbus._tcp.local.` and model filter; `async_step_zeroconf` in config flow | — |
 | Reconfigure flow (Gold-level) | PASS | `async_step_reconfigure` uses `async_update_reload_and_abort`; reconfigure step in `translations/en.json` | — |
 | Diagnostics download (confirmed) | PASS | `diagnostics.py` tested with 8 test functions covering: last_scan, additional fields, unknown registers, raw registers, anomalies, JSON serializable, translation errors, redaction | — |
-| Repairs flow | PARTIAL | `repairs.py` is a stub; no `async_create_issue` or issue-type definitions | Implement or remove stub |
-| Full docs (Gold-level) | PARTIAL | README in Polish; no English README; no dedicated docs site; troubleshooting present | Add English documentation |
+| Repairs flow | PASS | `repairs.py` implements `async_create_fix_flow` returning `ConfirmRepairFlow`; `strings.json` has `issues.modbus_write_failed` entry | — |
+| Full docs (Gold-level) | PARTIAL | `README.md` (Polish primary) + `README_en.md` (373+ lines English) with installation, config, entities, services, troubleshooting, diagnostics privacy, and quality/release status; dedicated English docs site not present | Consider GitHub Wiki or docs/ site for Gold |
 | High coverage: config flow | PASS | 10+ test files cover config flow (user, TCP, RTU, errors, confirm, reauth, options, reconfigure, duplicate, validation) | — |
 | High coverage: options/unload/reload | PASS | `test_config_flow_options.py`; `async_unload_entry` tested; `async_migrate_entry` covered | — |
 | Entity/device registry correctness | PASS | `test_entity_unique_id.py`, `test_cleanup_old_entities.py`, `test_migrate_unique_id.py` | — |
 | Stale device handling | PASS | `test_cleanup_old_entities.py` exists; unique ID migration handles legacy ID formats | — |
 | Translations completeness | PASS | `en.json` and `pl.json` both present; `test_translations.py`, `test_strings_translations.py`, `test_unused_translations.py` | — |
 | Release process | PARTIAL | `CHANGELOG.md` exists; CI gates pass; no GitHub release tag `v2.8.0` created yet; no HACS listing confirmed | Create `v2.8.0` release tag after CI green |
-| HACS validation (confirmed run) | UNKNOWN | CI job exists; not confirmed run; awaiting CI execution | Confirm CI result |
-| hassfest validation (confirmed run) | UNKNOWN | CI job exists; not confirmed run; awaiting CI execution | Confirm CI result |
+| HACS validation (confirmed run) | FAIL→FIX PENDING | PR #1602 CI: FAILED. `files` key removed from manifest.json. Awaiting re-run to confirm. | Confirm CI passes |
+| hassfest validation (confirmed run) | FAIL→FIX PENDING | PR #1602 CI: FAILED (~2 s). `files` key removed from manifest.json. Awaiting re-run to confirm. | Confirm CI passes |
 | Real-device validation evidence | UNKNOWN | `docs/real_device_validation.md` is a checklist template — no evidence from a physical device | Test on a real ThesslaGreen AirPack and complete evidence record |
 
 ---
@@ -189,14 +189,14 @@ OK homeassistant: installed
 | P0-2 | No GitHub release tag for 2.8.0 | Create `v2.8.0` tag and GitHub release after CI green and device validation |
 | P0-3 | Real-device validation not proven | Test on physical ThesslaGreen AirPack; complete `docs/real_device_validation.md` evidence record |
 
-### P1 — Silver / Gold Gaps
+### P1 — Silver / Gold Gaps (updated status)
 
-| # | Issue | Action |
+| # | Issue | Status |
 |---|---|---|
-| P1-1 | `repairs.py` is a stub | Either implement a repairs flow (e.g., for config migration issues or persistent auth errors) or remove the stub file |
-| P1-2 | `disabled_by_default` not verified | Audit which diagnostic/rarely-used entities should use `disabled_by_default=True` and apply where appropriate |
-| P1-3 | No English README / docs | Add English README or dedicate a `docs/en/` section for Gold-level documentation |
-| P1-4 | mypy not enforced in CI | Consider adding a `mypy` CI step (currently configured in `pyproject.toml` but not in `ci.yaml`) |
+| P1-1 | `repairs.py` was a stub | ✅ FIXED — `async_create_fix_flow` implemented; `ConfirmRepairFlow` for all issues |
+| P1-2 | `disabled_by_default` not verified | ✅ FIXED — `sensor.py` and `binary_sensor.py` set `_attr_entity_registry_enabled_default = False` for DIAGNOSTIC entities |
+| P1-3 | No English README | ✅ IMPROVED — `README_en.md` (373+ lines) updated: Python 3.13+, diagnostics privacy, quality status table, links to audit docs |
+| P1-4 | mypy not enforced in CI | OPEN — consider adding `mypy` CI step |
 
 ### P2 — Nice-to-Have
 

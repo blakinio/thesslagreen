@@ -204,6 +204,8 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
                 self._attr_entity_category = _ec
         else:
             self._attr_entity_category = None
+        if self._attr_entity_category is EntityCategory.DIAGNOSTIC:
+            self._attr_entity_registry_enabled_default = False
         if "suggested_display_precision" in sensor_definition:
             self._attr_suggested_display_precision = sensor_definition[
                 "suggested_display_precision"
