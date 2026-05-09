@@ -151,7 +151,28 @@ complete unless all mandatory test cases (4.1–4.11) are marked Pass.**
 
 ---
 
-## 6. Release Gate
+## 6. Real-Device Findings Cleanup (2026-05-09)
+
+The following findings were identified from exported HA state data and addressed in
+this PR (`fix: address real-device validation findings`).
+
+| Finding | Status | Fix / Decision | Evidence |
+|---|---|---|---|
+| Fan percentage 109 (> 100) | FIXED | `fan.py` `percentage` property clamped to 100 per HA spec; raw value preserved in `supply_percentage` attribute | Unit test `test_fan_percentage_109_clamped_to_100`; `test_fan_percentage_limits.py` updated |
+| `number.airing_coef` state 50 outside range 100–150 | NEEDS_VENDOR_CONFIRMATION | Write range unchanged (100–150) per declared metadata. Reading 50 does not crash. Vendor confirmation needed to determine if 50 is valid or a factory default. | Tests `test_airing_coef_native_value_below_min_does_not_crash`, `test_airing_switch_coef_native_value_zero_does_not_crash` |
+| `binary_sensor.fire_alarm` raw true / state off | CONFIRMED_CORRECT | NC (normally-closed) contact: raw True = circuit closed = no alarm = `is_on=False`. Mapping has `inverted: True` with inline comment. | Tests `test_fire_alarm_raw_true_means_no_alarm`, `test_fire_alarm_inverted_flag_present` |
+| `binary_sensor.dp_duct_filter_overflow` raw true / state on | CONFIRMED_CORRECT | Raw True = problem detected. `device_class=problem` is correct. This is a real hardware problem state. | Test `test_dp_duct_filter_overflow_raw_true_is_problem` |
+| `sensor.serial_number` unavailable / device info Unknown | DEFERRED (partially improved) | `sw_version` now assembled from `version_major.version_minor CF<cf_version>` when firmware is Unknown (e.g. `3.11 CF13`). Serial decode root cause deferred — no crash occurs on bad bytes. | Tests `test_sw_version_uses_version_registers_when_firmware_unknown`, `test_get_device_info_uses_version_registers_for_sw_version` |
+| `sensor.rekuperator_active_errors` state unknown | FIXED | `native_value` now returns `"none"` (not Python None) when coordinator has been successfully updated but no error codes are active. Before first update, returns None (correctly showing «unknown»). | Tests `test_active_errors_sensor_returns_none_string_when_no_errors` |
+| `switch.bypass_off` / `switch.gwc_off` misleading names | FIXED | Translation-only fix: renamed from "Bypass Active" / "GWC Active" to "Bypass Locked" / "GWC Locked" (PL: "Bypass zablokowany" / "GWC zablokowany") to match register semantics (value 1 = deactivated). Entity IDs and unique IDs unchanged. | Translation tests pass; register JSON evidence: `enum: {0: aktywny, 1: nieaktywny (pasywny)}` |
+| Polish state wording "nie działa" | CONFIRMED_CORRECT | Phrase appears only in S30/S31 error-code sensor *names* ("S30: Wentylator nawiewny nie działa"), which accurately describes the fault condition. No state labels use this phrase. | Test `test_nie_dziala_only_in_error_code_names` |
+
+Schedule/entity-group hiding was **NOT** implemented in this PR.
+Harmonogram entity cleanup was **NOT** implemented in this PR.
+
+---
+
+## 7. Release Gate
 
 Real-device validation is **not** complete until:
 
@@ -161,3 +182,6 @@ Real-device validation is **not** complete until:
 
 Until that point, this document is a **template only** and real-device
 validation remains an open release blocker (B4).
+
+Section 6 (real-device findings cleanup) is based on exported HA state data,
+not a full on-device test run.  It does not satisfy the release gate above.

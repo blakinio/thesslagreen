@@ -1156,10 +1156,10 @@
         "name": "Winter"
       },
       "bypass_off": {
-        "name": "Bypass Active"
+        "name": "Bypass Locked"
       },
       "gwc_off": {
-        "name": "GWC Active"
+        "name": "GWC Locked"
       },
       "hard_reset_settings": {
         "name": "Hard Reset Settings"
