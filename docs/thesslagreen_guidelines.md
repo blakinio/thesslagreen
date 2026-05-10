@@ -44,7 +44,7 @@ pymodbus / raw socket
 ## Twarde reguły
 
 ```text
-1. core/, transport/, registers/ i scanner/ nie mogą importować Home Assistant.
+1. transport/, registers/ i scanner/ nie mogą importować Home Assistant. (core/ planowana, nie istnieje)
 2. coordinator/ nie wykonuje bezpośrednio Modbus I/O.
 3. Platformy HA nie dekodują raw register values.
 4. transport/ nie zna nazw rejestrów ThesslaGreen.
@@ -58,6 +58,7 @@ pymodbus / raw socket
 12. Po przepisaniu kodu na nową warstwę usunąć stary odpowiednik.
 13. migracja do pakietu coordinator/ została wykonana i jest stanem bieżącym.
 14. nie odtwarzamy top-level `coordinator.py`; importy kierujemy do modułów kanonicznych.
+15. core/ placeholder files zostały usunięte (2026-05-10); nie tworzymy nowych placeholderów.
 ```
 
 ---
@@ -286,9 +287,12 @@ Zakazane:
 
 ---
 
-### core/
+### core/ (planowana, nie zaimplementowana)
 
-Odpowiedzialność:
+> **Status 2026-05-10**: Warstwa `core/` nie istnieje w kodzie. Placeholder files zostały usunięte.
+> Implementacja to osobny przyszły PR.
+
+Planowana odpowiedzialność:
 
 ```text
 - ThesslaGreenClient,
@@ -299,7 +303,7 @@ Odpowiedzialność:
 - orkiestracja read/write/scan.
 ```
 
-Zakazane:
+Zakazane (gdy zostanie zaimplementowana):
 
 ```text
 - import Home Assistant,
