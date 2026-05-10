@@ -22,11 +22,11 @@ from ..const import (
 from ..const import (
     SERIAL_STOP_BITS_MAP as _SERIAL_STOP_BITS_MAP,
 )
-from ..modbus_helpers import async_maybe_await_close
-from ..modbus_helpers import group_reads as _group_reads
+from ..modbus.client_close import async_maybe_await_close
 from ..registers.loader import (
     async_get_all_registers,
 )
+from ..registers.read_planner import group_reads as _group_reads
 from ..scanner_device_info import DeviceCapabilities, ScannerDeviceInfo
 from ..scanner_helpers import (
     MAX_BATCH_REGISTERS,

@@ -11,10 +11,10 @@ from typing import TYPE_CHECKING, Any, cast
 
 from pymodbus.client import AsyncModbusTcpClient
 
-from .. import modbus_helpers as _mh
 from ..error_contract import log_retry_attempt
+from ..modbus.call import _calculate_backoff_delay as _mh_calculate_backoff_delay
+from ..modbus.call import _call_modbus
 from ..modbus_exceptions import ConnectionException
-from ..modbus_helpers import _call_modbus
 
 if TYPE_CHECKING:
     from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType
@@ -159,7 +159,7 @@ async def _sleep_retry_backoff(
 ) -> None:
     """Sleep between retries using modbus_helpers timing semantics."""
     await _sleep_retry_backoff_fn(
-        calculate_backoff_delay=lambda base, at, jitter: _mh._calculate_backoff_delay(
+        calculate_backoff_delay=lambda base, at, jitter: _mh_calculate_backoff_delay(
             base=base, attempt=at, jitter=jitter
         ),
         backoff=backoff,

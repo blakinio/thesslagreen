@@ -7,7 +7,7 @@ from typing import Any
 
 from .coordinator.retry import _PermanentModbusError
 from .modbus_exceptions import ConnectionException, ModbusException
-from .modbus_helpers import chunk_register_range
+from .registers.read_planner import chunk_register_range
 
 _LOGGER = logging.getLogger(__name__)
 

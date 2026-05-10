@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
-from .. import modbus_helpers as _mh
+from ..modbus.call import _calculate_backoff_delay as _mh_calculate_backoff_delay
 from ..transport.retry import classify_transport_error
 from . import io as _scanner_io_impl
 
@@ -61,7 +61,7 @@ async def sleep_retry_backoff(
 ) -> None:
     """Sleep between retries using modbus_helpers timing semantics."""
     await _scanner_io_impl._sleep_retry_backoff_fn(
-        calculate_backoff_delay=lambda base, at, jitter: _mh._calculate_backoff_delay(
+        calculate_backoff_delay=lambda base, at, jitter: _mh_calculate_backoff_delay(
             base=base, attempt=at, jitter=jitter
         ),
         backoff=backoff,
