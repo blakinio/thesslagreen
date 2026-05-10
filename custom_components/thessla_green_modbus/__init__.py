@@ -75,6 +75,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await async_migrate_entity_unique_ids(hass, entry, coordinator)
     await async_setup_platforms(hass, entry, PLATFORM_DOMAINS)
 
+    from .clock_sync import ClockSyncManager
+
+    _clock_sync_manager = ClockSyncManager(hass, coordinator, entry)
+    _clock_sync_manager.attach()
+    coordinator._clock_sync_manager = _clock_sync_manager
+
     if len(hass.config_entries.async_entries(DOMAIN)) == 1:
         from .services import async_setup_services
 

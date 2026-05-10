@@ -4,7 +4,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-from custom_components.thessla_green_modbus.coordinator.write_path import finalize_write_result
+from custom_components.thessla_green_modbus.coordinator.write_path import (
+    encode_write_value,
+    finalize_write_result,
+)
 from custom_components.thessla_green_modbus.registers.loader import RegisterDef
 
 
@@ -245,3 +248,89 @@ async def test_finalize_write_result_skips_refresh_when_disabled(coordinator):
 
     assert result is True
     coordinator._safe_request_refresh.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# encode_write_value unit tests
+# ---------------------------------------------------------------------------
+
+
+class _FakeDef:
+    """Minimal register definition stub for encode_write_value tests."""
+
+    def __init__(self, length: int = 1, encode_fn=None):
+        self.length = length
+        self._encode_fn = encode_fn or (lambda v: int(v))
+
+    def encode(self, value):
+        return self._encode_fn(value)
+
+
+def test_encode_write_value_single_register_scalar():
+    """Single-register scalar value encodes to (None, int)."""
+    defn = _FakeDef(length=1)
+    encoded, scalar = encode_write_value("reg", defn, 42, 0)
+    assert encoded is None
+    assert scalar == 42
+
+
+def test_encode_write_value_single_register_rejects_list():
+    """Single-register definition rejects list input."""
+    defn = _FakeDef(length=1)
+    encoded, scalar = encode_write_value("reg", defn, [1, 2], 0)
+    assert encoded is None
+    assert scalar is None
+
+
+def test_encode_write_value_multi_register_list_input():
+    """Multi-register definition accepts exact-length list."""
+    defn = _FakeDef(length=3)
+    encoded, scalar = encode_write_value("reg", defn, [10, 20, 30], 0)
+    assert encoded == [10, 20, 30]
+    assert scalar == [10, 20, 30]
+
+
+def test_encode_write_value_multi_register_list_too_long():
+    """Multi-register list longer than definition length returns None."""
+    defn = _FakeDef(length=2)
+    encoded, scalar = encode_write_value("reg", defn, [1, 2, 3], 0)
+    assert encoded is None
+    assert scalar is None
+
+
+def test_encode_write_value_multi_register_wrong_count():
+    """Multi-register list with wrong count at offset 0 returns None."""
+    defn = _FakeDef(length=3)
+    encoded, scalar = encode_write_value("reg", defn, [1, 2], 0)
+    assert encoded is None
+    assert scalar is None
+
+
+def test_encode_write_value_multi_register_scalar_input():
+    """Multi-register definition with scalar input encodes via definition.encode."""
+    defn = _FakeDef(length=2, encode_fn=lambda v: [int(v), int(v) + 1])
+    encoded, scalar = encode_write_value("reg", defn, 5, 0)
+    assert encoded == [5, 6]
+    assert scalar == 5
+
+
+def test_encode_write_value_multi_register_offset():
+    """Non-zero offset slices encoded result from that position."""
+    defn = _FakeDef(length=3, encode_fn=lambda v: [10, 20, 30])
+    encoded, _scalar = encode_write_value("reg", defn, 99, 1)
+    assert encoded == [20, 30]
+
+
+def test_encode_write_value_multi_register_offset_out_of_range():
+    """Offset >= length returns None."""
+    defn = _FakeDef(length=2, encode_fn=lambda v: [1, 2])
+    encoded, scalar = encode_write_value("reg", defn, 99, 2)
+    assert encoded is None
+    assert scalar is None
+
+
+def test_encode_write_value_multi_register_list_with_offset():
+    """List input with valid offset is accepted."""
+    defn = _FakeDef(length=3)
+    encoded, _scalar = encode_write_value("reg", defn, [20, 30], 1)
+    assert encoded == [20, 30]

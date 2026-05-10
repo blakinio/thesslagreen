@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 from collections.abc import Awaitable, Callable
+from importlib import import_module
 from typing import Any
 
 from .error_policy import (
@@ -14,6 +15,19 @@ from .modbus_exceptions import ModbusIOException
 from .transport.retry import ErrorKind, calculate_backoff, classify_transport_error, should_retry
 
 TIMEOUT_EXCEPTIONS = (TimeoutError, asyncio.TimeoutError)
+
+_SCANNER_MODULE_PATH = "custom_components.thessla_green_modbus.scanner.core"
+
+
+async def load_scanner_module(hass: Any) -> Any:
+    """Import scanner.core via the HA executor to avoid blocking the event loop.
+
+    When *hass* is ``None`` or lacks ``async_add_executor_job`` the import is
+    performed synchronously (unit-test / offline environments).
+    """
+    if hass is None or not hasattr(hass, "async_add_executor_job"):
+        return import_module(_SCANNER_MODULE_PATH)
+    return await hass.async_add_executor_job(import_module, _SCANNER_MODULE_PATH)
 
 
 def is_request_cancelled_error(exc: ModbusIOException) -> bool:
@@ -34,7 +48,7 @@ async def run_with_retry(
             if inspect.isawaitable(result):
                 return await result
             return result
-        except BaseException as exc:
+        except BaseException as exc:  # intentional: must see asyncio.CancelledError to re-raise it
             decision = classify_transport_error(exc)
             if decision.kind is ErrorKind.CANCELLED:
                 raise

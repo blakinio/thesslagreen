@@ -7,8 +7,9 @@ from typing import Any
 
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import MAX_VENTILATION_PERCENT, device_unique_id_prefix
+from .const import MAX_VENTILATION_PERCENT
 from .coordinator import ThesslaGreenModbusCoordinator
+from .unique_id_migration import device_unique_id_prefix
 
 _LOGGER = logging.getLogger(__name__)
 

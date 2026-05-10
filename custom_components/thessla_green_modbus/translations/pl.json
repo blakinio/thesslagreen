@@ -1,30 +1,4 @@
 {
-  "auto_detected_note_limited": "Ograniczone automatyczne wykrywanie - niektóre rejestry mogą być pominięte.",
-  "auto_detected_note_success": "Automatyczne wykrywanie zakończone sukcesem!",
-  "connection_type_tcp": "Modbus TCP",
-  "connection_type_tcp_rtu": "Modbus TCP RTU",
-  "connection_type_rtu": "Modbus RTU",
-  "connection_type_tcp_label": "Modbus TCP",
-  "connection_type_tcp_rtu_label": "Modbus TCP RTU",
-  "connection_type_rtu_label": "Modbus RTU",
-  "connection_mode_tcp": "Modbus TCP (bramka)",
-  "connection_mode_tcp_rtu": "RTU po TCP (RAW)",
-  "connection_mode_auto": "Automatyczny",
-  "connection_mode_auto_label": "Modbus TCP (Auto)",
-  "log_level_debug": "Debug",
-  "log_level_info": "Info",
-  "log_level_warning": "Ostrzeżenia",
-  "log_level_error": "Błędy",
-  "diagnostics": {
-    "registers_hash": "Suma kontrolna rejestrów",
-    "capabilities": "Możliwości urządzenia",
-    "effective_batch": "Efektywny rozmiar partii",
-    "total_registers_json": "Łączna liczba rejestrów w JSON",
-    "total_available_registers": "Łączna liczba dostępnych rejestrów",
-    "deep_scan": "Włączony głęboki skan",
-    "force_full_register_list": "Wymuś pełną listę rejestrów",
-    "error_statistics": "Statystyki błędów"
-  },
   "config": {
     "abort": {
       "already_configured": "Urządzenie z tym adresem IP i ID urządzenia jest już skonfigurowane."
@@ -46,14 +20,14 @@
       "invalid_stop_bits": "Wybrano nieprawidłową liczbę bitów stopu.",
       "dns_failure": "Nie można rozwiązać nazwy hosta.",
       "connection_refused": "Połączenie zostało odrzucone przez hosta.",
-      "missing_method": "Brak wymaganej metody w skanerze. Sprawdź logi po szczegóły.",
+      "missing_method": "Brak wymaganej metody w skanerze. Sprawdź logi, aby zobaczyć szczegóły.",
       "io_error": "Błąd wejścia/wyjścia podczas komunikacji z urządzeniem. Sprawdź okablowanie i połączenie sieciowe.",
       "invalid_capabilities": "Nieprawidłowe dane możliwości urządzenia.",
       "invalid_format": "Odebrano dane w nieoczekiwanym formacie z urządzenia.",
       "modbus_error": "Błąd komunikacji Modbus. Sprawdź okablowanie i ustawienia.",
-      "max_registers_range": "Maksymalna liczba rejestrów na żądanie musi mieścić się w zakresie 1-16.",
+      "max_registers_range": "Maksymalna liczba rejestrów na żądanie musi mieścić się w zakresie 1–16.",
       "timeout": "Urządzenie nie odpowiedziało na czas. Sprawdź połączenie sieciowe i adres.",
-      "unknown": "Nieoczekiwany błąd. Sprawdź logi po szczegóły."
+      "unknown": "Nieoczekiwany błąd. Sprawdź logi, aby zobaczyć szczegóły."
     },
     "step": {
       "confirm": {
@@ -67,7 +41,7 @@
           "connection_mode": "Tryb połączenia",
           "host": "Adres IP",
           "port": "Port",
-          "slave_id": "ID Urządzenia",
+          "slave_id": "ID urządzenia",
           "name": "Nazwa",
           "serial_port": "Port szeregowy",
           "baud_rate": "Prędkość (baud)",
@@ -89,7 +63,7 @@
           "parity": "Ustawienie parzystości dla Modbus RTU",
           "stop_bits": "Liczba bitów stopu dla Modbus RTU",
           "deep_scan": "Odczytaj wszystkie rejestry do diagnostyki (może być wolne)",
-          "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"
+          "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1–16)"
         },
         "description": "Skonfiguruj połączenie z ThesslaGreen AirPack przez Modbus TCP lub Modbus RTU. Integracja automatycznie wykryje funkcje i rejestry urządzenia."
       },
@@ -105,6 +79,11 @@
     }
   },
   "entity": {
+    "button": {
+      "sync_device_clock": {
+        "name": "Synchronizuj zegar urządzenia"
+      }
+    },
     "binary_sensor": {
       "ahu_filter_protection": {
         "name": "Ochrona filtra AHU"
@@ -128,10 +107,10 @@
         "name": "Czujnik zanieczyszczeń"
       },
       "dp_ahu_filter_overflow": {
-        "name": "Przepełnienie filtra AHU"
+        "name": "Alarm ciśnieniowy filtra AHU"
       },
       "dp_duct_filter_overflow": {
-        "name": "Przepełnienie filtra kanałowego"
+        "name": "Alarm ciśnieniowy filtra kanałowego"
       },
       "duct_heater_protection": {
         "name": "Ochrona nagrzewnicy kanałowej"
@@ -206,7 +185,7 @@
         "name": "E251: Wymagana wymiana filtra kanałowego"
       },
       "e_252": {
-        "name": "E252: Wymagana wymiana filtrów (z presostarem)"
+        "name": "E252: Wymagana wymiana filtrów (z presostatem)"
       },
       "e_99": {
         "name": "E99: Wymagany klucz produktu AirPack"
@@ -218,7 +197,7 @@
         "name": "Błąd S"
       },
       "expansion": {
-        "name": "Ekspansja"
+        "name": "Moduł rozszerzeń"
       },
       "fan_speed_1": {
         "name": "Prędkość wentylatora 1"
@@ -269,7 +248,7 @@
         "name": "S16: Ochrona termiczna nagrzewnicy el. (FPX aktywny)"
       },
       "s_17": {
-        "name": "S17: Filtry niezmienione (z presostarem)"
+        "name": "S17: Filtry niezmienione (z presostatem)"
       },
       "s_19": {
         "name": "S19: Filtry niezmienione (bez presostatu)"
@@ -385,23 +364,7 @@
     },
     "climate": {
       "thessla_green_climate": {
-        "name": "Sterowanie klimatem",
-        "state_attributes": {
-          "preset_mode": {
-            "away": "Nieobecność",
-            "bathroom": "Łazienka",
-            "boost": "Boost",
-            "eco": "Eco",
-            "fireplace": "Kominek",
-            "hood": "Okap",
-            "kitchen": "Kuchnia",
-            "none": "Brak",
-            "party": "Impreza",
-            "sleep": "Sen",
-            "summer": "Lato",
-            "winter": "Zima"
-          }
-        }
+        "name": "Sterowanie klimatem"
       }
     },
     "fan": {
@@ -411,7 +374,7 @@
     },
     "number": {
       "air_flow_rate_manual": {
-        "name": "Przepływ powietrza manualnie"
+        "name": "Ręczny przepływ powietrza"
       },
       "air_flow_rate_temporary": {
         "name": "Intensywność wentylacji (tryb chwilowy)"
@@ -522,7 +485,7 @@
         "name": "Kalibracja zegara RTC"
       },
       "supply_air_temperature_manual": {
-        "name": "Temperatura nawiewu manualnie"
+        "name": "Ręczna temperatura nawiewu"
       },
       "supply_air_temperature_temporary": {
         "name": "Temperatura nawiewu (tryb chwilowy)"
@@ -594,16 +557,16 @@
         "name": "Tryb konfiguracji 1",
         "state": {
           "auto": "Automatyczny",
-          "manual": "Manualny",
-          "temporary": "Chwilowy"
+          "manual": "Ręczny",
+          "temporary": "Tymczasowy"
         }
       },
       "cfg_mode_2": {
         "name": "Tryb konfiguracji 2",
         "state": {
           "auto": "Automatyczny",
-          "manual": "Manualny",
-          "temporary": "Chwilowy"
+          "manual": "Ręczny",
+          "temporary": "Tymczasowy"
         }
       },
       "configuration_mode": {
@@ -658,7 +621,7 @@
           "airing_air_quality": "Wietrzenie (czujnik jakości pow.)",
           "airing_manual": "Wietrzenie (aktywacja ręczna)",
           "airing_auto": "Wietrzenie (tryb automatyczny)",
-          "airing_manual_timed": "Wietrzenie (tryb manualny)",
+          "airing_manual_timed": "Wietrzenie (tryb ręczny)",
           "open_windows": "Otwarte okna",
           "empty_house": "Pusty dom"
         }
@@ -1061,7 +1024,7 @@
         "name": "Strumień powietrza nawiewnego"
       },
       "supply_air_temperature_manual": {
-        "name": "Temperatura nawiewu manualnie"
+        "name": "Ręczna temperatura nawiewu"
       },
       "supply_flow_rate_m3h": {
         "name": "Przepływ nawiewu (m³/h)"
@@ -1156,10 +1119,10 @@
         "name": "Zima"
       },
       "bypass_off": {
-        "name": "Bypass aktywny"
+        "name": "Bypass zablokowany"
       },
       "gwc_off": {
-        "name": "GWC aktywny"
+        "name": "GWC zablokowany"
       },
       "hard_reset_settings": {
         "name": "Reset ustawień do domyślnych"
@@ -1474,7 +1437,7 @@
   },
   "options": {
     "error": {
-      "max_registers_range": "Maksymalna liczba rejestrów na żądanie musi mieścić się w zakresie 1-16."
+      "max_registers_range": "Maksymalna liczba rejestrów na żądanie musi mieścić się w zakresie 1–16."
     },
     "step": {
       "init": {
@@ -1488,22 +1451,34 @@
           "safe_scan": "Bezpieczny skan (bez grupowania)",
           "scan_interval": "Interwał skanowania (s)",
           "skip_missing_registers": "Pomijaj znane brakujące rejestry",
-          "timeout": "Limit czasu połączenia (s)"
+          "sync_device_clock_enabled": "Włącz automatyczną synchronizację zegara",
+          "sync_device_clock_interval_hours": "Interwał synchronizacji zegara (godziny)",
+          "sync_device_clock_max_drift_seconds": "Maksymalne dozwolone odchylenie zegara (s)",
+          "sync_device_clock_on_start": "Synchronizuj zegar przy uruchomieniu integracji",
+          "timeout": "Limit czasu połączenia (s)",
+          "scan_uart_settings": "Skanuj ustawienia portów UART",
+          "airflow_unit": "Jednostka przepływu powietrza"
         },
         "data_description": {
           "deep_scan": "Odczyt surowych rejestrów 0-300 do diagnostyki",
           "enable_device_scan": "Włącz automatyczne skanowanie urządzenia podczas konfiguracji",
           "force_full_register_list": "Pomiń skanowanie i załaduj wszystkie rejestry (może powodować błędy)",
           "log_level": "Ustaw poziom szczegółowości logów integracji",
-          "max_registers_per_request": "Wybierz maksymalną liczbę rejestrów w zapytaniu (1-16)",
+          "max_registers_per_request": "Wybierz maksymalną liczbę rejestrów w zapytaniu (1–16)",
           "retry": "Liczba powtórzeń nieudanych odczytów (1-5)",
           "safe_scan": "Unikaj grupowanych odczytów rejestrów dla kompatybilności",
           "scan_interval": "Jak często odczytywać dane z urządzenia (10-300 s)",
           "skip_missing_registers": "Nie odczytuj rejestrów, które są znane jako niedostępne",
-          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)"
+          "sync_device_clock_enabled": "Automatyczna synchronizacja zegara RTC urządzenia z czasem HA. Domyślnie wyłączona. Gdy włączona, zapisuje czas do fizycznego zegara RTC urządzenia.",
+          "sync_device_clock_interval_hours": "Godziny między automatycznymi synchronizacjami zegara (1–168)",
+          "sync_device_clock_max_drift_seconds": "Synchronizuj tylko gdy odchylenie przekracza próg (30-86400 s)",
+          "sync_device_clock_on_start": "Synchronizuj raz po pierwszym połączeniu z urządzeniem",
+          "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
+          "scan_uart_settings": "Odczytuj rejestry konfiguracji portów UART z urządzenia podczas skanowania",
+          "airflow_unit": "Jednostka wyświetlania wartości przepływu (procenty lub metry sześcienne na godzinę)"
         },
         "error": {
-          "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1-16)"
+          "max_registers_per_request": "Maksymalna liczba rejestrów w jednym żądaniu Modbus (1–16)"
         },
         "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Skanowanie urządzenia włączone: {device_scan_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}. Głęboki skan: {deep_scan_enabled}. Bezpieczny skan: {safe_scan_enabled}. Maksymalna liczba rejestrów na żądanie: {current_max_registers_per_request}. Poziom logowania: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "Opcje ThesslaGreen Modbus"
@@ -1516,17 +1491,7 @@
       "fields": {
         "filter_type": {
           "description": "Typ filtra do zresetowania",
-          "name": "Typ filtra",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.filter_type_cleanpad": "CleanPad",
-                "thessla_green_modbus.filter_type_cleanpad_pure": "CleanPad Pure",
-                "thessla_green_modbus.filter_type_flat_filters": "Filtry płaskie",
-                "thessla_green_modbus.filter_type_presostat": "Presostat"
-              }
-            }
-          }
+          "name": "Typ filtra"
         }
       },
       "name": "Resetuj licznik filtrów"
@@ -1536,16 +1501,7 @@
       "fields": {
         "reset_type": {
           "description": "Zakres ustawień do zresetowania",
-          "name": "Rodzaj resetu",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.reset_type_all_settings": "Wszystkie ustawienia",
-                "thessla_green_modbus.reset_type_schedule_settings": "Ustawienia harmonogramu",
-                "thessla_green_modbus.reset_type_user_settings": "Ustawienia użytkownika"
-              }
-            }
-          }
+          "name": "Rodzaj resetu"
         }
       },
       "name": "Resetuj ustawienia"
@@ -1581,20 +1537,7 @@
         },
         "day": {
           "description": "Dzień tygodnia do konfiguracji",
-          "name": "Dzień tygodnia",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.day_friday": "Piątek",
-                "thessla_green_modbus.day_monday": "Poniedziałek",
-                "thessla_green_modbus.day_saturday": "Sobota",
-                "thessla_green_modbus.day_sunday": "Niedziela",
-                "thessla_green_modbus.day_thursday": "Czwartek",
-                "thessla_green_modbus.day_tuesday": "Wtorek",
-                "thessla_green_modbus.day_wednesday": "Środa"
-              }
-            }
-          }
+          "name": "Dzień tygodnia"
         },
         "end_time": {
           "description": "Czas zakończenia okresu (HH:MM)",
@@ -1602,15 +1545,7 @@
         },
         "period": {
           "description": "Numer przedziału dnia (1-4)",
-          "name": "Okres",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.period_1": "Okres 1",
-                "thessla_green_modbus.period_2": "Okres 2"
-              }
-            }
-          }
+          "name": "Okres"
         },
         "season": {
           "description": "Wybierz bank harmonogramu lato/zima",
@@ -1636,16 +1571,7 @@
         },
         "mode": {
           "description": "Tryb pracy obejścia",
-          "name": "Tryb bypassu",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.bypass_mode_auto": "Automatyczny",
-                "thessla_green_modbus.bypass_mode_closed": "Zamknięty",
-                "thessla_green_modbus.bypass_mode_open": "Otwarty"
-              }
-            }
-          }
+          "name": "Tryb bypassu"
         }
       },
       "name": "Ustaw parametry bypassu"
@@ -1663,16 +1589,7 @@
         },
         "mode": {
           "description": "Tryb pracy gruntowego wymiennika ciepła",
-          "name": "Tryb GWC",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.gwc_mode_auto": "Automatyczny",
-                "thessla_green_modbus.gwc_mode_forced": "Wymuszony",
-                "thessla_green_modbus.gwc_mode_off": "Wyłączony"
-              }
-            }
-          }
+          "name": "Tryb GWC"
         }
       },
       "name": "Ustaw parametry GWC"
@@ -1682,59 +1599,19 @@
       "fields": {
         "baud_rate": {
           "description": "Prędkość transmisji Modbus",
-          "name": "Szybkość transmisji",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.modbus_baud_rate_4800": "4800",
-                "thessla_green_modbus.modbus_baud_rate_9600": "9600",
-                "thessla_green_modbus.modbus_baud_rate_14400": "14400",
-                "thessla_green_modbus.modbus_baud_rate_19200": "19200",
-                "thessla_green_modbus.modbus_baud_rate_28800": "28800",
-                "thessla_green_modbus.modbus_baud_rate_38400": "38400",
-                "thessla_green_modbus.modbus_baud_rate_57600": "57600",
-                "thessla_green_modbus.modbus_baud_rate_76800": "76800",
-                "thessla_green_modbus.modbus_baud_rate_115200": "115200"
-              }
-            }
-          }
+          "name": "Szybkość transmisji"
         },
         "parity": {
           "description": "Bit parzystości",
-          "name": "Parzystość",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.modbus_parity_none": "Brak",
-                "thessla_green_modbus.modbus_parity_even": "Parzysta",
-                "thessla_green_modbus.modbus_parity_odd": "Nieparzysta"
-              }
-            }
-          }
+          "name": "Parzystość"
         },
         "port": {
           "description": "Port Modbus (Air-B lub Air++)",
-          "name": "Port",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.modbus_port_air_b": "Air-B",
-                "thessla_green_modbus.modbus_port_air_plus": "Air++"
-              }
-            }
-          }
+          "name": "Port"
         },
         "stop_bits": {
           "description": "Liczba bitów stopu",
-          "name": "Bity stopu",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.modbus_stop_bits_1": "1",
-                "thessla_green_modbus.modbus_stop_bits_2": "2"
-              }
-            }
-          }
+          "name": "Bity stopu"
         }
       },
       "name": "Ustaw parametry Modbus"
@@ -1748,25 +1625,7 @@
         },
         "mode": {
           "description": "Rodzaj trybu specjalnego do aktywacji",
-          "name": "Tryb specjalny",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.special_mode_none": "Brak",
-                "thessla_green_modbus.special_mode_boost": "Boost",
-                "thessla_green_modbus.special_mode_eco": "Eco",
-                "thessla_green_modbus.special_mode_away": "Nieobecność",
-                "thessla_green_modbus.special_mode_sleep": "Sen",
-                "thessla_green_modbus.special_mode_fireplace": "Kominek",
-                "thessla_green_modbus.special_mode_hood": "Okap",
-                "thessla_green_modbus.special_mode_party": "Impreza",
-                "thessla_green_modbus.special_mode_bathroom": "Łazienka",
-                "thessla_green_modbus.special_mode_kitchen": "Kuchnia",
-                "thessla_green_modbus.special_mode_summer": "Lato",
-                "thessla_green_modbus.special_mode_winter": "Zima"
-              }
-            }
-          }
+          "name": "Tryb specjalny"
         }
       },
       "name": "Ustaw tryb specjalny"
@@ -1804,14 +1663,14 @@
       "name": "Ustaw nazwę urządzenia"
     },
     "sync_time": {
-      "description": "Synchronizuje zegar rekuperatora AirPack z aktualnym czasem Home Assistant. Przydatne po zaniku zasilania.",
+      "description": "Synchronizuje zegar rekuperatora AirPack z aktualnym czasem Home Assistant. Przydatne po zaniku zasilania. Ta usługa jest przestarzała; użyj sync_device_clock.",
       "fields": {
         "entity_id": {
           "description": "Encja climate urządzenia AirPack.",
           "name": "Encja"
         }
       },
-      "name": "Synchronizuj zegar urządzenia"
+      "name": "Synchronizuj zegar urządzenia (przestarzałe)"
     },
     "refresh_device_data": {
       "description": "Wymuś natychmiastowe odświeżenie danych.",
@@ -1834,20 +1693,20 @@
         },
         "level": {
           "description": "Poziom logowania używany podczas debugowania.",
-          "name": "Poziom logów",
-          "selector": {
-            "select": {
-              "options": {
-                "thessla_green_modbus.debug": "Debug",
-                "thessla_green_modbus.info": "Info",
-                "thessla_green_modbus.warning": "Ostrzeżenie",
-                "thessla_green_modbus.error": "Błąd"
-              }
-            }
-          }
+          "name": "Poziom logów"
         }
       },
       "name": "Ustaw debugowanie logów"
+    },
+    "sync_device_clock": {
+      "description": "Synchronizuje zegar RTC urządzenia AirPack z aktualnym czasem lokalnym HA. Zapisuje czas do fizycznego zegara RTC urządzenia. Automatyczna synchronizacja jest domyślnie wyłączona; włącz ją w opcjach integracji.",
+      "fields": {
+        "force": {
+          "description": "Zapisz zegar nawet gdy odchylenie mieści się w skonfigurowanym progu. Gdy wyłączone, synchronizacja jest pomijana jeśli odchylenie jest w granicach progu.",
+          "name": "Wymuś"
+        }
+      },
+      "name": "Synchronizuj zegar urządzenia"
     }
   },
   "title": "ThesslaGreen Modbus"

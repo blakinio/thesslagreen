@@ -142,28 +142,31 @@ def _mask_frame(frame: bytes) -> str:
     return hex_str
 
 
+_READ_FC: dict[str, int] = {
+    "read_input_registers": 4,
+    "read_holding_registers": 3,
+    "read_coils": 1,
+    "read_discrete_inputs": 2,
+}
+
+
+def _encode_read_frame(
+    slave_id: int, fc: int, positional: list[Any], kwargs: dict[str, Any]
+) -> bytes:
+    """Encode a standard Modbus read request frame (addr + count)."""
+    addr = int(positional[0])
+    count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
+    return bytes([slave_id, fc, addr >> 8, addr & 255, count >> 8, count & 255])
+
+
 def _build_request_frame(
     func_name: str, slave_id: int, positional: list[Any], kwargs: dict[str, Any]
 ) -> bytes:
     """Best-effort Modbus request frame builder for logging."""
 
     try:
-        if func_name == "read_input_registers":
-            addr = int(positional[0])
-            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 4, addr >> 8, addr & 255, count >> 8, count & 255])
-        if func_name == "read_holding_registers":
-            addr = int(positional[0])
-            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 3, addr >> 8, addr & 255, count >> 8, count & 255])
-        if func_name == "read_coils":
-            addr = int(positional[0])
-            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 1, addr >> 8, addr & 255, count >> 8, count & 255])
-        if func_name == "read_discrete_inputs":
-            addr = int(positional[0])
-            count = int(kwargs.get("count", positional[1] if len(positional) > 1 else 1))
-            return bytes([slave_id, 2, addr >> 8, addr & 255, count >> 8, count & 255])
+        if func_name in _READ_FC:
+            return _encode_read_frame(slave_id, _READ_FC[func_name], positional, kwargs)
         if func_name == "write_register":
             addr = int(kwargs.get("address", positional[0]))
             value = int(kwargs.get("value", positional[1] if len(positional) > 1 else 0))
@@ -383,6 +386,31 @@ def _classify_modbus_exception(err: Exception) -> str:
     return "failed"
 
 
+def _log_call_attempt(
+    prepared: _PreparedCall,
+    *,
+    slave_id: int,
+    attempt: int,
+    max_attempts: int,
+    kwargs: dict[str, Any],
+) -> None:
+    """Emit pre-dispatch attempt diagnostics at debug level."""
+    _LOGGER.debug(
+        "Calling %s on slave %s (batch=%s attempt %s/%s)",
+        prepared.func_name,
+        slave_id,
+        prepared.batch_size,
+        attempt,
+        max_attempts,
+    )
+    _log_modbus_request(
+        func_name=prepared.func_name,
+        slave_id=slave_id,
+        positional=prepared.positional,
+        kwargs=kwargs,
+    )
+
+
 async def _dispatch_modbus_call(
     func: Callable[..., Awaitable[Any]],
     positional: list[Any],
@@ -489,19 +517,11 @@ async def _call_modbus(
         max_attempts=max_attempts,
     )
 
-    _LOGGER.debug(
-        "Calling %s on slave %s (batch=%s attempt %s/%s)",
-        prepared.func_name,
-        slave_id,
-        prepared.batch_size,
-        attempt,
-        max_attempts,
-    )
-
-    _log_modbus_request(
-        func_name=prepared.func_name,
+    _log_call_attempt(
+        prepared,
         slave_id=slave_id,
-        positional=prepared.positional,
+        attempt=attempt,
+        max_attempts=max_attempts,
         kwargs=kwargs,
     )
 

@@ -41,6 +41,7 @@ from .._coordinator_runtime_io import (
 from .._coordinator_runtime_io import (
     read_all_register_data as _read_all_register_data_impl,
 )
+from ..modbus_exceptions import ConnectionException
 from .retry import (
     disconnect_and_reconnect_for_retry as _disconnect_and_reconnect_for_retry_impl,
 )
@@ -75,11 +76,28 @@ class _ModbusIOMixin:
     def _clear_register_failure(self, name: str) -> None: ...
     def _mark_registers_failed(self, names: Iterable[str | None]) -> None: ...
     async def _read_coils_transport(
-        self, slave_id: int, address: int, *, count: int, attempt: int = 1
-    ) -> Any: ...
+        self, _slave_id: int, address: int, *, count: int, attempt: int = 1
+    ) -> Any:
+        if not self.client:
+            raise ConnectionException("Modbus client is not connected")
+        return await self._call_modbus(
+            self.client.read_coils,
+            address,
+            count=count,
+            attempt=attempt,
+        )
+
     async def _read_discrete_inputs_transport(
-        self, slave_id: int, address: int, *, count: int, attempt: int = 1
-    ) -> Any: ...
+        self, _slave_id: int, address: int, *, count: int, attempt: int = 1
+    ) -> Any:
+        if not self.client:
+            raise ConnectionException("Modbus client is not connected")
+        return await self._call_modbus(
+            self.client.read_discrete_inputs,
+            address,
+            count=count,
+            attempt=attempt,
+        )
 
     async def _call_modbus(
         self, func: Callable[..., Any], *args: Any, attempt: int = 1, **kwargs: Any

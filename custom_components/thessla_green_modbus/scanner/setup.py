@@ -30,11 +30,28 @@ from ..transport.rtu import RtuModbusTransport
 from ..transport.tcp import TcpModbusTransport
 from ..transport.tcp_rtu import RawRtuOverTcpTransport
 from ..utils import default_connection_mode
+from . import state as _state
 from .io import is_request_cancelled_error
 from .io_runtime import attach_pymodbus_client_module
 from .register_map_runtime import async_ensure_register_maps, initial_register_hash
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def normalize_effective_batch(
+    max_registers_per_request: Any,
+    *,
+    max_batch: int,
+) -> int:
+    """Clamp *max_registers_per_request* to the valid [1, max_batch] range.
+
+    Returns *max_batch* when the value cannot be converted to an integer.
+    """
+    try:
+        effective = min(int(max_registers_per_request), max_batch)
+    except (TypeError, ValueError):
+        effective = max_batch
+    return max(1, effective)
 
 
 def normalize_backoff_jitter(
@@ -58,6 +75,71 @@ def normalize_backoff_jitter(
     if jitter in (0, 0.0):
         jitter = 0.0
     return jitter
+
+
+def apply_scanner_params(
+    scanner: Any,
+    *,
+    host: str,
+    port: int,
+    slave_id: int,
+    timeout: int,
+    retry: int,
+    backoff: float,
+    backoff_jitter: float | tuple[float, float] | None,
+    verbose_invalid_values: bool,
+    scan_uart_settings: bool,
+    skip_known_missing: bool,
+    deep_scan: bool,
+    full_register_scan: bool,
+    safe_scan: bool,
+    max_registers_per_request: int,
+    connection_type: str,
+    connection_mode: str | None,
+    serial_port: str,
+    baud_rate: int,
+    parity: str,
+    stop_bits: int,
+    hass: Any | None,
+) -> None:
+    """Assign all scalar parameters and connection state to a scanner instance."""
+    scanner.host = host
+    scanner.port = port
+    scanner.slave_id = slave_id
+    scanner.timeout = timeout
+    scanner.retry = retry
+    try:
+        scanner.backoff = float(backoff)
+    except (TypeError, ValueError):
+        scanner.backoff = 0.0
+    scanner.backoff_jitter = normalize_backoff_jitter(backoff_jitter)
+    scanner.verbose_invalid_values = verbose_invalid_values
+    scanner.scan_uart_settings = scan_uart_settings
+    scanner.skip_known_missing = skip_known_missing
+    scanner.deep_scan = deep_scan
+    scanner.full_register_scan = full_register_scan
+    scanner.safe_scan = safe_scan
+    scanner.effective_batch = normalize_effective_batch(
+        max_registers_per_request, max_batch=MAX_BATCH_REGISTERS
+    )
+    scanner.max_registers_per_request = scanner.effective_batch
+
+    resolved_type, resolved_mode, resolved_fixed_mode = _state.resolve_connection_configuration(
+        connection_type, connection_mode, port
+    )
+    _state.apply_connection_state(
+        scanner,
+        _state.build_connection_state(
+            connection_type=resolved_type,
+            connection_mode=resolved_mode,
+            resolved_connection_mode=resolved_fixed_mode,
+            serial_port=serial_port,
+            baud_rate=baud_rate,
+            parity=parity,
+            stop_bits=stop_bits,
+        ),
+    )
+    scanner._hass = hass
 
 
 def initialize_runtime_collections(scanner: Any, capabilities_cls: Any) -> None:

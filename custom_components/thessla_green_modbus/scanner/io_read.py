@@ -9,7 +9,6 @@ from typing import Any
 from pymodbus.client import AsyncModbusTcpClient
 
 from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from ..modbus_helpers import chunk_register_range
 from ..transport.retry import ErrorKind, classify_transport_error
 from .io_core import (
     _call_modbus_with_fallback,
@@ -25,9 +24,12 @@ from .io_core import (
 from .io_read_helpers import (
     append_read_block,
     build_read_attempt_meta,
+    build_register_chunks,
     build_success_result,
     classify_skip_range,
-    iter_grouped_read_chunks,
+    log_read_abort,
+    log_read_failure,
+    mark_failed_addresses,
     normalize_bit_read_result,
     should_log_terminal_failure,
 )
@@ -40,23 +42,6 @@ except (ImportError, AttributeError):
 _LOGGER = logging.getLogger(__name__)
 
 
-def _mark_failed_addresses(scanner: Any, register_type: str, start: int, end: int) -> None:
-    """Track read failures for a contiguous address range."""
-    scanner.failed_addresses["modbus_exceptions"][register_type].update(range(start, end + 1))
-
-
-def _log_read_abort(kind: str, start: int, end: int, attempt: int, retry: int) -> None:
-    """Log a transiently aborted read due to timeout/cancellation."""
-    _LOGGER.warning(
-        "Aborted reading %s registers %d-%d after %d/%d attempts due to timeout/cancellation",
-        kind,
-        start,
-        end,
-        attempt,
-        retry,
-    )
-
-
 def _handle_error_response(
     scanner: Any, *, register_type: str, start: int, end: int, code: int | None
 ) -> None:
@@ -67,16 +52,7 @@ def _handle_error_response(
     else:
         scanner._failed_holding.update(range(start, end + 1))
         scanner._mark_holding_unsupported(start, end, code)
-    _mark_failed_addresses(scanner, register_type, start, end)
-
-
-def _validate_register_response(response: Any) -> tuple[bool, int | None]:
-    """Return (is_error, exception_code) for a Modbus response-like object."""
-    if response is None:
-        return False, None
-    if response.isError():
-        return True, getattr(response, "exception_code", None)
-    return False, None
+    mark_failed_addresses(scanner, register_type, start, end)
 
 
 def _should_abort_input_exception(exc: Exception) -> bool:
@@ -86,22 +62,6 @@ def _should_abort_input_exception(exc: Exception) -> bool:
             exc
         ).kind is ErrorKind.CANCELLED or is_request_cancelled_error(exc)
     return isinstance(exc, (TimeoutError, OSError))
-
-
-def _log_read_failure(kind: str, start: int, end: int, retry: int) -> None:
-    """Log terminal read failure after retry budget is exhausted."""
-    _LOGGER.error("Failed to read %s registers %d-%d after %d retries", kind, start, end, retry)
-
-
-def _build_register_chunks(scanner: Any, start: int, count: int) -> list[tuple[int, int]]:
-    """Build contiguous chunk plan for a register range."""
-    return iter_grouped_read_chunks(
-        start,
-        count,
-        lambda chunk_start, chunk_count: chunk_register_range(
-            chunk_start, chunk_count, scanner.effective_batch
-        ),
-    )
 
 
 def _normalize_bit_read_request(
@@ -129,14 +89,70 @@ def _resolve_bit_read_client(scanner: Any, client: Any) -> Any:
     return client
 
 
-def _extend_or_abort_register_results(
-    results: list[int], block: list[int] | None
+async def _attempt_bit_reconnect(scanner: Any, client: Any) -> Any:
+    """Try to reconnect via transport after a connection error; return updated client."""
+    if scanner._transport is None:
+        return client
+    try:
+        await scanner._transport.ensure_connected()
+        transport_client = getattr(scanner._transport, "client", None)
+        if transport_client is not None:
+            scanner._client = transport_client
+            return transport_client
+    except (
+        ModbusException,
+        ConnectionException,
+        ModbusIOException,
+        TimeoutError,
+        OSError,
+        AttributeError,
+    ):
+        pass
+    return client
+
+
+def _handle_register_error_response(
+    scanner: Any,
+    *,
+    register_type: str,
+    start: int,
+    end: int,
+    address: int,
+    count: int,
+    code: int | None,
 ) -> tuple[bool, list[int] | None]:
-    """Append block values and indicate whether read batching should continue."""
-    can_continue = append_read_block(results, block)
-    if not can_continue:
-        return False, None
-    return True, results
+    """Classify and finalize a Modbus error response.
+
+    Returns (done, payload) — same contract as _process_register_response.
+    """
+    _LOGGER.warning(
+        "Exception code %s while reading %s %d-%d",
+        code,
+        register_type.replace("_", " "),
+        start,
+        end,
+    )
+    if register_type == "input_registers" or code == 2:
+        _handle_error_response(
+            scanner,
+            register_type=register_type,
+            start=start,
+            end=end,
+            code=code,
+        )
+        return True, None
+    if count == 1:
+        track_holding_failure(scanner, count, address)
+        if address in scanner._failed_holding:
+            _handle_error_response(
+                scanner,
+                register_type="holding_registers",
+                start=start,
+                end=end,
+                code=code or 0,
+            )
+            return True, None
+    return False, None
 
 
 def _process_register_response(
@@ -159,36 +175,17 @@ def _process_register_response(
     if response is None:
         return False, None
 
-    is_error, code = _validate_register_response(response)
-    if is_error:
-        _LOGGER.warning(
-            "Exception code %s while reading %s %d-%d",
-            code,
-            register_type.replace("_", " "),
-            start,
-            end,
+    if response.isError():
+        code = getattr(response, "exception_code", None)
+        return _handle_register_error_response(
+            scanner,
+            register_type=register_type,
+            start=start,
+            end=end,
+            address=address,
+            count=count,
+            code=code,
         )
-        if register_type == "input_registers" or code == 2:
-            _handle_error_response(
-                scanner,
-                register_type=register_type,
-                start=start,
-                end=end,
-                code=code,
-            )
-            return True, None
-        if count == 1:
-            track_holding_failure(scanner, count, address)
-            if address in scanner._failed_holding:
-                _handle_error_response(
-                    scanner,
-                    register_type="holding_registers",
-                    start=start,
-                    end=end,
-                    code=code or 0,
-                )
-                return True, None
-        return False, None
 
     if skip_cache and count == 1:
         if register_type == "input_registers":
@@ -199,11 +196,6 @@ def _process_register_response(
     if register_type == "holding_registers" and address in scanner._holding_failures:
         del scanner._holding_failures[address]
     return True, build_success_result(response)
-
-
-def _handle_terminal_read_failure(scanner: Any, register_type: str, start: int, end: int) -> None:
-    """Mark all addresses in a terminally failed read range."""
-    _mark_failed_addresses(scanner, register_type, start, end)
 
 
 def _finalize_register_read_failure(
@@ -219,13 +211,13 @@ def _finalize_register_read_failure(
     """Finalize shared failure state/logging for input/holding read loops."""
     kind = "input" if register_type == "input_registers" else "holding"
     if aborted_transiently:
-        _log_read_abort(kind, start, end, attempted_reads, retry)
+        log_read_abort(kind, start, end, attempted_reads, retry)
         if should_log_terminal_failure(register_type, aborted_transiently):
-            _log_read_failure(kind, start, end, retry)
+            log_read_failure(kind, start, end, retry)
         return
 
-    _log_read_failure(kind, start, end, retry)
-    _handle_terminal_read_failure(scanner, register_type, start, end)
+    log_read_failure(kind, start, end, retry)
+    mark_failed_addresses(scanner, register_type, start, end)
 
 
 def _should_skip_input_range(
@@ -267,7 +259,7 @@ def _prepare_input_read(scanner: Any, start: int, end: int, skip_cache: bool) ->
     ) not in scanner._input_skip_log_ranges:
         _LOGGER.debug("Skipping cached failed input registers %d-%d", skip_start, skip_end)
         scanner._input_skip_log_ranges.add((skip_start, skip_end))
-    _handle_terminal_read_failure(scanner, "input_registers", skip_start, skip_end)
+    mark_failed_addresses(scanner, "input_registers", skip_start, skip_end)
     return True
 
 
@@ -359,6 +351,136 @@ async def _execute_word_read_attempt(
     )
 
 
+async def _run_word_read_single_attempt(
+    scanner: Any,
+    *,
+    transport: Any,
+    client: Any,
+    method_name: str,
+    address: int,
+    count: int,
+    start: int,
+    end: int,
+    skip_cache: bool,
+    register_type: str,
+    handle_attempt_exception: Any,
+    log_success: bool,
+    attempt: int,
+) -> tuple[bool, bool, bool, list[int] | None]:
+    """Execute one iteration of the word-register read retry loop.
+
+    Returns (done, aborted_transiently, stop_retries, payload).
+    """
+    try:
+        response = await _execute_word_read_attempt(
+            scanner,
+            transport=transport,
+            client=client,
+            method_name=method_name,
+            address=address,
+            count=count,
+            attempt=attempt,
+        )
+        done, payload = _process_register_response(
+            scanner,
+            response=response,
+            register_type=register_type,
+            start=start,
+            end=end,
+            address=address,
+            count=count,
+            skip_cache=skip_cache,
+        )
+        if done:
+            if log_success and payload is not None:
+                _LOGGER.debug(
+                    "Read %s %d-%d: %s",
+                    register_type.replace("_", " "),
+                    start,
+                    end,
+                    payload,
+                )
+            return True, False, False, payload
+        return False, False, False, None
+    except asyncio.CancelledError:
+        raise
+    except (
+        TimeoutError,
+        ModbusIOException,
+        OSError,
+        ModbusException,
+        ConnectionException,
+    ) as exc:
+        aborted, stop = handle_attempt_exception(
+            scanner,
+            exc,
+            start=start,
+            end=end,
+            address=address,
+            count=count,
+            attempt=attempt,
+        )
+        return False, aborted, stop, None
+
+
+async def _run_word_read_retry_loop(
+    scanner: Any,
+    *,
+    transport: Any,
+    client: Any,
+    address: int,
+    count: int,
+    start: int,
+    end: int,
+    skip_cache: bool,
+    method_name: str,
+    register_type: str,
+    handle_attempt_exception: Any,
+    log_success: bool = False,
+) -> list[int] | None:
+    """Shared retry loop for word-register (input/holding) reads."""
+    attempted_reads = 0
+    aborted_transiently = False
+    for attempt in range(1, scanner.retry + 1):
+        attempted_reads = attempt
+        done, aborted, stop, payload = await _run_word_read_single_attempt(
+            scanner,
+            transport=transport,
+            client=client,
+            method_name=method_name,
+            address=address,
+            count=count,
+            start=start,
+            end=end,
+            skip_cache=skip_cache,
+            register_type=register_type,
+            handle_attempt_exception=handle_attempt_exception,
+            log_success=log_success,
+            attempt=attempt,
+        )
+        if done:
+            return payload
+        aborted_transiently = aborted_transiently or aborted
+        if stop:
+            break
+        await _sleep_retry_backoff(
+            backoff=scanner.backoff,
+            backoff_jitter=scanner.backoff_jitter,
+            attempt=attempt,
+            retry=scanner.retry,
+        )
+    _finalize_register_read_failure(
+        scanner,
+        register_type=register_type,
+        start=start,
+        end=end,
+        retry=scanner.retry,
+        attempted_reads=attempted_reads,
+        aborted_transiently=aborted_transiently,
+    )
+    return None
+
+
 async def _run_input_read_retry_loop(
     scanner: Any,
     *,
@@ -371,69 +493,20 @@ async def _run_input_read_retry_loop(
     skip_cache: bool,
 ) -> list[int] | None:
     """Run input read retry loop and finalize failure state when needed."""
-    attempted_reads = 0
-    aborted_transiently = False
-    for attempt in range(1, scanner.retry + 1):
-        attempted_reads = attempt
-        try:
-            response = await _execute_word_read_attempt(
-                scanner,
-                transport=transport,
-                client=client,
-                method_name="read_input_registers",
-                address=address,
-                count=count,
-                attempt=attempt,
-            )
-            done, payload = _process_register_response(
-                scanner,
-                response=response,
-                register_type="input_registers",
-                start=start,
-                end=end,
-                address=address,
-                count=count,
-                skip_cache=skip_cache,
-            )
-            if done:
-                if payload is not None:
-                    _LOGGER.debug("Read input registers %d-%d: %s", start, end, payload)
-                return payload
-        except (
-            ModbusIOException,
-            TimeoutError,
-            OSError,
-            ModbusException,
-            ConnectionException,
-        ) as exc:
-            aborted, stop = _handle_input_attempt_exception(
-                scanner,
-                exc,
-                start=start,
-                end=end,
-                address=address,
-                count=count,
-                attempt=attempt,
-            )
-            aborted_transiently = aborted_transiently or aborted
-            if stop:
-                break
-        await _sleep_retry_backoff(
-            backoff=scanner.backoff,
-            backoff_jitter=scanner.backoff_jitter,
-            attempt=attempt,
-            retry=scanner.retry,
-        )
-    _finalize_register_read_failure(
+    return await _run_word_read_retry_loop(
         scanner,
-        register_type="input_registers",
+        transport=transport,
+        client=client,
+        address=address,
+        count=count,
         start=start,
         end=end,
-        retry=scanner.retry,
-        attempted_reads=attempted_reads,
-        aborted_transiently=aborted_transiently,
+        skip_cache=skip_cache,
+        method_name="read_input_registers",
+        register_type="input_registers",
+        handle_attempt_exception=_handle_input_attempt_exception,
+        log_success=True,
     )
-    return None
 
 
 async def read_input(
@@ -489,14 +562,13 @@ async def read_register_block(
 
     results: list[int] = []
     active_client = client or scanner._client
-    for chunk_start, chunk_count in _build_register_chunks(scanner, start, count):
+    for chunk_start, chunk_count in build_register_chunks(start, count, scanner.effective_batch):
         block = await (
             read_fn(chunk_start, chunk_count)
             if active_client is None
             else read_fn(active_client, chunk_start, chunk_count)
         )
-        can_continue, _ = _extend_or_abort_register_results(results, block)
-        if not can_continue:
+        if not append_read_block(results, block):
             return None
     return results
 
@@ -507,7 +579,7 @@ def _prepare_holding_read(
     """Return True when holding read should short-circuit as failed/unsupported."""
     should_skip, skip_start, skip_end = _should_skip_holding_range(scanner, start, end, skip_cache)
     if should_skip:
-        _handle_terminal_read_failure(scanner, "holding_registers", skip_start, skip_end)
+        mark_failed_addresses(scanner, "holding_registers", skip_start, skip_end)
         return True
 
     failures = scanner._holding_failures.get(address, 0)
@@ -568,6 +640,34 @@ def _handle_holding_read_exception(
     raise exc
 
 
+async def _run_holding_read_retry_loop(
+    scanner: Any,
+    *,
+    transport: Any,
+    client: Any,
+    address: int,
+    count: int,
+    start: int,
+    end: int,
+    skip_cache: bool,
+) -> list[int] | None:
+    """Run holding read retry loop and finalize failure state when needed."""
+    return await _run_word_read_retry_loop(
+        scanner,
+        transport=transport,
+        client=client,
+        address=address,
+        count=count,
+        start=start,
+        end=end,
+        skip_cache=skip_cache,
+        method_name="read_holding_registers",
+        register_type="holding_registers",
+        handle_attempt_exception=_handle_holding_read_exception,
+        log_success=False,
+    )
+
+
 async def read_holding(
     scanner: Any,
     client_or_address: AsyncModbusTcpClient | AsyncModbusSerialClientType | int,
@@ -587,79 +687,16 @@ async def read_holding(
 
     transport, client = resolve_transport_and_client(scanner, client)
 
-    aborted_transiently = False
-    attempted_reads = 0
-    for attempt in range(1, scanner.retry + 1):
-        attempted_reads = attempt
-        try:
-            if transport is not None:
-                response = await transport.read_holding_registers(
-                    scanner.slave_id, address, count=count
-                )
-            else:
-                response = await _call_modbus_with_fallback(
-                    scanner,
-                    client.read_holding_registers,
-                    scanner.slave_id,
-                    address,
-                    count=count,
-                    attempt=attempt,
-                    retry=scanner.retry,
-                    timeout=scanner.timeout,
-                    backoff=scanner.backoff,
-                    backoff_jitter=scanner.backoff_jitter,
-                )
-            done, payload = _process_register_response(
-                scanner,
-                response=response,
-                register_type="holding_registers",
-                start=start,
-                end=end,
-                address=address,
-                count=count,
-                skip_cache=skip_cache,
-            )
-            if done:
-                return payload
-        except asyncio.CancelledError:
-            raise
-        except (
-            TimeoutError,
-            ModbusIOException,
-            ModbusException,
-            ConnectionException,
-            OSError,
-        ) as exc:
-            aborted, stop = _handle_holding_read_exception(
-                scanner,
-                exc,
-                start=start,
-                end=end,
-                address=address,
-                count=count,
-                attempt=attempt,
-            )
-            aborted_transiently = aborted_transiently or aborted
-            if stop:
-                break
-
-        await _sleep_retry_backoff(
-            backoff=scanner.backoff,
-            backoff_jitter=scanner.backoff_jitter,
-            attempt=attempt,
-            retry=scanner.retry,
-        )
-
-    _finalize_register_read_failure(
+    return await _run_holding_read_retry_loop(
         scanner,
-        register_type="holding_registers",
+        transport=transport,
+        client=client,
+        address=address,
+        count=count,
         start=start,
         end=end,
-        retry=scanner.retry,
-        attempted_reads=attempted_reads,
-        aborted_transiently=aborted_transiently,
+        skip_cache=skip_cache,
     )
-    return None
 
 
 async def read_bit_registers(
@@ -701,22 +738,7 @@ async def read_bit_registers(
                 attempt,
             )
         except (ModbusException, ConnectionException):
-            if scanner._transport is not None:
-                try:
-                    await scanner._transport.ensure_connected()
-                    transport_client = getattr(scanner._transport, "client", None)
-                    if transport_client is not None:
-                        client = transport_client
-                        scanner._client = transport_client
-                except (
-                    ModbusException,
-                    ConnectionException,
-                    ModbusIOException,
-                    TimeoutError,
-                    OSError,
-                    AttributeError,
-                ):
-                    pass
+            client = await _attempt_bit_reconnect(scanner, client)
         except asyncio.CancelledError:
             raise
         except OSError as exc:
@@ -780,6 +802,8 @@ async def read_discrete(
 
 
 __all__ = [
+    "_attempt_bit_reconnect",
+    "_handle_register_error_response",
     "read_bit_registers",
     "read_coil",
     "read_discrete",

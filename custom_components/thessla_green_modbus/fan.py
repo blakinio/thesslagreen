@@ -15,10 +15,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import FAN_DEFAULT_PERCENT, FAN_SPEED_LEVELS, holding_registers
+from .const import FAN_DEFAULT_PERCENT, FAN_SPEED_LEVELS
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .modbus_exceptions import ConnectionException, ModbusException
+from .registers.maps import holding_registers
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -119,13 +120,20 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
     @property
     def percentage(self) -> int | None:
-        """Return the current speed percentage."""
+        """Return the current speed percentage, clamped to 0–100 per HA spec.
+
+        The physical device may report flow rates above 100 % (e.g. 109 %
+        when max_percentage = 109).  HA FanEntity.percentage must stay in
+        0–100; the raw device value is preserved in extra_state_attributes
+        as ``supply_percentage``.
+        """
         flow_rate = self._get_current_flow_rate()
         if flow_rate is None:
             return None
 
         _min_pct, max_pct = self._percentage_limits()
-        return max(0, min(max_pct, int(flow_rate)))
+        raw_clamped = max(0, min(max_pct, int(flow_rate)))
+        return min(100, raw_clamped)
 
     def _get_current_flow_rate(self) -> float | None:
         """Get current flow rate from available registers."""

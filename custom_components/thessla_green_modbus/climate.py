@@ -22,10 +22,10 @@ from .const import (
     TEMPERATURE_MAX_C,
     TEMPERATURE_MIN_C,
     TEMPERATURE_STEP_C,
-    holding_registers,
 )
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+from .registers.maps import holding_registers
 
 _FEATURE_TARGET_TEMPERATURE = ClimateEntityFeature.TARGET_TEMPERATURE
 _FEATURE_FAN_MODE = ClimateEntityFeature.FAN_MODE
@@ -282,20 +282,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         success = await self._write_register("on_off_panel_mode", 0, refresh=False)
         if success:
             await self.coordinator.async_request_refresh()
-
-    @property
-    def name(self) -> str:
-        scan_name = (
-            getattr(self.coordinator, "device_scan_result", {})
-            .get("device_info", {})
-            .get("device_name")
-        )
-        base = scan_name or getattr(
-            self.coordinator,
-            "device_name",
-            getattr(self.coordinator, "_device_name", "ThesslaGreen"),
-        )
-        return f"{base} Rekuperator"
 
     @property
     def hvac_modes(self) -> list[HVACMode]:

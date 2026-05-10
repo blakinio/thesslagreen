@@ -1,1 +1,1 @@
-"""TODO: module scaffold for branch test refactor."""
+"""Reserved module placeholder for future core client abstractions."""

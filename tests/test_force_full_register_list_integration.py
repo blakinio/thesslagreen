@@ -89,6 +89,7 @@ class FakeCoordinator:
         self.data: dict[str, int] = {}
         self.last_update_success = True
         self.capabilities = _Capabilities()
+        self._listeners: list = []
 
     async def async_setup(self):  # pragma: no cover - simple stub
         return True
@@ -111,6 +112,14 @@ class FakeCoordinator:
 
     async def async_request_refresh(self):  # pragma: no cover - simple stub
         return None
+
+    def async_add_listener(self, update_callback):
+        self._listeners.append(update_callback)
+
+        def _remove_listener():
+            self._listeners.remove(update_callback)
+
+        return _remove_listener
 
     def get_device_info(self):  # pragma: no cover - simple stub
         return {"identifiers": {(DOMAIN, "fake")}, "name": self.device_name}

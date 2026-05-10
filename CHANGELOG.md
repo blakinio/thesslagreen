@@ -5,6 +5,39 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased — Real-device findings cleanup
+
+### Fixed
+- **Fan percentage clamped to 0–100**: `fan.thesslagreen_ventilation` no longer
+  reports `percentage` > 100 to Home Assistant (device can report up to 109 %).
+  Raw value is preserved in `extra_state_attributes.supply_percentage`.
+- **Active errors sensor no longer shows «unknown»**: `sensor.rekuperator_active_errors`
+  now shows `none` when the coordinator is connected and no error codes are active,
+  instead of the misleading «unknown» state.
+- **`switch.bypass_off` / `switch.gwc_off` display names corrected**:
+  These switches were named "Bypass Active" / "GWC Active" but the underlying
+  register uses inverse semantics (value 1 = deactivated). Renamed to
+  "Bypass Locked" / "GWC Locked" (PL: "Bypass zablokowany" / "GWC zablokowany").
+  Entity IDs and unique IDs are unchanged.
+- **Device `sw_version` populated from version registers**: When the firmware
+  string is unavailable, `sw_version` is now assembled from `version_major`,
+  `version_minor`, and `cf_version` registers (e.g. `3.11 CF13`).
+
+### Confirmed correct (no code change)
+- `binary_sensor.fire_alarm`: raw True = NC contact closed = no alarm = `off` state.
+  This is correct and intentional. Documented with tests.
+- `binary_sensor.dp_duct_filter_overflow`: raw True = problem detected = `on` state.
+  Correct for a filter pressure-differential overflow. Documented with tests.
+- Polish state wording "nie działa" appears only in S30/S31 error-code sensor names,
+  not in normal inactive state labels. No change needed.
+
+### Needs vendor confirmation
+- `number.airing_coef` / `number.airing_switch_coef`: device reports values
+  (50, 0) outside the declared range 100–150. No write-range change until vendor
+  docs confirm whether these are valid set-points or factory defaults.
+
+---
+
 ## 2.8.0 — Legacy removal + test infrastructure overhaul (BREAKING)
 
 ### ⚠️ Breaking
@@ -32,6 +65,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `test_config_flow.py`: consolidated duplicate register loader stubs.
 - `test_coordinator_coverage.py`: replaced `is not None` assertions with type checks.
 - `test_optimized_integration.py`: replaced `CoordinatorMock` with `MagicMock`.
+
+### CI / Release Readiness
+- Added `hassfest` CI job (`home-assistant/actions/hassfest@main`) — validates
+  `manifest.json` and integration structure on every PR and push.
+- Added `hacs` CI job (`hacs/action@main`, `category: integration`) — validates
+  `hacs.json` and HACS repository requirements on every PR and push.
+- Added `dev` to push trigger branches so CI runs on pushes to the development branch.
+- **Fixed hassfest/HACS CI failures**: removed non-HA `files` key from `manifest.json`
+  (not in `homeassistant.loader.Manifest` TypedDict; caused both CI jobs to fail).
+  HACS installs the entire `custom_components/thessla_green_modbus/` directory
+  automatically when `files` is absent. `test_manifest_files.py` updated accordingly.
+- Added `docs/real_device_validation.md` — structured checklist and evidence template
+  for real-device validation against ThesslaGreen AirPack hardware (template only;
+  not yet filled with real evidence).
+- Implemented `repairs.py` — `async_create_fix_flow` returns `ConfirmRepairFlow` for
+  `modbus_write_failed` and any future repair issues.
+- Applied `disabled_by_default` for entities with `EntityCategory.DIAGNOSTIC` —
+  `sensor.py` and `binary_sensor.py` now set `_attr_entity_registry_enabled_default = False`
+  for all diagnostic-category entities. User-facing control/status entities unchanged.
+- Updated `README_en.md` — Python version corrected to 3.13+, diagnostics privacy
+  section added, quality/release status table added, links to audit docs added.
+- Validation suite: 1949 passed, 4 skipped — 0 failures on Python 3.13.12,
+  HA 2026.2.3, pydantic 2.12.2.
+- Entity mapping validation: 366 entities confirmed.
+- `pydantic` remains pinned at `2.12.2` — PR #1567 (Dependabot pydantic update)
+  is separate and untouched.
+
+### Release caveats (pre-tag)
+- No GitHub release tag created in this PR — tag `v2.8.0` and release notes must
+  be created separately via GitHub UI or CLI before HACS will distribute this version.
+- Real-device validation is documented as a checklist template; evidence from
+  testing against physical ThesslaGreen AirPack hardware has not yet been collected.
 
 ---
 

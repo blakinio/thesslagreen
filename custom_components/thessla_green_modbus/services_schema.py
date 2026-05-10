@@ -7,7 +7,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.helpers import config_validation as cv
 
-from .const import (
+from .options import (
     BYPASS_MODES,
     DAYS_OF_WEEK,
     FILTER_TYPES,
@@ -146,6 +146,12 @@ SET_DEVICE_NAME_SCHEMA = vol.Schema(
 )
 
 SYNC_TIME_SCHEMA = vol.Schema({vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR})
+SYNC_DEVICE_CLOCK_SCHEMA = vol.Schema(
+    {
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
+        vol.Optional("force", default=False): bool,
+    }
+)
 REFRESH_DEVICE_DATA_SCHEMA = vol.Schema({vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR})
 SCAN_ALL_REGISTERS_SCHEMA = vol.Schema({vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR})
 SET_LOG_LEVEL_SCHEMA = vol.Schema(

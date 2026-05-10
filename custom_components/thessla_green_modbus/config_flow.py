@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
@@ -48,18 +47,22 @@ from .config_flow_runtime import (
 from .config_flow_runtime import (
     is_request_cancelled_error as _is_request_cancelled_error_impl,
 )
+from .config_flow_runtime import load_scanner_module as _load_scanner_module
 from .config_flow_runtime import run_with_retry as _run_with_retry_impl
 from .config_flow_schema import build_connection_schema as _build_connection_schema_impl
+from .config_flow_schema import build_reconfigure_schema as _build_reconfigure_schema_impl
 from .config_flow_steps import extract_discovered_state as _extract_discovered_state_impl
 from .config_flow_steps import merge_options_payload as _merge_options_payload_impl
 from .config_flow_steps import resolve_reauth_entry as _resolve_reauth_entry_impl
 from .config_flow_steps import resolve_reauth_form_state as _resolve_reauth_form_state_impl
 from .config_flow_steps import validate_options_submission as _validate_options_submission_impl
 from .config_flow_user_submit import process_user_submission as _process_user_submission_impl
-from .config_flow_validation import process_scan_capabilities as _process_scan_capabilities_impl
-from .config_flow_validation import validate_rtu_config as _validate_rtu_config_impl
+from .config_flow_validation import (
+    process_scan_capabilities_bound as _process_scan_capabilities_bound,
+)
+from .config_flow_validation import validate_rtu_config_bound as _validate_rtu_config_bound
 from .config_flow_validation import validate_slave_id as _validate_slave_id_impl
-from .config_flow_validation import validate_tcp_config as _validate_tcp_config_impl
+from .config_flow_validation import validate_tcp_config_bound as _validate_tcp_config_bound
 from .const import (
     CONF_SLAVE_ID,
     CONF_TIMEOUT,
@@ -74,12 +77,10 @@ from .const import (
     DEFAULT_TIMEOUT,
     DOMAIN,
     MAX_BATCH_REGISTERS,
-    MODBUS_BAUD_RATES,
-    MODBUS_PARITY,
-    MODBUS_STOP_BITS,
 )
 from .errors import CannotConnect, InvalidAuth
 from .modbus_exceptions import ModbusIOException
+from .options import MODBUS_BAUD_RATES, MODBUS_PARITY, MODBUS_STOP_BITS
 
 _LOGGER = logging.getLogger(__name__)
 __all__ = ["VOL_INVALID", "CannotConnect", "ConfigFlow", "InvalidAuth", "validate_input"]
@@ -104,16 +105,6 @@ def _is_request_cancelled_error(exc: ModbusIOException) -> bool:
 
 ThesslaGreenDeviceScanner: Any | None = None
 DeviceCapabilities: Any | None = None
-
-
-async def _load_scanner_module(hass: HomeAssistant) -> Any:
-    """Import scanner.core via the HA executor to avoid blocking the event loop."""
-    if hass is None or not hasattr(hass, "async_add_executor_job"):
-        return import_module("custom_components.thessla_green_modbus.scanner.core")
-    return await hass.async_add_executor_job(
-        import_module, "custom_components.thessla_green_modbus.scanner.core"
-    )
-
 
 # Delay between retries when establishing the connection during the config flow.
 # Uses exponential backoff: ``backoff * 2 ** (attempt-1)``.
@@ -184,34 +175,6 @@ def _validate_slave_id(data: dict[str, Any]) -> int:
     return _validate_slave_id_impl(data)
 
 
-def _validate_tcp_config(data: dict[str, Any]) -> tuple[str, int]:
-    """Validate and normalise TCP fields in data. Returns (host, port)."""
-    return _validate_tcp_config_impl(data, looks_like_hostname=_looks_like_hostname)
-
-
-def _validate_rtu_config(data: dict[str, Any]) -> None:
-    """Validate and normalise RTU serial fields in data."""
-    _validate_rtu_config_impl(
-        data,
-        normalize_baud_rate=_normalize_baud_rate,
-        normalize_parity=_normalize_parity,
-        normalize_stop_bits=_normalize_stop_bits,
-    )
-
-
-def _process_scan_capabilities(
-    scan_result: dict[str, Any],
-    capabilities_cls: type,
-) -> dict[str, Any]:
-    """Extract and validate capabilities from a scan result dict."""
-    return _process_scan_capabilities_impl(
-        scan_result,
-        capabilities_cls=capabilities_cls,
-        caps_to_dict=_caps_to_dict,
-        logger=_LOGGER,
-    )
-
-
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     return await _validate_input_impl(
@@ -219,8 +182,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         data,
         normalize_connection_type=_normalize_connection_type,
         validate_slave_id=_validate_slave_id,
-        validate_tcp_config=_validate_tcp_config,
-        validate_rtu_config=_validate_rtu_config,
+        validate_tcp_config=_validate_tcp_config_bound,
+        validate_rtu_config=_validate_rtu_config_bound,
         load_scanner_module=_load_scanner_module,
         scanner_cls_override=ThesslaGreenDeviceScanner,
         capabilities_cls_override=DeviceCapabilities,
@@ -230,7 +193,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
             backoff=backoff,
         ),
         call_with_optional_timeout=_call_with_optional_timeout,
-        process_scan_capabilities=_process_scan_capabilities,
+        process_scan_capabilities=_process_scan_capabilities_bound,
         is_request_cancelled_error=_is_request_cancelled_error,
         classify_os_error=_classify_os_error_impl,
         should_log_timeout_traceback=_should_log_timeout_traceback_impl,
@@ -282,22 +245,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_HOST,
-                        default=entry.data.get(CONF_HOST, ""),
-                    ): str,
-                    vol.Required(
-                        CONF_PORT,
-                        default=entry.data.get(CONF_PORT, DEFAULT_PORT),
-                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
-                    vol.Required(
-                        CONF_SLAVE_ID,
-                        default=entry.data.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID),
-                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=247)),
-                }
-            ),
+            data_schema=_build_reconfigure_schema_impl(entry.data),
         )
 
     def _build_connection_schema(self, defaults: dict[str, Any]) -> vol.Schema:
@@ -347,7 +295,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
             device_info=self._device_info,
             scan_result=self._scan_result,
             cap_cls=cap_cls,
-            caps_to_dict=_caps_to_dict,
+            caps_to_dict=_caps_to_dict_impl,
         )
 
         return self.async_show_form(

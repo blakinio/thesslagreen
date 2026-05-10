@@ -322,3 +322,27 @@ def test_climate_imports_real_ha_symbols() -> None:
     assert hasattr(climate.HVACMode, "OFF")
     assert hasattr(climate.HVACAction, "HEATING")
     assert climate.ClimateEntity.__name__ == climate_mod.ClimateEntity.__name__
+
+
+def test_climate_name_uses_ha_translation_not_hardcoded_polish() -> None:
+    """Climate entity must not return a hardcoded Polish name.
+
+    _attr_has_entity_name=True and _attr_translation_key delegate naming
+    to HA; there must be no overriding name property that embeds 'Rekuperator'.
+    """
+    from datetime import timedelta
+    from types import SimpleNamespace
+
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        SimpleNamespace(), "host", 502, 1, "dev", timedelta(seconds=1)
+    )
+    coordinator.data = {}
+    climate = ThesslaGreenClimate(coordinator)
+
+    assert climate._attr_has_entity_name is True  # nosec B101
+    assert climate._attr_translation_key == "thessla_green_climate"  # nosec B101
+    # No overriding name property — HA owns the display name.
+    assert "name" not in ThesslaGreenClimate.__dict__  # nosec B101
+    # Guard: entity name must never be the Polish word for heat-recovery unit.
+    raw_name = ThesslaGreenClimate.__dict__.get("name")
+    assert raw_name is None or "Rekuperator" not in str(raw_name)  # nosec B101

@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.core import HomeAssistant
 
-from ..const import (
+from ..registers.maps import (
     coil_registers,
     discrete_input_registers,
     holding_registers,
