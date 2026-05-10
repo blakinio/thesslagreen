@@ -30,7 +30,7 @@ Logika domenowa urządzenia nie zależy od Home Assistant.
 ---
 
 
-## Stan bieżący (2026-04-28)
+## Stan bieżący (2026-05-10)
 
 Repozytorium jest w trakcie etapowej refaktoryzacji. Obok struktury docelowej współistnieją jeszcze elementy przejściowe.
 
@@ -38,6 +38,7 @@ Wymóg bieżący:
 
 ```text
 coordinator package migration is completed and active.
+core/ package placeholder removed — not yet implemented.
 ```
 
 Stan przejściowy (aktualny):
@@ -45,9 +46,12 @@ Stan przejściowy (aktualny):
 ```text
 custom_components/thessla_green_modbus/coordinator/         # obecna aktywna lokalizacja (canonical)
 custom_components/thessla_green_modbus/coordinator.py       # usunięty
+custom_components/thessla_green_modbus/core/                # USUNIĘTY (2026-05-10) — były to same placeholdery bez kodu
 ```
 
 Migracja do `coordinator/` została wykonana w dedykowanym PR. Importy powinny wskazywać moduły kanoniczne bez shimów/proxy/re-export-only modules.
+
+Warstwa `core/` (ThesslaGreenClient, DeviceSnapshot) jest **planowaną przyszłą warstwą**, która nie istnieje jeszcze w kodzie. Placeholder files zostały usunięte jako mylące. Implementacja tej warstwy to osobny PR.
 
 Niezmiennie obowiązuje zakaz tworzenia:
 
@@ -146,15 +150,18 @@ raw register decoding
 
 ---
 
-### 3. Core — domena urządzenia
+### 3. Core — domena urządzenia (planowana, nie zaimplementowana)
 
-Docelowy katalog:
+> **Status 2026-05-10**: Warstwa `core/` nie istnieje w kodzie. Placeholder files zostały usunięte.
+> Implementacja tej warstwy to osobny przyszły PR.
+
+Docelowy katalog (planowany):
 
 ```text
 core/
 ```
 
-Główne pliki:
+Planowane pliki:
 
 ```text
 core/client.py
@@ -163,7 +170,7 @@ core/config.py
 core/errors.py
 ```
 
-Odpowiedzialność:
+Planowana odpowiedzialność:
 
 ```text
 - ThesslaGreenClient,
@@ -245,8 +252,9 @@ Scanner może używać:
 ```text
 transport/
 registers/
-core/errors.py
 ```
+
+(core/errors.py — planowane, nie zaimplementowane)
 
 Scanner nie importuje Home Assistant.
 
@@ -361,7 +369,7 @@ platformy   → raw Modbus / raw register decoding
 - jest adapterem HA,
 - nie wykonuje direct Modbus I/O,
 - nie dekoduje raw rejestrów,
-- deleguje do core/client.py.
+- docelowo deleguje do core/client.py (warstwa core/ planowana, nie zaimplementowana).
 ```
 
 ### `mappings/`

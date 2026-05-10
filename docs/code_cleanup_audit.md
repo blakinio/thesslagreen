@@ -185,3 +185,63 @@ All service names (`set_special_mode`, `set_mode`, `set_airflow_schedule`, etc.)
 - `tools/check_maintainability.py`: maintainability gate passed
 - `tools/check_translations.py`: all translation keys present
 - All moved-file imports verified (sibling-aware import checker): all correct
+
+---
+
+# core/ Package Removal Audit
+
+- Date: 2026-05-10
+- Branch: `refactor/resolve-core-package`
+
+## Decision: Path B — Remove unused core/ placeholders
+
+## Evidence
+
+All five files in `core/` contained only a single-line module docstring. No class definitions,
+no functions, no imports, no runtime logic:
+
+```
+core/__init__.py   — "Core namespace reserved for future internal modules."
+core/client.py     — "Reserved module placeholder for future core client abstractions."
+core/config.py     — "Reserved module placeholder for future core configuration abstractions."
+core/errors.py     — "Reserved module placeholder for future core error abstractions."
+core/snapshot.py   — "Reserved module placeholder for future core snapshot abstractions."
+```
+
+Runtime import search (`rg "from \.core|ThesslaGreenClient|DeviceSnapshot" custom_components tests`):
+- **Zero runtime imports** from `thessla_green_modbus.core`.
+- **Zero test imports** from the `core/` package.
+- `ThesslaGreenClient` and `DeviceSnapshot` appear only in architecture/guidelines docs as
+  descriptions of a **planned future layer**.
+- All `scanner.core` / `io_core` references in tests target `scanner/core.py` and
+  `scanner/io_core.py` — different, fully functioning modules.
+
+## Files changed
+
+| Action | Path |
+|--------|------|
+| Removed | `custom_components/thessla_green_modbus/core/__init__.py` |
+| Removed | `custom_components/thessla_green_modbus/core/client.py` |
+| Removed | `custom_components/thessla_green_modbus/core/config.py` |
+| Removed | `custom_components/thessla_green_modbus/core/errors.py` |
+| Removed | `custom_components/thessla_green_modbus/core/snapshot.py` |
+| Updated | `docs/thesslagreen_architecture.md` |
+| Updated | `docs/thesslagreen_guidelines.md` |
+
+## Runtime behavior impact
+
+None. Removed files contained only docstrings. No runtime code deleted. No imports broken.
+
+## Future work
+
+The `core/` layer (ThesslaGreenClient, DeviceSnapshot) remains a valid architectural target.
+Implement it in a dedicated future PR with real code, tests, and coordinator integration.
+Do not create placeholder files in advance.
+
+## Validation results
+
+- `ruff check custom_components tests tools`: all checks passed
+- `ruff check --select I custom_components tests tools`: all checks passed
+- `ruff format --check custom_components tests tools`: all files formatted correctly
+- `python -m compileall -q custom_components tests tools`: no syntax errors
+- `rg "ThesslaGreenClient|DeviceSnapshot|core/" custom_components tests`: zero runtime references
