@@ -87,7 +87,7 @@ async def test_async_write_temporary_temperature_missing_register():
 
 def test_process_register_value_schedule_hh_mm():
     """schedule_ register with HH:MM decoded → stored as HH:MM string (not minutes)."""
-    from custom_components.thessla_green_modbus import _coordinator_register_processing as rp
+    from custom_components.thessla_green_modbus.coordinator import register_processing as rp
 
     coord = _make_coordinator()
     mock_def = MagicMock()
@@ -106,7 +106,7 @@ def test_process_register_value_schedule_hh_mm():
 
 def test_process_register_value_schedule_hh_mm_invalid():
     """schedule_ register with bad HH:MM → ValueError caught, decoded unchanged (lines 1850-1851)."""
-    from custom_components.thessla_green_modbus import _coordinator_register_processing as rp
+    from custom_components.thessla_green_modbus.coordinator import register_processing as rp
 
     coord = _make_coordinator()
     mock_def = MagicMock()

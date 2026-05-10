@@ -51,6 +51,6 @@ class CoordinatorConfig:
     @classmethod
     def from_entry(cls, entry: ConfigEntry) -> CoordinatorConfig:
         """Build coordinator config from a Home Assistant config entry."""
-        from ..coordinator_config import coordinator_config_from_entry
+        from .config_normalization import coordinator_config_from_entry
 
         return coordinator_config_from_entry(entry, cls)

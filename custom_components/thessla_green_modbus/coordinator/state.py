@@ -8,7 +8,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 
-from .const import (
+from ..const import (
     CONF_ENABLE_DEVICE_SCAN,
     CONF_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_BAUD_RATE,
@@ -24,7 +24,7 @@ from .const import (
     holding_registers,
     input_registers,
 )
-from .scanner import DeviceCapabilities
+from ..scanner import DeviceCapabilities
 
 
 def normalize_serial_settings(
@@ -137,7 +137,7 @@ def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> 
     }
 
     coordinator.last_scan = None
-    from .utils import utcnow
+    from ..utils import utcnow
 
     coordinator._last_power_timestamp = utcnow()
     coordinator._total_energy = 0.0

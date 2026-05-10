@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from .const import DOMAIN, MANUFACTURER, UNKNOWN_MODEL
-from .register_map import REGISTER_MAP_VERSION
-from .registers.loader import get_all_registers
-from .utils import utcnow
+from ..const import DOMAIN, MANUFACTURER, UNKNOWN_MODEL
+from ..register_map import REGISTER_MAP_VERSION
+from ..registers.loader import get_all_registers
+from ..utils import utcnow
 
 
 def status_overview(coordinator: Any) -> dict[str, Any]:

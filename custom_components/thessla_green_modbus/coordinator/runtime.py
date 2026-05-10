@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .const import DEFAULT_BACKOFF, DEFAULT_BACKOFF_JITTER
+from ..const import DEFAULT_BACKOFF, DEFAULT_BACKOFF_JITTER
 
 
 def normalize_backoff(value: float | int | str | None) -> float:

@@ -119,7 +119,7 @@ def test_sw_version_uses_version_registers_when_firmware_unknown():
     When device_info has no firmware string, coordinator_diagnostics should
     assemble a version string from available data registers.
     """
-    from custom_components.thessla_green_modbus.coordinator_diagnostics import _resolve_sw_version
+    from custom_components.thessla_green_modbus.coordinator.diagnostics import _resolve_sw_version
 
     coord = _make_coordinator()
     coord.device_info = {}
@@ -131,7 +131,7 @@ def test_sw_version_uses_version_registers_when_firmware_unknown():
 
 def test_sw_version_prefers_firmware_string_over_registers():
     """If firmware string is present, it takes priority over version registers."""
-    from custom_components.thessla_green_modbus.coordinator_diagnostics import _resolve_sw_version
+    from custom_components.thessla_green_modbus.coordinator.diagnostics import _resolve_sw_version
 
     coord = _make_coordinator()
     coord.device_info = {"firmware": "v3.11-stable"}
@@ -142,7 +142,7 @@ def test_sw_version_prefers_firmware_string_over_registers():
 
 def test_sw_version_falls_back_to_unknown_when_no_data():
     """No firmware string and no version registers → 'Unknown'."""
-    from custom_components.thessla_green_modbus.coordinator_diagnostics import _resolve_sw_version
+    from custom_components.thessla_green_modbus.coordinator.diagnostics import _resolve_sw_version
 
     coord = _make_coordinator()
     coord.device_info = {}
@@ -153,7 +153,7 @@ def test_sw_version_falls_back_to_unknown_when_no_data():
 
 def test_sw_version_partial_registers():
     """Only major/minor without cf_version produces 'major.minor'."""
-    from custom_components.thessla_green_modbus.coordinator_diagnostics import _resolve_sw_version
+    from custom_components.thessla_green_modbus.coordinator.diagnostics import _resolve_sw_version
 
     coord = _make_coordinator()
     coord.device_info = {}

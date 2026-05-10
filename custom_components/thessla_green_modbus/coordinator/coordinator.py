@@ -14,24 +14,6 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as _dt_util
 from pymodbus.client import AsyncModbusTcpClient
 
-from .._coordinator_connection_test import run_connection_test as _run_connection_test_impl
-from .._coordinator_device_info import run_device_scan as _run_device_scan_impl
-from .._coordinator_device_info import warn_missing_device_info as _warn_missing_device_info_impl
-from .._coordinator_factory import build_config_from_params as _build_config_from_params_impl
-from .._coordinator_init import apply_coordinator_config as _apply_coordinator_config_impl
-from .._coordinator_init import normalize_runtime_config as _normalize_runtime_config_impl
-from .._coordinator_register_groups import (
-    compute_register_groups as _compute_register_groups_impl,
-)
-from .._coordinator_register_processing import (
-    find_register_name as _find_register_name_impl,
-)
-from .._coordinator_register_processing import (
-    process_register_value as _process_register_value_impl,
-)
-from .._coordinator_scan_result import apply_scan_result as _apply_scan_result_impl
-from .._coordinator_scanner_kwargs import build_scanner_kwargs as _build_scanner_kwargs_impl
-from .._coordinator_transport_select import select_auto_transport as _select_auto_transport_impl
 from ..const import (
     CONNECTION_MODE_AUTO,
     CONNECTION_MODE_TCP,
@@ -58,29 +40,6 @@ from ..const import (
     UNKNOWN_MODEL,
     input_registers,
 )
-from ..coordinator_config import normalize_scan_interval as _normalize_scan_interval_impl
-from ..coordinator_diagnostics import (
-    device_name as _device_name_impl,
-)
-from ..coordinator_diagnostics import (
-    get_device_info as _get_device_info_impl,
-)
-from ..coordinator_diagnostics import (
-    get_diagnostic_data as _get_diagnostic_data_impl,
-)
-from ..coordinator_diagnostics import (
-    performance_stats as _performance_stats_impl,
-)
-from ..coordinator_diagnostics import (
-    status_overview as _status_overview_impl,
-)
-from ..coordinator_runtime import normalize_backoff as _normalize_backoff_impl
-from ..coordinator_runtime import parse_backoff_jitter as _parse_backoff_jitter_impl
-from ..coordinator_state import (
-    initialize_runtime_state as _initialize_runtime_state_impl,
-)
-from ..coordinator_state import normalize_serial_settings as _normalize_serial_settings_impl
-from ..coordinator_state import resolve_effective_batch as _resolve_effective_batch_impl
 from ..errors import CannotConnect
 from ..register_defs_cache import get_register_definitions
 from ..registers.read_planner import group_reads
@@ -93,6 +52,7 @@ from ..scanner import (
 from ..transport.base import BaseModbusTransport
 from ..utils import resolve_connection_settings
 from .capabilities import _CoordinatorCapabilitiesMixin
+from .config_normalization import normalize_scan_interval as _normalize_scan_interval_impl
 from .config_properties import _CoordinatorConfigPropertiesMixin
 from .connection import (
     build_rtu_transport as _build_rtu_transport_impl,
@@ -128,12 +88,44 @@ from .connection_state import (
 from .connection_state import (
     mark_connection_failure as _mark_connection_failure_impl,
 )
+from .connection_test import run_connection_test as _run_connection_test_impl
+from .device_info import run_device_scan as _run_device_scan_impl
+from .device_info import warn_missing_device_info as _warn_missing_device_info_impl
+from .diagnostics import (
+    device_name as _device_name_impl,
+)
+from .diagnostics import (
+    get_device_info as _get_device_info_impl,
+)
+from .diagnostics import (
+    get_diagnostic_data as _get_diagnostic_data_impl,
+)
+from .diagnostics import (
+    performance_stats as _performance_stats_impl,
+)
+from .diagnostics import (
+    status_overview as _status_overview_impl,
+)
 from .disconnect import close_client_connection as _close_client_connection_impl
 from .disconnect import disconnect_locked as _disconnect_locked_impl
+from .factory import build_config_from_params as _build_config_from_params_impl
+from .init_config import apply_coordinator_config as _apply_coordinator_config_impl
+from .init_config import normalize_runtime_config as _normalize_runtime_config_impl
 from .io import _ModbusIOMixin
 from .lifecycle import async_setup as _async_setup_impl
 from .models import CoordinatorConfig
+from .register_groups import (
+    compute_register_groups as _compute_register_groups_impl,
+)
+from .register_processing import (
+    find_register_name as _find_register_name_impl,
+)
+from .register_processing import (
+    process_register_value as _process_register_value_impl,
+)
 from .retry import _PermanentModbusError
+from .runtime import normalize_backoff as _normalize_backoff_impl
+from .runtime import parse_backoff_jitter as _parse_backoff_jitter_impl
 from .runtime_state import clear_register_failure as _clear_register_failure_impl
 from .runtime_state import mark_registers_failed as _mark_registers_failed_impl
 from .scan import (
@@ -160,7 +152,15 @@ from .scan import (
 from .scan import (
     store_scan_cache as _store_scan_cache_impl,
 )
+from .scan_result import apply_scan_result as _apply_scan_result_impl
+from .scanner_kwargs import build_scanner_kwargs as _build_scanner_kwargs_impl
 from .schedule import _CoordinatorScheduleMixin
+from .state import (
+    initialize_runtime_state as _initialize_runtime_state_impl,
+)
+from .state import normalize_serial_settings as _normalize_serial_settings_impl
+from .state import resolve_effective_batch as _resolve_effective_batch_impl
+from .transport_select import select_auto_transport as _select_auto_transport_impl
 from .update import async_update_data as _async_update_data_impl
 
 __all__ = [
