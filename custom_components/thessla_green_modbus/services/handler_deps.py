@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from .protocols import (
+from ..protocols import (
     ClampAirflowRate,
     CreateLogLevelManager,
     DateTimeNow,

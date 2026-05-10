@@ -1,7 +1,7 @@
 """Runtime helper behavior tests for config flow validation."""
 
 import pytest
-from custom_components.thessla_green_modbus.config_flow_device_validation import (
+from custom_components.thessla_green_modbus.config_flow.device_validation import (
     _build_validation_result,
     _create_scanner,
     _require_verify_connection,

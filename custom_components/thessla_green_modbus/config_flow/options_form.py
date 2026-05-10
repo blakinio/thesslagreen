@@ -7,7 +7,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.const import CONF_PORT
 
-from .const import (
+from ..const import (
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
     CONF_AIRFLOW_UNIT,
@@ -60,7 +60,7 @@ from .const import (
     MAX_BATCH_REGISTERS,
     MIN_SCAN_INTERVAL,
 )
-from .utils import resolve_connection_settings
+from ..utils import resolve_connection_settings
 
 
 def build_options_defaults(

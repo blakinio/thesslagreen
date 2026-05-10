@@ -100,3 +100,88 @@ All moved modules are pure helpers with no side effects. Function signatures, re
 - `tools/validate_entity_mappings.py`: 366 entities validated
 - `tools/check_translations.py`: all translation keys present
 - `pytest -k "coordinator or connection or scan or diagnostics"`: same pass/fail profile as main (all new failures pre-existing)
+
+---
+
+# Config Flow and Services Package Consolidation
+
+- Date: 2026-05-10
+- Branch: `claude/refactor-config-services-packages-RtYUp`
+
+## Config flow helpers moved into `config_flow/` package
+
+| Old root path | New path in `config_flow/` |
+|---|---|
+| `config_flow.py` | `config_flow/__init__.py` |
+| `config_flow_confirm.py` | `config_flow/confirm.py` |
+| `config_flow_device_validation.py` | `config_flow/device_validation.py` |
+| `config_flow_entry.py` | `config_flow/entry.py` |
+| `config_flow_errors.py` | `config_flow/errors.py` |
+| `config_flow_network.py` | `config_flow/network.py` |
+| `config_flow_options.py` | `config_flow/options.py` |
+| `config_flow_options_form.py` | `config_flow/options_form.py` |
+| `config_flow_payloads.py` | `config_flow/payloads.py` |
+| `config_flow_reauth.py` | `config_flow/reauth.py` |
+| `config_flow_reauth_confirm.py` | `config_flow/reauth_confirm.py` |
+| `config_flow_runtime.py` | `config_flow/runtime.py` |
+| `config_flow_schema.py` | `config_flow/schema.py` |
+| `config_flow_steps.py` | `config_flow/steps.py` |
+| `config_flow_user_submit.py` | `config_flow/user_submit.py` |
+| `config_flow_validation.py` | `config_flow/validation.py` |
+
+## Services helpers moved into `services/` package
+
+| Old root path | New path in `services/` |
+|---|---|
+| `services.py` | `services/__init__.py` |
+| `services_dispatch.py` | `services/dispatch.py` |
+| `services_handler_deps.py` | `services/handler_deps.py` |
+| `services_handlers_data.py` | `services/handlers_data.py` |
+| `services_handlers_logging.py` | `services/handlers_logging.py` |
+| `services_handlers_maintenance.py` | `services/handlers_maintenance.py` |
+| `services_handlers_mode.py` | `services/handlers_mode.py` |
+| `services_handlers_parameters.py` | `services/handlers_parameters.py` |
+| `services_handlers_schedule.py` | `services/handlers_schedule.py` |
+| `services_helpers.py` | `services/helpers.py` |
+| `services_schema.py` | `services/schema.py` |
+| `services_targets.py` | `services/targets.py` |
+| `services_validation.py` | `services/validation.py` |
+
+## Import cleanup summary
+
+- `config_flow/__init__.py`: all 15 `from .config_flow_X import` updated to `from .X import`; parent package imports (`.const`, `.errors`, `.modbus_exceptions`, `.options`) updated to `..`-prefixed forms.
+- All 15 helper files in `config_flow/`: sibling `config_flow_X` references updated to `.X`; parent package references updated to `..X`.
+- `services/__init__.py`: all 12 `from .services_X import` updated to `from .X import`; `from . import services_schema` updated to `from . import schema`; parent package imports updated to `..`-prefixed forms.
+- All 12 helper files in `services/`: sibling `services_X` references updated to `.X`; parent package references updated to `..X`.
+- Import order auto-fixed by `ruff --select I --fix` in 7 files after sibling/parent reordering.
+
+## Tests updated
+
+- `tests/test_api_contracts.py`: `services_schema` → `services.schema`, `services_targets` → `services.targets`
+- `tests/test_config_flow_helpers.py`: `config_flow_device_validation` → `config_flow.device_validation`, `config_flow_schema` → `config_flow.schema`, `config_flow_steps` → `config_flow.steps`
+- `tests/test_config_flow_options.py`: `config_flow_options_form` → `config_flow.options_form`
+- `tests/test_config_flow_runtime_validation.py`: `config_flow_device_validation` → `config_flow.device_validation`
+- `tests/test_services_dispatch_validation.py`: `services_dispatch` → `services.dispatch`, `services_validation` → `services.validation`
+- `tests/test_services_handlers_maintenance.py`: `services_handlers_maintenance` → `services.handlers_maintenance`, `services_schema` → `services.schema`
+- `tests/test_services_handlers_parameters_registration.py`: `services_handler_deps` → `services.handler_deps`, `services_handlers_parameters` → `services.handlers_parameters`, `services_schema` → `services.schema`
+
+## Compatibility files remaining at root level
+
+None. All config flow and services helper modules have been moved. No compatibility shims were required because all callers (component code and tests) were updated in the same PR.
+
+## HA entrypoint behavior unchanged
+
+Home Assistant discovers the config flow by importing `custom_components.thessla_green_modbus.config_flow`. Moving `config_flow.py` to `config_flow/__init__.py` preserves this: Python resolves the package at the same dotted path, and the `ConfigFlow` class remains at `config_flow.ConfigFlow`. Similarly `services/__init__.py` is still imported as `services` with all the same public symbols.
+
+## Service IDs unchanged
+
+All service names (`set_special_mode`, `set_mode`, `set_airflow_schedule`, etc.) are unchanged. The `services.yaml` file was not modified.
+
+## Validation results
+
+- `ruff check`: all checks passed
+- `ruff format --check`: 436 files already formatted
+- `python -m compileall -q`: no syntax errors
+- `tools/check_maintainability.py`: maintainability gate passed
+- `tools/check_translations.py`: all translation keys present
+- All moved-file imports verified (sibling-aware import checker): all correct

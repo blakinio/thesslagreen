@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 import voluptuous as vol
 from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
-from custom_components.thessla_green_modbus.services_dispatch import (
+from custom_components.thessla_green_modbus.services.dispatch import (
     refresh_and_log_success,
     write_device_name_chunks,
     write_mapped_optional_register,
@@ -15,7 +15,7 @@ from custom_components.thessla_green_modbus.services_dispatch import (
     write_register_batch,
     write_register_steps,
 )
-from custom_components.thessla_green_modbus.services_validation import (
+from custom_components.thessla_green_modbus.services.validation import (
     BAUD_MAP,
     filter_reset_value,
     iter_air_quality_writes,

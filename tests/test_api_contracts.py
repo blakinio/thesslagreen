@@ -6,8 +6,8 @@ import custom_components.thessla_green_modbus.config_flow as config_flow
 import custom_components.thessla_green_modbus.coordinator as coordinator
 import custom_components.thessla_green_modbus.scanner.core as scanner_core
 import custom_components.thessla_green_modbus.services as services
-import custom_components.thessla_green_modbus.services_schema as services_schema
-import custom_components.thessla_green_modbus.services_targets as services_targets
+import custom_components.thessla_green_modbus.services.schema as services_schema
+import custom_components.thessla_green_modbus.services.targets as services_targets
 
 
 def test_coordinator_package_public_api_is_minimal() -> None:

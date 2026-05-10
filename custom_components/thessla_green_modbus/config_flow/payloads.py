@@ -7,7 +7,7 @@ from typing import Any
 
 from voluptuous import Invalid as VOL_INVALID
 
-from .const import (
+from ..const import (
     CONF_CONNECTION_MODE,
     CONF_CONNECTION_TYPE,
     CONNECTION_MODE_TCP_RTU,

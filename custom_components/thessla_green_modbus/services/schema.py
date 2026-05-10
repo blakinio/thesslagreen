@@ -7,7 +7,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.helpers import config_validation as cv
 
-from .options import (
+from ..options import (
     BYPASS_MODES,
     DAYS_OF_WEEK,
     FILTER_TYPES,
@@ -19,10 +19,10 @@ from .options import (
     RESET_TYPES,
     SPECIAL_MODE_OPTIONS,
 )
-from .services_validation import (
+from .validation import (
     validate_bypass_temperature_range as _validate_bypass_temperature_range_impl,
 )
-from .services_validation import (
+from .validation import (
     validate_gwc_temperature_range as _validate_gwc_temperature_range_impl,
 )
 

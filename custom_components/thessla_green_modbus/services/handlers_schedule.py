@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from homeassistant.core import HomeAssistant, ServiceCall
 
-from .services_handler_deps import ServiceHandlerDeps
-from .services_schema import SET_AIRFLOW_SCHEDULE_SCHEMA
+from .handler_deps import ServiceHandlerDeps
+from .schema import SET_AIRFLOW_SCHEDULE_SCHEMA
 
 
 def _resolve_schedule_temperature_byte(

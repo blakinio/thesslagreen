@@ -6,7 +6,7 @@ from typing import Any
 
 import voluptuous as vol
 
-from .const import DOMAIN
+from ..const import DOMAIN
 
 FILTER_TYPE_MAP = {"presostat": 1, "flat_filters": 2, "cleanpad": 3, "cleanpad_pure": 4}
 BAUD_MAP = {

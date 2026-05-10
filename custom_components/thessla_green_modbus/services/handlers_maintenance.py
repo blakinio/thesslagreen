@@ -8,20 +8,20 @@ from datetime import datetime as _dt
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 
-from .clock_sync import async_perform_clock_sync
-from .const import (
+from ..clock_sync import async_perform_clock_sync
+from ..const import (
     CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
     DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
 )
-from .modbus_exceptions import ConnectionException, ModbusException
-from .services_dispatch import (
+from ..modbus_exceptions import ConnectionException, ModbusException
+from .dispatch import (
     refresh_and_log_success,
     write_device_name_chunks,
     write_mapped_optional_register,
     write_register_batch,
 )
-from .services_handler_deps import ServiceHandlerDeps
-from .services_schema import (
+from .handler_deps import ServiceHandlerDeps
+from .schema import (
     RESET_FILTERS_SCHEMA,
     RESET_SETTINGS_SCHEMA,
     SET_DEVICE_NAME_SCHEMA,
@@ -30,7 +30,7 @@ from .services_schema import (
     SYNC_DEVICE_CLOCK_SCHEMA,
     SYNC_TIME_SCHEMA,
 )
-from .services_validation import (
+from .validation import (
     filter_reset_value,
     iter_modbus_parameter_writes,
     normalize_modbus_options,

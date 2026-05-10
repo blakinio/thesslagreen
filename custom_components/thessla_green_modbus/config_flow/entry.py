@@ -7,8 +7,7 @@ from typing import Any
 
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 
-from .config_flow_payloads import caps_to_dict
-from .const import (
+from ..const import (
     CONF_BAUD_RATE,
     CONF_CONNECTION_MODE,
     CONF_CONNECTION_TYPE,
@@ -34,7 +33,8 @@ from .const import (
     DEFAULT_SLAVE_ID,
     DEFAULT_STOP_BITS,
 )
-from .utils import resolve_connection_settings
+from ..utils import resolve_connection_settings
+from .payloads import caps_to_dict
 
 
 def build_unique_id(data: dict[str, Any]) -> str:

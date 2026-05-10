@@ -7,15 +7,15 @@ from collections.abc import Callable, Sequence
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 
-from .services_dispatch import refresh_and_log_success, write_register_steps
-from .services_handler_deps import ServiceHandlerDeps
-from .services_schema import (
+from .dispatch import refresh_and_log_success, write_register_steps
+from .handler_deps import ServiceHandlerDeps
+from .schema import (
     SET_AIR_QUALITY_THRESHOLDS_SCHEMA,
     SET_BYPASS_PARAMETERS_SCHEMA,
     SET_GWC_PARAMETERS_SCHEMA,
     SET_TEMPERATURE_CURVE_SCHEMA,
 )
-from .services_validation import BYPASS_MODE_MAP, GWC_MODE_MAP, iter_air_quality_writes
+from .validation import BYPASS_MODE_MAP, GWC_MODE_MAP, iter_air_quality_writes
 
 WriteStep = tuple[str, object | None, bool, str]
 ServiceHandler = Callable[[ServiceCall], object]

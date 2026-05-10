@@ -8,11 +8,11 @@ from collections.abc import Awaitable, Callable
 from importlib import import_module
 from typing import Any
 
-from .error_policy import (
+from ..error_policy import (
     is_request_cancelled_error as _is_request_cancelled_error_impl,
 )
-from .modbus_exceptions import ModbusIOException
-from .transport.retry import ErrorKind, calculate_backoff, classify_transport_error, should_retry
+from ..modbus_exceptions import ModbusIOException
+from ..transport.retry import ErrorKind, calculate_backoff, classify_transport_error, should_retry
 
 TIMEOUT_EXCEPTIONS = (TimeoutError, asyncio.TimeoutError)
 

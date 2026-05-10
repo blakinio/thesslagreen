@@ -10,14 +10,14 @@ from custom_components.thessla_green_modbus.config_flow import (
     _normalize_stop_bits,
     _run_with_retry,
 )
-from custom_components.thessla_green_modbus.config_flow_device_validation import (
+from custom_components.thessla_green_modbus.config_flow.device_validation import (
     _build_success_payload,
     _validate_scan_result,
 )
-from custom_components.thessla_green_modbus.config_flow_schema import (
+from custom_components.thessla_green_modbus.config_flow.schema import (
     _build_serial_defaults_and_validators,
 )
-from custom_components.thessla_green_modbus.config_flow_steps import (
+from custom_components.thessla_green_modbus.config_flow.steps import (
     build_reauth_form_defaults,
     extract_discovered_state,
     initialize_reauth_state,

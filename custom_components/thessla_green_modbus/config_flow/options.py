@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .const import DOMAIN
+from ..const import DOMAIN
 
 
 def strip_translation_prefix(value: str) -> str:

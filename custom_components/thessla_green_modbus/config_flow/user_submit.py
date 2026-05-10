@@ -8,13 +8,13 @@ from typing import Any
 from homeassistant.const import CONF_HOST
 from voluptuous import Invalid as VOL_INVALID
 
-from .const import (
+from ..const import (
     CONF_MAX_REGISTERS_PER_REQUEST,
     DEFAULT_MAX_REGISTERS_PER_REQUEST,
     MAX_BATCH_REGISTERS,
 )
-from .errors import CannotConnect, InvalidAuth
-from .modbus_exceptions import ConnectionException, ModbusException
+from ..errors import CannotConnect, InvalidAuth
+from ..modbus_exceptions import ConnectionException, ModbusException
 
 
 async def process_user_submission(
