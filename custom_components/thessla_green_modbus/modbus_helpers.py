@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from .modbus.call import (
     _KWARG_CACHE,
-    _PreparedCall,
     _SIG_CACHE,
     _apply_attempt_delay,
     _calculate_backoff_delay,
@@ -20,6 +19,7 @@ from .modbus.call import (
     _invoke_with_slave_kwarg,
     _normalize_positional_and_keyword_args,
     _prepare_modbus_call,
+    _PreparedCall,
     _raise_mapped_call_exception,
     _resolve_slave_kwarg,
     _should_apply_external_timeout,
@@ -41,8 +41,8 @@ from .registers.read_planner import (
 
 __all__ = [
     "_KWARG_CACHE",
-    "_PreparedCall",
     "_SIG_CACHE",
+    "_PreparedCall",
     "_apply_attempt_delay",
     "_build_request_frame",
     "_calculate_backoff_delay",

@@ -83,8 +83,8 @@ from ..coordinator_state import normalize_serial_settings as _normalize_serial_s
 from ..coordinator_state import resolve_effective_batch as _resolve_effective_batch_impl
 from ..errors import CannotConnect
 from ..modbus_exceptions import ConnectionException
-from ..registers.read_planner import group_reads
 from ..register_defs_cache import get_register_definitions
+from ..registers.read_planner import group_reads
 from ..registers.register_def import RegisterDef
 from ..scanner import (
     DeviceCapabilities,
