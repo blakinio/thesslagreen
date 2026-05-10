@@ -18,8 +18,6 @@ from .modbus.call import (
     _get_signature,
     _invoke_with_slave_kwarg,
     _log_call_attempt,
-    _log_modbus_request,
-    _log_modbus_response,
     _normalize_positional_and_keyword_args,
     _prepare_modbus_call,
     _PreparedCall,
