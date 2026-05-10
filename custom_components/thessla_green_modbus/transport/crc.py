@@ -19,3 +19,8 @@ def crc16_bytes(data: bytes) -> bytes:
 
 def append_crc(data: bytes) -> bytes:
     return data + crc16_bytes(data)
+
+
+# Aliases used by tests and compatibility shims
+_crc16 = crc16
+_append_crc = append_crc

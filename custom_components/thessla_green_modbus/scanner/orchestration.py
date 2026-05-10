@@ -18,8 +18,8 @@ from ..const import (
 )
 from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from ..modbus_helpers import group_reads as _group_reads
-from ..modbus_transport import RtuModbusTransport
 from ..scanner_device_info import ScannerDeviceInfo
+from ..transport.rtu import RtuModbusTransport
 from . import custom_scan as scanner_custom_scan
 from . import scan_runtime
 from .full_scan_phase import apply_word_register_block

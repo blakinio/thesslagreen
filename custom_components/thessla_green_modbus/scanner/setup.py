@@ -23,14 +23,12 @@ from ..const import (
 )
 from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from ..modbus_helpers import group_reads as _group_reads
-from ..modbus_transport import (
-    BaseModbusTransport,
-    RawRtuOverTcpTransport,
-    RtuModbusTransport,
-    TcpModbusTransport,
-)
-from ..scanner_helpers import MAX_BATCH_REGISTERS, SAFE_REGISTERS
+from ..scanner_helpers import SAFE_REGISTERS
 from ..scanner_register_maps import REGISTER_DEFINITIONS
+from ..transport.base import BaseModbusTransport
+from ..transport.rtu import RtuModbusTransport
+from ..transport.tcp import TcpModbusTransport
+from ..transport.tcp_rtu import RawRtuOverTcpTransport
 from ..utils import default_connection_mode
 from . import state as _state
 from .io import is_request_cancelled_error

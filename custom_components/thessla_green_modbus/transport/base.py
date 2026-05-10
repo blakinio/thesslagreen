@@ -10,6 +10,7 @@ from typing import Any
 from .._transport_retry import apply_transport_backoff, log_transport_retry
 from ..error_policy import to_log_message
 from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from ..modbus_helpers import _call_modbus
 from .retry import classify_transport_error
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,6 +78,36 @@ class BaseModbusTransport(ABC):
             self.offline_state = True
             raise
 
+    async def call(
+        self,
+        func: Any,
+        slave_id: int,
+        *args: Any,
+        attempt: int = 1,
+        max_attempts: int | None = None,
+        backoff: float | None = None,
+        backoff_jitter: float | tuple[float, float] | None = None,
+        apply_backoff: bool = True,
+        **kwargs: Any,
+    ) -> Any:
+        """Call a Modbus function with connection management and retries."""
+
+        async def _invoke() -> Any:
+            return await _call_modbus(
+                func,
+                slave_id,
+                *args,
+                attempt=attempt,
+                max_attempts=max_attempts or self.max_retries,
+                timeout=self.timeout,
+                backoff=backoff if backoff is not None else self.base_backoff,
+                backoff_jitter=backoff_jitter,
+                apply_backoff=apply_backoff,
+                **kwargs,
+            )
+
+        return await self._execute(_invoke, ensure_connection=True)
+
     async def ensure_connected(self) -> None:
         async with self._lock:
             if self._is_connected():
@@ -128,3 +159,47 @@ class BaseModbusTransport(ABC):
 
     @abstractmethod
     async def _reset_connection(self) -> None: ...
+
+    @abstractmethod
+    async def read_input_registers(
+        self,
+        slave_id: int,
+        address: int,
+        *,
+        count: int,
+        attempt: int = 1,
+    ) -> Any:
+        """Read input registers from the device."""
+
+    @abstractmethod
+    async def read_holding_registers(
+        self,
+        slave_id: int,
+        address: int,
+        *,
+        count: int,
+        attempt: int = 1,
+    ) -> Any:
+        """Read holding registers from the device."""
+
+    @abstractmethod
+    async def write_register(
+        self,
+        slave_id: int,
+        address: int,
+        *,
+        value: int,
+        attempt: int = 1,
+    ) -> Any:
+        """Write a single holding register."""
+
+    @abstractmethod
+    async def write_registers(
+        self,
+        slave_id: int,
+        address: int,
+        *,
+        values: list[int],
+        attempt: int = 1,
+    ) -> Any:
+        """Write multiple holding registers."""

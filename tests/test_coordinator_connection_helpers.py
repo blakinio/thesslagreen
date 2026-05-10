@@ -22,10 +22,8 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ConnectionException,
     ModbusException,
 )
-from custom_components.thessla_green_modbus.modbus_transport import (
-    RawRtuOverTcpTransport,
-    TcpModbusTransport,
-)
+from custom_components.thessla_green_modbus.transport.tcp import TcpModbusTransport
+from custom_components.thessla_green_modbus.transport.tcp_rtu import RawRtuOverTcpTransport
 
 
 class _AwaitableConnectClient:

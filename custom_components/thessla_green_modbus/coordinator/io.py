@@ -50,7 +50,7 @@ from .retry import (
 )
 
 if TYPE_CHECKING:
-    from ..modbus_transport import BaseModbusTransport
+    from ..transport.base import BaseModbusTransport
 
 
 class _ModbusIOMixin:

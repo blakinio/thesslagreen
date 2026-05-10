@@ -12,11 +12,9 @@ from custom_components.thessla_green_modbus.modbus_exceptions import (
     ModbusException,
     ModbusIOException,
 )
-from custom_components.thessla_green_modbus.modbus_transport import (
-    RawModbusWriteResponse,
-    RawRtuOverTcpTransport,
-    _crc16,
-)
+from custom_components.thessla_green_modbus.transport.crc import crc16 as _crc16
+from custom_components.thessla_green_modbus.transport.raw import RawModbusWriteResponse
+from custom_components.thessla_green_modbus.transport.tcp_rtu import RawRtuOverTcpTransport
 
 # ---------------------------------------------------------------------------
 # RawRtuOverTcpTransport
@@ -131,7 +129,7 @@ async def test_raw_tcp_read_exactly_timeout():
 
 def test_validate_crc_mismatch():
     """_validate_crc raises ModbusIOException on CRC mismatch."""
-    from custom_components.thessla_green_modbus.modbus_transport import RawRtuOverTcpTransport
+    from custom_components.thessla_green_modbus.transport.tcp_rtu import RawRtuOverTcpTransport
 
     with pytest.raises(ModbusIOException, match="CRC mismatch"):
         RawRtuOverTcpTransport._validate_crc(b"\x01\x03", b"\xff\xff")
@@ -139,7 +137,7 @@ def test_validate_crc_mismatch():
 
 def test_build_read_frame_structure():
     """_build_read_frame produces correct RTU frame."""
-    from custom_components.thessla_green_modbus.modbus_transport import RawRtuOverTcpTransport
+    from custom_components.thessla_green_modbus.transport.tcp_rtu import RawRtuOverTcpTransport
 
     frame = RawRtuOverTcpTransport._build_read_frame(1, 4, 0x0064, 10)
     # slave, func, addr_hi, addr_lo, count_hi, count_lo + 2 CRC bytes = 8
@@ -150,7 +148,7 @@ def test_build_read_frame_structure():
 
 def test_build_write_single_frame_structure():
     """_build_write_single_frame produces correct write single frame."""
-    from custom_components.thessla_green_modbus.modbus_transport import RawRtuOverTcpTransport
+    from custom_components.thessla_green_modbus.transport.tcp_rtu import RawRtuOverTcpTransport
 
     frame = RawRtuOverTcpTransport._build_write_single_frame(1, 0x0064, 42)
     assert len(frame) == 8
@@ -206,7 +204,7 @@ def test_parse_exception_response_payload_rejects_wrong_function():
 
 def test_build_write_multiple_frame_structure():
     """_build_write_multiple_frame produces correct write multiple frame."""
-    from custom_components.thessla_green_modbus.modbus_transport import RawRtuOverTcpTransport
+    from custom_components.thessla_green_modbus.transport.tcp_rtu import RawRtuOverTcpTransport
 
     frame = RawRtuOverTcpTransport._build_write_multiple_frame(1, 0x0064, [10, 20])
     # 1(slave) + 1(func) + 2(addr) + 2(qty) + 1(byte_count) + 4(2 values) + 2(CRC) = 13

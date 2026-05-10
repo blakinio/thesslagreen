@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable, Iterable
 from typing import Any
 
 from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from .modbus_transport import BaseModbusTransport
+from .transport.base import BaseModbusTransport
 
 
 async def run_connection_test(

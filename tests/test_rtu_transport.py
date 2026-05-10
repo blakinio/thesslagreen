@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from custom_components.thessla_green_modbus.const import CONNECTION_TYPE_RTU
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-from custom_components.thessla_green_modbus.modbus_transport import RtuModbusTransport
+from custom_components.thessla_green_modbus.transport.rtu import RtuModbusTransport
 
 
 @pytest.mark.asyncio

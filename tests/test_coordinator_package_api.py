@@ -194,7 +194,7 @@ def test_normalise_available_registers_invalid_type():
 def test_build_tcp_transport_tcp_rtu_mode():
     """TCP_RTU mode returns RawRtuOverTcpTransport."""
     from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP_RTU
-    from custom_components.thessla_green_modbus.modbus_transport import RawRtuOverTcpTransport
+    from custom_components.thessla_green_modbus.transport.tcp_rtu import RawRtuOverTcpTransport
 
     coord = _make_coordinator()
     result = coord._build_tcp_transport(CONNECTION_MODE_TCP_RTU)
@@ -204,7 +204,7 @@ def test_build_tcp_transport_tcp_rtu_mode():
 def test_build_tcp_transport_tcp_mode():
     """TCP mode returns TcpModbusTransport."""
     from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP
-    from custom_components.thessla_green_modbus.modbus_transport import TcpModbusTransport
+    from custom_components.thessla_green_modbus.transport.tcp import TcpModbusTransport
 
     coord = _make_coordinator()
     result = coord._build_tcp_transport(CONNECTION_MODE_TCP)

@@ -83,9 +83,6 @@ from ..coordinator_state import normalize_serial_settings as _normalize_serial_s
 from ..coordinator_state import resolve_effective_batch as _resolve_effective_batch_impl
 from ..errors import CannotConnect
 from ..modbus_helpers import group_reads
-from ..modbus_transport import (
-    BaseModbusTransport,
-)
 from ..register_defs_cache import get_register_definitions
 from ..registers.register_def import RegisterDef
 from ..scanner import (
@@ -93,6 +90,7 @@ from ..scanner import (
     ThesslaGreenDeviceScanner,
     is_request_cancelled_error,
 )
+from ..transport.base import BaseModbusTransport
 from ..utils import resolve_connection_settings
 from .capabilities import _CoordinatorCapabilitiesMixin
 from .config_properties import _CoordinatorConfigPropertiesMixin
@@ -540,33 +538,41 @@ class ThesslaGreenModbusCoordinator(
         stop_bits = SERIAL_STOP_BITS_MAP.get(
             self.config.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
         )
-        return lambda: _ensure_transport_selected_impl(
-            current_transport=self._transport,
-            connection_type=self.config.connection_type,
-            connection_mode=self.config.connection_mode,
-            host=self.config.host,
-            port=self.config.port,
-            serial_port=self.config.serial_port,
-            baudrate=self.config.baud_rate,
-            parity=parity,
-            stopbits=stop_bits,
-            retry=self.retry,
-            backoff=self.backoff,
-            max_backoff=DEFAULT_MAX_BACKOFF,
-            timeout=self.timeout,
-            offline_state=self.offline_state,
-            connection_type_rtu=CONNECTION_TYPE_RTU,
-            connection_mode_auto=CONNECTION_MODE_AUTO,
-            connection_mode_tcp=CONNECTION_MODE_TCP,
-            build_rtu_transport_fn=_build_rtu_transport_impl,
-            build_tcp_transport_fn=self._build_tcp_transport,
-            select_auto_transport_fn=lambda: _select_auto_transport_impl(
-                resolved_connection_mode=self._resolved_connection_mode,
-                build_tcp_transport=self._build_tcp_transport,
-                try_direct_client_connect=lambda allow_parameterless_ctor: (
-                    self._try_direct_client_connect(
-                        allow_parameterless_ctor=allow_parameterless_ctor
-                    )
+
+        def _ensure_transport_selected() -> Any:
+            return lambda: _ensure_transport_selected_impl(
+                current_transport=self._transport,
+                connection_type=self.config.connection_type,
+                connection_mode=self.config.connection_mode,
+                host=self.config.host,
+                port=self.config.port,
+                serial_port=self.config.serial_port,
+                baudrate=self.config.baud_rate,
+                parity=parity,
+                stopbits=stop_bits,
+                retry=self.retry,
+                backoff=self.backoff,
+                max_backoff=DEFAULT_MAX_BACKOFF,
+                timeout=self.timeout,
+                offline_state=self.offline_state,
+                connection_type_rtu=CONNECTION_TYPE_RTU,
+                connection_mode_auto=CONNECTION_MODE_AUTO,
+                connection_mode_tcp=CONNECTION_MODE_TCP,
+                build_rtu_transport_fn=_build_rtu_transport_impl,
+                build_tcp_transport_fn=self._build_tcp_transport,
+                select_auto_transport_fn=lambda: _select_auto_transport_impl(
+                    resolved_connection_mode=self._resolved_connection_mode,
+                    build_tcp_transport=self._build_tcp_transport,
+                    try_direct_client_connect=lambda allow_parameterless_ctor: (
+                        self._try_direct_client_connect(
+                            allow_parameterless_ctor=allow_parameterless_ctor
+                        )
+                    ),
+                    port=self.config.port,
+                    timeout=self.timeout,
+                    slave_id=self.config.slave_id,
+                    host=self.config.host,
+                    logger=_LOGGER,
                 ),
                 port=self.config.port,
                 timeout=self.timeout,

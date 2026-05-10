@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from custom_components.thessla_green_modbus.const import CONNECTION_TYPE_TCP
-from custom_components.thessla_green_modbus.modbus_transport import TcpModbusTransport
+from custom_components.thessla_green_modbus.transport.tcp import TcpModbusTransport
 
 
 @pytest.mark.asyncio

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from custom_components.thessla_green_modbus.const import CONNECTION_TYPE_TCP
-from custom_components.thessla_green_modbus.modbus_transport import TcpModbusTransport
+from custom_components.thessla_green_modbus.transport.tcp import TcpModbusTransport
 
 
 def _make_tcp(connection_type=CONNECTION_TYPE_TCP, **kwargs):
