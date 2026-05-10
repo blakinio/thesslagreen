@@ -9,7 +9,6 @@ from typing import Any
 from pymodbus.client import AsyncModbusTcpClient
 
 from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from ..registers.read_planner import chunk_register_range
 from ..transport.retry import ErrorKind, classify_transport_error
 from .io_core import (
     _call_modbus_with_fallback,
