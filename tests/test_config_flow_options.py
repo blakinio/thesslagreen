@@ -8,7 +8,7 @@ from custom_components.thessla_green_modbus.config_flow import (
     ConfigFlow,
     OptionsFlow,
 )
-from custom_components.thessla_green_modbus.config_flow_options_form import (
+from custom_components.thessla_green_modbus.config_flow.options_form import (
     build_options_form_payload,
 )
 from custom_components.thessla_green_modbus.const import (

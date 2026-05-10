@@ -3,12 +3,12 @@ from __future__ import annotations
 import logging
 from types import SimpleNamespace
 
-from custom_components.thessla_green_modbus.services_handler_deps import ServiceHandlerDeps
-from custom_components.thessla_green_modbus.services_handlers_parameters import (
+from custom_components.thessla_green_modbus.services.handler_deps import ServiceHandlerDeps
+from custom_components.thessla_green_modbus.services.handlers_parameters import (
     _parameter_registrations,
     register_parameter_services,
 )
-from custom_components.thessla_green_modbus.services_schema import (
+from custom_components.thessla_green_modbus.services.schema import (
     SET_AIR_QUALITY_THRESHOLDS_SCHEMA,
     SET_BYPASS_PARAMETERS_SCHEMA,
     SET_GWC_PARAMETERS_SCHEMA,

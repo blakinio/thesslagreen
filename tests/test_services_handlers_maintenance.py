@@ -11,12 +11,12 @@ from custom_components.thessla_green_modbus.registers.loader import get_register
 from custom_components.thessla_green_modbus.services import (
     async_setup_services,
 )
-from custom_components.thessla_green_modbus.services_handlers_maintenance import (
+from custom_components.thessla_green_modbus.services.handlers_maintenance import (
     _iter_maintenance_service_bindings,
     _maintenance_handlers,
     _maintenance_registrations,
 )
-from custom_components.thessla_green_modbus.services_schema import (
+from custom_components.thessla_green_modbus.services.schema import (
     RESET_FILTERS_SCHEMA,
     RESET_SETTINGS_SCHEMA,
     SET_DEVICE_NAME_SCHEMA,
