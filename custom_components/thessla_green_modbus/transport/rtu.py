@@ -14,7 +14,7 @@ else:  # pragma: no cover
     SERIAL_IMPORT_ERROR = None
 
 from ..modbus_exceptions import ConnectionException
-from ..modbus_helpers import async_maybe_await_close
+from ..modbus.client_close import async_maybe_await_close
 from .tcp import _ClientBackedTransport
 
 _LOGGER = logging.getLogger(__name__)

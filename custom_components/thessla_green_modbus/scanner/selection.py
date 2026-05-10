@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..modbus_helpers import group_reads as _group_reads
+from ..registers.read_planner import group_reads as _group_reads
 from ..scanner_register_maps import (
     COIL_REGISTERS,
     DISCRETE_INPUT_REGISTERS,

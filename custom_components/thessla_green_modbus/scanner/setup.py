@@ -22,7 +22,7 @@ from ..const import (
     SERIAL_STOP_BITS_MAP,
 )
 from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from ..modbus_helpers import group_reads as _group_reads
+from ..registers.read_planner import group_reads as _group_reads
 from ..scanner_helpers import SAFE_REGISTERS
 from ..scanner_register_maps import REGISTER_DEFINITIONS
 from ..transport.base import BaseModbusTransport

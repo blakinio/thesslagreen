@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 from .modbus_exceptions import ConnectionException
-from .modbus_helpers import _call_modbus
+from .modbus.call import _call_modbus
 
 
 async def call_modbus(

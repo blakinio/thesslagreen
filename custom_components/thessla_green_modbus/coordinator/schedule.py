@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from ..const import MAX_REGS_PER_REQUEST
 from ..modbus_exceptions import ConnectionException, ModbusException
-from ..modbus_helpers import chunk_register_values
+from ..registers.read_planner import chunk_register_values
 from ..registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
 from .write_path import (
     SingleWritePlan,
