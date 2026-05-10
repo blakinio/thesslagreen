@@ -271,6 +271,31 @@ def _raise_mapped_call_exception(
     raise
 
 
+def _log_call_attempt(
+    prepared: _PreparedCall,
+    *,
+    slave_id: int,
+    attempt: int,
+    max_attempts: int,
+    kwargs: dict[str, Any],
+) -> None:
+    """Log the start of a Modbus call attempt."""
+    _LOGGER.debug(
+        "Calling %s on slave %s (batch=%s attempt %s/%s)",
+        prepared.func_name,
+        slave_id,
+        prepared.batch_size,
+        attempt,
+        max_attempts,
+    )
+    _log_modbus_request(
+        func_name=prepared.func_name,
+        slave_id=slave_id,
+        positional=prepared.positional,
+        kwargs=kwargs,
+    )
+
+
 async def _call_modbus(
     func: Callable[..., Awaitable[Any]],
     slave_id: int,
@@ -309,20 +334,8 @@ async def _call_modbus(
         max_attempts=max_attempts,
     )
 
-    _LOGGER.debug(
-        "Calling %s on slave %s (batch=%s attempt %s/%s)",
-        prepared.func_name,
-        slave_id,
-        prepared.batch_size,
-        attempt,
-        max_attempts,
-    )
-
-    _log_modbus_request(
-        func_name=prepared.func_name,
-        slave_id=slave_id,
-        positional=prepared.positional,
-        kwargs=kwargs,
+    _log_call_attempt(
+        prepared, slave_id=slave_id, attempt=attempt, max_attempts=max_attempts, kwargs=kwargs
     )
 
     try:

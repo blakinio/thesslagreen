@@ -1,0 +1,418 @@
+"""Device validation runtime helper for config flow."""
+
+from __future__ import annotations
+
+import asyncio
+import inspect
+import traceback
+from collections.abc import Awaitable, Callable
+from typing import Any
+
+from ..const import (
+    CONF_BAUD_RATE,
+    CONF_CONNECTION_MODE,
+    CONF_DEEP_SCAN,
+    CONF_PARITY,
+    CONF_SERIAL_PORT,
+    CONF_STOP_BITS,
+)
+from ..errors import CannotConnect, InvalidAuth, is_invalid_auth_error
+from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+
+
+def _normalize_connection_params(
+    data: dict[str, Any],
+    *,
+    normalize_connection_type: Callable[[dict[str, Any]], str],
+    validate_slave_id: Callable[[dict[str, Any]], int],
+    validate_tcp_config: Callable[[dict[str, Any]], tuple[str, int]],
+    validate_rtu_config: Callable[[dict[str, Any]], None],
+    conf_name: str,
+    conf_timeout: str,
+    default_name: str,
+    default_port: int,
+    default_timeout: float,
+    default_deep_scan: bool,
+    default_parity: str,
+    default_stop_bits: int,
+    connection_type_tcp: str,
+) -> dict[str, Any]:
+    """Normalize connection-related parameters from user data."""
+    connection_type = normalize_connection_type(data)
+    slave_id = validate_slave_id(data)
+    name = data.get(conf_name, default_name)
+    timeout = data.get(conf_timeout, default_timeout)
+    host = ""
+    port = default_port
+    if connection_type == connection_type_tcp:
+        host, port = validate_tcp_config(data)
+    else:
+        validate_rtu_config(data)
+    return {
+        "connection_type": connection_type,
+        "slave_id": slave_id,
+        "name": name,
+        "timeout": timeout,
+        "host": host,
+        "port": port,
+        "deep_scan": data.get(CONF_DEEP_SCAN, default_deep_scan),
+        "connection_mode": data.get(CONF_CONNECTION_MODE),
+        "serial_port": data.get(CONF_SERIAL_PORT),
+        "baud_rate": data.get(CONF_BAUD_RATE),
+        "parity": data.get(CONF_PARITY, default_parity),
+        "stop_bits": data.get(CONF_STOP_BITS, default_stop_bits),
+    }
+
+
+def _build_success_payload(name: str, scan_result: dict[str, Any]) -> dict[str, Any]:
+    """Construct final success payload for config flow."""
+    return {
+        "title": name,
+        "device_info": scan_result.get("device_info", {}),
+        "scan_result": scan_result,
+    }
+
+
+def _validate_scan_result(scan_result: Any) -> dict[str, Any]:
+    """Validate scanner payload shape and return typed mapping."""
+    if not isinstance(scan_result, dict) or not scan_result:
+        raise CannotConnect("invalid_format")
+    return scan_result
+
+
+def _build_validation_result(
+    *,
+    name: str,
+    scan_result: dict[str, Any],
+    capabilities_cls: type,
+    process_scan_capabilities: Callable[[dict[str, Any], type], dict[str, Any]],
+) -> dict[str, Any]:
+    """Attach normalized capabilities and build final payload."""
+    scan_result["capabilities"] = process_scan_capabilities(scan_result, capabilities_cls)
+    return _build_success_payload(name, scan_result)
+
+
+def _require_verify_connection(scanner: Any) -> Callable[[], Any]:
+    """Return scanner verify callback or raise when missing."""
+    verify_cb = getattr(scanner, "verify_connection", None)
+    if not callable(verify_cb):
+        raise AttributeError("verify_connection")
+    return verify_cb
+
+
+def _build_timeout_runner(
+    *,
+    run_with_retry: Callable[[Callable[[], Awaitable[Any]], int, float], Awaitable[Any]],
+    call_with_optional_timeout: Callable[[Callable[[], Any], float], Awaitable[Any]],
+    retries: int,
+    backoff: float,
+) -> Callable[[Callable[[], Any], float], Awaitable[Any]]:
+    """Create retry+timeout wrapper for scanner callbacks."""
+
+    async def _run(func: Callable[[], Any], timeout: float) -> Any:
+        return await run_with_retry(
+            lambda: call_with_optional_timeout(func, timeout),
+            retries,
+            backoff,
+        )
+
+    return _run
+
+
+async def _maybe_close_scanner(scanner: Any | None) -> None:
+    """Close scanner instance when available."""
+    if scanner is not None and hasattr(scanner, "close"):
+        close_result = scanner.close()
+        if inspect.isawaitable(close_result):
+            await close_result
+
+
+async def _run_scanner_validation(
+    *,
+    scanner: Any,
+    timeout: float,
+    run_scanner_call: Callable[[Callable[[], Any], float], Awaitable[Any]],
+) -> dict[str, Any]:
+    """Run connection verification and device scan."""
+    short_timeout = max(2, timeout)
+    verify_cb = _require_verify_connection(scanner)
+    await run_scanner_call(verify_cb, short_timeout)
+    return _validate_scan_result(await run_scanner_call(scanner.scan_device, timeout))
+
+
+async def _run_full_scan(
+    *,
+    scanner: Any,
+    params: dict[str, Any],
+    default_retry: int,
+    config_flow_backoff: float,
+    run_with_retry: Callable[[Callable[[], Awaitable[Any]], int, float], Awaitable[Any]],
+    call_with_optional_timeout: Callable[[Callable[[], Any], float], Awaitable[Any]],
+) -> dict[str, Any]:
+    """Run complete scanner validation scan for an existing scanner."""
+    run_scanner_call = _build_timeout_runner(
+        run_with_retry=run_with_retry,
+        call_with_optional_timeout=call_with_optional_timeout,
+        retries=default_retry,
+        backoff=config_flow_backoff,
+    )
+    scan_result = await _run_scanner_validation(
+        scanner=scanner,
+        timeout=params["timeout"],
+        run_scanner_call=run_scanner_call,
+    )
+    return scan_result
+
+
+async def _create_scanner(
+    *,
+    scanner_cls: Any,
+    hass: Any,
+    params: dict[str, Any],
+    default_retry: int,
+    config_flow_backoff: float,
+    run_with_retry: Callable[[Callable[[], Awaitable[Any]], int, float], Awaitable[Any]],
+) -> Any:
+    """Create scanner instance using normalized connection parameters."""
+    return await run_with_retry(
+        lambda: scanner_cls.create(
+            host=params["host"],
+            port=params["port"],
+            slave_id=params["slave_id"],
+            timeout=params["timeout"],
+            retry=default_retry,
+            backoff=config_flow_backoff,
+            deep_scan=params["deep_scan"],
+            connection_type=params["connection_type"],
+            connection_mode=params["connection_mode"],
+            serial_port=params["serial_port"],
+            baud_rate=params["baud_rate"],
+            parity=params["parity"],
+            stop_bits=params["stop_bits"],
+            hass=hass,
+        ),
+        default_retry,
+        config_flow_backoff,
+    )
+
+
+def _map_validation_exception(
+    exc: BaseException,
+    *,
+    is_request_cancelled_error: Callable[[ModbusIOException], bool],
+    classify_os_error: Callable[[OSError], str],
+    should_log_timeout_traceback: Callable[[BaseException], bool],
+    logger: Any,
+    timeout_exceptions: tuple[type[BaseException], ...],
+) -> Exception:
+    """Map low-level exceptions to flow-facing exceptions."""
+    if isinstance(exc, ConnectionException):
+        logger.error("Connection error: %s", exc)
+        logger.debug("Traceback:\n%s", traceback.format_exc())
+        return CannotConnect("cannot_connect")
+    if isinstance(exc, ModbusIOException):
+        if is_request_cancelled_error(exc):
+            logger.info("Modbus request cancelled during device validation.")
+            return CannotConnect("timeout")
+        logger.error("Modbus IO error during device validation: %s", exc)
+        logger.debug("Traceback:\n%s", traceback.format_exc())
+        return CannotConnect("io_error")
+    if isinstance(exc, timeout_exceptions):
+        logger.warning("Timeout during device validation: %s", exc)
+        if should_log_timeout_traceback(exc):
+            logger.debug("Traceback:\n%s", traceback.format_exc())
+        return CannotConnect("timeout")
+    if isinstance(exc, ModbusException):
+        logger.error("Modbus error: %s", exc)
+        logger.debug("Traceback:\n%s", traceback.format_exc())
+        if is_invalid_auth_error(exc):
+            return InvalidAuth()
+        return CannotConnect("modbus_error")
+    if isinstance(exc, AttributeError):
+        logger.error("Attribute error during device validation: %s", exc)
+        logger.debug("Traceback:\n%s", traceback.format_exc())
+        return CannotConnect("missing_method")
+    if isinstance(exc, OSError):
+        reason = classify_os_error(exc)
+        if reason == "dns_failure":
+            logger.error("DNS resolution failed: %s", exc)
+        elif reason == "connection_refused":
+            logger.error("Connection refused: %s", exc)
+        else:
+            logger.error("Unexpected error during device validation: %s", exc)
+        logger.debug("Traceback:\n%s", traceback.format_exc())
+        return CannotConnect(reason)
+    if isinstance(exc, (ValueError, TypeError, RuntimeError, ImportError)):
+        logger.error("Unexpected error during device validation: %s", exc)
+        logger.debug("Traceback:\n%s", traceback.format_exc())
+        return CannotConnect("cannot_connect")
+    return exc  # passthrough
+
+
+def _raise_if_unmapped(mapped: Exception, original: BaseException) -> None:
+    """Raise mapped exceptions, passthrough unknown ones untouched."""
+    if mapped is original:
+        raise original
+    raise mapped from original
+
+
+async def validate_input_impl(
+    hass: Any,
+    data: dict[str, Any],
+    *,
+    normalize_connection_type: Callable[[dict[str, Any]], str],
+    validate_slave_id: Callable[[dict[str, Any]], int],
+    validate_tcp_config: Callable[[dict[str, Any]], tuple[str, int]],
+    validate_rtu_config: Callable[[dict[str, Any]], None],
+    load_scanner_module: Callable[[Any], Awaitable[Any]],
+    scanner_cls_override: Any,
+    capabilities_cls_override: Any,
+    run_with_retry: Callable[[Callable[[], Awaitable[Any]], int, float], Awaitable[Any]],
+    call_with_optional_timeout: Callable[[Callable[[], Any], float], Awaitable[Any]],
+    process_scan_capabilities: Callable[[dict[str, Any], type], dict[str, Any]],
+    is_request_cancelled_error: Callable[[ModbusIOException], bool],
+    classify_os_error: Callable[[OSError], str],
+    should_log_timeout_traceback: Callable[[BaseException], bool],
+    logger: Any,
+    conf_name: str,
+    conf_timeout: str,
+    default_name: str,
+    default_port: int,
+    default_timeout: float,
+    default_retry: int,
+    default_deep_scan: bool,
+    default_parity: str,
+    default_stop_bits: int,
+    connection_type_tcp: str,
+    config_flow_backoff: float,
+    timeout_exceptions: tuple[type[BaseException], ...],
+) -> dict[str, Any]:
+    """Validate user-provided connection data and return scan payload."""
+    params = _normalize_validation_inputs(
+        data=data,
+        normalize_connection_type=normalize_connection_type,
+        validate_slave_id=validate_slave_id,
+        validate_tcp_config=validate_tcp_config,
+        validate_rtu_config=validate_rtu_config,
+        conf_name=conf_name,
+        conf_timeout=conf_timeout,
+        default_name=default_name,
+        default_port=default_port,
+        default_timeout=default_timeout,
+        default_deep_scan=default_deep_scan,
+        default_parity=default_parity,
+        default_stop_bits=default_stop_bits,
+        connection_type_tcp=connection_type_tcp,
+    )
+    scanner_cls, capabilities_cls = await _resolve_runtime_classes(
+        hass=hass,
+        load_scanner_module=load_scanner_module,
+        scanner_cls_override=scanner_cls_override,
+        capabilities_cls_override=capabilities_cls_override,
+    )
+    return await _execute_validation_flow(
+        hass=hass,
+        params=params,
+        scanner_cls=scanner_cls,
+        capabilities_cls=capabilities_cls,
+        run_with_retry=run_with_retry,
+        call_with_optional_timeout=call_with_optional_timeout,
+        process_scan_capabilities=process_scan_capabilities,
+        is_request_cancelled_error=is_request_cancelled_error,
+        classify_os_error=classify_os_error,
+        should_log_timeout_traceback=should_log_timeout_traceback,
+        logger=logger,
+        default_retry=default_retry,
+        config_flow_backoff=config_flow_backoff,
+        timeout_exceptions=timeout_exceptions,
+    )
+
+
+def _normalize_validation_inputs(**kwargs: Any) -> dict[str, Any]:
+    return _normalize_connection_params(**kwargs)
+
+
+async def _resolve_runtime_classes(
+    *,
+    hass: Any,
+    load_scanner_module: Callable[[Any], Awaitable[Any]],
+    scanner_cls_override: Any,
+    capabilities_cls_override: Any,
+) -> tuple[Any, Any]:
+    module = await load_scanner_module(hass)
+    return (
+        scanner_cls_override or module.ThesslaGreenDeviceScanner,
+        capabilities_cls_override or module.DeviceCapabilities,
+    )
+
+
+async def _execute_validation_flow(
+    *,
+    hass: Any,
+    params: dict[str, Any],
+    scanner_cls: Any,
+    capabilities_cls: Any,
+    run_with_retry: Callable[[Callable[[], Awaitable[Any]], int, float], Awaitable[Any]],
+    call_with_optional_timeout: Callable[[Callable[[], Any], float], Awaitable[Any]],
+    process_scan_capabilities: Callable[[dict[str, Any], type], dict[str, Any]],
+    is_request_cancelled_error: Callable[[ModbusIOException], bool],
+    classify_os_error: Callable[[OSError], str],
+    should_log_timeout_traceback: Callable[[BaseException], bool],
+    logger: Any,
+    default_retry: int,
+    config_flow_backoff: float,
+    timeout_exceptions: tuple[type[BaseException], ...],
+) -> dict[str, Any]:
+    scanner: Any | None = None
+    handled_exceptions = (
+        ConnectionException,
+        ModbusIOException,
+        ModbusException,
+        AttributeError,
+        OSError,
+        ValueError,
+        TypeError,
+        RuntimeError,
+        ImportError,
+        *timeout_exceptions,
+    )
+    try:
+        scanner = await _create_scanner(
+            scanner_cls=scanner_cls,
+            hass=hass,
+            params=params,
+            default_retry=default_retry,
+            config_flow_backoff=config_flow_backoff,
+            run_with_retry=run_with_retry,
+        )
+        scan_result = await _run_full_scan(
+            scanner=scanner,
+            params=params,
+            default_retry=default_retry,
+            config_flow_backoff=config_flow_backoff,
+            run_with_retry=run_with_retry,
+            call_with_optional_timeout=call_with_optional_timeout,
+        )
+
+        return _build_validation_result(
+            name=params["name"],
+            scan_result=scan_result,
+            capabilities_cls=capabilities_cls,
+            process_scan_capabilities=process_scan_capabilities,
+        )
+    except asyncio.CancelledError:
+        raise
+    except CannotConnect:
+        raise
+    except handled_exceptions as exc:
+        mapped = _map_validation_exception(
+            exc,
+            is_request_cancelled_error=is_request_cancelled_error,
+            classify_os_error=classify_os_error,
+            should_log_timeout_traceback=should_log_timeout_traceback,
+            logger=logger,
+            timeout_exceptions=timeout_exceptions,
+        )
+        _raise_if_unmapped(mapped, exc)
+    finally:
+        await _maybe_close_scanner(scanner)

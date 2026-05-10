@@ -4,12 +4,12 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from custom_components.thessla_green_modbus._config_flow.options_form import (
+    build_options_form_payload,
+)
 from custom_components.thessla_green_modbus.config_flow import (
     ConfigFlow,
     OptionsFlow,
-)
-from custom_components.thessla_green_modbus.config_flow.options_form import (
-    build_options_form_payload,
 )
 from custom_components.thessla_green_modbus.const import (
     CONF_CONNECTION_TYPE,
