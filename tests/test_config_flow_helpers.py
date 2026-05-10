@@ -3,27 +3,27 @@
 import asyncio
 
 import pytest
-from custom_components.thessla_green_modbus.config_flow import (
-    ConfigFlow,
-    _normalize_baud_rate,
-    _normalize_parity,
-    _normalize_stop_bits,
-    _run_with_retry,
-)
-from custom_components.thessla_green_modbus.config_flow.device_validation import (
+from custom_components.thessla_green_modbus._config_flow.device_validation import (
     _build_success_payload,
     _validate_scan_result,
 )
-from custom_components.thessla_green_modbus.config_flow.schema import (
+from custom_components.thessla_green_modbus._config_flow.schema import (
     _build_serial_defaults_and_validators,
 )
-from custom_components.thessla_green_modbus.config_flow.steps import (
+from custom_components.thessla_green_modbus._config_flow.steps import (
     build_reauth_form_defaults,
     extract_discovered_state,
     initialize_reauth_state,
     resolve_reauth_defaults,
     resolve_reauth_entry,
     resolve_reauth_form_state,
+)
+from custom_components.thessla_green_modbus.config_flow import (
+    ConfigFlow,
+    _normalize_baud_rate,
+    _normalize_parity,
+    _normalize_stop_bits,
+    _run_with_retry,
 )
 from custom_components.thessla_green_modbus.errors import CannotConnect
 from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
@@ -395,7 +395,7 @@ def test_vol_invalid_no_path():
 
 
 def test_normalize_baud_rate_string_zero():
-    """_normalize_baud_rate('0') → int 0 → <= 0 → ValueError (line 209)."""
+    """_normalize_baud_rate('0') -> int 0 -> <= 0 -> ValueError (line 209)."""
     with pytest.raises(ValueError):
         _normalize_baud_rate("0")
 
@@ -433,7 +433,7 @@ def test_looks_like_hostname_starts_with_dash():
 
 
 # ---------------------------------------------------------------------------
-# Pass 16 — D2: _strip_translation_prefix with domain prefix (line 189)
+# Pass 16 - D2: _strip_translation_prefix with domain prefix (line 189)
 # ---------------------------------------------------------------------------
 
 
@@ -447,7 +447,7 @@ def test_strip_translation_prefix_with_domain_prefix():
 
 
 # ---------------------------------------------------------------------------
-# Pass 16 — D3: _normalize_parity non-string non-None (line 218)
+# Pass 16 - D3: _normalize_parity non-string non-None (line 218)
 # ---------------------------------------------------------------------------
 
 
@@ -458,7 +458,7 @@ def test_normalize_parity_non_string_non_none():
 
 
 # ---------------------------------------------------------------------------
-# Pass 16 — D4: _caps_to_dict branches (lines 311, 322, 326, 330)
+# Pass 16 - D4: _caps_to_dict branches (lines 311, 322, 326, 330)
 # ---------------------------------------------------------------------------
 
 
@@ -510,7 +510,7 @@ def test_caps_to_dict_obj_with_as_dict():
 
 
 # ---------------------------------------------------------------------------
-# Pass 16 — D5: validate_input branches
+# Pass 16 - D5: validate_input branches
 # ---------------------------------------------------------------------------
 
 
@@ -521,11 +521,6 @@ async def test_call_with_optional_timeout_sync_function():
 
     result = await cf_mod._call_with_optional_timeout(lambda: 42, timeout=5.0)
     assert result == 42
-
-
-# ---------------------------------------------------------------------------
-# Pass 16 — lines 425-428: RTU validation success path
-# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------
