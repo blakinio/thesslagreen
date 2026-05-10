@@ -8,7 +8,7 @@ import traceback
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from .const import (
+from ..const import (
     CONF_BAUD_RATE,
     CONF_CONNECTION_MODE,
     CONF_DEEP_SCAN,
@@ -16,8 +16,8 @@ from .const import (
     CONF_SERIAL_PORT,
     CONF_STOP_BITS,
 )
-from .errors import CannotConnect, InvalidAuth, is_invalid_auth_error
-from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from ..errors import CannotConnect, InvalidAuth, is_invalid_auth_error
+from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 
 
 def _normalize_connection_params(

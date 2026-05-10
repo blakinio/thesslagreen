@@ -7,8 +7,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 
-from .config_flow_options import denormalize_option
-from .const import (
+from ..const import (
     CONF_BAUD_RATE,
     CONF_CONNECTION_TYPE,
     CONF_DEEP_SCAN,
@@ -33,7 +32,8 @@ from .const import (
     DOMAIN,
     MAX_BATCH_REGISTERS,
 )
-from .utils import resolve_connection_settings
+from ..utils import resolve_connection_settings
+from .options import denormalize_option
 
 
 def _option_default(prefix: str, options: list[Any], value: Any, fallback: Any) -> Any:

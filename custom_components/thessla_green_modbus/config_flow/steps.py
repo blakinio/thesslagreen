@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .const import CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
+from ..const import CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
 
 
 def validate_options_submission(

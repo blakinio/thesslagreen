@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import socket
 
-from .error_policy import should_log_timeout_traceback as _should_log_timeout_traceback_impl
+from ..error_policy import should_log_timeout_traceback as _should_log_timeout_traceback_impl
 
 
 def classify_os_error(exc: OSError) -> str:

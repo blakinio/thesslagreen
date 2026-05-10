@@ -12,35 +12,35 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.service import async_extract_entity_ids
 from homeassistant.util import dt as dt_util
 
-from . import services_schema as _services_schema
-from .const import DOMAIN, SPECIAL_FUNCTION_MAP
-from .scanner import ThesslaGreenDeviceScanner
-from .services_dispatch import write_register as _write_register_impl
-from .services_handler_deps import ServiceHandlerDeps
-from .services_handlers_data import register_data_services
-from .services_handlers_logging import register_logging_services
-from .services_handlers_maintenance import register_maintenance_services
-from .services_handlers_mode import register_mode_services
-from .services_handlers_parameters import register_parameter_services
-from .services_handlers_schedule import register_schedule_services
-from .services_helpers import clamp_airflow_rate as _clamp_airflow_rate_impl
-from .services_targets import (
+from ..const import DOMAIN, SPECIAL_FUNCTION_MAP
+from ..scanner import ThesslaGreenDeviceScanner
+from . import schema as _services_schema
+from .dispatch import write_register as _write_register_impl
+from .handler_deps import ServiceHandlerDeps
+from .handlers_data import register_data_services
+from .handlers_logging import register_logging_services
+from .handlers_maintenance import register_maintenance_services
+from .handlers_mode import register_mode_services
+from .handlers_parameters import register_parameter_services
+from .handlers_schedule import register_schedule_services
+from .helpers import clamp_airflow_rate as _clamp_airflow_rate_impl
+from .targets import (
     extract_entity_ids_with_extractor as _extract_entity_ids_impl,
 )
-from .services_targets import (
+from .targets import (
     get_coordinator_from_entity_id as _get_coordinator_from_entity_id_impl,
 )
-from .services_targets import iter_target_coordinators as _iter_target_coordinators_impl
-from .services_validation import normalize_option as _normalize_option_impl
-from .services_validation import (
+from .targets import iter_target_coordinators as _iter_target_coordinators_impl
+from .validation import normalize_option as _normalize_option_impl
+from .validation import (
     validate_bypass_temperature_range as _validate_bypass_temperature_range_impl,
 )
-from .services_validation import (
+from .validation import (
     validate_gwc_temperature_range as _validate_gwc_temperature_range_impl,
 )
 
 if TYPE_CHECKING:
-    from .coordinator import ThesslaGreenModbusCoordinator
+    from ..coordinator import ThesslaGreenModbusCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 

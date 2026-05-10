@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from homeassistant.core import HomeAssistant, ServiceCall
 
-from .services_handler_deps import ServiceHandlerDeps
-from .services_schema import SET_SPECIAL_MODE_SCHEMA
+from .handler_deps import ServiceHandlerDeps
+from .schema import SET_SPECIAL_MODE_SCHEMA
 
 
 async def _refresh_and_log_mode_success(

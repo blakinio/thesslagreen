@@ -6,8 +6,8 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
 
-from .services_handler_deps import ServiceHandlerDeps
-from .services_schema import (
+from .handler_deps import ServiceHandlerDeps
+from .schema import (
     REFRESH_DEVICE_DATA_SCHEMA,
     SCAN_ALL_REGISTERS_SCHEMA,
 )

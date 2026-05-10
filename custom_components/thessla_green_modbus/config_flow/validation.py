@@ -12,10 +12,7 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.util.network import is_host_valid
 from voluptuous import Invalid as VOL_INVALID
 
-from .config_flow_network import looks_like_hostname as _looks_like_hostname
-from .config_flow_options import normalize_baud_rate, normalize_parity, normalize_stop_bits
-from .config_flow_payloads import caps_to_dict as _caps_to_dict
-from .const import (
+from ..const import (
     CONF_BAUD_RATE,
     CONF_PARITY,
     CONF_SERIAL_PORT,
@@ -27,7 +24,10 @@ from .const import (
     DEFAULT_SERIAL_PORT,
     DEFAULT_STOP_BITS,
 )
-from .errors import CannotConnect
+from ..errors import CannotConnect
+from .network import looks_like_hostname as _looks_like_hostname
+from .options import normalize_baud_rate, normalize_parity, normalize_stop_bits
+from .payloads import caps_to_dict as _caps_to_dict
 
 _LOGGER = logging.getLogger(__name__)
 

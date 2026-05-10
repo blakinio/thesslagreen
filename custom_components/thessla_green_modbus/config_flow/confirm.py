@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import translation
 
-from .const import (
+from ..const import (
     CONF_CONNECTION_MODE,
     CONF_CONNECTION_TYPE,
     CONF_SERIAL_PORT,
@@ -23,7 +23,7 @@ from .const import (
     DEFAULT_PORT,
     DOMAIN,
 )
-from .utils import resolve_connection_settings
+from ..utils import resolve_connection_settings
 
 _LOGGER = logging.getLogger(__name__)
 

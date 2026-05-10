@@ -6,8 +6,8 @@ import logging
 
 from homeassistant.core import HomeAssistant, ServiceCall
 
-from .services_handler_deps import ServiceHandlerDeps
-from .services_schema import SET_LOG_LEVEL_SCHEMA
+from .handler_deps import ServiceHandlerDeps
+from .schema import SET_LOG_LEVEL_SCHEMA
 
 
 def register_logging_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
