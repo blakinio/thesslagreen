@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from .coordinator.retry import _PermanentModbusError
-from .modbus_exceptions import ConnectionException, ModbusException
-from .registers.read_planner import chunk_register_range
+from ..modbus_exceptions import ConnectionException, ModbusException
+from ..registers.read_planner import chunk_register_range
+from .retry import _PermanentModbusError
 
 
 async def read_coil_registers_optimized(owner: Any) -> dict[str, Any]:

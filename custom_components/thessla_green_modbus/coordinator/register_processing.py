@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from .const import SENSOR_UNAVAILABLE, SENSOR_UNAVAILABLE_REGISTERS
-from .register_defs_cache import get_register_definitions
+from ..const import SENSOR_UNAVAILABLE, SENSOR_UNAVAILABLE_REGISTERS
+from ..register_defs_cache import get_register_definitions
 
 _LOGGER = logging.getLogger(__name__.rsplit(".", maxsplit=1)[0])
 

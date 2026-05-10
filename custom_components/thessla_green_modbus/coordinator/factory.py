@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from .const import (
+from ..const import (
     DEFAULT_BACKOFF,
     DEFAULT_BACKOFF_JITTER,
     DEFAULT_BAUD_RATE,
@@ -17,7 +17,7 @@ from .const import (
     DEFAULT_SERIAL_PORT,
     DEFAULT_STOP_BITS,
 )
-from .coordinator.models import CoordinatorConfig
+from .models import CoordinatorConfig
 
 
 def build_config_from_params(

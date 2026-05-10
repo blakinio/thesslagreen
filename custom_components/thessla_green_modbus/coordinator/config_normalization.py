@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING, cast
 
-from .const import (
+from ..const import (
     CONF_BACKOFF,
     CONF_BACKOFF_JITTER,
     CONF_BAUD_RATE,
@@ -48,7 +48,7 @@ from .const import (
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
 
-    from .coordinator import CoordinatorConfig
+    from .models import CoordinatorConfig
 
 
 def coordinator_config_from_entry(

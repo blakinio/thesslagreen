@@ -6,9 +6,9 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 
-from .const import CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU, DEFAULT_PORT
-from .modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
-from .transport.base import BaseModbusTransport
+from ..const import CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU, DEFAULT_PORT
+from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from ..transport.base import BaseModbusTransport
 
 
 async def select_auto_transport(

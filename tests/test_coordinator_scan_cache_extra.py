@@ -1,4 +1,4 @@
-from custom_components.thessla_green_modbus._coordinator_register_processing import (
+from custom_components.thessla_green_modbus.coordinator.register_processing import (
     create_consecutive_groups,
 )
 

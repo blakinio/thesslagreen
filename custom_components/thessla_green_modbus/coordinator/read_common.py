@@ -7,8 +7,8 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from .coordinator.retry import _PermanentModbusError
-from .modbus_exceptions import ModbusException, ModbusIOException
+from ..modbus_exceptions import ModbusException, ModbusIOException
+from .retry import _PermanentModbusError
 
 _LOGGER = logging.getLogger(__name__)
 ILLEGAL_DATA_ADDRESS = 2
