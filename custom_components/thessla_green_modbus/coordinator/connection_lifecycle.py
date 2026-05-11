@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from ..modbus_exceptions import ConnectionException, ModbusException
+from pymodbus.exceptions import ConnectionException, ModbusException
 
 
 async def ensure_connected_lifecycle(

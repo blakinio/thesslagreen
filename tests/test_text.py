@@ -9,11 +9,11 @@ from custom_components.thessla_green_modbus.mappings import (
     ENTITY_MAPPINGS,
     TEXT_ENTITY_MAPPINGS,
 )
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
 from custom_components.thessla_green_modbus.text import ThesslaGreenText
+from pymodbus.exceptions import ConnectionException
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 
@@ -124,7 +124,7 @@ def test_text_set_value_write_failure(mock_coordinator):
 
 def test_text_set_value_modbus_error(mock_coordinator):
     """async_set_value swallows ModbusException and does not refresh."""
-    from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
+    from pymodbus.exceptions import ModbusException
 
     mock_coordinator.async_write_register = AsyncMock(side_effect=ModbusException("fail"))
     entity = ThesslaGreenText(

@@ -7,7 +7,7 @@ import re
 from typing import Any
 
 from ..const import DEFAULT_NAME, KNOWN_MISSING_REGISTERS, UNKNOWN_MODEL
-from ..scanner_device_info import DeviceCapabilities
+from ..scanner.device_info import DeviceCapabilities
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -8,12 +8,12 @@ from custom_components.thessla_green_modbus.const import DOMAIN
 from custom_components.thessla_green_modbus.mappings import (
     SENSOR_ENTITY_MAPPINGS,
 )
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.number import (
     ENTITY_MAPPINGS,
     ThesslaGreenNumber,
     async_setup_entry,
 )
+from pymodbus.exceptions import ConnectionException
 
 
 def test_number_creation_and_state(mock_coordinator):

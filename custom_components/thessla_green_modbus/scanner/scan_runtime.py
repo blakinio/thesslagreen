@@ -6,7 +6,7 @@ import logging
 import time
 from typing import Any
 
-from ..scanner_device_info import DeviceCapabilities, ScannerDeviceInfo
+from ..scanner.device_info import DeviceCapabilities, ScannerDeviceInfo
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -6,8 +6,9 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 
+from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
+
 from ..const import CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU, DEFAULT_PORT
-from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from ..transport.base import BaseModbusTransport
 
 

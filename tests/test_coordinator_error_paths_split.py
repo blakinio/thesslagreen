@@ -5,7 +5,7 @@ import logging
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
+from pymodbus.exceptions import ConnectionException
 
 
 @pytest.mark.asyncio

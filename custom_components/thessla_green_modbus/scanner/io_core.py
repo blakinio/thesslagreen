@@ -10,11 +10,11 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, cast
 
 from pymodbus.client import AsyncModbusTcpClient
+from pymodbus.exceptions import ConnectionException
 
 from ..error_contract import log_retry_attempt
 from ..modbus.call import _calculate_backoff_delay as _mh_calculate_backoff_delay
 from ..modbus.call import _call_modbus
-from ..modbus_exceptions import ConnectionException
 
 if TYPE_CHECKING:
     from pymodbus.client import AsyncModbusSerialClient as AsyncModbusSerialClientType

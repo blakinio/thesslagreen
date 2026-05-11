@@ -7,7 +7,8 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from ..modbus_exceptions import ModbusException, ModbusIOException
+from pymodbus.exceptions import ModbusException, ModbusIOException
+
 from .retry import _PermanentModbusError
 
 _LOGGER = logging.getLogger(__name__)

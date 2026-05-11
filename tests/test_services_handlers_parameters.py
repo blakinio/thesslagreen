@@ -7,13 +7,13 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from custom_components.thessla_green_modbus.modbus_exceptions import (
-    ConnectionException,
-    ModbusException,
-)
 from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 from custom_components.thessla_green_modbus.services import (
     async_setup_services,
+)
+from pymodbus.exceptions import (
+    ConnectionException,
+    ModbusException,
 )
 
 # ---------------------------------------------------------------------------

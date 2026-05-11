@@ -12,12 +12,12 @@ from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime, UnitO
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from pymodbus.exceptions import ConnectionException, ModbusException
 
 from .capability_rules import capability_block_reason
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .mappings import ENTITY_MAPPINGS
-from .modbus_exceptions import ConnectionException, ModbusException
 
 _LOGGER = logging.getLogger(__name__)
 

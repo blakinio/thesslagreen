@@ -7,13 +7,13 @@ from datetime import datetime as _dt
 
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
+from pymodbus.exceptions import ConnectionException, ModbusException
 
 from ..clock_sync import async_perform_clock_sync
 from ..const import (
     CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
     DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
 )
-from ..modbus_exceptions import ConnectionException, ModbusException
 from .dispatch import (
     refresh_and_log_success,
     write_device_name_chunks,

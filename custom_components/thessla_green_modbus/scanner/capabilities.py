@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING, Any, cast
 
 from ..capability_rules import CAPABILITY_PATTERNS
 from ..const import SENSOR_UNAVAILABLE, SENSOR_UNAVAILABLE_REGISTERS
-from ..scanner_helpers import REGISTER_ALLOWED_VALUES, _format_register_value
+from ..scanner.helpers import REGISTER_ALLOWED_VALUES, _format_register_value
 from ..utils import BCD_TIME_PREFIXES, decode_bcd_time
 
 if TYPE_CHECKING:
-    from ..scanner_device_info import DeviceCapabilities
+    from ..scanner.device_info import DeviceCapabilities
 
 _LOGGER = logging.getLogger(__name__)
 

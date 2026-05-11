@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from homeassistant.const import CONF_HOST
+from pymodbus.exceptions import ConnectionException, ModbusException
 from voluptuous import Invalid as VOL_INVALID
 
 from ..const import (
@@ -14,7 +15,6 @@ from ..const import (
     MAX_BATCH_REGISTERS,
 )
 from ..errors import CannotConnect, InvalidAuth
-from ..modbus_exceptions import ConnectionException, ModbusException
 
 
 async def process_user_submission(

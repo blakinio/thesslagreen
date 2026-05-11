@@ -27,7 +27,7 @@ import pytest
 from custom_components.thessla_green_modbus.coordinator import (
     ThesslaGreenModbusCoordinator,
 )
-from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
+from pymodbus.exceptions import ModbusIOException
 
 # Use the real register names from registers/thessla_green_registers_full.json
 # at addresses 0x10..0x13 (Monday slots 1..4). This guards against accidental

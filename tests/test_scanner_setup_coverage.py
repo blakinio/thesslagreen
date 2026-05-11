@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP, CONNECTION_TYPE_RTU
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
+from pymodbus.exceptions import ConnectionException
 
 
 def _make_ok_response(registers):

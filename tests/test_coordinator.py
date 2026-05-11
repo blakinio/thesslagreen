@@ -10,11 +10,11 @@ from custom_components.thessla_green_modbus.const import (
     CONF_MAX_REGISTERS_PER_REQUEST,
     MAX_BATCH_REGISTERS,
 )
-from custom_components.thessla_green_modbus.modbus_exceptions import (
+from custom_components.thessla_green_modbus.registers.loader import RegisterDef
+from pymodbus.exceptions import (
     ConnectionException,
     ModbusException,
 )
-from custom_components.thessla_green_modbus.registers.loader import RegisterDef
 
 from tests.helpers_coordinator import HOLDING_REGISTERS, INPUT_REGISTERS, _make_config_entry
 

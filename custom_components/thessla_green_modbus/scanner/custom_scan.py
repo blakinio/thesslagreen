@@ -5,7 +5,7 @@ from __future__ import annotations
 import inspect
 from typing import Any
 
-from ..scanner_device_info import DeviceCapabilities, ScannerDeviceInfo
+from ..scanner.device_info import DeviceCapabilities, ScannerDeviceInfo
 
 
 def uses_custom_scan_impl(scanner: Any) -> bool:

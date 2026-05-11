@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-from custom_components.thessla_green_modbus.modbus_exceptions import (
+from pymodbus.exceptions import (
     ConnectionException,
     ModbusException,
     ModbusIOException,

@@ -10,8 +10,8 @@ from custom_components.thessla_green_modbus.const import (
     CONNECTION_TYPE_TCP,
     CONNECTION_TYPE_TCP_RTU,
 )
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.transport.tcp import TcpModbusTransport
+from pymodbus.exceptions import ConnectionException
 
 
 def _make_tcp(connection_type=CONNECTION_TYPE_TCP, **kwargs):

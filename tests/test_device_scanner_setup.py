@@ -4,10 +4,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from custom_components.thessla_green_modbus.const import CONNECTION_MODE_AUTO
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.scanner import setup as scanner_setup
 from custom_components.thessla_green_modbus.scanner import state as scanner_state
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
+from pymodbus.exceptions import ConnectionException
 
 pytestmark = pytest.mark.asyncio
 

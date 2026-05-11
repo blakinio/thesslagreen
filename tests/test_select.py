@@ -6,10 +6,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from custom_components.thessla_green_modbus import select
 from custom_components.thessla_green_modbus.mappings import ENTITY_MAPPINGS
-from custom_components.thessla_green_modbus.modbus_exceptions import (
+from custom_components.thessla_green_modbus.select import ThesslaGreenSelect
+from pymodbus.exceptions import (
     ConnectionException,
 )
-from custom_components.thessla_green_modbus.select import ThesslaGreenSelect
 
 
 def test_select_creation_and_state(mock_coordinator):

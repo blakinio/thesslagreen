@@ -7,6 +7,8 @@ import logging
 import time
 from typing import Any
 
+from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
+
 from ..const import (
     CONNECTION_MODE_AUTO,
     CONNECTION_TYPE_RTU,
@@ -16,9 +18,8 @@ from ..const import (
     SERIAL_PARITY_MAP,
     SERIAL_STOP_BITS_MAP,
 )
-from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from ..registers.read_planner import group_reads as _group_reads
-from ..scanner_device_info import ScannerDeviceInfo
+from ..scanner.device_info import ScannerDeviceInfo
 from ..transport.rtu import RtuModbusTransport
 from . import custom_scan as scanner_custom_scan
 from . import scan_runtime

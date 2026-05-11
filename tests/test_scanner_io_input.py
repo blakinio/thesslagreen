@@ -3,10 +3,10 @@
 import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from custom_components.thessla_green_modbus.modbus_exceptions import (
+from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
+from pymodbus.exceptions import (
     ModbusIOException,
 )
-from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
 
 def _make_ok_response(registers):

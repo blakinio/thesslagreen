@@ -25,7 +25,6 @@ sys.modules["custom_components.thessla_green_modbus.registers"] = types.SimpleNa
     get_registers_by_function=loader_stub.get_registers_by_function,
 )
 
-from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
 from custom_components.thessla_green_modbus.modbus_helpers import (
     _KWARG_CACHE,
     _SIG_CACHE,
@@ -40,6 +39,7 @@ from custom_components.thessla_green_modbus.modbus_helpers import (
     async_close_client,
     group_reads,
 )
+from pymodbus.exceptions import ModbusIOException
 
 if original_loader is not None:
     sys.modules["custom_components.thessla_green_modbus.registers.loader"] = original_loader
@@ -420,7 +420,7 @@ async def test_call_modbus_modbus_io_exception_request_cancelled(caplog):
     import logging
 
     from custom_components.thessla_green_modbus import modbus_helpers
-    from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
+    from pymodbus.exceptions import ModbusIOException
 
     async def cancel_func(slave):
         raise ModbusIOException("Request Cancelled by device")

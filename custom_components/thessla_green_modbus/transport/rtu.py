@@ -13,8 +13,9 @@ except (ImportError, AttributeError) as serial_import_err:  # pragma: no cover
 else:  # pragma: no cover
     SERIAL_IMPORT_ERROR = None
 
+from pymodbus.exceptions import ConnectionException
+
 from ..modbus.client_close import async_maybe_await_close
-from ..modbus_exceptions import ConnectionException
 from .tcp import _ClientBackedTransport
 
 _LOGGER = logging.getLogger(__name__)

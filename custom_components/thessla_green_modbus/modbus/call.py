@@ -11,7 +11,8 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
-from ..modbus_exceptions import ModbusIOException
+from pymodbus.exceptions import ModbusIOException
+
 from .frame_logging import _log_modbus_request, _log_modbus_response
 
 _LOGGER = logging.getLogger(__name__)
