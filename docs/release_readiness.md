@@ -1,6 +1,6 @@
 # Release Readiness Audit
 
-Date: 2026-05-10 (final release-readiness pass from `main`)
+Date: 2026-05-11 (follow-up validation pass — fixed stale `dev` reference in `docs/refactor_status.md`)
 Branch: `main`
 
 ---

@@ -27,7 +27,7 @@ The following constraints remain active and must be preserved:
 
 ## Current invariant snapshot
 
-- Target branch for ongoing work: **dev**.
+- Target branch for ongoing work: **main**.
 - Top-level `custom_components/thessla_green_modbus/coordinator.py`: **absent**.
 - Canonical coordinator module: `custom_components/thessla_green_modbus/coordinator/coordinator.py`.
 - Coordinator package API invariant: `__all__ == ["CoordinatorConfig", "ThesslaGreenModbusCoordinator"]`.
