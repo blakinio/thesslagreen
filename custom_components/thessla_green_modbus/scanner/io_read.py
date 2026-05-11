@@ -7,8 +7,8 @@ import logging
 from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
+from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
 
-from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from ..transport.retry import ErrorKind, classify_transport_error
 from .io_core import (
     _call_modbus_with_fallback,

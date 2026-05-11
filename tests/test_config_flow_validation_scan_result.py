@@ -5,11 +5,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from custom_components.thessla_green_modbus.const import CONF_SLAVE_ID
-from custom_components.thessla_green_modbus.modbus_exceptions import (
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
+from pymodbus.exceptions import (
     ConnectionException,
     ModbusException,
 )
-from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 
 
 @pytest.mark.asyncio

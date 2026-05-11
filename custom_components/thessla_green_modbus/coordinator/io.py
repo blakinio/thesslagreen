@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Any
 
-from ..modbus_exceptions import ConnectionException
+from pymodbus.exceptions import ConnectionException
+
 from .read_batches import (
     read_holding_individually as _read_holding_individually_impl,
 )

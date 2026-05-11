@@ -7,6 +7,8 @@ import inspect
 import logging
 from typing import Any
 
+from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
+
 from ..const import (
     CONNECTION_MODE_AUTO,
     CONNECTION_MODE_TCP,
@@ -21,10 +23,9 @@ from ..const import (
     SERIAL_PARITY_MAP,
     SERIAL_STOP_BITS_MAP,
 )
-from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 from ..registers.read_planner import group_reads as _group_reads
-from ..scanner_helpers import MAX_BATCH_REGISTERS, SAFE_REGISTERS
-from ..scanner_register_maps import REGISTER_DEFINITIONS
+from ..scanner.helpers import MAX_BATCH_REGISTERS, SAFE_REGISTERS
+from ..scanner.register_maps import REGISTER_DEFINITIONS
 from ..transport.base import BaseModbusTransport
 from ..transport.rtu import RtuModbusTransport
 from ..transport.tcp import TcpModbusTransport

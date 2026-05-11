@@ -176,7 +176,7 @@ async def test_handle_write_attempt_exception_timeout_disconnects_transport(coor
 @pytest.mark.asyncio
 async def test_handle_write_attempt_exception_final_modbus_failure(coordinator, caplog):
     """Final Modbus/connection failure should stop retries."""
-    from custom_components.thessla_green_modbus.modbus_exceptions import ModbusException
+    from pymodbus.exceptions import ModbusException
 
     coordinator.retry = 2
     coordinator._disconnect = AsyncMock()

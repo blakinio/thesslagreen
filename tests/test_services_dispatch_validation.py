@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock
 
 import pytest
 import voluptuous as vol
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.services.dispatch import (
     refresh_and_log_success,
     write_device_name_chunks,
@@ -26,6 +25,7 @@ from custom_components.thessla_green_modbus.services.validation import (
     validate_bypass_temperature_range,
     validate_gwc_temperature_range,
 )
+from pymodbus.exceptions import ConnectionException
 
 
 @pytest.mark.asyncio

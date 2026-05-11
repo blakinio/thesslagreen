@@ -13,11 +13,11 @@ from custom_components.thessla_green_modbus.const import (
     CONF_SLAVE_ID,
     CONNECTION_TYPE_TCP,
 )
-from custom_components.thessla_green_modbus.modbus_exceptions import (
+from homeassistant.const import CONF_HOST, CONF_PORT
+from pymodbus.exceptions import (
     ConnectionException,
     ModbusException,
 )
-from homeassistant.const import CONF_HOST, CONF_PORT
 
 CONF_NAME = "name"
 

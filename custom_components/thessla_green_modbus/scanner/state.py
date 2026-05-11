@@ -14,7 +14,7 @@ from ..const import (
     SERIAL_PARITY_MAP,
     SERIAL_STOP_BITS_MAP,
 )
-from ..scanner_register_maps import (
+from ..scanner.register_maps import (
     COIL_REGISTERS,
     DISCRETE_INPUT_REGISTERS,
     HOLDING_REGISTERS,

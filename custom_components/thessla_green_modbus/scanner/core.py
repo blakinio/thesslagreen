@@ -7,7 +7,6 @@ from collections.abc import Awaitable, Callable
 from dataclasses import asdict as _dataclasses_asdict
 from typing import TYPE_CHECKING, Any, cast
 
-from .. import scanner_register_maps as _register_maps
 from ..const import (
     DEFAULT_BAUD_RATE,
     DEFAULT_CONNECTION_TYPE,
@@ -27,11 +26,12 @@ from ..registers.loader import (
     async_get_all_registers,
 )
 from ..registers.read_planner import group_reads as _group_reads
-from ..scanner_device_info import DeviceCapabilities, ScannerDeviceInfo
-from ..scanner_helpers import (
+from ..scanner import register_maps as _register_maps
+from ..scanner.device_info import DeviceCapabilities, ScannerDeviceInfo
+from ..scanner.helpers import (
     MAX_BATCH_REGISTERS,
 )
-from ..scanner_helpers import (
+from ..scanner.helpers import (
     SAFE_REGISTERS as _SAFE_REGISTERS,
 )
 from ..transport.base import BaseModbusTransport

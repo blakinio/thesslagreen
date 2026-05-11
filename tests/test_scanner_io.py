@@ -4,11 +4,6 @@ import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from custom_components.thessla_green_modbus.modbus_exceptions import (
-    ConnectionException,
-    ModbusException,
-    ModbusIOException,
-)
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 from custom_components.thessla_green_modbus.scanner.io_read import (
     _attempt_bit_reconnect,
@@ -23,6 +18,11 @@ from custom_components.thessla_green_modbus.scanner.io_read_helpers import (
     classify_skip_range,
     normalize_bit_read_result,
     should_log_terminal_failure,
+)
+from pymodbus.exceptions import (
+    ConnectionException,
+    ModbusException,
+    ModbusIOException,
 )
 
 pytestmark = pytest.mark.asyncio

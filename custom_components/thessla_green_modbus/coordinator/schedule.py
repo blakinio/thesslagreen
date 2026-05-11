@@ -6,8 +6,9 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
+from pymodbus.exceptions import ConnectionException, ModbusException
+
 from ..const import MAX_REGS_PER_REQUEST
-from ..modbus_exceptions import ConnectionException, ModbusException
 from ..registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
 from ..registers.read_planner import chunk_register_values
 from .write_path import (

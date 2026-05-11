@@ -9,7 +9,7 @@ from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
-from custom_components.thessla_green_modbus.scanner_helpers import (
+from custom_components.thessla_green_modbus.scanner.helpers import (
     _decode_season_mode,
     _format_register_value,
 )

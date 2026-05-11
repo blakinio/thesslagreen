@@ -6,7 +6,7 @@ import logging
 
 import pytest
 from custom_components.thessla_green_modbus.error_contract import classify_error
-from custom_components.thessla_green_modbus.modbus_exceptions import (
+from pymodbus.exceptions import (
     ConnectionException,
     ModbusException,
     ModbusIOException,
@@ -48,9 +48,9 @@ def test_cross_layer_classification_contract() -> None:
 
 
 def test_cross_layer_retry_logging_contract(caplog: pytest.LogCaptureFixture) -> None:
-    from custom_components.thessla_green_modbus._transport_retry import log_transport_retry
     from custom_components.thessla_green_modbus.coordinator.retry import log_coordinator_retry
     from custom_components.thessla_green_modbus.scanner.io_runtime import log_scanner_retry
+    from custom_components.thessla_green_modbus.transport.retry_logging import log_transport_retry
 
     caplog.set_level("WARNING")
     exc = TimeoutError("boom")

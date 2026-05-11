@@ -8,8 +8,8 @@ import pytest
 class TestThesslaGreenDeviceScannerErrors:
     @pytest.mark.asyncio
     async def test_scanner_core_connection_failure(self):
-        from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
         from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
+        from pymodbus.exceptions import ConnectionException
 
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 

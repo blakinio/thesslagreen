@@ -114,7 +114,7 @@ from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
 
 def test_format_bcd_time_valid():
     """BCD time registers return HH:MM string."""
-    from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
+    from custom_components.thessla_green_modbus.scanner.helpers import _format_register_value
 
     result = _format_register_value("schedule_summer_mon_1", 0x0830)
     assert result == "08:30"
@@ -122,7 +122,7 @@ def test_format_bcd_time_valid():
 
 def test_format_bcd_time_too_large_sensor_unavailable():
     """BCD time above 0x2359 and equal to SENSOR_UNAVAILABLE returns None (line 40)."""
-    from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
+    from custom_components.thessla_green_modbus.scanner.helpers import _format_register_value
 
     result = _format_register_value("schedule_summer_mon_1", SENSOR_UNAVAILABLE)
     assert result is None
@@ -130,7 +130,7 @@ def test_format_bcd_time_too_large_sensor_unavailable():
 
 def test_format_bcd_time_too_large_invalid():
     """BCD time above 0x2359 but not SENSOR_UNAVAILABLE returns 'invalid' string (line 40)."""
-    from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
+    from custom_components.thessla_green_modbus.scanner.helpers import _format_register_value
 
     result = _format_register_value("schedule_summer_mon_1", 0x9999)
     assert "invalid" in str(result)
@@ -138,7 +138,7 @@ def test_format_bcd_time_too_large_invalid():
 
 def test_format_bcd_time_invalid_bcd_sensor_unavailable():
     """BCD time with invalid BCD digits = SENSOR_UNAVAILABLE returns None (line 43)."""
-    from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
+    from custom_components.thessla_green_modbus.scanner.helpers import _format_register_value
 
     # 0x1390 is <= 0x2359 but has invalid BCD digits (0x90 minutes)
     # decode_bcd_time returns None for invalid BCD
@@ -148,7 +148,7 @@ def test_format_bcd_time_invalid_bcd_sensor_unavailable():
 
 def test_format_bcd_time_invalid_bcd_not_unavailable():
     """BCD time with invalid digits not SENSOR_UNAVAILABLE returns '(invalid)' (line 43)."""
-    from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
+    from custom_components.thessla_green_modbus.scanner.helpers import _format_register_value
 
     # 160 → decoded as 1h 60m → invalid (minutes out of range)
     result = _format_register_value("schedule_summer_mon_1", 160)
@@ -195,7 +195,7 @@ def test_format_time_register_none_when_sensor_unavailable(monkeypatch):
 
 def test_format_setting_register_sensor_unavailable():
     """setting_ register with SENSOR_UNAVAILABLE returns None (line 55)."""
-    from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
+    from custom_components.thessla_green_modbus.scanner.helpers import _format_register_value
 
     result = _format_register_value("setting_monday_1", SENSOR_UNAVAILABLE)
     assert result is None
@@ -203,7 +203,7 @@ def test_format_setting_register_sensor_unavailable():
 
 def test_format_regular_register_sensor_unavailable():
     """Non-special register with SENSOR_UNAVAILABLE returns None."""
-    from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
+    from custom_components.thessla_green_modbus.scanner.helpers import _format_register_value
 
     result = _format_register_value("version_major", SENSOR_UNAVAILABLE)
     assert result is None
@@ -211,7 +211,7 @@ def test_format_regular_register_sensor_unavailable():
 
 def test_format_regular_register_valid():
     """Non-special register with normal value returns value."""
-    from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
+    from custom_components.thessla_green_modbus.scanner.helpers import _format_register_value
 
     result = _format_register_value("version_major", 42)
     assert result == 42
@@ -224,7 +224,7 @@ def test_format_regular_register_valid():
 
 def test_decode_season_mode_both_bytes_set():
     """Returns None when both high and low bytes are set (line 70-71)."""
-    from custom_components.thessla_green_modbus.scanner_helpers import _decode_season_mode
+    from custom_components.thessla_green_modbus.scanner.helpers import _decode_season_mode
 
     # Both high=1 and low=1 → return None
     result = _decode_season_mode(0x0101)
@@ -233,7 +233,7 @@ def test_decode_season_mode_both_bytes_set():
 
 def test_decode_season_mode_high_only():
     """Returns high byte value when only high byte is set (line 72)."""
-    from custom_components.thessla_green_modbus.scanner_helpers import _decode_season_mode
+    from custom_components.thessla_green_modbus.scanner.helpers import _decode_season_mode
 
     result = _decode_season_mode(0x0100)
     assert result == 1
@@ -241,7 +241,7 @@ def test_decode_season_mode_high_only():
 
 def test_decode_season_mode_low_only():
     """Returns low byte value when only low byte is set (line 72)."""
-    from custom_components.thessla_green_modbus.scanner_helpers import _decode_season_mode
+    from custom_components.thessla_green_modbus.scanner.helpers import _decode_season_mode
 
     result = _decode_season_mode(0x0001)
     assert result == 1
@@ -249,7 +249,7 @@ def test_decode_season_mode_low_only():
 
 def test_decode_season_mode_unavailable():
     """Returns None for SENSOR_UNAVAILABLE (line 66-67)."""
-    from custom_components.thessla_green_modbus.scanner_helpers import _decode_season_mode
+    from custom_components.thessla_green_modbus.scanner.helpers import _decode_season_mode
 
     assert _decode_season_mode(SENSOR_UNAVAILABLE) is None
     assert _decode_season_mode(65280) is None
@@ -285,7 +285,7 @@ def test_resolve_connection_settings_none_mode_uses_default_mode():
 
 def test_format_manual_airing_time_invalid_returns_invalid_str():
     """manual_airing_time_to_start with invalid decoded time returns '(invalid)' (line 35)."""
-    from custom_components.thessla_green_modbus.scanner_helpers import _format_register_value
+    from custom_components.thessla_green_modbus.scanner.helpers import _format_register_value
 
     # raw_value = 26 (0x001A). After byte-swap: 0x1A00 = 6656.
     # _decode_register_time(6656): hour = 26 > 23 → None.

@@ -9,6 +9,8 @@ from datetime import timedelta
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
+from pymodbus.exceptions import ConnectionException, ModbusException
+
 from .const import (
     CONF_CONNECTION_MODE,
     CONF_LOG_LEVEL,
@@ -24,7 +26,6 @@ from .const import (
 )
 from .errors import is_invalid_auth_error
 from .mappings import async_setup_entity_mappings
-from .modbus_exceptions import ConnectionException, ModbusException
 from .options import async_setup_options
 from .utils import resolve_connection_settings
 

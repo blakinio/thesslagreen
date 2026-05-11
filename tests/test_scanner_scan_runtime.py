@@ -4,7 +4,7 @@ import logging
 from types import SimpleNamespace
 
 from custom_components.thessla_green_modbus.scanner import scan_runtime
-from custom_components.thessla_green_modbus.scanner_device_info import (
+from custom_components.thessla_green_modbus.scanner.device_info import (
     DeviceCapabilities,
     ScannerDeviceInfo,
 )

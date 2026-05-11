@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..scanner_device_info import DeviceCapabilities
+from ..scanner.device_info import DeviceCapabilities
 from . import capabilities as scanner_capabilities
 
 

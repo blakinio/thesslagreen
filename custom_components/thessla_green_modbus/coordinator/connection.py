@@ -7,7 +7,8 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from ..modbus_exceptions import ConnectionException, ModbusException
+from pymodbus.exceptions import ConnectionException, ModbusException
+
 from ..transport.base import BaseModbusTransport
 from ..transport.rtu import RtuModbusTransport
 from ..transport.tcp import TcpModbusTransport

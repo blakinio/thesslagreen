@@ -126,7 +126,7 @@ async def test_is_valid_bcd_time_valid_value():
 @pytest.mark.asyncio
 async def test_param_coerce_max_registers_invalid_string():
     """Lines 473-474: max_registers_per_request='bad' → MAX_BATCH_REGISTERS."""
-    from custom_components.thessla_green_modbus.scanner_helpers import MAX_BATCH_REGISTERS
+    from custom_components.thessla_green_modbus.scanner.helpers import MAX_BATCH_REGISTERS
 
     scanner = await _make_scanner(max_registers_per_request="bad")
     assert scanner.effective_batch == MAX_BATCH_REGISTERS

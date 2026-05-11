@@ -14,11 +14,11 @@ from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from pymodbus.exceptions import ConnectionException, ModbusException
 
 from .const import FAN_DEFAULT_PERCENT, FAN_SPEED_LEVELS
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
-from .modbus_exceptions import ConnectionException, ModbusException
 from .registers.maps import holding_registers
 
 _LOGGER = logging.getLogger(__name__)

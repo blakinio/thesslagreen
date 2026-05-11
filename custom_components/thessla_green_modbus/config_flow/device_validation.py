@@ -8,6 +8,8 @@ import traceback
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
+
 from ..const import (
     CONF_BAUD_RATE,
     CONF_CONNECTION_MODE,
@@ -17,7 +19,6 @@ from ..const import (
     CONF_STOP_BITS,
 )
 from ..errors import CannotConnect, InvalidAuth, is_invalid_auth_error
-from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
 
 
 def _normalize_connection_params(

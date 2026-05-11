@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
-from custom_components.thessla_green_modbus.scanner_device_info import (
+from custom_components.thessla_green_modbus.scanner.device_info import (
     DeviceCapabilities,
     ScannerDeviceInfo,
 )

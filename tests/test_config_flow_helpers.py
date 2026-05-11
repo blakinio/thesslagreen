@@ -26,7 +26,7 @@ from custom_components.thessla_green_modbus.config_flow.steps import (
     resolve_reauth_form_state,
 )
 from custom_components.thessla_green_modbus.errors import CannotConnect
-from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
+from pymodbus.exceptions import ModbusIOException
 
 # ---------------------------------------------------------------------------
 # _normalize_baud_rate

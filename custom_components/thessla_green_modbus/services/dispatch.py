@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..modbus_exceptions import ConnectionException, ModbusException
+from pymodbus.exceptions import ConnectionException, ModbusException
 
 
 async def write_register(

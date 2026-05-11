@@ -1,8 +1,8 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from custom_components.thessla_green_modbus.modbus_exceptions import ModbusIOException
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
+from pymodbus.exceptions import ModbusIOException
 
 pytestmark = pytest.mark.asyncio
 

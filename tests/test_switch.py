@@ -7,8 +7,8 @@ import pytest
 from custom_components.thessla_green_modbus import switch
 from custom_components.thessla_green_modbus.const import DOMAIN
 from custom_components.thessla_green_modbus.mappings import ENTITY_MAPPINGS
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.switch import ThesslaGreenSwitch
+from pymodbus.exceptions import ConnectionException
 
 # Ensure required test mapping is present when dynamic generation is unavailable
 ENTITY_MAPPINGS.setdefault("switch", {})
@@ -145,7 +145,7 @@ def test_switch_turn_off_with_bit(mock_coordinator):
 
 def test_switch_turn_off_exception_raises(mock_coordinator):
     """async_turn_off re-raises Modbus exceptions (lines 170-172)."""
-    from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
+    from pymodbus.exceptions import ConnectionException
 
     mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("fail"))
     switch_entity = ThesslaGreenSwitch(

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from pymodbus.exceptions import ConnectionException
+
 from ..modbus.call import _call_modbus
-from ..modbus_exceptions import ConnectionException
 
 
 async def call_modbus(

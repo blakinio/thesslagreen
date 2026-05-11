@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .modbus_exceptions import ModbusIOException
+from pymodbus.exceptions import ModbusIOException
 
 
 def is_request_cancelled_error(exc: ModbusIOException) -> bool:

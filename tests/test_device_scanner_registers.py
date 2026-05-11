@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from custom_components.thessla_green_modbus.const import CONNECTION_TYPE_RTU
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
+from pymodbus.exceptions import ConnectionException
 
 
 async def _make_scanner(**kwargs):

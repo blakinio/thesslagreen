@@ -7,7 +7,7 @@ import inspect
 import logging
 from typing import Any
 
-from ..modbus_exceptions import ConnectionException, ModbusException
+from pymodbus.exceptions import ConnectionException, ModbusException
 
 
 async def run_device_scan(

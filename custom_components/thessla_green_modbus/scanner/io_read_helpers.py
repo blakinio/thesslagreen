@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, cast
 
-from ..modbus_helpers import chunk_register_range
+from ..registers.read_planner import chunk_register_range
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -8,9 +8,8 @@ import logging
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from pymodbus.exceptions import ModbusException
+from pymodbus.exceptions import ConnectionException, ModbusException
 
-from ..modbus_exceptions import ConnectionException
 from ..utils import utcnow as _utcnow
 from .errors import handle_update_error
 from .update_result import apply_success_result

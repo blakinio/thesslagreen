@@ -5,10 +5,10 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from custom_components.thessla_green_modbus.modbus_exceptions import (
+from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
+from pymodbus.exceptions import (
     ConnectionException,
 )
-from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
 pytestmark = pytest.mark.asyncio
 

@@ -17,6 +17,7 @@ except ImportError:  # pragma: no cover - HA < 2024.4 fallback
     )
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
+from pymodbus.exceptions import ModbusIOException
 from voluptuous import Invalid as VOL_INVALID
 
 from ..const import (
@@ -35,7 +36,6 @@ from ..const import (
     MAX_BATCH_REGISTERS,
 )
 from ..errors import CannotConnect, InvalidAuth
-from ..modbus_exceptions import ModbusIOException
 from ..options import MODBUS_BAUD_RATES, MODBUS_PARITY, MODBUS_STOP_BITS
 from .confirm import (
     build_confirmation_placeholders as _build_confirmation_placeholders,

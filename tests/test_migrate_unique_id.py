@@ -1,5 +1,6 @@
-from custom_components.thessla_green_modbus.const import (
-    DOMAIN,
+import custom_components.thessla_green_modbus.entity_lookup as lookup_mod
+from custom_components.thessla_green_modbus.const import DOMAIN
+from custom_components.thessla_green_modbus.unique_id_migration import (
     device_unique_id_prefix,
     migrate_unique_id,
 )
@@ -122,14 +123,13 @@ def test_migrate_unique_id_address_based_lookup():
 
 def test_migrate_unique_id_register_to_key_lookup(monkeypatch):
     """register_to_key path: remainder is register_name but not entity key (lines 330-333)."""
-    from custom_components.thessla_green_modbus import const as const_mod
 
     # Inject lookup: entity key "flow_entity" uses register "supply_flow_rate"
     # lookup keys are entity keys — "supply_flow_rate" is NOT in lookup as a key
     fake_lookup = {
         "flow_entity": ("supply_flow_rate", "input_registers", None),
     }
-    monkeypatch.setattr(const_mod, "_ENTITY_LOOKUP", fake_lookup)
+    monkeypatch.setattr(lookup_mod, "_ENTITY_LOOKUP", fake_lookup)
 
     # remainder = "supply_flow_rate" → not in lookup → elif register_to_key path
     uid = f"{DOMAIN}_{HOST}_{PORT}_{SLAVE}_supply_flow_rate"
@@ -141,7 +141,7 @@ def test_migrate_unique_id_register_to_key_lookup(monkeypatch):
     assert str(REGISTER_ADDRESS) in result  # nosec B101
 
     # Restore cache so subsequent tests see real lookup
-    monkeypatch.setattr(const_mod, "_ENTITY_LOOKUP", None)
+    monkeypatch.setattr(lookup_mod, "_ENTITY_LOOKUP", None)
 
 
 def test_migrate_unique_id_fan_remainder():

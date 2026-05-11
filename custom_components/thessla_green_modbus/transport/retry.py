@@ -7,7 +7,7 @@ import random
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
 
 
 class ErrorKind(StrEnum):

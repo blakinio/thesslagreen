@@ -7,11 +7,11 @@ import logging
 from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
+from pymodbus.exceptions import ConnectionException
 
 from ..const import CONNECTION_TYPE_TCP, CONNECTION_TYPE_TCP_RTU
 from ..modbus.client_close import async_maybe_await_close
 from ..modbus.framer import get_rtu_framer
-from ..modbus_exceptions import ConnectionException
 from .base import BaseModbusTransport
 
 _LOGGER = logging.getLogger(__name__)

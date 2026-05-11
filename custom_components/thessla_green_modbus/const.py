@@ -36,12 +36,6 @@ from .registers.maps import discrete_input_registers as discrete_input_registers
 from .registers.maps import holding_registers as holding_registers
 from .registers.maps import input_registers as input_registers
 from .registers.maps import multi_register_sizes as multi_register_sizes
-from .unique_id_migration import (
-    device_unique_id_prefix as _device_unique_id_prefix_impl,
-)
-from .unique_id_migration import (
-    migrate_unique_id as _migrate_unique_id_impl,
-)
 
 try:
     from homeassistant.const import Platform as _HAPlatform
@@ -267,75 +261,3 @@ PLATFORMS: list[Any] = [
 # ---------------------------------------------------------------------------
 # Entity lookup — implementation lives in entity_lookup.py.
 #
-# _ENTITY_LOOKUP is kept here so that test suites can inject a fake lookup
-# via monkeypatch.setattr(const_mod, "_ENTITY_LOOKUP", fake).  The wrapper
-# below checks this module-level variable first; when it is None (normal
-# runtime) it delegates to entity_lookup._build_entity_lookup().
-# ---------------------------------------------------------------------------
-_ENTITY_LOOKUP: dict[str, tuple[str, str | None, int | None]] | None = None
-
-
-def _build_entity_lookup() -> dict[str, tuple[str, str | None, int | None]]:
-    """Return entity-key → register-info mapping, using any test-injected override."""
-    global _ENTITY_LOOKUP
-    if _ENTITY_LOOKUP is not None:
-        return _ENTITY_LOOKUP
-    from .entity_lookup import _build_entity_lookup as _impl
-
-    return _impl()
-
-
-# ---------------------------------------------------------------------------
-# Unique-ID helpers — thin integration-specific façades over unique_id_migration.
-# Re-exported here so existing callers (including tests) continue to import
-# from this module without changes.
-# ---------------------------------------------------------------------------
-def device_unique_id_prefix(
-    serial_number: str | None,
-    host: str,
-    port: int,
-) -> str:
-    """Return the device specific prefix used in entity unique IDs."""
-    return _device_unique_id_prefix_impl(serial_number, host, port)
-
-
-def migrate_unique_id(
-    unique_id: str,
-    *,
-    serial_number: str | None,
-    host: str,
-    port: int,
-    slave_id: int,
-) -> str:
-    """Migrate a historical unique_id to the current format."""
-    return _migrate_unique_id_impl(
-        unique_id,
-        serial_number=serial_number,
-        host=host,
-        port=port,
-        slave_id=slave_id,
-        domain=DOMAIN,
-        airflow_units=(AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE),
-        get_entity_lookup=_build_entity_lookup,
-        holding_registers=holding_registers,
-        input_registers=input_registers,
-        coil_registers=coil_registers,
-        discrete_input_registers=discrete_input_registers,
-    )
-
-
-# Special function enum index mappings for services.
-# Values match the sequential enum indices in special_modes.json (0=none, 1=boost, ...).
-SPECIAL_FUNCTION_MAP = {
-    "boost": 1,
-    "eco": 2,
-    "away": 3,
-    "sleep": 4,
-    "fireplace": 5,
-    "hood": 6,
-    "party": 7,
-    "bathroom": 8,
-    "kitchen": 9,
-    "summer": 10,
-    "winter": 11,
-}

@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ..modbus_exceptions import ConnectionException, ModbusException
+from pymodbus.exceptions import ConnectionException, ModbusException
+
 from ..registers.read_planner import chunk_register_range
 from .retry import _PermanentModbusError
 

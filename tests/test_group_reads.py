@@ -12,7 +12,7 @@ try:
     from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 except Exception:  # pragma: no cover - scanner requires HA deps
     ThesslaGreenDeviceScanner = None
-from custom_components.thessla_green_modbus.scanner_helpers import MAX_BATCH_REGISTERS
+from custom_components.thessla_green_modbus.scanner.helpers import MAX_BATCH_REGISTERS
 
 
 def test_group_reads_merges_consecutive_addresses():

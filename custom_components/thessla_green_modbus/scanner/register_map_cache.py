@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .. import scanner_register_maps as _register_maps
+from ..scanner import register_maps as _register_maps
 
 REGISTER_HASH = _register_maps.REGISTER_HASH
 

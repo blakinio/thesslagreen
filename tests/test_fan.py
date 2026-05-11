@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from custom_components.thessla_green_modbus.fan import ThesslaGreenFan
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
+from pymodbus.exceptions import ConnectionException
 
 
 def test_fan_creation_and_state(mock_coordinator):

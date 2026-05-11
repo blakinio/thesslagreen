@@ -6,7 +6,8 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any
 
-from ..modbus_exceptions import ConnectionException, ModbusException, ModbusIOException
+from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
+
 from .base import BaseModbusTransport
 from .crc import append_crc as _append_crc
 from .crc import crc16 as _crc16

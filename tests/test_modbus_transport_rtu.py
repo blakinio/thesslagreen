@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import custom_components.thessla_green_modbus.transport.rtu as _transport_mod
 import pytest
-from custom_components.thessla_green_modbus.modbus_exceptions import ConnectionException
 from custom_components.thessla_green_modbus.transport.rtu import RtuModbusTransport
+from pymodbus.exceptions import ConnectionException
 
 # ---------------------------------------------------------------------------
 # RtuModbusTransport tests

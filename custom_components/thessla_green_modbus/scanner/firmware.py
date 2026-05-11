@@ -5,10 +5,10 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from ..scanner_register_maps import HOLDING_REGISTERS, INPUT_REGISTERS, REGISTER_DEFINITIONS
+from ..scanner.register_maps import HOLDING_REGISTERS, INPUT_REGISTERS, REGISTER_DEFINITIONS
 
 if TYPE_CHECKING:
-    from ..scanner_device_info import ScannerDeviceInfo
+    from ..scanner.device_info import ScannerDeviceInfo
 
 _LOGGER = logging.getLogger(__name__)
 

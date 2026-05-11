@@ -8,11 +8,12 @@ from collections.abc import Awaitable, Callable
 from importlib import import_module
 from typing import Any
 
+from pymodbus.exceptions import ModbusIOException
+
 from ..error_policy import (
     is_request_cancelled_error as _is_request_cancelled_error_impl,
 )
-from ..modbus_exceptions import ModbusIOException
-from ..transport.retry import ErrorKind, calculate_backoff, classify_transport_error, should_retry
+from ..transport.retry import calculate_backoff, classify_transport_error, should_retry
 
 TIMEOUT_EXCEPTIONS = (TimeoutError, asyncio.TimeoutError)
 
@@ -48,10 +49,10 @@ async def run_with_retry(
             if inspect.isawaitable(result):
                 return await result
             return result
-        except BaseException as exc:  # intentional: must see asyncio.CancelledError to re-raise it
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
             decision = classify_transport_error(exc)
-            if decision.kind is ErrorKind.CANCELLED:
-                raise
             if isinstance(exc, ModbusIOException) and decision.reason == "cancelled":
                 raise TimeoutError("Modbus request cancelled") from exc
             if not should_retry(decision, attempt, retries):

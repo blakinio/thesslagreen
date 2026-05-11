@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 from custom_components.thessla_green_modbus.errors import ThesslaGreenConfigError
-from custom_components.thessla_green_modbus.modbus_exceptions import (
-    ConnectionException,
-    ModbusException,
-    ModbusIOException,
-)
 from custom_components.thessla_green_modbus.transport.retry import (
     ErrorKind,
     calculate_backoff,
     classify_transport_error,
     should_retry,
+)
+from pymodbus.exceptions import (
+    ConnectionException,
+    ModbusException,
+    ModbusIOException,
 )
 
 
