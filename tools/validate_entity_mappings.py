@@ -43,6 +43,7 @@ def _ensure_homeassistant_importable() -> None:
 
     class _Platform(StrEnum):
         BINARY_SENSOR = "binary_sensor"
+        BUTTON = "button"
         CLIMATE = "climate"
         FAN = "fan"
         NUMBER = "number"
@@ -57,6 +58,40 @@ def _ensure_homeassistant_importable() -> None:
     ha_const_mod.Platform = getattr(ha_const_mod, "Platform", _Platform)
     ha_const_mod.CONF_NAME = getattr(ha_const_mod, "CONF_NAME", "name")
     ha_const_mod.PERCENTAGE = getattr(ha_const_mod, "PERCENTAGE", "%")
+
+    class _UnitOfTemperature(StrEnum):
+        CELSIUS = "°C"
+        FAHRENHEIT = "°F"
+        KELVIN = "K"
+
+    class _UnitOfVolumeFlowRate(StrEnum):
+        CUBIC_METERS_PER_HOUR = "m³/h"
+        CUBIC_FEET_PER_MINUTE = "ft³/min"
+
+    class _UnitOfElectricPotential(StrEnum):
+        VOLT = "V"
+        MILLIVOLT = "mV"
+
+    class _UnitOfPower(StrEnum):
+        WATT = "W"
+        KILO_WATT = "kW"
+
+    class _UnitOfTime(StrEnum):
+        SECONDS = "s"
+        MINUTES = "min"
+        HOURS = "h"
+        DAYS = "d"
+
+    for attr, default in [
+        ("UnitOfTemperature", _UnitOfTemperature),
+        ("UnitOfVolumeFlowRate", _UnitOfVolumeFlowRate),
+        ("UnitOfElectricPotential", _UnitOfElectricPotential),
+        ("UnitOfPower", _UnitOfPower),
+        ("UnitOfTime", _UnitOfTime),
+    ]:
+        if not hasattr(ha_const_mod, attr):
+            setattr(ha_const_mod, attr, default)
+
     ha_mod.const = ha_const_mod
     sys.modules.setdefault("homeassistant.helpers", types.ModuleType("homeassistant.helpers"))
     ha_helpers_entity = sys.modules.setdefault(
@@ -69,6 +104,72 @@ def _ensure_homeassistant_importable() -> None:
             DIAGNOSTIC = "diagnostic"
 
         ha_helpers_entity.EntityCategory = _EntityCategory
+
+    # Stub homeassistant.components and its submodules used by mappings.
+    ha_components_mod = sys.modules.setdefault(
+        "homeassistant.components", types.ModuleType("homeassistant.components")
+    )
+    ha_mod.components = ha_components_mod
+
+    ha_binary_sensor_mod = sys.modules.setdefault(
+        "homeassistant.components.binary_sensor",
+        types.ModuleType("homeassistant.components.binary_sensor"),
+    )
+    ha_components_mod.binary_sensor = ha_binary_sensor_mod
+
+    if not hasattr(ha_binary_sensor_mod, "BinarySensorDeviceClass"):
+
+        class _BinarySensorDeviceClass(StrEnum):
+            CONNECTIVITY = "connectivity"
+            HEAT = "heat"
+            MOISTURE = "moisture"
+            MOTION = "motion"
+            OPENING = "opening"
+            POWER = "power"
+            PROBLEM = "problem"
+            RUNNING = "running"
+            SAFETY = "safety"
+            WINDOW = "window"
+
+        ha_binary_sensor_mod.BinarySensorDeviceClass = _BinarySensorDeviceClass
+
+    ha_sensor_mod = sys.modules.setdefault(
+        "homeassistant.components.sensor",
+        types.ModuleType("homeassistant.components.sensor"),
+    )
+    ha_components_mod.sensor = ha_sensor_mod
+
+    if not hasattr(ha_sensor_mod, "SensorDeviceClass"):
+
+        class _SensorDeviceClass(StrEnum):
+            DURATION = "duration"
+            ENERGY = "energy"
+            POWER = "power"
+            TEMPERATURE = "temperature"
+            VOLTAGE = "voltage"
+            VOLUME_FLOW_RATE = "volume_flow_rate"
+            FREQUENCY = "frequency"
+            PRESSURE = "pressure"
+            HUMIDITY = "humidity"
+
+        ha_sensor_mod.SensorDeviceClass = _SensorDeviceClass
+
+    if not hasattr(ha_sensor_mod, "SensorStateClass"):
+
+        class _SensorStateClass(StrEnum):
+            MEASUREMENT = "measurement"
+            TOTAL = "total"
+            TOTAL_INCREASING = "total_increasing"
+
+        ha_sensor_mod.SensorStateClass = _SensorStateClass
+
+    # Stub homeassistant.core used by mappings/__init__.py
+    ha_core_mod = sys.modules.setdefault(
+        "homeassistant.core", types.ModuleType("homeassistant.core")
+    )
+    ha_mod.core = ha_core_mod
+    if not hasattr(ha_core_mod, "HomeAssistant"):
+        ha_core_mod.HomeAssistant = type("HomeAssistant", (), {})
 
 
 def _load_validation_inputs() -> tuple[object, dict[str, Any], dict[str, Any], set[str]]:
