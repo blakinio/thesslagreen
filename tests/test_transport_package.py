@@ -4,7 +4,6 @@ Proves that transport/ is the authoritative source and that:
 - BaseModbusTransport comes from transport.base
 - Raw response classes live in transport.raw and behave correctly
 - TcpModbusTransport and RtuModbusTransport can be instantiated from transport.*
-- modbus_transport shim still re-exports everything
 """
 
 from __future__ import annotations
@@ -33,13 +32,6 @@ from custom_components.thessla_green_modbus.transport.tcp_rtu import RawRtuOverT
 # ---------------------------------------------------------------------------
 # Canonical class identity
 # ---------------------------------------------------------------------------
-
-
-def test_canonical_base_is_from_transport_package():
-    """BaseModbusTransport imported from transport.base is the canonical class."""
-    import custom_components.thessla_green_modbus.modbus_transport as shim
-
-    assert shim.BaseModbusTransport is BaseModbusTransport
 
 
 def test_tcp_transport_inherits_canonical_base():
@@ -147,16 +139,3 @@ def test_timeout_classified_transient():
     assert decision.retry is True
 
 
-# ---------------------------------------------------------------------------
-# Shim re-exports are identical objects
-# ---------------------------------------------------------------------------
-
-
-def test_shim_re_exports_match_canonical():
-    import custom_components.thessla_green_modbus.modbus_transport as shim
-
-    assert shim.TcpModbusTransport is TcpModbusTransport
-    assert shim.RtuModbusTransport is RtuModbusTransport
-    assert shim.RawRtuOverTcpTransport is RawRtuOverTcpTransport
-    assert shim.RawModbusResponse is RawModbusResponse
-    assert shim.RawModbusWriteResponse is RawModbusWriteResponse

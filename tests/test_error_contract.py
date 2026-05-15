@@ -33,11 +33,7 @@ def test_classify_error_reasons() -> None:
 def test_cross_layer_classification_contract() -> None:
     from custom_components.thessla_green_modbus.coordinator.retry import classify_retry_error
     from custom_components.thessla_green_modbus.scanner.io_runtime import classify_scanner_error
-
-    transport_module = pytest.importorskip(
-        "custom_components.thessla_green_modbus.modbus_transport"
-    )
-    classify_transport_error = transport_module.classify_transport_error
+    from custom_components.thessla_green_modbus.transport.retry import classify_transport_error
 
     exc = ModbusIOException("temporary failure")
     expected = classify_error(exc)
@@ -100,11 +96,7 @@ def test_cross_layer_classification_contract_matrix(
 ) -> None:
     from custom_components.thessla_green_modbus.coordinator.retry import classify_retry_error
     from custom_components.thessla_green_modbus.scanner.io_runtime import classify_scanner_error
-
-    transport_module = pytest.importorskip(
-        "custom_components.thessla_green_modbus.modbus_transport"
-    )
-    classify_transport_error = transport_module.classify_transport_error
+    from custom_components.thessla_green_modbus.transport.retry import classify_transport_error
 
     expected = classify_error(exc)
     assert (expected.kind, expected.reason) == (expected_kind, expected_reason)
