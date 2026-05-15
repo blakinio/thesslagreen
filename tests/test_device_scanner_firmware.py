@@ -57,7 +57,9 @@ async def test_scan_device_firmware_unavailable(caplog):
             _, _, count = args
         return [False] * count
 
-    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+    with patch(
+        "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient"
+    ) as mock_client_class:
         mock_client = AsyncMock()
         mock_client.connect.return_value = True
         mock_client_class.return_value = mock_client
@@ -120,7 +122,9 @@ async def test_scan_device_firmware_bulk_fallback():
             _, _, count = args
         return [False] * count
 
-    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+    with patch(
+        "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient"
+    ) as mock_client_class:
         mock_client = AsyncMock()
         mock_client.connect.return_value = True
         mock_client_class.return_value = mock_client
@@ -183,7 +187,9 @@ async def test_scan_device_firmware_partial_bulk_fallback():
             _, _, count = args
         return [False] * count
 
-    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+    with patch(
+        "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient"
+    ) as mock_client_class:
         mock_client = AsyncMock()
         mock_client.connect.return_value = True
         mock_client_class.return_value = mock_client

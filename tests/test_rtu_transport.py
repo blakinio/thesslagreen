@@ -21,7 +21,7 @@ async def test_rtu_transport_initializes_serial_client(monkeypatch):
             self.connected = False
 
     monkeypatch.setattr(
-        "custom_components.thessla_green_modbus.modbus_transport._AsyncModbusSerialClient",
+        "custom_components.thessla_green_modbus.transport.rtu._AsyncModbusSerialClient",
         DummySerialClient,
     )
 

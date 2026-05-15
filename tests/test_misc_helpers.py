@@ -161,7 +161,7 @@ def test_format_time_register_path_invalid(monkeypatch):
     BCD_TIME_PREFIXES is cleared so the BCD branch is skipped; only the
     TIME_REGISTER_PREFIXES branch executes.  0x1960 has hour=25 (invalid).
     """
-    from custom_components.thessla_green_modbus import scanner_helpers
+    from custom_components.thessla_green_modbus.scanner import helpers as scanner_helpers
 
     monkeypatch.setattr(scanner_helpers, "BCD_TIME_PREFIXES", ())
     monkeypatch.setattr(scanner_helpers, "TIME_REGISTER_PREFIXES", ("schedule_",))
@@ -172,7 +172,7 @@ def test_format_time_register_path_invalid(monkeypatch):
 
 def test_format_time_register_path_valid(monkeypatch):
     """TIME_REGISTER_PREFIXES path: valid decoded time returns 'HH:MM' (lines 49-50)."""
-    from custom_components.thessla_green_modbus import scanner_helpers
+    from custom_components.thessla_green_modbus.scanner import helpers as scanner_helpers
 
     monkeypatch.setattr(scanner_helpers, "BCD_TIME_PREFIXES", ())
     monkeypatch.setattr(scanner_helpers, "TIME_REGISTER_PREFIXES", ("schedule_",))
@@ -184,7 +184,7 @@ def test_format_time_register_path_valid(monkeypatch):
 
 def test_format_time_register_none_when_sensor_unavailable(monkeypatch):
     """TIME_REGISTER_PREFIXES path: SENSOR_UNAVAILABLE returns None (line 48)."""
-    from custom_components.thessla_green_modbus import scanner_helpers
+    from custom_components.thessla_green_modbus.scanner import helpers as scanner_helpers
 
     monkeypatch.setattr(scanner_helpers, "BCD_TIME_PREFIXES", ())
     monkeypatch.setattr(scanner_helpers, "TIME_REGISTER_PREFIXES", ("schedule_",))

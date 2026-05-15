@@ -8,7 +8,7 @@ from typing import Any, cast
 
 from ..const import HOLDING_BATCH_BOUNDARIES, KNOWN_MISSING_REGISTERS
 from ..scanner.helpers import UART_OPTIONAL_REGS
-from ..scanner.register_maps import MULTI_REGISTER_SIZES
+from .register_maps import MULTI_REGISTER_SIZES
 
 _LOGGER = logging.getLogger(__name__)
 

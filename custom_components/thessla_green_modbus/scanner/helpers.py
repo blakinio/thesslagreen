@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from .const import (
+from ..const import (
     MAX_BATCH_REGISTERS,
     SENSOR_UNAVAILABLE,
     UART_OPTIONAL_REG_END,
     UART_OPTIONAL_REG_START,
 )
-from .utils import (
+from ..utils import (
     BCD_TIME_PREFIXES,
     TIME_REGISTER_PREFIXES,
     _decode_aatt,

@@ -26,7 +26,7 @@ async def test_call_modbus_logs(caplog):
     async def read_holding_registers(address, *, count, unit=None):
         return Response()
 
-    caplog.set_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus_helpers")
+    caplog.set_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus")
     await _call_modbus(
         read_holding_registers,
         1,
@@ -79,7 +79,7 @@ async def test_read_retries_logged(monkeypatch, caplog):
     coord._register_groups["input_registers"] = [(0, 2)]
     coord._process_register_value = lambda name, value: value
 
-    caplog.set_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus_helpers")
+    caplog.set_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus")
     data = await coord._read_input_registers_optimized()
     assert data == {"reg0": 1, "reg1": 1}
     assert any(

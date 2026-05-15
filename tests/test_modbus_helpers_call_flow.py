@@ -450,7 +450,7 @@ async def test_call_modbus_debug_logs_response_object_when_no_encode(caplog):
     async def func_no_encode(slave):
         return NoEncodeResponse()
 
-    with caplog.at_level(logging.DEBUG, logger=modbus_helpers._LOGGER.name):
+    with caplog.at_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus"):
         await modbus_helpers._call_modbus(func_no_encode, 1)
 
     assert any("Received from" in r.message for r in caplog.records)  # nosec B101
@@ -524,7 +524,7 @@ async def test_call_modbus_logs_request_frame_at_debug(caplog):
     async def read_coils(address, *, count=1, **kwargs):
         return "resp"
 
-    with caplog.at_level(_logging.DEBUG, logger=_mh._LOGGER.name):
+    with caplog.at_level(_logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus"):
         result = await _call_modbus(read_coils, 1, 10, 2)
     assert result == "resp"
     assert any("Modbus request" in r.message for r in caplog.records)
@@ -541,7 +541,7 @@ async def test_call_modbus_response_encode_error_logged(caplog):
     async def bad_func(**kwargs):
         return BadResponse()
 
-    with caplog.at_level(_logging.DEBUG, logger=_mh._LOGGER.name):
+    with caplog.at_level(_logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus"):
         result = await _call_modbus(bad_func, 1)
     assert isinstance(result, BadResponse)
     assert any("Failed to encode" in r.message for r in caplog.records)
@@ -580,7 +580,7 @@ def test_log_call_attempt_emits_calling_message(caplog):
 def test_log_call_attempt_emits_request_frame_when_known(caplog):
     """_log_call_attempt logs a masked request frame for known function names."""
     prepared = _make_prepared(func_name="read_input_registers", positional=[20], batch_size=2)
-    with caplog.at_level(_logging.DEBUG, logger=_mh._LOGGER.name):
+    with caplog.at_level(_logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus"):
         _log_call_attempt(prepared, slave_id=1, attempt=1, max_attempts=1, kwargs={"count": 2})
     messages = [r.message for r in caplog.records]
     assert any("Modbus request" in m for m in messages)

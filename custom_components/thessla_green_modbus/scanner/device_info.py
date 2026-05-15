@@ -7,7 +7,7 @@ import dataclasses
 from dataclasses import dataclass, field
 from typing import Any
 
-from .const import UNKNOWN_MODEL
+from ..const import UNKNOWN_MODEL
 
 
 @dataclass(slots=True)

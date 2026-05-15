@@ -59,8 +59,7 @@ def test_multi_register_sizes_returns_dict():
 
 def test_migrate_unique_id_base_uid_already_has_prefix():
     """migrate_unique_id returns base_uid unchanged when it already starts with prefix (line 350)."""
-    from custom_components.thessla_green_modbus.const import DOMAIN
-    from custom_components.thessla_green_modbus.unique_id_migration import migrate_unique_id
+    from custom_components.thessla_green_modbus.const import DOMAIN, migrate_unique_id
 
     # serial_number="1" → prefix="1"; slave_id=1 → base_uid="1_fan_0"
     # "1_fan_0".startswith("1") is True → returns base_uid unchanged

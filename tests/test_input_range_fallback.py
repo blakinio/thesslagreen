@@ -58,7 +58,9 @@ async def test_input_range_read_after_block_failure():
     }
     scanner._update_known_missing_addresses()
 
-    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+    with patch(
+        "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient"
+    ) as mock_client_class:
         mock_client = MagicMock()
         mock_client.connect = AsyncMock(return_value=True)
         mock_client.close = AsyncMock()
@@ -129,7 +131,9 @@ async def test_block_exception_allows_single_register_reads():
     }
     scanner._update_known_missing_addresses()
 
-    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+    with patch(
+        "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient"
+    ) as mock_client_class:
         mock_client = MagicMock()
         mock_client.connect = AsyncMock(return_value=True)
         mock_client.close = AsyncMock()
