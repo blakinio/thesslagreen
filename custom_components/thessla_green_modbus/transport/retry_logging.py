@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from .error_contract import log_retry_attempt
-from .transport.retry import calculate_backoff
+from ..error_contract import log_retry_attempt
+from .retry import calculate_backoff
 
 
 def log_transport_retry(
