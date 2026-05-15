@@ -348,7 +348,7 @@ def test_maintenance_handlers_keys_stable_and_bound():
 
 def test_iter_maintenance_service_bindings_keeps_order_and_schema_binding():
     """Service binding helper keeps registration order and uses matching handler names."""
-    from custom_components.thessla_green_modbus.services_schema import SYNC_DEVICE_CLOCK_SCHEMA
+    from custom_components.thessla_green_modbus.services.schema import SYNC_DEVICE_CLOCK_SCHEMA
 
     handlers = {
         "reset_filters": object(),

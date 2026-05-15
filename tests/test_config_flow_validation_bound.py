@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 import voluptuous as vol
-from custom_components.thessla_green_modbus.config_flow_validation import (
+from custom_components.thessla_green_modbus.config_flow.validation import (
     process_scan_capabilities_bound,
     validate_rtu_config_bound,
     validate_tcp_config_bound,

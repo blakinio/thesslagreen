@@ -536,7 +536,7 @@ async def test_call_with_optional_timeout_sync_function():
 def test_build_reconfigure_schema_returns_schema_with_defaults():
     """Schema built from entry data should carry host/port/slave defaults."""
     import voluptuous as vol
-    from custom_components.thessla_green_modbus.config_flow_schema import (
+    from custom_components.thessla_green_modbus.config_flow.schema import (
         build_reconfigure_schema,
     )
     from custom_components.thessla_green_modbus.const import CONF_SLAVE_ID
@@ -555,7 +555,7 @@ def test_build_reconfigure_schema_returns_schema_with_defaults():
 def test_build_reconfigure_schema_empty_entry_data_uses_defaults():
     """Empty entry data falls back to module-level defaults."""
     import voluptuous as vol
-    from custom_components.thessla_green_modbus.config_flow_schema import (
+    from custom_components.thessla_green_modbus.config_flow.schema import (
         build_reconfigure_schema,
     )
     from custom_components.thessla_green_modbus.const import (
@@ -578,7 +578,7 @@ def test_build_reconfigure_schema_empty_entry_data_uses_defaults():
 def test_build_reconfigure_schema_rejects_port_out_of_range():
     """Port outside 1-65535 should raise Invalid."""
     import voluptuous as vol
-    from custom_components.thessla_green_modbus.config_flow_schema import (
+    from custom_components.thessla_green_modbus.config_flow.schema import (
         build_reconfigure_schema,
     )
     from custom_components.thessla_green_modbus.const import CONF_SLAVE_ID
@@ -592,7 +592,7 @@ def test_build_reconfigure_schema_rejects_port_out_of_range():
 def test_build_reconfigure_schema_rejects_slave_id_out_of_range():
     """Slave ID outside 1-247 should raise Invalid."""
     import voluptuous as vol
-    from custom_components.thessla_green_modbus.config_flow_schema import (
+    from custom_components.thessla_green_modbus.config_flow.schema import (
         build_reconfigure_schema,
     )
     from custom_components.thessla_green_modbus.const import CONF_SLAVE_ID
@@ -606,7 +606,7 @@ def test_build_reconfigure_schema_rejects_slave_id_out_of_range():
 def test_build_reconfigure_schema_none_entry_data_treated_as_empty():
     """Passing None for entry_data should not raise."""
     import voluptuous as vol
-    from custom_components.thessla_green_modbus.config_flow_schema import (
+    from custom_components.thessla_green_modbus.config_flow.schema import (
         build_reconfigure_schema,
     )
 

@@ -55,7 +55,7 @@ async def test_backoff_delay(method, address, count, primary_attr, fallback_attr
 
     sleep_mock = AsyncMock()
     with patch(
-        "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
+        "custom_components.thessla_green_modbus.modbus.call.asyncio.sleep",
         sleep_mock,
     ):
         result = await method(scanner, mock_client, address, count)
@@ -109,7 +109,7 @@ async def test_backoff_zero_no_delay(method, address, count, primary_attr, fallb
 
     sleep_mock = AsyncMock()
     with patch(
-        "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
+        "custom_components.thessla_green_modbus.modbus.call.asyncio.sleep",
         sleep_mock,
     ):
         result = await method(scanner, mock_client, address, count)
@@ -132,11 +132,11 @@ async def test_backoff_with_jitter():
     sleep_mock = AsyncMock()
     with (
         patch(
-            "custom_components.thessla_green_modbus.modbus_helpers.random.uniform",
+            "custom_components.thessla_green_modbus.modbus.call.random.uniform",
             side_effect=[0.05, 0.05],
         ),
         patch(
-            "custom_components.thessla_green_modbus.modbus_helpers.asyncio.sleep",
+            "custom_components.thessla_green_modbus.modbus.call.asyncio.sleep",
             sleep_mock,
         ),
     ):

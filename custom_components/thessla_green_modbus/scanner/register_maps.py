@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from .registers.cache import async_registers_sha256, registers_sha256
-from .registers.loader import async_get_all_registers, get_all_registers, get_registers_path
+from ..registers.cache import async_registers_sha256, registers_sha256
+from ..registers.loader import async_get_all_registers, get_all_registers, get_registers_path
 
 REGISTER_DEFINITIONS: dict[str, Any] = {}
 

@@ -252,6 +252,31 @@ async def _apply_attempt_delay(
         raise
 
 
+def _log_call_attempt(
+    prepared: _PreparedCall,
+    *,
+    slave_id: int,
+    attempt: int,
+    max_attempts: int,
+    kwargs: dict[str, Any],
+) -> None:
+    """Log the outgoing call summary and request frame."""
+    _LOGGER.debug(
+        "Calling %s on slave %s (batch=%s attempt %s/%s)",
+        prepared.func_name,
+        slave_id,
+        prepared.batch_size,
+        attempt,
+        max_attempts,
+    )
+    _log_modbus_request(
+        func_name=prepared.func_name,
+        slave_id=slave_id,
+        positional=prepared.positional,
+        kwargs=kwargs,
+    )
+
+
 def _raise_mapped_call_exception(
     err: Exception,
     *,
@@ -310,19 +335,11 @@ async def _call_modbus(
         max_attempts=max_attempts,
     )
 
-    _LOGGER.debug(
-        "Calling %s on slave %s (batch=%s attempt %s/%s)",
-        prepared.func_name,
-        slave_id,
-        prepared.batch_size,
-        attempt,
-        max_attempts,
-    )
-
-    _log_modbus_request(
-        func_name=prepared.func_name,
+    _log_call_attempt(
+        prepared,
         slave_id=slave_id,
-        positional=prepared.positional,
+        attempt=attempt,
+        max_attempts=max_attempts,
         kwargs=kwargs,
     )
 

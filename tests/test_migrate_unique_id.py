@@ -1,6 +1,6 @@
 import custom_components.thessla_green_modbus.entity_lookup as lookup_mod
-from custom_components.thessla_green_modbus.const import DOMAIN
-from custom_components.thessla_green_modbus.unique_id_migration import (
+from custom_components.thessla_green_modbus.const import (
+    DOMAIN,
     device_unique_id_prefix,
     migrate_unique_id,
 )

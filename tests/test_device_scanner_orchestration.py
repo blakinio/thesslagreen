@@ -43,7 +43,9 @@ async def test_scan_device_success_dynamic():
     async def fake_read_discrete(client, address, count, **kwargs):
         return [False] * count
 
-    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+    with patch(
+        "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient"
+    ) as mock_client_class:
         mock_client = AsyncMock()
         mock_client.connect.return_value = True
         mock_client.read_input_registers = AsyncMock(
@@ -99,7 +101,9 @@ async def test_scan_device_success_static(mock_modbus_response):
     ):
         scanner = await ThesslaGreenDeviceScanner.create("192.168.1.100", 502, 10)
 
-        with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+        with patch(
+            "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient"
+        ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.connect.return_value = True
             mock_client.read_input_registers.return_value = mock_modbus_response
@@ -162,7 +166,9 @@ async def test_temperature_register_unavailable_kept():
             _, _, count = args
         return [False] * count
 
-    with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+    with patch(
+        "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient"
+    ) as mock_client_class:
         mock_client = AsyncMock()
         mock_client.connect.return_value = True
         mock_client_class.return_value = mock_client

@@ -50,8 +50,6 @@ def test_tcp_is_connected_true():
 
 
 def test_build_tcp_client_fallback_stripped_kwargs():
-    import sys
-
     t = _make_tcp()
     call_count = [0]
 
@@ -63,20 +61,17 @@ def test_build_tcp_client_fallback_stripped_kwargs():
         client.connected = True
         return client
 
-    original = sys.modules["pymodbus.client"].AsyncModbusTcpClient
-    sys.modules["pymodbus.client"].AsyncModbusTcpClient = patched_tcp_client
-    try:
+    with patch(
+        "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient",
+        patched_tcp_client,
+    ):
         client = t._build_tcp_client()
-    finally:
-        sys.modules["pymodbus.client"].AsyncModbusTcpClient = original
 
     assert client is not None
     assert call_count[0] == 2
 
 
 def test_build_tcp_client_final_fallback():
-    import sys
-
     t = _make_tcp()
     bare_instance = MagicMock()
     call_count = [0]
@@ -87,20 +82,17 @@ def test_build_tcp_client_final_fallback():
             raise TypeError("no kwargs")
         return bare_instance
 
-    original = sys.modules["pymodbus.client"].AsyncModbusTcpClient
-    sys.modules["pymodbus.client"].AsyncModbusTcpClient = patched
-    try:
+    with patch(
+        "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient",
+        patched,
+    ):
         client = t._build_tcp_client()
-    finally:
-        sys.modules["pymodbus.client"].AsyncModbusTcpClient = original
 
     assert client is bare_instance
     assert call_count[0] == 3
 
 
 def test_build_tcp_client_with_framer_first_attempt():
-    import sys
-
     t = _make_tcp()
     fake_framer = object()
     received_kwargs: dict = {}
@@ -109,19 +101,16 @@ def test_build_tcp_client_with_framer_first_attempt():
         received_kwargs.update(kwargs)
         return MagicMock()
 
-    original = sys.modules["pymodbus.client"].AsyncModbusTcpClient
-    sys.modules["pymodbus.client"].AsyncModbusTcpClient = patched
-    try:
+    with patch(
+        "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient",
+        patched,
+    ):
         t._build_tcp_client(framer=fake_framer)
-    finally:
-        sys.modules["pymodbus.client"].AsyncModbusTcpClient = original
 
     assert received_kwargs.get("framer") is fake_framer
 
 
 def test_build_tcp_client_with_framer_fallback():
-    import sys
-
     t = _make_tcp()
     fake_framer = object()
     calls: list[dict] = []
@@ -132,12 +121,11 @@ def test_build_tcp_client_with_framer_fallback():
             raise TypeError("no reconnect params")
         return MagicMock()
 
-    original = sys.modules["pymodbus.client"].AsyncModbusTcpClient
-    sys.modules["pymodbus.client"].AsyncModbusTcpClient = patched
-    try:
+    with patch(
+        "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient",
+        patched,
+    ):
         t._build_tcp_client(framer=fake_framer)
-    finally:
-        sys.modules["pymodbus.client"].AsyncModbusTcpClient = original
 
     assert len(calls) == 2
     assert calls[1].get("framer") is fake_framer
@@ -149,7 +137,7 @@ async def test_tcp_connect_tcp_rtu_framer_none():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
+            "custom_components.thessla_green_modbus.transport.tcp.get_rtu_framer",
             return_value=None,
         ),
         pytest.raises(ConnectionException, match="RTU framer"),
@@ -168,7 +156,7 @@ async def test_tcp_connect_tcp_rtu_success():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.modbus_transport.get_rtu_framer",
+            "custom_components.thessla_green_modbus.transport.tcp.get_rtu_framer",
             return_value=mock_framer,
         ),
         patch.object(t, "_build_tcp_client", return_value=mock_client),

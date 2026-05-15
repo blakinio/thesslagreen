@@ -51,7 +51,9 @@ async def test_full_register_scan_batches_reads() -> None:
         return [0] * count
 
     with (
-        patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class,
+        patch(
+            "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient"
+        ) as mock_client_class,
         patch.object(scanner, "_read_input", AsyncMock(side_effect=fake_read_input)),
         patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
         patch.object(scanner, "_read_coil", AsyncMock(return_value=[False])),

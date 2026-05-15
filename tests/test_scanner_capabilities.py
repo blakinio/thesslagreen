@@ -137,7 +137,9 @@ async def test_capability_count_includes_booleans(caplog):
     )
 
     with patch.object(scanner, "_analyze_capabilities", return_value=caps):
-        with patch("pymodbus.client.AsyncModbusTcpClient") as mock_client_class:
+        with patch(
+            "custom_components.thessla_green_modbus.transport.tcp.AsyncModbusTcpClient"
+        ) as mock_client_class:
             mock_client = AsyncMock()
             mock_client.connect.return_value = True
             mock_client_class.return_value = mock_client

@@ -137,5 +137,3 @@ def test_timeout_classified_transient():
     decision = classify_transport_error(TimeoutError("t/o"))
     assert decision.kind is ErrorKind.TRANSIENT
     assert decision.retry is True
-
-
