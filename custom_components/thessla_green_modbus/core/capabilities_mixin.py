@@ -1,9 +1,8 @@
 """Capabilities and derived metrics mixin for device-domain clients.
 
-Moved from coordinator/capabilities.py so that ThesslaGreenDeviceClient can
-inherit it without creating a coordinator/ → core/ dependency.  The coordinator
-continues to inherit it via coordinator/capabilities.py (which re-exports from
-here).
+Canonical location for _CoordinatorCapabilitiesMixin, shared by
+ThesslaGreenDeviceClient and ThesslaGreenModbusCoordinator.
+coordinator/capabilities.py (shim) was removed.
 """
 
 from __future__ import annotations

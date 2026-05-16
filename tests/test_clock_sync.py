@@ -106,8 +106,8 @@ def test_decode_rtc_invalid_returns_none():
 
 
 def test_decoder_matches_capabilities_decoder():
-    """Our decoder must match the implementation in coordinator/capabilities.py."""
-    from custom_components.thessla_green_modbus.coordinator.capabilities import (
+    """Our decoder must match the implementation in core/capabilities_mixin.py."""
+    from custom_components.thessla_green_modbus.core.capabilities_mixin import (
         _CoordinatorCapabilitiesMixin,
     )
 

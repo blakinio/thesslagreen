@@ -23,14 +23,14 @@ from ..const import (
     input_registers,
 )
 from ..coordinator.models import CoordinatorConfig
-from .capabilities_mixin import _CoordinatorCapabilitiesMixin
-from .io_mixin import _ModbusIOMixin
 from ..scanner import DeviceCapabilities
 from ..transport.base import BaseModbusTransport
 from ..utils import utcnow as _utcnow
+from .capabilities_mixin import _CoordinatorCapabilitiesMixin
 from .client_connection import _DeviceClientConnectionMixin
 from .client_registers import _DeviceClientRegistersMixin
 from .client_scanner import _DeviceClientScannerMixin
+from .io_mixin import _ModbusIOMixin
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry

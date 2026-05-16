@@ -31,7 +31,9 @@ from ..const import (
     UNKNOWN_MODEL,
     input_registers,
 )
+from ..core.capabilities_mixin import _CoordinatorCapabilitiesMixin
 from ..core.client import ThesslaGreenDeviceClient
+from ..core.io_mixin import _ModbusIOMixin
 from ..errors import CannotConnect
 from ..register_defs_cache import get_register_definitions
 from ..registers.register_def import RegisterDef
@@ -42,8 +44,6 @@ from ..scanner import (
 )
 from ..transport.base import BaseModbusTransport
 from ..utils import resolve_connection_settings
-from ..core.capabilities_mixin import _CoordinatorCapabilitiesMixin
-from ..core.io_mixin import _ModbusIOMixin
 from .config_normalization import normalize_scan_interval as _normalize_scan_interval_impl
 from .config_properties import _CoordinatorConfigPropertiesMixin
 from .connection import (
