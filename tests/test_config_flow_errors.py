@@ -46,7 +46,7 @@ async def test_form_user_cannot_connect():
     flow.hass = None
 
     with patch(
-        "custom_components.thessla_green_modbus.config_flow.validate_input",
+        "custom_components.thessla_green_modbus._config_flow.validate_input",
         side_effect=CannotConnect,
     ):
         result = await flow.async_step_user(
@@ -69,7 +69,7 @@ async def test_form_user_modbus_exception():
     flow.hass = None
 
     with patch(
-        "custom_components.thessla_green_modbus.config_flow.validate_input",
+        "custom_components.thessla_green_modbus._config_flow.validate_input",
         side_effect=ModbusException("error"),
     ):
         result = await flow.async_step_user(
@@ -92,7 +92,7 @@ async def test_form_user_connection_exception():
     flow.hass = None
 
     with patch(
-        "custom_components.thessla_green_modbus.config_flow.validate_input",
+        "custom_components.thessla_green_modbus._config_flow.validate_input",
         side_effect=ConnectionException,
     ):
         result = await flow.async_step_user(
@@ -142,7 +142,7 @@ async def test_form_user_invalid_auth():
     flow.hass = None
 
     with patch(
-        "custom_components.thessla_green_modbus.config_flow.validate_input",
+        "custom_components.thessla_green_modbus._config_flow.validate_input",
         side_effect=InvalidAuth,
     ):
         result = await flow.async_step_user(
@@ -166,10 +166,10 @@ async def test_form_user_invalid_value():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            "custom_components.thessla_green_modbus._config_flow.validate_input",
             side_effect=ValueError,
         ),
-        patch("custom_components.thessla_green_modbus.config_flow._LOGGER") as logger_mock,
+        patch("custom_components.thessla_green_modbus._config_flow._LOGGER") as logger_mock,
     ):
         result = await flow.async_step_user(
             {
@@ -193,10 +193,10 @@ async def test_form_user_missing_key():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            "custom_components.thessla_green_modbus._config_flow.validate_input",
             side_effect=KeyError("test"),
         ),
-        patch("custom_components.thessla_green_modbus.config_flow._LOGGER") as logger_mock,
+        patch("custom_components.thessla_green_modbus._config_flow._LOGGER") as logger_mock,
     ):
         result = await flow.async_step_user(
             {
@@ -220,10 +220,10 @@ async def test_form_user_unexpected_exception():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            "custom_components.thessla_green_modbus._config_flow.validate_input",
             side_effect=RuntimeError,
         ),
-        patch("custom_components.thessla_green_modbus.config_flow._LOGGER") as logger_mock,
+        patch("custom_components.thessla_green_modbus._config_flow._LOGGER") as logger_mock,
     ):
         with pytest.raises(RuntimeError):
             await flow.async_step_user(

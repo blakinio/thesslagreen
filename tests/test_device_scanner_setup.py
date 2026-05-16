@@ -9,9 +9,8 @@ from custom_components.thessla_green_modbus.scanner import state as scanner_stat
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 from pymodbus.exceptions import ConnectionException
 
-pytestmark = pytest.mark.asyncio
 
-
+@pytest.mark.asyncio
 async def test_scanner_core_initialization():
     """Test device scanner initialization."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
@@ -27,6 +26,7 @@ async def test_scanner_core_initialization():
     assert scanner.backoff == 0
 
 
+@pytest.mark.asyncio
 async def test_verify_connection_close_non_awaitable_on_failure():
     """Verify close() handles non-awaitable result on connection failure."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
@@ -43,6 +43,7 @@ async def test_verify_connection_close_non_awaitable_on_failure():
     fake_transport.close.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_verify_connection_close_non_awaitable_on_success():
     """Verify close() handles non-awaitable result on success."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
@@ -58,6 +59,7 @@ async def test_verify_connection_close_non_awaitable_on_success():
     fake_transport.close.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_create_binds_read_helpers():
     """Scanner.create binds read helper methods to the instance."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
@@ -66,6 +68,7 @@ async def test_create_binds_read_helpers():
     assert hasattr(scanner, "_read_discrete")
 
 
+@pytest.mark.asyncio
 async def test_scanner_has_read_coil_method():
     """Ensure scanner exposes coil reading helper."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
