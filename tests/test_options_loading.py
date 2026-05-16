@@ -3,6 +3,7 @@ from pathlib import Path
 
 import custom_components.thessla_green_modbus.const as const
 import pytest
+from custom_components.thessla_green_modbus.options import _load_json_option, async_setup_options
 
 
 def test_deep_scan_defaults():
@@ -24,7 +25,7 @@ def test_missing_options_file(monkeypatch, caplog):
     monkeypatch.setattr(Path, "read_text", missing)
     caplog.clear()
     with caplog.at_level(logging.WARNING):
-        options = const._load_json_option("special_modes.json")
+        options = _load_json_option("special_modes.json")
 
     assert options == []  # nosec B101
 
@@ -36,7 +37,7 @@ def test_malformed_options_file(monkeypatch, caplog):
     monkeypatch.setattr(Path, "read_text", malformed)
     caplog.clear()
     with caplog.at_level(logging.WARNING):
-        options = const._load_json_option("special_modes.json")
+        options = _load_json_option("special_modes.json")
 
     assert options == []  # nosec B101
 
@@ -48,8 +49,8 @@ def test_scan_uart_defaults_enabled():
 
 
 def test_multi_register_sizes_returns_dict():
-    """multi_register_sizes() is called and returns a dict (const.py line 56)."""
-    from custom_components.thessla_green_modbus.const import multi_register_sizes
+    """multi_register_sizes() is called and returns a dict."""
+    from custom_components.thessla_green_modbus.registers.maps import multi_register_sizes
 
     result = multi_register_sizes()
     assert isinstance(result, dict)
@@ -76,7 +77,9 @@ def test_migrate_unique_id_base_uid_already_has_prefix():
 
 @pytest.mark.asyncio
 async def test_async_setup_options_no_hass_uses_sync_path():
-    """async_setup_options(None) falls back to synchronous loading (const.py line 408)."""
-    await const.async_setup_options(None)
+    """async_setup_options(None) falls back to synchronous loading."""
+    import custom_components.thessla_green_modbus.options as opts_mod
+
+    await async_setup_options(None)
     # After calling with hass=None, globals should still be set (sync path executed)
-    assert const.MODBUS_BAUD_RATES is not None
+    assert opts_mod.MODBUS_BAUD_RATES is not None

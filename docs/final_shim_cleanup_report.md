@@ -78,9 +78,8 @@ environment and should be run in a Python 3.12+ CI environment.
 
 ## Remaining Architectural Debt
 
-- `modbus_transport.py` root-level shim still present (documented in
-  `docs/final_architecture_cleanup.md` as retained for external compatibility).
-  Removal is out of scope for this PR.
+None. `modbus_transport.py` was removed in commit `864539f6` (PR #1639).
+See `docs/final_transport_shim_cleanup_report.md` for the full removal record.
 
 ## Recommended Next Step
 
