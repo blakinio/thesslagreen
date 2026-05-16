@@ -7,24 +7,24 @@ from collections.abc import Callable, Iterable
 from typing import Any, cast
 
 from ..const import HOLDING_BATCH_BOUNDARIES
-from ..coordinator.register_groups import (
-    compute_register_groups as _compute_register_groups_impl,
-)
-from ..coordinator.register_processing import (
-    find_register_name as _find_register_name_impl,
-)
-from ..coordinator.register_processing import (
-    process_register_value as _process_register_value_impl,
-)
-from ..coordinator.runtime_state import (
-    clear_register_failure as _clear_register_failure_impl,
-)
-from ..coordinator.runtime_state import (
-    mark_registers_failed as _mark_registers_failed_impl,
-)
 from ..register_defs_cache import get_register_definitions
 from ..registers.read_planner import group_reads
 from ..registers.register_def import RegisterDef
+from .register_groups import (
+    compute_register_groups as _compute_register_groups_impl,
+)
+from .register_processing import (
+    find_register_name as _find_register_name_impl,
+)
+from .register_processing import (
+    process_register_value as _process_register_value_impl,
+)
+from .runtime_state import (
+    clear_register_failure as _clear_register_failure_impl,
+)
+from .runtime_state import (
+    mark_registers_failed as _mark_registers_failed_impl,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -109,22 +109,25 @@ class _DeviceClientRegistersMixin:
         call_description: str = "",
         offset: int = 0,
     ) -> bool:
-        """Write a single register by name.
+        """Write a single register by name."""
+        from pymodbus.exceptions import ConnectionException, ModbusException
 
-        Delegates to the coordinator's write helpers. Intended for use
-        by external callers (services, tests) once the DeviceClient is
-        the canonical write path.
-        """
-        from ..coordinator.write_path import (
-            SingleWritePlan,
-            encode_write_value,
-            run_single_write_attempts,
-        )
+        from .write_path import SingleWritePlan, encode_write_value
 
         definition = _get_register_definition(register_name)
-        address = self._register_maps.get("holding_registers", {}).get(register_name)
+
+        if definition.function == 3:
+            address = self._register_maps.get("holding_registers", {}).get(register_name)
+        elif definition.function == 1:
+            address = self._register_maps.get("coil_registers", {}).get(register_name)
+        else:
+            _LOGGER.error(
+                "Register %s is not writable (function=%s)", register_name, definition.function
+            )
+            return False
+
         if address is None:
-            _LOGGER.error("Register %s not found in holding registers map", register_name)
+            _LOGGER.error("Register %s not found in register maps", register_name)
             return False
 
         encoded_values, scalar_value = encode_write_value(register_name, definition, value, offset)
@@ -133,12 +136,55 @@ class _DeviceClientRegistersMixin:
 
         plan = SingleWritePlan(
             register_name=register_name,
-            address=address,
-            definition=definition,
+            address=address + offset,
             encoded_values=encoded_values,
             scalar_value=scalar_value,
-            offset=offset,
-            entity_id=entity_id,
-            call_description=call_description,
+            original_value=value,
         )
-        return await run_single_write_attempts(self, plan)
+
+        await self._ensure_connection()
+
+        try:
+            if definition.function == 3:
+                if plan.encoded_values is not None:
+                    if self._transport is not None:
+                        response = await self._transport.write_registers(
+                            self.slave_id, plan.address, values=plan.encoded_values, attempt=1
+                        )
+                    else:
+                        response = await self._call_modbus(
+                            self._get_client_method("write_registers"),
+                            plan.address,
+                            values=plan.encoded_values,
+                            attempt=1,
+                        )
+                else:
+                    if self._transport is not None:
+                        response = await self._transport.write_register(
+                            self.slave_id, plan.address, value=int(plan.scalar_value), attempt=1
+                        )
+                    else:
+                        response = await self._call_modbus(
+                            self._get_client_method("write_register"),
+                            plan.address,
+                            value=int(plan.scalar_value),
+                            attempt=1,
+                        )
+            else:  # function == 1, coil
+                response = await self._call_modbus(
+                    self._get_client_method("write_coil"),
+                    plan.address,
+                    value=bool(plan.scalar_value),
+                    attempt=1,
+                )
+
+            if response is None or response.isError():
+                _LOGGER.error("Failed to write register %s", register_name)
+                return False
+
+            self._clear_register_failure(register_name)
+            _LOGGER.info("Successfully wrote %s to register %s", value, register_name)
+            return True
+        except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:
+            _LOGGER.exception("Error writing register %s: %s", register_name, exc)
+            return False

@@ -33,7 +33,11 @@ from ..const import (
 )
 from ..core.capabilities_mixin import _CoordinatorCapabilitiesMixin
 from ..core.client import ThesslaGreenDeviceClient
+from ..core.connection import setup_client_with_retry as _setup_client_with_retry_impl
+from ..core.connection_test import run_connection_test as _run_connection_test_impl
 from ..core.io_mixin import _ModbusIOMixin
+from ..core.models import CoordinatorConfig
+from ..core.retry import _PermanentModbusError
 from ..errors import CannotConnect
 from ..register_defs_cache import get_register_definitions
 from ..registers.register_def import RegisterDef
@@ -46,10 +50,6 @@ from ..transport.base import BaseModbusTransport
 from ..utils import resolve_connection_settings
 from .config_normalization import normalize_scan_interval as _normalize_scan_interval_impl
 from .config_properties import _CoordinatorConfigPropertiesMixin
-from .connection import (
-    setup_client_with_retry as _setup_client_with_retry_impl,
-)
-from .connection_test import run_connection_test as _run_connection_test_impl
 from .device_info import run_device_scan as _run_device_scan_impl
 from .device_info import warn_missing_device_info as _warn_missing_device_info_impl
 from .diagnostics import (
@@ -71,8 +71,6 @@ from .factory import build_config_from_params as _build_config_from_params_impl
 from .init_config import apply_coordinator_config as _apply_coordinator_config_impl
 from .init_config import normalize_runtime_config as _normalize_runtime_config_impl
 from .lifecycle import async_setup as _async_setup_impl
-from .models import CoordinatorConfig
-from .retry import _PermanentModbusError
 from .runtime import normalize_backoff as _normalize_backoff_impl
 from .runtime import parse_backoff_jitter as _parse_backoff_jitter_impl
 from .scan import (

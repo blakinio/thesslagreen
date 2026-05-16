@@ -7,7 +7,7 @@ from datetime import timedelta
 from typing import Any
 
 from ..const import CONNECTION_MODE_AUTO
-from .models import CoordinatorConfig
+from ..core.models import CoordinatorConfig
 
 
 def normalize_runtime_config(

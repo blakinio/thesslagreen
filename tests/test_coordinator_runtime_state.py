@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from custom_components.thessla_green_modbus.coordinator.runtime_state import (
+from custom_components.thessla_green_modbus.core.runtime_state import (
     clear_register_failure,
     mark_registers_failed,
 )

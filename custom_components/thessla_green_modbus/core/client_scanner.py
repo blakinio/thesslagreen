@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..coordinator.scan import (
+from ..scanner import ThesslaGreenDeviceScanner
+from .scan_helpers import (
     normalise_available_registers as _normalise_available_registers_impl,
 )
-from ..coordinator.scanner_kwargs import build_scanner_kwargs as _build_scanner_kwargs_impl
-from ..scanner import ThesslaGreenDeviceScanner
+from .scanner_kwargs import build_scanner_kwargs as _build_scanner_kwargs_impl
 
 
 class _DeviceClientScannerMixin:

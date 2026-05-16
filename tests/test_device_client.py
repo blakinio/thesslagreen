@@ -16,8 +16,8 @@ import pytest
 from custom_components.thessla_green_modbus.coordinator import (
     ThesslaGreenModbusCoordinator,
 )
-from custom_components.thessla_green_modbus.coordinator.models import CoordinatorConfig
 from custom_components.thessla_green_modbus.core.client import ThesslaGreenDeviceClient
+from custom_components.thessla_green_modbus.core.models import CoordinatorConfig
 from custom_components.thessla_green_modbus.scanner import DeviceCapabilities
 
 # ---------------------------------------------------------------------------

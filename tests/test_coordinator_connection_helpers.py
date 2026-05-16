@@ -10,7 +10,7 @@ from custom_components.thessla_green_modbus.const import (
     CONNECTION_MODE_TCP_RTU,
     CONNECTION_TYPE_TCP,
 )
-from custom_components.thessla_green_modbus.coordinator.connection import (
+from custom_components.thessla_green_modbus.core.connection import (
     build_tcp_transport,
     connect_direct_tcp_client,
     connect_transport_or_client,

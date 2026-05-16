@@ -48,7 +48,7 @@ from ..const import (
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
 
-    from .models import CoordinatorConfig
+    from ..core.models import CoordinatorConfig
 
 
 def coordinator_config_from_entry(

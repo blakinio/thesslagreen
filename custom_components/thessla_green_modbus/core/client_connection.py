@@ -22,51 +22,51 @@ from ..const import (
     SERIAL_STOP_BITS_MAP,
     input_registers,
 )
-from ..coordinator.connection import (
-    build_rtu_transport as _build_rtu_transport_impl,
-)
-from ..coordinator.connection import (
-    build_tcp_transport as _build_tcp_transport_impl,
-)
-from ..coordinator.connection import (
-    connect_direct_tcp_client as _connect_direct_tcp_client_impl,
-)
-from ..coordinator.connection import (
-    connect_transport_or_client as _connect_transport_or_client_impl,
-)
-from ..coordinator.connection import (
-    ensure_connected_runtime as _ensure_connected_runtime_impl,
-)
-from ..coordinator.connection import (
-    ensure_transport_selected as _ensure_transport_selected_impl,
-)
-from ..coordinator.connection import (
-    reconnect_client_if_needed as _reconnect_client_if_needed_impl,
-)
-from ..coordinator.connection_lifecycle import (
-    ensure_connected_lifecycle as _ensure_connected_lifecycle_impl,
-)
-from ..coordinator.connection_state import (
-    mark_connection_disconnected as _mark_connection_disconnected_impl,
-)
-from ..coordinator.connection_state import (
-    mark_connection_established as _mark_connection_established_impl,
-)
-from ..coordinator.connection_state import (
-    mark_connection_failure as _mark_connection_failure_impl,
-)
-from ..coordinator.connection_test import run_connection_test as _run_connection_test_impl
-from ..coordinator.disconnect import (
-    close_client_connection as _close_client_connection_impl,
-)
-from ..coordinator.disconnect import (
-    disconnect_locked as _disconnect_locked_impl,
-)
-from ..coordinator.transport_select import (
-    select_auto_transport as _select_auto_transport_impl,
-)
 from ..scanner import is_request_cancelled_error
 from ..transport.base import BaseModbusTransport
+from .connection import (
+    build_rtu_transport as _build_rtu_transport_impl,
+)
+from .connection import (
+    build_tcp_transport as _build_tcp_transport_impl,
+)
+from .connection import (
+    connect_direct_tcp_client as _connect_direct_tcp_client_impl,
+)
+from .connection import (
+    connect_transport_or_client as _connect_transport_or_client_impl,
+)
+from .connection import (
+    ensure_connected_runtime as _ensure_connected_runtime_impl,
+)
+from .connection import (
+    ensure_transport_selected as _ensure_transport_selected_impl,
+)
+from .connection import (
+    reconnect_client_if_needed as _reconnect_client_if_needed_impl,
+)
+from .connection_lifecycle import (
+    ensure_connected_lifecycle as _ensure_connected_lifecycle_impl,
+)
+from .connection_state import (
+    mark_connection_disconnected as _mark_connection_disconnected_impl,
+)
+from .connection_state import (
+    mark_connection_established as _mark_connection_established_impl,
+)
+from .connection_state import (
+    mark_connection_failure as _mark_connection_failure_impl,
+)
+from .connection_test import run_connection_test as _run_connection_test_impl
+from .disconnect import (
+    close_client_connection as _close_client_connection_impl,
+)
+from .disconnect import (
+    disconnect_locked as _disconnect_locked_impl,
+)
+from .transport_select import (
+    select_auto_transport as _select_auto_transport_impl,
+)
 
 _LOGGER = logging.getLogger(__name__)
 

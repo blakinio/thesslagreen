@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .coordinator import ThesslaGreenModbusCoordinator
+from typing import Any
 
 
 def mark_registers_failed(
-    coordinator: ThesslaGreenModbusCoordinator,
+    coordinator: Any,
     names: Iterable[str | None],
 ) -> None:
     """Record registers that failed to read in current runtime state."""
@@ -20,7 +17,7 @@ def mark_registers_failed(
 
 
 def clear_register_failure(
-    coordinator: ThesslaGreenModbusCoordinator,
+    coordinator: Any,
     name: str,
 ) -> None:
     """Remove register from failed list after successful read/write."""
