@@ -45,7 +45,7 @@ Branch: `main`
 | `version` | `2.8.0` ✅ |
 | `iot_class` | `local_polling` ✅ |
 | `integration_type` | `hub` ✅ |
-| `quality_scale` | `silver` (self-assessed; see §8) |
+| `quality_scale` | `bronze` (lowered from `silver`; see §8) |
 | `requirements` | `["pymodbus>=3.6.0"]` ✅ |
 | No unsupported `homeassistant` key | ✅ (removed in prior PR) |
 | No unsupported `files` key | ✅ (removed in prior PR) |
@@ -115,13 +115,14 @@ No entity IDs, service IDs, register names, or unique IDs were changed.
 
 ## 8. quality_scale Decision
 
-`manifest.json` declares `quality_scale: "silver"`. This is a self-assessed claim.
+`manifest.json` declares `quality_scale: "bronze"` (lowered from `silver`).
 
-Silver requires (among other things) real-device validation. Real-device validation
-has not been formally completed with a physical device (see §9). The claim is accepted
-as aspirational self-assessment pending that evidence. If hassfest or HACS CI rejects
-the silver claim, it should be lowered to `bronze` or removed as appropriate based on
-the CI failure message.
+Silver requires documented real-device validation. No completed on-device evidence
+exists in this repository (see §9 and `docs/real_device_validation.md`). The scale
+was therefore lowered to `bronze` until `docs/real_device_validation.md` §5 Evidence
+Record is filled by a named tester with a physical ThesslaGreen AirPack device and
+committed to the repository. At that point `quality_scale` may be raised back to
+`silver` provided all silver criteria are met.
 
 ---
 
@@ -146,7 +147,7 @@ This remains **open release blocker B4**.
 | **B1** | Hassfest CI | ✅ Expected to pass — `files` key removed in prior PR; manifest structure is correct |
 | **B2** | HACS CI | ✅ Expected to pass — `hacs.json` valid; `files` key removed |
 | **B3** | GitHub release tag `v2.8.0` | ⛔ OPEN — Tag and GitHub release not yet created |
-| **B4** | Real-device validation | ⛔ OPEN — Checklist template at `docs/real_device_validation.md`; evidence record pending |
+| **B4** | Real-device validation | ⛔ OPEN — Checklist template at `docs/real_device_validation.md`; evidence record pending. `quality_scale` lowered to `bronze` until evidence is provided. |
 
 ---
 
@@ -171,4 +172,4 @@ This remains **open release blocker B4**.
 - Tests not skipped, xfailed, or deleted.
 - No broad refactoring performed.
 - No new binary brand assets added or replaced (existing assets validated only).
-- `quality_scale: silver` retained as self-assessed; subject to CI validation.
+- `quality_scale` lowered from `silver` to `bronze`; real-device evidence required before restoring `silver`.
