@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import custom_components.thessla_green_modbus.config_flow as config_flow
+import custom_components.thessla_green_modbus._config_flow as _config_flow_impl
 import custom_components.thessla_green_modbus.coordinator as coordinator
 import custom_components.thessla_green_modbus.scanner.core as scanner_core
 import custom_components.thessla_green_modbus.services as services
@@ -52,14 +52,16 @@ def test_services_module_reexports_schema_constants() -> None:
 
 
 def test_config_flow_keeps_helper_surface() -> None:
-    """Config-flow helper symbols should stay importable for existing tests."""
+    """Private config-flow helpers live in _config_flow, not the public entrypoint."""
     for helper_name in (
         "_is_request_cancelled_error",
         "_looks_like_hostname",
         "_run_with_retry",
         "_call_with_optional_timeout",
     ):
-        assert hasattr(config_flow, helper_name)
+        assert hasattr(_config_flow_impl, helper_name), (
+            f"_config_flow is missing expected helper: {helper_name}"
+        )
 
 
 def test_scanner_package_exports_cancelled_error_helper() -> None:
