@@ -1,8 +1,8 @@
 """Tests for ``plan_group_reads`` utility."""
 
 import pytest
-from custom_components.thessla_green_modbus.modbus_helpers import group_reads
 from custom_components.thessla_green_modbus.registers.definition import ReadPlan
+from custom_components.thessla_green_modbus.registers.read_planner import group_reads
 from custom_components.thessla_green_modbus.registers.read_planner import (
     plan_group_reads as planner_plan_group_reads,
 )
