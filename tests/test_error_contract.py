@@ -66,7 +66,7 @@ def test_cross_layer_retry_logging_contract(caplog: pytest.LogCaptureFixture) ->
         backoff=0.2,
     )
     log_transport_retry(
-        logger=logging.getLogger("custom_components.thessla_green_modbus.modbus_transport"),
+        logger=logging.getLogger("custom_components.thessla_green_modbus.transport.retry_logging"),
         operation="timeout",
         attempt=1,
         max_attempts=3,
