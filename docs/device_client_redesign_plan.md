@@ -193,11 +193,11 @@ None removed in Phase 4. Phase 5 cleanup will remove:
 
 - [x] Phase 0: Baseline verified (2039 passed, 4 skipped)
 - [x] Phase 1: Inventory documented
-- [ ] Phase 2: DeviceClient interface defined (core/client.py)
-- [ ] Phase 3: Contract tests added
-- [ ] Phase 4: DeviceClient wired into coordinator
-- [ ] Phase 5: Responsibility migration
-- [ ] Phase 6: Public API preserved and verified
-- [ ] Phase 7: Dead code removed (if any)
-- [ ] Phase 8: Architecture quality gates
-- [ ] Phase 9: Full validation
+- [x] Phase 2: DeviceClient interface defined (core/client.py)
+- [x] Phase 3: Contract tests added (tests/test_device_client.py, 43 tests)
+- [x] Phase 4: DeviceClient wired into coordinator
+- [x] Phase 5: Responsibility migration (DeviceClient owns all device-domain state)
+- [x] Phase 6: Public API preserved and verified (all 40 proxies, all public methods)
+- [x] Phase 7: Dead code removed (unused imports cleaned by ruff)
+- [x] Phase 8: Architecture quality gates (docs/device_client_redesign.md)
+- [x] Phase 9: Full validation (2082 passed, 4 skipped, all tools green)
