@@ -363,7 +363,7 @@ async def test_reconfigure_does_not_leak_connections(coordinator):
             self.connected = False
 
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.coordinator.AsyncModbusTcpClient",
+        "custom_components.thessla_green_modbus.core.client_connection.AsyncModbusTcpClient",
         FakeClient,
     ):
         for _ in range(3):

@@ -5,10 +5,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-# Reference to the real AsyncModbusTcpClient captured at import time so that
-# tests patching coordinator.coordinator.AsyncModbusTcpClient still take effect
-# (see _try_direct_client_connect).
-from pymodbus.client import AsyncModbusTcpClient as _ORIGINAL_ASYNC_MODBUS_TCP_CLIENT
+# Module-level name so tests can patch
+# ``core.client_connection.AsyncModbusTcpClient`` without dynamic imports.
+from pymodbus.client import AsyncModbusTcpClient
 
 from ..const import (
     CONNECTION_MODE_AUTO,
@@ -181,24 +180,15 @@ class _DeviceClientConnectionMixin:
     async def _try_direct_client_connect(self, *, allow_parameterless_ctor: bool) -> bool:
         """Try connecting via AsyncModbusTcpClient and store the connected client.
 
-        Looks up AsyncModbusTcpClient through the coordinator module so that
-        tests can patch ``coordinator.coordinator.AsyncModbusTcpClient`` and
-        have it take effect here.
+        ``AsyncModbusTcpClient`` is a module-level name so tests can patch
+        ``core.client_connection.AsyncModbusTcpClient`` without any dynamic
+        import indirection.
         """
-        from custom_components.thessla_green_modbus import coordinator as coordinator_pkg
-
-        coord_module = getattr(coordinator_pkg, "coordinator", None)
-        tcp_client_cls = (
-            getattr(coord_module, "AsyncModbusTcpClient", None)
-            if coord_module is not None
-            else None
-        ) or _ORIGINAL_ASYNC_MODBUS_TCP_CLIENT
-
         direct_client = await _connect_direct_tcp_client_impl(
             host=self.config.host,
             port=self.config.port,
             timeout=self.timeout,
-            tcp_client_cls=tcp_client_cls,
+            tcp_client_cls=AsyncModbusTcpClient,
             allow_parameterless_ctor=allow_parameterless_ctor,
         )
         if direct_client is not None:

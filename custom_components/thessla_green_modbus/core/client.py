@@ -22,9 +22,9 @@ from ..const import (
     holding_registers,
     input_registers,
 )
-from ..coordinator.capabilities import _CoordinatorCapabilitiesMixin
-from ..coordinator.io import _ModbusIOMixin
 from ..coordinator.models import CoordinatorConfig
+from .capabilities_mixin import _CoordinatorCapabilitiesMixin
+from .io_mixin import _ModbusIOMixin
 from ..scanner import DeviceCapabilities
 from ..transport.base import BaseModbusTransport
 from ..utils import utcnow as _utcnow
@@ -55,8 +55,8 @@ class ThesslaGreenDeviceClient(
     - Connection lifecycle / transport: _DeviceClientConnectionMixin
     - Scanner orchestration: _DeviceClientScannerMixin
     - Register groups / IO helpers / writes: _DeviceClientRegistersMixin
-    - Modbus read protocol: _ModbusIOMixin (from coordinator/)
-    - Derived capability metrics: _CoordinatorCapabilitiesMixin (from coordinator/)
+    - Modbus read protocol: _ModbusIOMixin (core/io_mixin.py)
+    - Derived capability metrics: _CoordinatorCapabilitiesMixin (core/capabilities_mixin.py)
     """
 
     #: Asyncio locks owned by this client (coordinator proxies access these).
