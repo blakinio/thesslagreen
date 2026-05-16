@@ -1437,7 +1437,8 @@
   },
   "options": {
     "error": {
-      "max_registers_range": "Max registers per request must be between 1 and 16."
+      "max_registers_range": "Max registers per request must be between 1 and 16.",
+      "max_registers_per_request": "Maximum registers per Modbus request (1–16)"
     },
     "step": {
       "init": {
@@ -1476,9 +1477,6 @@
           "timeout": "Maximum time to wait for response (5-60 seconds)",
           "scan_uart_settings": "Read UART port configuration registers from the device during scanning",
           "airflow_unit": "Unit for displaying airflow values (percentage or cubic metres per hour)"
-        },
-        "error": {
-          "max_registers_per_request": "Maximum registers per Modbus request (1–16)"
         },
         "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Device scan enabled: {device_scan_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Safe scan: {safe_scan_enabled}. Max registers per request: {current_max_registers_per_request}. Log level: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "ThesslaGreen Modbus Options"
