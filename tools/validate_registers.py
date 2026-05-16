@@ -30,9 +30,13 @@ def _prepare_environment() -> None:
     # Stub modules required for importing the registers loader without pulling
     # in the rest of the integration (which would otherwise create circular
     # imports during testing).
-    modbus_helpers = types.ModuleType("custom_components.thessla_green_modbus.modbus_helpers")
-    modbus_helpers.group_reads = lambda *_, **__: None  # type: ignore
-    sys.modules.setdefault("custom_components.thessla_green_modbus.modbus_helpers", modbus_helpers)
+    read_planner_stub = types.ModuleType(
+        "custom_components.thessla_green_modbus.registers.read_planner"
+    )
+    read_planner_stub.group_reads = lambda *_, **__: None  # type: ignore
+    sys.modules.setdefault(
+        "custom_components.thessla_green_modbus.registers.read_planner", read_planner_stub
+    )
 
     schedule_helpers = types.ModuleType("custom_components.thessla_green_modbus.schedule_helpers")
     schedule_helpers.bcd_to_time = lambda *_, **__: None  # type: ignore

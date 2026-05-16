@@ -1,8 +1,8 @@
-from custom_components.thessla_green_modbus.modbus_helpers import group_reads
 from custom_components.thessla_green_modbus.registers.loader import (
     get_all_registers,
     plan_group_reads,
 )
+from custom_components.thessla_green_modbus.registers.read_planner import group_reads
 
 
 def test_loader_smoke():

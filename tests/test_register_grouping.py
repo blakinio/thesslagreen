@@ -1,5 +1,4 @@
 from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
-from custom_components.thessla_green_modbus.modbus_helpers import group_reads
 from custom_components.thessla_green_modbus.registers.loader import (
     RegisterDef as Register,
 )
@@ -7,6 +6,7 @@ from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
     plan_group_reads,
 )
+from custom_components.thessla_green_modbus.registers.read_planner import group_reads
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 
 INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}

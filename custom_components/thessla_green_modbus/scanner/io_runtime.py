@@ -59,7 +59,7 @@ async def call_modbus_with_fallback(
 async def sleep_retry_backoff(
     *, backoff: float, backoff_jitter: float | tuple[float, float] | None, attempt: int, retry: int
 ) -> None:
-    """Sleep between retries using modbus_helpers timing semantics."""
+    """Sleep between retries."""
     await _scanner_io_impl._sleep_retry_backoff_fn(
         calculate_backoff_delay=lambda base, at, jitter: _mh_calculate_backoff_delay(
             base=base, attempt=at, jitter=jitter

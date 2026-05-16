@@ -25,8 +25,9 @@ sys.modules["custom_components.thessla_green_modbus.registers"] = types.SimpleNa
     get_registers_by_function=loader_stub.get_registers_by_function,
 )
 
-from custom_components.thessla_green_modbus.modbus_helpers import (
+from custom_components.thessla_green_modbus.modbus.call import (
     _KWARG_CACHE,
+    _LOGGER,
     _SIG_CACHE,
     _apply_attempt_delay,
     _calculate_batch_size,
@@ -36,9 +37,9 @@ from custom_components.thessla_green_modbus.modbus_helpers import (
     _prepare_modbus_call,
     _PreparedCall,
     _raise_mapped_call_exception,
-    async_close_client,
-    group_reads,
 )
+from custom_components.thessla_green_modbus.modbus.client_close import async_close_client
+from custom_components.thessla_green_modbus.registers.read_planner import group_reads
 from pymodbus.exceptions import ModbusIOException
 
 if original_loader is not None:
@@ -193,7 +194,7 @@ async def test_async_close_client_with_async_close():
 
 def test_calculate_backoff_jitter_tuple_inverted():
     """Jitter tuple with max < min is automatically swapped."""
-    from custom_components.thessla_green_modbus.modbus_helpers import _calculate_backoff_delay
+    from custom_components.thessla_green_modbus.modbus.call import _calculate_backoff_delay
 
     # Inverted: (1.0, 0.0) should be treated as (0.0, 1.0)
     delay = _calculate_backoff_delay(base=1.0, attempt=2, jitter=(1.0, 0.0))
@@ -202,7 +203,7 @@ def test_calculate_backoff_jitter_tuple_inverted():
 
 def test_calculate_backoff_jitter_float():
     """Jitter as scalar float adds random component."""
-    from custom_components.thessla_green_modbus.modbus_helpers import _calculate_backoff_delay
+    from custom_components.thessla_green_modbus.modbus.call import _calculate_backoff_delay
 
     delay = _calculate_backoff_delay(base=1.0, attempt=2, jitter=0.5)
     assert delay >= 1.0
@@ -314,13 +315,13 @@ def test_classify_modbus_exception_failed():
 
 def test_calculate_backoff_no_jitter_zero_attempt():
     """Zero attempt returns 0."""
-    from custom_components.thessla_green_modbus.modbus_helpers import _calculate_backoff_delay
+    from custom_components.thessla_green_modbus.modbus.call import _calculate_backoff_delay
 
     assert _calculate_backoff_delay(base=1.0, attempt=1, jitter=None) == 0.0
 
 
 def test_calculate_backoff_zero_base():
-    from custom_components.thessla_green_modbus.modbus_helpers import _calculate_backoff_delay
+    from custom_components.thessla_green_modbus.modbus.call import _calculate_backoff_delay
 
     assert _calculate_backoff_delay(base=0.0, attempt=5, jitter=None) == 0.0
 
@@ -333,7 +334,7 @@ def test_calculate_backoff_zero_base():
 @pytest.mark.asyncio
 async def test_async_maybe_await_close_none():
     """obj=None returns immediately without error (line 96)."""
-    from custom_components.thessla_green_modbus.modbus_helpers import async_maybe_await_close
+    from custom_components.thessla_green_modbus.modbus.client_close import async_maybe_await_close
 
     await async_maybe_await_close(None)  # must not raise
 
@@ -341,7 +342,7 @@ async def test_async_maybe_await_close_none():
 @pytest.mark.asyncio
 async def test_async_maybe_await_close_no_close_attr():
     """obj without a close attribute returns immediately (line 100)."""
-    from custom_components.thessla_green_modbus.modbus_helpers import async_maybe_await_close
+    from custom_components.thessla_green_modbus.modbus.client_close import async_maybe_await_close
 
     class NoCLose:
         pass
@@ -352,7 +353,7 @@ async def test_async_maybe_await_close_no_close_attr():
 @pytest.mark.asyncio
 async def test_async_maybe_await_close_non_callable_close():
     """obj with non-callable close returns immediately (line 100)."""
-    from custom_components.thessla_green_modbus.modbus_helpers import async_maybe_await_close
+    from custom_components.thessla_green_modbus.modbus.client_close import async_maybe_await_close
 
     class BadClose:
         close = "not_callable"
@@ -370,7 +371,7 @@ async def test_call_modbus_no_signature_positional():
     """When _get_signature returns None, args are passed as positional (line 262)."""
     from unittest.mock import patch
 
-    from custom_components.thessla_green_modbus import modbus_helpers
+    import custom_components.thessla_green_modbus.modbus.call as call_mod
 
     received = []
 
@@ -378,8 +379,8 @@ async def test_call_modbus_no_signature_positional():
         received.append((args, kwargs))
         return type("R", (), {"isError": lambda self: False})()
 
-    with patch.object(modbus_helpers, "_get_signature", return_value=None):
-        await modbus_helpers._call_modbus(func, 1, 100, 2)
+    with patch.object(call_mod, "_get_signature", return_value=None):
+        await _call_modbus(func, 1, 100, 2)
 
     assert len(received) == 1  # nosec B101
     # 100 and 2 should have been forwarded as positional args
@@ -395,8 +396,6 @@ async def test_call_modbus_no_signature_positional():
 @pytest.mark.asyncio
 async def test_call_modbus_stop_iteration_extra_args_beyond_params():
     """Extra args beyond param count are appended to positional (lines 253-255)."""
-    from custom_components.thessla_green_modbus import modbus_helpers
-
     calls = []
 
     async def three_param_func(a, b, *rest):
@@ -404,7 +403,7 @@ async def test_call_modbus_stop_iteration_extra_args_beyond_params():
         return type("R", (), {"isError": lambda self: False})()
 
     # 3 params (a, b, *rest); pass 4 args → 4th triggers StopIteration
-    await modbus_helpers._call_modbus(three_param_func, 1, "x1", "x2", "x3", "x4")
+    await _call_modbus(three_param_func, 1, "x1", "x2", "x3", "x4")
     assert calls  # nosec B101
     assert calls[0][2] == ("x3", "x4")  # rest got extra args  # nosec B101
 
@@ -419,15 +418,14 @@ async def test_call_modbus_modbus_io_exception_request_cancelled(caplog):
     """ModbusIOException with 'request cancelled' text triggers debug log (line 350)."""
     import logging
 
-    from custom_components.thessla_green_modbus import modbus_helpers
     from pymodbus.exceptions import ModbusIOException
 
     async def cancel_func(slave):
         raise ModbusIOException("Request Cancelled by device")
 
     with pytest.raises(ModbusIOException):
-        with caplog.at_level(logging.DEBUG, logger=modbus_helpers._LOGGER.name):
-            await modbus_helpers._call_modbus(cancel_func, 1)
+        with caplog.at_level(logging.DEBUG, logger=_LOGGER.name):
+            await _call_modbus(cancel_func, 1)
 
     assert any("cancelled" in r.message.lower() for r in caplog.records)  # nosec B101
 
@@ -442,8 +440,6 @@ async def test_call_modbus_debug_logs_response_object_when_no_encode(caplog):
     """DEBUG mode logs response object when encode gives empty bytes (line 369)."""
     import logging
 
-    from custom_components.thessla_green_modbus import modbus_helpers
-
     class NoEncodeResponse:
         pass  # no encode method → hasattr False → encoded = b""
 
@@ -451,7 +447,7 @@ async def test_call_modbus_debug_logs_response_object_when_no_encode(caplog):
         return NoEncodeResponse()
 
     with caplog.at_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus"):
-        await modbus_helpers._call_modbus(func_no_encode, 1)
+        await _call_modbus(func_no_encode, 1)
 
     assert any("Received from" in r.message for r in caplog.records)  # nosec B101
 
@@ -461,8 +457,6 @@ async def test_call_modbus_non_debug_encode_exception_sets_empty(monkeypatch):
     """encode() exception at non-DEBUG level is silently caught (lines 373-374)."""
     import logging
 
-    from custom_components.thessla_green_modbus import modbus_helpers
-
     class BadEncodeResponse:
         def encode(self):
             raise TypeError("cannot encode this")
@@ -470,13 +464,12 @@ async def test_call_modbus_non_debug_encode_exception_sets_empty(monkeypatch):
     async def func_bad_encode(slave):
         return BadEncodeResponse()
 
-    logger = modbus_helpers._LOGGER
-    original_level = logger.level
-    logger.setLevel(logging.WARNING)
+    original_level = _LOGGER.level
+    _LOGGER.setLevel(logging.WARNING)
     try:
-        result = await modbus_helpers._call_modbus(func_bad_encode, 1)
+        result = await _call_modbus(func_bad_encode, 1)
     finally:
-        logger.setLevel(original_level)
+        _LOGGER.setLevel(original_level)
 
     assert isinstance(result, BadEncodeResponse)  # returned successfully  # nosec B101
 
@@ -487,7 +480,7 @@ async def test_call_modbus_non_debug_encode_exception_sets_empty(monkeypatch):
 
 import logging as _logging
 
-from custom_components.thessla_green_modbus import modbus_helpers as _mh
+import custom_components.thessla_green_modbus.modbus.call as _mh
 
 
 @pytest.mark.asyncio
