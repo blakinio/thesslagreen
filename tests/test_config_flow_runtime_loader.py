@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from custom_components.thessla_green_modbus.config_flow.runtime import (
+from custom_components.thessla_green_modbus._config_flow.runtime import (
     load_scanner_module,
 )
 
@@ -19,7 +19,7 @@ async def test_load_scanner_module_none_hass_imports_synchronously():
     """When hass is None the import is performed synchronously."""
     fake_module = MagicMock()
     with patch(
-        "custom_components.thessla_green_modbus.config_flow.runtime.import_module",
+        "custom_components.thessla_green_modbus._config_flow.runtime.import_module",
         return_value=fake_module,
     ) as mock_import:
         result = await load_scanner_module(None)
@@ -35,7 +35,7 @@ async def test_load_scanner_module_hass_without_executor_imports_synchronously()
     hass_stub = object()  # no async_add_executor_job attribute
 
     with patch(
-        "custom_components.thessla_green_modbus.config_flow.runtime.import_module",
+        "custom_components.thessla_green_modbus._config_flow.runtime.import_module",
         return_value=fake_module,
     ) as mock_import:
         result = await load_scanner_module(hass_stub)
@@ -71,7 +71,7 @@ async def test_load_scanner_module_uses_executor_when_hass_available():
 @pytest.mark.asyncio
 async def test_load_scanner_module_executor_receives_correct_path():
     """The exact module path is passed to the executor import."""
-    from custom_components.thessla_green_modbus.config_flow.runtime import (
+    from custom_components.thessla_green_modbus._config_flow.runtime import (
         _SCANNER_MODULE_PATH,
     )
 

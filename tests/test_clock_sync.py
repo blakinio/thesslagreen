@@ -489,7 +489,7 @@ async def test_button_press_raises_on_failure():
 
 
 def test_options_form_has_clock_sync_defaults():
-    from custom_components.thessla_green_modbus.config_flow.options_form import (
+    from custom_components.thessla_green_modbus._config_flow.options_form import (
         build_options_defaults,
     )
     from custom_components.thessla_green_modbus.const import (
@@ -516,7 +516,7 @@ def test_options_form_has_clock_sync_defaults():
 
 
 def test_options_form_default_sync_enabled_is_false():
-    from custom_components.thessla_green_modbus.config_flow.options_form import (
+    from custom_components.thessla_green_modbus._config_flow.options_form import (
         build_options_defaults,
     )
     from custom_components.thessla_green_modbus.const import (
@@ -528,7 +528,7 @@ def test_options_form_default_sync_enabled_is_false():
 
 
 def test_options_form_has_clock_sync_schema_keys():
-    from custom_components.thessla_green_modbus.config_flow.options_form import (
+    from custom_components.thessla_green_modbus._config_flow.options_form import (
         build_options_schema,
     )
     from custom_components.thessla_green_modbus.const import (

@@ -69,7 +69,7 @@ async def test_diagnostics_offline_active_error_formatting():
 
     with patch(
         "custom_components.thessla_green_modbus.diagnostics.translation.async_get_translations",
-        AsyncMock(return_value={"codes.s_offline": "Offline"}),
+        AsyncMock(return_value={"entity.sensor.error_codes.state.s_offline": "Offline"}),
     ):
         result = await async_get_config_entry_diagnostics(hass, entry)
 

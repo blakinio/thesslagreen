@@ -123,7 +123,7 @@ def _build_active_errors(data: dict[str, Any], translations: dict[str, str]) -> 
     active_errors: dict[str, str] = {}
     for key, value in data.items():
         if value and (key.startswith("e_") or key.startswith("s_")):
-            active_errors[key] = translations.get(f"codes.{key}", key)
+            active_errors[key] = translations.get(f"entity.sensor.error_codes.state.{key}", key)
     return active_errors
 
 
