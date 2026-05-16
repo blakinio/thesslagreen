@@ -7,41 +7,16 @@ from typing import Any
 # ---------------------------------------------------------------------------
 # Entity lookup — implementation lives in entity_lookup.py.
 # ---------------------------------------------------------------------------
-from .entity_lookup import _ENTITY_LOOKUP as _ENTITY_LOOKUP
 from .entity_lookup import _build_entity_lookup as _build_entity_lookup
 
 # ---------------------------------------------------------------------------
-# Options loading — implementation lives in options/__init__.py.
-# Re-exported here for backward compatibility.  Prefer importing from
-# .options in new code.
+# Register map helpers — used internally by migrate_unique_id below.
+# Canonical import path: .registers.maps
 # ---------------------------------------------------------------------------
-from .options import BYPASS_MODES as BYPASS_MODES
-from .options import DAYS_OF_WEEK as DAYS_OF_WEEK
-from .options import FILTER_TYPES as FILTER_TYPES
-from .options import GWC_MODES as GWC_MODES
-from .options import MODBUS_BAUD_RATES as MODBUS_BAUD_RATES
-from .options import MODBUS_PARITY as MODBUS_PARITY
-from .options import MODBUS_PORTS as MODBUS_PORTS
-from .options import MODBUS_STOP_BITS as MODBUS_STOP_BITS
-from .options import OPTIONS_PATH as OPTIONS_PATH
-from .options import PERIODS as PERIODS
-from .options import RESET_TYPES as RESET_TYPES
-from .options import SPECIAL_MODE_OPTIONS as SPECIAL_MODE_OPTIONS
-from .options import _get_options_init_lock as _get_options_init_lock
-from .options import _load_json_option as _load_json_option
-from .options import async_setup_options as async_setup_options
-
-# ---------------------------------------------------------------------------
-# Register map helpers — implementation lives in registers/maps.py.
-# Re-exported here for backward compatibility with callers that import from
-# this module.  Prefer importing from registers.maps in new code.
-# ---------------------------------------------------------------------------
-from .registers.maps import _build_map as _build_map
 from .registers.maps import coil_registers as coil_registers
 from .registers.maps import discrete_input_registers as discrete_input_registers
 from .registers.maps import holding_registers as holding_registers
 from .registers.maps import input_registers as input_registers
-from .registers.maps import multi_register_sizes as multi_register_sizes
 
 # ---------------------------------------------------------------------------
 # Unique-ID helpers — thin façades over unique_id_migration.
