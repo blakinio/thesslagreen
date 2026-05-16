@@ -12,7 +12,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as _dt_util
-from pymodbus.client import AsyncModbusTcpClient
 
 from ..const import (
     CONNECTION_MODE_AUTO,
@@ -43,7 +42,8 @@ from ..scanner import (
 )
 from ..transport.base import BaseModbusTransport
 from ..utils import resolve_connection_settings
-from .capabilities import _CoordinatorCapabilitiesMixin
+from ..core.capabilities_mixin import _CoordinatorCapabilitiesMixin
+from ..core.io_mixin import _ModbusIOMixin
 from .config_normalization import normalize_scan_interval as _normalize_scan_interval_impl
 from .config_properties import _CoordinatorConfigPropertiesMixin
 from .connection import (
@@ -70,7 +70,6 @@ from .diagnostics import (
 from .factory import build_config_from_params as _build_config_from_params_impl
 from .init_config import apply_coordinator_config as _apply_coordinator_config_impl
 from .init_config import normalize_runtime_config as _normalize_runtime_config_impl
-from .io import _ModbusIOMixin
 from .lifecycle import async_setup as _async_setup_impl
 from .models import CoordinatorConfig
 from .retry import _PermanentModbusError
@@ -124,9 +123,6 @@ def _utcnow() -> datetime:
     from ..utils import utcnow as _utils_utcnow
 
     return _utils_utcnow()
-
-
-_ORIGINAL_ASYNC_MODBUS_TCP_CLIENT = AsyncModbusTcpClient
 
 
 def get_register_definition(name: str) -> RegisterDef:
