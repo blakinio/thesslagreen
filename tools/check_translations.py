@@ -34,6 +34,7 @@ OPTION_KEYS = [
 
 OPTION_ERROR_KEYS = [
     "max_registers_range",
+    "max_registers_per_request",
 ]
 
 
