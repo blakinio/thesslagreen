@@ -539,8 +539,8 @@ class ThesslaGreenModbusCoordinator(
             self.config.stop_bits, SERIAL_STOP_BITS_MAP[DEFAULT_STOP_BITS]
         )
 
-        def _ensure_transport_selected() -> Any:
-            return lambda: _ensure_transport_selected_impl(
+        async def _ensure_transport_selected() -> Any:
+            return await _ensure_transport_selected_impl(
                 current_transport=self._transport,
                 connection_type=self.config.connection_type,
                 connection_mode=self.config.connection_mode,
