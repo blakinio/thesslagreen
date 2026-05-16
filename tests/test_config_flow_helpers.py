@@ -7,6 +7,18 @@ from custom_components.thessla_green_modbus._config_flow.device_validation impor
     _build_success_payload,
     _validate_scan_result,
 )
+from custom_components.thessla_green_modbus._config_flow.options import (
+    normalize_baud_rate as _normalize_baud_rate,
+)
+from custom_components.thessla_green_modbus._config_flow.options import (
+    normalize_parity as _normalize_parity,
+)
+from custom_components.thessla_green_modbus._config_flow.options import (
+    normalize_stop_bits as _normalize_stop_bits,
+)
+from custom_components.thessla_green_modbus._config_flow.runtime import (
+    run_with_retry as _run_with_retry,
+)
 from custom_components.thessla_green_modbus._config_flow.schema import (
     _build_serial_defaults_and_validators,
 )
@@ -18,13 +30,7 @@ from custom_components.thessla_green_modbus._config_flow.steps import (
     resolve_reauth_entry,
     resolve_reauth_form_state,
 )
-from custom_components.thessla_green_modbus.config_flow import (
-    ConfigFlow,
-    _normalize_baud_rate,
-    _normalize_parity,
-    _normalize_stop_bits,
-    _run_with_retry,
-)
+from custom_components.thessla_green_modbus.config_flow import ConfigFlow
 from custom_components.thessla_green_modbus.errors import CannotConnect
 from pymodbus.exceptions import ModbusIOException
 
@@ -202,16 +208,16 @@ async def test_run_with_retry_sync_func_returns_value():
 @pytest.mark.asyncio
 async def test_build_connection_schema_empty_option_lists():
     """Cover the fallback branches when MODBUS_BAUD_RATES/PARITY/STOP_BITS are empty."""
-    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    import custom_components.thessla_green_modbus._config_flow as _cf_impl
 
-    original_baud = cf_mod.MODBUS_BAUD_RATES
-    original_parity = cf_mod.MODBUS_PARITY
-    original_stop_bits = cf_mod.MODBUS_STOP_BITS
+    original_baud = _cf_impl.MODBUS_BAUD_RATES
+    original_parity = _cf_impl.MODBUS_PARITY
+    original_stop_bits = _cf_impl.MODBUS_STOP_BITS
 
     try:
-        cf_mod.MODBUS_BAUD_RATES = []
-        cf_mod.MODBUS_PARITY = []
-        cf_mod.MODBUS_STOP_BITS = []
+        _cf_impl.MODBUS_BAUD_RATES = []
+        _cf_impl.MODBUS_PARITY = []
+        _cf_impl.MODBUS_STOP_BITS = []
 
         flow = ConfigFlow()
         flow.hass = None
@@ -219,9 +225,9 @@ async def test_build_connection_schema_empty_option_lists():
         # Should not raise — just verifies the empty-list branches are reached
         assert schema is not None
     finally:
-        cf_mod.MODBUS_BAUD_RATES = original_baud
-        cf_mod.MODBUS_PARITY = original_parity
-        cf_mod.MODBUS_STOP_BITS = original_stop_bits
+        _cf_impl.MODBUS_BAUD_RATES = original_baud
+        _cf_impl.MODBUS_PARITY = original_parity
+        _cf_impl.MODBUS_STOP_BITS = original_stop_bits
 
 
 @pytest.mark.asyncio
@@ -249,17 +255,17 @@ async def test_build_connection_schema_tcp_rtu_connection_default():
 @pytest.mark.asyncio
 async def test_build_connection_schema_empty_baud_rates_bad_baud_default():
     """Cover except (TypeError, ValueError) when int(baud_default) fails (lines 670-671)."""
-    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    import custom_components.thessla_green_modbus._config_flow as _cf_impl
 
-    original_baud = cf_mod.MODBUS_BAUD_RATES
+    original_baud = _cf_impl.MODBUS_BAUD_RATES
     try:
-        cf_mod.MODBUS_BAUD_RATES = []
+        _cf_impl.MODBUS_BAUD_RATES = []
         flow = ConfigFlow()
         flow.hass = None
         schema = flow._build_connection_schema({"baud_rate": "invalid_baud"})
         assert schema is not None
     finally:
-        cf_mod.MODBUS_BAUD_RATES = original_baud
+        _cf_impl.MODBUS_BAUD_RATES = original_baud
 
 
 def test_validate_scan_result_rejects_empty():
@@ -402,34 +408,42 @@ def test_normalize_baud_rate_string_zero():
 
 def test_denormalize_option_none():
     """_denormalize_option with None returns None (line 249)."""
-    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus._config_flow.options import (
+        denormalize_option as _denormalize_option,
+    )
 
-    result = cf_mod._denormalize_option("prefix_", None)
+    result = _denormalize_option("prefix_", None)
     assert result is None
 
 
 def test_denormalize_option_already_prefixed():
     """_denormalize_option with domain-prefixed value returns it unchanged (line 251)."""
-    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus._config_flow.options import (
+        denormalize_option as _denormalize_option,
+    )
     from custom_components.thessla_green_modbus.const import DOMAIN
 
     val = f"{DOMAIN}.some_value"
-    result = cf_mod._denormalize_option("prefix_", val)
+    result = _denormalize_option("prefix_", val)
     assert result == val
 
 
 def test_looks_like_hostname_empty():
     """_looks_like_hostname with empty string returns False (line 258)."""
-    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus._config_flow.network import (
+        looks_like_hostname as _looks_like_hostname,
+    )
 
-    assert cf_mod._looks_like_hostname("") is False
+    assert _looks_like_hostname("") is False
 
 
 def test_looks_like_hostname_starts_with_dash():
     """_looks_like_hostname with leading dash returns False (line 264)."""
-    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus._config_flow.network import (
+        looks_like_hostname as _looks_like_hostname,
+    )
 
-    assert cf_mod._looks_like_hostname("-invalid.host") is False
+    assert _looks_like_hostname("-invalid.host") is False
 
 
 # ---------------------------------------------------------------------------
@@ -439,10 +453,12 @@ def test_looks_like_hostname_starts_with_dash():
 
 def test_strip_translation_prefix_with_domain_prefix():
     """Value with domain prefix gets stripped (line 189)."""
-    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus._config_flow.options import (
+        strip_translation_prefix as _strip_translation_prefix,
+    )
     from custom_components.thessla_green_modbus.const import DOMAIN
 
-    result = cf_mod._strip_translation_prefix(f"{DOMAIN}.some_value")
+    result = _strip_translation_prefix(f"{DOMAIN}.some_value")
     assert result == "some_value"
 
 
@@ -466,46 +482,54 @@ def test_caps_to_dict_dataclass_no_as_dict():
     """dataclass without as_dict uses dataclasses.asdict (line 322)."""
     import dataclasses
 
-    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus._config_flow.payloads import (
+        caps_to_dict as _caps_to_dict,
+    )
 
     @dataclasses.dataclass
     class Cap:
         has_feature: bool = True
 
-    result = cf_mod._caps_to_dict(Cap())
+    result = _caps_to_dict(Cap())
     assert result["has_feature"] is True
 
 
 def test_caps_to_dict_dict_with_set_value():
     """dict input with set value converts to sorted list (lines 326, 330)."""
-    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus._config_flow.payloads import (
+        caps_to_dict as _caps_to_dict,
+    )
 
-    result = cf_mod._caps_to_dict({"a": 1, "b": {3, 1, 2}})
+    result = _caps_to_dict({"a": 1, "b": {3, 1, 2}})
     assert result["a"] == 1
     assert result["b"] == [1, 2, 3]
 
 
 def test_caps_to_dict_plain_object():
     """Object with __dict__ uses getattr fallback (line 311 else branch)."""
-    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus._config_flow.payloads import (
+        caps_to_dict as _caps_to_dict,
+    )
 
     class Obj:
         def __init__(self):
             self.y = 42
 
-    result = cf_mod._caps_to_dict(Obj())
+    result = _caps_to_dict(Obj())
     assert result.get("y") == 42
 
 
 def test_caps_to_dict_obj_with_as_dict():
     """Object with as_dict() method uses it (line 322 elif)."""
-    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus._config_flow.payloads import (
+        caps_to_dict as _caps_to_dict,
+    )
 
     class ObjWithAsDict:
         def as_dict(self):
             return {"x": 99}
 
-    result = cf_mod._caps_to_dict(ObjWithAsDict())
+    result = _caps_to_dict(ObjWithAsDict())
     assert result["x"] == 99
 
 
@@ -517,9 +541,11 @@ def test_caps_to_dict_obj_with_as_dict():
 @pytest.mark.asyncio
 async def test_call_with_optional_timeout_sync_function():
     """Sync function returns result without awaiting (line 311)."""
-    import custom_components.thessla_green_modbus.config_flow as cf_mod
+    from custom_components.thessla_green_modbus._config_flow.runtime import (
+        call_with_optional_timeout as _call_with_optional_timeout,
+    )
 
-    result = await cf_mod._call_with_optional_timeout(lambda: 42, timeout=5.0)
+    result = await _call_with_optional_timeout(lambda: 42, timeout=5.0)
     assert result == 42
 
 
