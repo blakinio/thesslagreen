@@ -11,8 +11,8 @@
 - `except BaseException` retry path in config flow runtime was narrowed to `CancelledError` + `Exception`.
 
 ## Compatibility shims
-- `modbus_transport.py` remains as a minimal shim to avoid abrupt external breakage; it now directly re-exports from canonical `transport.retry`.
-- `modbus_helpers.py` remains due to broad test and potential external compatibility surface; future removal should be staged.
+- `modbus_transport.py` has been removed. All callers import directly from canonical `transport.*` modules.
+- `modbus_helpers.py` has been removed. All callers import directly from canonical `core.*` modules.
 
 ## Const/entity lookup
 - `const.py` compatibility wrapper block for `_ENTITY_LOOKUP` and unique-id wrappers removed.
