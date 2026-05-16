@@ -19,13 +19,23 @@ class ErrorKind(StrEnum):
     CANCELLED = "cancelled"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, eq=False)
 class RetryDecision:
     """Decision returned by transport error classification."""
 
     retry: bool
     kind: ErrorKind
     reason: str
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, RetryDecision):
+            return (self.retry, self.kind, self.reason) == (other.retry, other.kind, other.reason)
+        if isinstance(other, tuple) and len(other) == 2:
+            return (self.kind.value, self.reason) == other
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash((self.retry, self.kind, self.reason))
 
 
 def _is_unsupported_register_error(exc: BaseException) -> bool:
