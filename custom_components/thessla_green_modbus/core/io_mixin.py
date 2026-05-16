@@ -1,8 +1,7 @@
 """Read-path Modbus IO mixin for device-domain clients.
 
-Moved from coordinator/io.py so that ThesslaGreenDeviceClient can inherit it
-without creating a coordinator/ → core/ dependency cycle.  The coordinator
-continues to inherit it via coordinator/io.py (which re-exports from here).
+Canonical location for _ModbusIOMixin, shared by ThesslaGreenDeviceClient
+and ThesslaGreenModbusCoordinator.  coordinator/io.py (shim) was removed.
 """
 
 from __future__ import annotations

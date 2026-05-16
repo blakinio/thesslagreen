@@ -155,7 +155,7 @@ This remains **open release blocker B4**.
 
 | # | Item |
 |---|------|
-| N1 | Remove remaining compatibility shims after one or more stable releases |
+| N1 | ~~Remove remaining compatibility shims after one or more stable releases~~ — `coordinator/io.py` and `coordinator/capabilities.py` removed in `refactor/remove-final-shims` |
 | N2 | Deeper coordinator-to-core migration |
 | N3 | Test fixture consolidation |
 | N4 | Optional entity visibility tuning (schedule/harmonogram entity group hiding) |

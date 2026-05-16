@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-from custom_components.thessla_green_modbus.coordinator.capabilities import (
+from custom_components.thessla_green_modbus.core.capabilities_mixin import (
     _clamp_percentage,
     _coerce_bypass_open,
     _flow_balance_status,
