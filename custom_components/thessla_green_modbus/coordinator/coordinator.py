@@ -6,7 +6,7 @@ import inspect
 import logging
 from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta
-from typing import Any, cast
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -73,17 +73,9 @@ from .init_config import normalize_runtime_config as _normalize_runtime_config_i
 from .io import _ModbusIOMixin
 from .lifecycle import async_setup as _async_setup_impl
 from .models import CoordinatorConfig
-from .register_processing import (
-    find_register_name as _find_register_name_impl,
-)
-from .register_processing import (
-    process_register_value as _process_register_value_impl,
-)
 from .retry import _PermanentModbusError
 from .runtime import normalize_backoff as _normalize_backoff_impl
 from .runtime import parse_backoff_jitter as _parse_backoff_jitter_impl
-from .runtime_state import clear_register_failure as _clear_register_failure_impl
-from .runtime_state import mark_registers_failed as _mark_registers_failed_impl
 from .scan import (
     apply_scan_cache as _apply_scan_cache_impl,
 )
@@ -168,9 +160,24 @@ class ThesslaGreenModbusCoordinator(
     # Device-state property proxies
     #
     # All mutable device-domain state lives in ``self._device_client``.
-    # The properties below allow existing coordinator submodule functions
-    # (and tests) to continue accessing coordinator.X and have those
-    # accesses transparently read/write the DeviceClient's state.
+    # The properties below allow coordinator submodule functions (which
+    # receive the coordinator via duck-typing) and tests to continue
+    # accessing coordinator.X and have those accesses transparently
+    # read/write DeviceClient state.
+    #
+    # Retention rationale (applies to every proxy below):
+    #   - Coordinator submodules (runtime_io, read_batches, read_bits,
+    #     register_groups, scan_result, state, etc.) receive ``self``
+    #     (the coordinator) as their duck-typed owner and access these
+    #     attributes directly.
+    #   - Test files access these attributes on the coordinator directly
+    #     (e.g. coordinator.client, coordinator.available_registers).
+    #   - Entity platform files access coordinator.available_registers,
+    #     coordinator.capabilities, coordinator.statistics, etc.
+    #
+    # Future removal path: When a submodule is updated to accept a
+    # DeviceClient instead of the coordinator, the corresponding proxy
+    # can be removed at that point.
     # ------------------------------------------------------------------
 
     @property
@@ -651,22 +658,11 @@ class ThesslaGreenModbusCoordinator(
 
     def get_register_map(self, register_type: str) -> dict[str, int]:
         """Return the register map for the given register type."""
-        return cast(dict[str, int], self._register_maps.get(register_type, {}))
+        return self._device_client.get_register_map(register_type)
 
     def _get_client_method(self, name: str) -> Callable[..., Any]:
         """Return a Modbus method from transport/client or a no-op placeholder."""
-        for obj in (self._transport, self.client):
-            if obj is None:
-                continue
-            method = getattr(obj, name, None)
-            if callable(method):
-                return cast(Callable[..., Any], method)
-
-        async def _missing_method(*_args: Any, **_kwargs: Any) -> Any:
-            return None
-
-        _missing_method.__name__ = name
-        return _missing_method
+        return self._device_client._get_client_method(name)
 
     def _build_scanner_kwargs(self) -> dict[str, Any]:
         """Return constructor kwargs shared by all scanner creation paths."""
@@ -758,11 +754,11 @@ class ThesslaGreenModbusCoordinator(
 
     def _mark_registers_failed(self, names: Iterable[str | None]) -> None:
         """Record registers that failed to read."""
-        _mark_registers_failed_impl(self, names)
+        self._device_client._mark_registers_failed(names)
 
     def _clear_register_failure(self, name: str) -> None:
         """Remove register from failed list on successful read."""
-        _clear_register_failure_impl(self, name)
+        self._device_client._clear_register_failure(name)
 
     async def _test_connection(self) -> None:
         """Test initial connection to the device."""
@@ -823,11 +819,11 @@ class ThesslaGreenModbusCoordinator(
 
     def _find_register_name(self, register_type: str, address: int) -> str | None:
         """Find register name by address using pre-built reverse maps."""
-        return _find_register_name_impl(self._reverse_maps, register_type, address)
+        return self._device_client._find_register_name(register_type, address)
 
     def _process_register_value(self, register_name: str, value: int) -> Any:
         """Decode a raw register value via dedicated register-processing helpers."""
-        return _process_register_value_impl(register_name, value)
+        return self._device_client._process_register_value(register_name, value)
 
     async def _disconnect_locked(self) -> None:
         """Disconnect from Modbus device without acquiring locks — delegates to DeviceClient."""
