@@ -98,7 +98,7 @@ def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_c
         add_entities = MagicMock()
         with patch(
             "custom_components.thessla_green_modbus.sensor.translation.async_get_translations",
-            return_value={"codes.s_2": "Device status S 2"},
+            return_value={"entity.sensor.error_codes.state.s_2": "Device status S 2"},
         ):
             await async_setup_entry(hass, mock_config_entry, add_entities)
         entities = add_entities.call_args[0][0]
@@ -320,7 +320,7 @@ def test_active_errors_sensor(mock_coordinator, mock_config_entry):
         add_entities = MagicMock()
         with patch(
             "homeassistant.helpers.translation.async_get_translations",
-            return_value={"codes.e_100": "Outside temp sensor missing"},
+            return_value={"entity.sensor.error_codes.state.e_100": "Outside temp sensor missing"},
         ):
             await async_setup_entry(hass, mock_config_entry, add_entities)
             entities = add_entities.call_args[0][0]

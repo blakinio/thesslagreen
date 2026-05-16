@@ -101,7 +101,7 @@ async def test_form_user_valid_ipv6():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            "custom_components.thessla_green_modbus._config_flow.validate_input",
             return_value=validation_result,
         ),
         patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
@@ -141,7 +141,7 @@ async def test_form_user_valid_domain():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            "custom_components.thessla_green_modbus._config_flow.validate_input",
             return_value=validation_result,
         ),
         patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
@@ -198,7 +198,7 @@ async def test_form_user_success():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            "custom_components.thessla_green_modbus._config_flow.validate_input",
             return_value=validation_result,
         ),
         patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
@@ -252,7 +252,7 @@ async def test_unique_id_sanitized():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            "custom_components.thessla_green_modbus._config_flow.validate_input",
             return_value=validation_result,
         ),
         patch(

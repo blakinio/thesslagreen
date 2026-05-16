@@ -106,7 +106,7 @@ async def test_reauth_flow_success():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            "custom_components.thessla_green_modbus._config_flow.validate_input",
             return_value=validation_result,
         ),
         patch(
@@ -217,7 +217,7 @@ async def test_reauth_flow_invalid_auth_error():
     flow.context = {"entry_id": entry.entry_id}
 
     with patch(
-        "custom_components.thessla_green_modbus.config_flow.validate_input",
+        "custom_components.thessla_green_modbus._config_flow.validate_input",
         side_effect=InvalidAuth,
     ):
         initial = await flow.async_step_reauth(entry.data)

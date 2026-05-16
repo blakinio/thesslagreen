@@ -112,7 +112,7 @@ async def test_form_user_rtu_success_creates_serial_entry():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            "custom_components.thessla_green_modbus._config_flow.validate_input",
             return_value=validation_result,
         ),
         patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
@@ -161,7 +161,7 @@ async def test_form_user_tcp_rtu_success_creates_tcp_rtu_entry():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            "custom_components.thessla_green_modbus._config_flow.validate_input",
             return_value=validation_result,
         ),
         patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),

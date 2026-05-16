@@ -46,7 +46,7 @@ async def test_duplicate_entry_aborts():
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            "custom_components.thessla_green_modbus._config_flow.validate_input",
             return_value=validation_result,
         ),
         patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
@@ -76,7 +76,7 @@ async def test_user_step_duplicate_entry_aborts_silently(caplog):
 
     with (
         patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            "custom_components.thessla_green_modbus._config_flow.validate_input",
             return_value=validation_result,
         ),
         patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),

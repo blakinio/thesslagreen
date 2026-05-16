@@ -4,12 +4,12 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from custom_components.thessla_green_modbus._config_flow.options_form import (
+    build_options_form_payload,
+)
 from custom_components.thessla_green_modbus.config_flow import (
     ConfigFlow,
     OptionsFlow,
-)
-from custom_components.thessla_green_modbus.config_flow.options_form import (
-    build_options_form_payload,
 )
 from custom_components.thessla_green_modbus.const import (
     CONF_CONNECTION_TYPE,
@@ -57,14 +57,14 @@ async def test_config_flow_max_registers_per_request_validated():
         flow.hass = SimpleNamespace()
         with (
             patch(
-                "custom_components.thessla_green_modbus.config_flow.validate_input",
+                "custom_components.thessla_green_modbus._config_flow.validate_input",
                 return_value=validation_result,
             ),
             patch(
-                "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
+                "custom_components.thessla_green_modbus._config_flow.ConfigFlow.async_set_unique_id"
             ),
             patch(
-                "custom_components.thessla_green_modbus.config_flow.ConfigFlow._abort_if_unique_id_configured"
+                "custom_components.thessla_green_modbus._config_flow.ConfigFlow._abort_if_unique_id_configured"
             ),
         ):
             result = await flow.async_step_user(
@@ -81,7 +81,7 @@ async def test_config_flow_max_registers_per_request_validated():
     flow = ConfigFlow()
     flow.hass = SimpleNamespace()
     with patch(
-        "custom_components.thessla_green_modbus.config_flow.validate_input"
+        "custom_components.thessla_green_modbus._config_flow.validate_input"
     ) as mock_validate:
         result = await flow.async_step_user(
             {
@@ -98,7 +98,7 @@ async def test_config_flow_max_registers_per_request_validated():
     flow = ConfigFlow()
     flow.hass = SimpleNamespace()
     with patch(
-        "custom_components.thessla_green_modbus.config_flow.validate_input"
+        "custom_components.thessla_green_modbus._config_flow.validate_input"
     ) as mock_validate:
         result = await flow.async_step_user(
             {

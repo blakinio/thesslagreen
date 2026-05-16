@@ -137,7 +137,7 @@ class TestThesslaGreenConfigFlow:
 
         with (
             patch(
-                "custom_components.thessla_green_modbus.config_flow.validate_input",
+                "custom_components.thessla_green_modbus._config_flow.validate_input",
                 return_value={
                     "title": "ThesslaGreen AirPack Test",
                     "device_info": {
@@ -178,7 +178,7 @@ class TestThesslaGreenConfigFlow:
         flow.hass = MagicMock()
 
         with patch(
-            "custom_components.thessla_green_modbus.config_flow.validate_input",
+            "custom_components.thessla_green_modbus._config_flow.validate_input",
             side_effect=CannotConnect,
         ):
             result = await flow.async_step_user(

@@ -1,6 +1,6 @@
 """Ensure translation files don't contain unused keys."""
 
-from custom_components.thessla_green_modbus.config_flow.options_form import (
+from custom_components.thessla_green_modbus._config_flow.options_form import (
     build_options_defaults,
     build_options_schema,
 )
