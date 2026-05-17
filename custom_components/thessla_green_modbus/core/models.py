@@ -91,7 +91,9 @@ class CoordinatorConfig:
             backoff=float(options.get(CONF_BACKOFF, DEFAULT_BACKOFF)),
             backoff_jitter=options.get(CONF_BACKOFF_JITTER, DEFAULT_BACKOFF_JITTER),
             force_full_register_list=bool(options.get(CONF_FORCE_FULL_REGISTER_LIST, False)),
-            scan_uart_settings=bool(options.get(CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS)),
+            scan_uart_settings=bool(
+                options.get(CONF_SCAN_UART_SETTINGS, DEFAULT_SCAN_UART_SETTINGS)
+            ),
             deep_scan=bool(options.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN)),
             safe_scan=bool(options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN)),
             max_registers_per_request=int(
