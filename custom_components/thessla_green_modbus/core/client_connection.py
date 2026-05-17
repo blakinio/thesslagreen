@@ -20,8 +20,8 @@ from ..const import (
     DEFAULT_STOP_BITS,
     SERIAL_PARITY_MAP,
     SERIAL_STOP_BITS_MAP,
-    input_registers,
 )
+from ..registers.maps import input_registers
 from ..scanner import is_request_cancelled_error
 from ..transport.base import BaseModbusTransport
 from .connection import (
