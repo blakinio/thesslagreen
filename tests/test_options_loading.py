@@ -60,7 +60,21 @@ def test_multi_register_sizes_returns_dict():
 
 def test_migrate_unique_id_base_uid_already_has_prefix():
     """migrate_unique_id returns base_uid unchanged when it already starts with prefix (line 350)."""
-    from custom_components.thessla_green_modbus.const import DOMAIN, migrate_unique_id
+    from custom_components.thessla_green_modbus.const import (
+        AIRFLOW_UNIT_M3H,
+        AIRFLOW_UNIT_PERCENTAGE,
+        DOMAIN,
+    )
+    from custom_components.thessla_green_modbus.entity_lookup import _build_entity_lookup
+    from custom_components.thessla_green_modbus.registers.maps import (
+        coil_registers,
+        discrete_input_registers,
+        holding_registers,
+        input_registers,
+    )
+    from custom_components.thessla_green_modbus.unique_id_migration import (
+        migrate_unique_id,
+    )
 
     # serial_number="1" → prefix="1"; slave_id=1 → base_uid="1_fan_0"
     # "1_fan_0".startswith("1") is True → returns base_uid unchanged
@@ -71,6 +85,13 @@ def test_migrate_unique_id_base_uid_already_has_prefix():
         host="192.168.1.1",
         port=502,
         slave_id=1,
+        domain=DOMAIN,
+        airflow_units=(AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE),
+        get_entity_lookup=_build_entity_lookup,
+        holding_registers=holding_registers,
+        input_registers=input_registers,
+        coil_registers=coil_registers,
+        discrete_input_registers=discrete_input_registers,
     )
     assert result == "1_fan_0"
 

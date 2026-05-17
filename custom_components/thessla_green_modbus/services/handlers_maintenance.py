@@ -212,11 +212,7 @@ def _build_reset_settings_handler(hass: HomeAssistant, deps: ServiceHandlerDeps)
     return reset_settings
 
 
-def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
-    """Register maintenance services."""
-    reset_filters = _build_reset_filters_handler(hass, deps)
-    reset_settings = _build_reset_settings_handler(hass, deps)
-
+def _build_start_pressure_test_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
     async def start_pressure_test(call: ServiceCall) -> None:
         async def _start_pressure_test_for_target(entity_id: str, coordinator: object) -> bool:
             if not await write_register_batch(
@@ -238,6 +234,10 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
 
         await _run_for_targets(hass, call, deps, _start_pressure_test_for_target)
 
+    return start_pressure_test
+
+
+def _build_set_modbus_parameters_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
     async def set_modbus_parameters(call: ServiceCall) -> None:
         port, baud_rate, parity, stop_bits = normalize_modbus_options(
             deps.normalize_option, call.data
@@ -264,6 +264,10 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
 
         await _run_for_targets(hass, call, deps, _set_modbus_parameters_for_target)
 
+    return set_modbus_parameters
+
+
+def _build_set_device_name_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
     async def set_device_name(call: ServiceCall) -> None:
         device_name = call.data["device_name"]
 
@@ -291,6 +295,10 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
 
         await _run_for_targets(hass, call, deps, _set_device_name_for_target)
 
+    return set_device_name
+
+
+def _build_sync_time_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
     async def sync_time(call: ServiceCall) -> None:
         async def _sync_time_for_target(entity_id: str, coordinator: object) -> bool:
             now = _dt.now()
@@ -314,6 +322,10 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
 
         await _run_for_targets(hass, call, deps, _sync_time_for_target)
 
+    return sync_time
+
+
+def _build_sync_device_clock_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
     async def sync_device_clock(call: ServiceCall) -> None:
         force = bool(call.data.get("force", False))
 
@@ -346,13 +358,18 @@ def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps)
 
         await _run_for_targets(hass, call, deps, _sync_device_clock_for_target)
 
+    return sync_device_clock
+
+
+def register_maintenance_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
+    """Register maintenance services."""
     handlers = _maintenance_handlers(
-        reset_filters,
-        reset_settings,
-        start_pressure_test,
-        set_modbus_parameters,
-        set_device_name,
-        sync_time,
-        sync_device_clock,
+        _build_reset_filters_handler(hass, deps),
+        _build_reset_settings_handler(hass, deps),
+        _build_start_pressure_test_handler(hass, deps),
+        _build_set_modbus_parameters_handler(hass, deps),
+        _build_set_device_name_handler(hass, deps),
+        _build_sync_time_handler(hass, deps),
+        _build_sync_device_clock_handler(hass, deps),
     )
     _register_maintenance_bindings(hass, deps, handlers)

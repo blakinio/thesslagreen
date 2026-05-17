@@ -30,28 +30,18 @@ Logika domenowa urządzenia nie zależy od Home Assistant.
 ---
 
 
-## Stan bieżący (2026-05-10)
+## Stan bieżący (2026-05-17)
 
-Repozytorium jest w trakcie etapowej refaktoryzacji. Obok struktury docelowej współistnieją jeszcze elementy przejściowe.
+Repozytorium jest po migracji do docelowej struktury pakietów.
 
-Wymóg bieżący:
-
-```text
-coordinator package migration is completed and active.
-core/ package placeholder removed — not yet implemented.
-```
-
-Stan przejściowy (aktualny):
+Stan aktualny:
 
 ```text
-custom_components/thessla_green_modbus/coordinator/         # obecna aktywna lokalizacja (canonical)
-custom_components/thessla_green_modbus/coordinator.py       # usunięty
-custom_components/thessla_green_modbus/core/                # USUNIĘTY (2026-05-10) — były to same placeholdery bez kodu
+custom_components/thessla_green_modbus/coordinator/     # canonical coordinator package
+custom_components/thessla_green_modbus/core/            # active: client, write_path, connection, etc.
+custom_components/thessla_green_modbus/_config_flow/    # implementation of config/options flow
+custom_components/thessla_green_modbus/config_flow.py   # HA public entrypoint (thin re-export only)
 ```
-
-Migracja do `coordinator/` została wykonana w dedykowanym PR. Importy powinny wskazywać moduły kanoniczne bez shimów/proxy/re-export-only modules.
-
-Warstwa `core/` (ThesslaGreenClient, DeviceSnapshot) jest **planowaną przyszłą warstwą**, która nie istnieje jeszcze w kodzie. Placeholder files zostały usunięte jako mylące. Implementacja tej warstwy to osobny PR.
 
 Niezmiennie obowiązuje zakaz tworzenia:
 
@@ -61,6 +51,28 @@ Niezmiennie obowiązuje zakaz tworzenia:
 - re-export shims,
 - proxy modules.
 ```
+
+---
+
+### Config flow package convention
+
+Home Assistant `hassfest` validation requires a file named `config_flow.py` at the top level of the
+integration package. The actual implementation lives in the `_config_flow/` sub-package.
+
+Rules:
+
+```text
+config_flow.py          — public HA entrypoint only; re-exports ThesslaGreenConfigFlow class.
+                          Do NOT add implementation logic here.
+
+_config_flow/__init__.py — package root; may re-export public symbols.
+_config_flow/entry.py    — config entry flow handler.
+_config_flow/options.py  — options flow handler.
+_config_flow/*.py        — all implementation modules live here.
+```
+
+When adding new config/options flow helpers, place them in `_config_flow/<module>.py`.
+Do not add implementation to `config_flow.py` — that file exists solely to satisfy HA hassfest.
 
 ---
 
@@ -150,27 +162,31 @@ raw register decoding
 
 ---
 
-### 3. Core — domena urządzenia (planowana, nie zaimplementowana)
+### 3. Core — domena urządzenia (zaimplementowana)
 
-> **Status 2026-05-10**: Warstwa `core/` nie istnieje w kodzie. Placeholder files zostały usunięte.
-> Implementacja tej warstwy to osobny przyszły PR.
+> **Status 2026-05-17**: Warstwa `core/` jest zaimplementowana i aktywna.
 
-Docelowy katalog (planowany):
+Docelowy katalog:
 
 ```text
 core/
 ```
 
-Planowane pliki:
+Pliki:
 
 ```text
-core/client.py
-core/snapshot.py
-core/config.py
-core/errors.py
+core/client.py              — ThesslaGreenDeviceClient (orkiestracja)
+core/client_connection.py   — logika połączenia
+core/client_registers.py    — operacje rejestrów
+core/client_scanner.py      — wykrywanie capabilities
+core/write_path.py          — SingleWritePlan, encode_write_value
+core/capabilities_mixin.py  — mixin capabilities
+core/models.py              — modele domenowe
+core/connection.py          — connection state
+core/runtime_state.py       — runtime state
 ```
 
-Planowana odpowiedzialność:
+Odpowiedzialność:
 
 ```text
 - ThesslaGreenClient,
@@ -369,7 +385,7 @@ platformy   → raw Modbus / raw register decoding
 - jest adapterem HA,
 - nie wykonuje direct Modbus I/O,
 - nie dekoduje raw rejestrów,
-- docelowo deleguje do core/client.py (warstwa core/ planowana, nie zaimplementowana).
+- deleguje do core/client.py.
 ```
 
 ### `mappings/`

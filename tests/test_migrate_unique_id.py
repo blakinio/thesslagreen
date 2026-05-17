@@ -1,9 +1,40 @@
 import custom_components.thessla_green_modbus.entity_lookup as lookup_mod
 from custom_components.thessla_green_modbus.const import (
+    AIRFLOW_UNIT_M3H,
+    AIRFLOW_UNIT_PERCENTAGE,
     DOMAIN,
-    device_unique_id_prefix,
-    migrate_unique_id,
 )
+from custom_components.thessla_green_modbus.entity_lookup import _build_entity_lookup
+from custom_components.thessla_green_modbus.registers.maps import (
+    coil_registers,
+    discrete_input_registers,
+    holding_registers,
+    input_registers,
+)
+from custom_components.thessla_green_modbus.unique_id_migration import (
+    device_unique_id_prefix,
+)
+from custom_components.thessla_green_modbus.unique_id_migration import (
+    migrate_unique_id as _migrate_unique_id_raw,
+)
+
+
+def migrate_unique_id(unique_id, *, serial_number, host, port, slave_id):
+    return _migrate_unique_id_raw(
+        unique_id,
+        serial_number=serial_number,
+        host=host,
+        port=port,
+        slave_id=slave_id,
+        domain=DOMAIN,
+        airflow_units=(AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE),
+        get_entity_lookup=_build_entity_lookup,
+        holding_registers=holding_registers,
+        input_registers=input_registers,
+        coil_registers=coil_registers,
+        discrete_input_registers=discrete_input_registers,
+    )
+
 
 HOST = "fd00:1:2::1"
 PORT = 502

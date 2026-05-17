@@ -4,18 +4,18 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import register_map_cache as _register_map_cache
+from ..scanner import register_maps as _register_maps
 from . import register_map_facade as _register_map_facade
 
 
 def initial_register_hash() -> str:
     """Return initial register hash value."""
-    return _register_map_cache.REGISTER_HASH or ""
+    return _register_maps.REGISTER_HASH or ""
 
 
 def sync_register_hash_from_maps() -> str:
     """Synchronize register hash from scanner register maps module."""
-    return _register_map_cache.sync_register_hash_from_maps()
+    return _register_maps.REGISTER_HASH or ""
 
 
 def build_register_maps_from(regs: list[Any], register_hash: str) -> str:
