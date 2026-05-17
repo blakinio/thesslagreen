@@ -39,6 +39,15 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 # ensure the main-thread loop exists before plugin fixtures request it.
 _ensure_current_event_loop()
 
+# Populate entity mappings before test modules are collected.  Some test-module-
+# level code (e.g. test_translations.py) reads NUMBER_ENTITY_MAPPINGS at import
+# time; without this call those dicts would be empty because the module-level
+# _run_build_entity_mappings() call was removed to eliminate blocking file I/O
+# from the HA event-loop import path.
+import custom_components.thessla_green_modbus.mappings as _thessla_mappings
+
+_thessla_mappings._run_build_entity_mappings()
+
 
 @pytest.fixture
 def mock_config_entry():

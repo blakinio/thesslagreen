@@ -88,12 +88,17 @@ def _parse_states(value: str | None) -> dict[str, int] | None:
     return states or None
 
 
+@functools.cache
 def _number_translation_keys() -> set[str]:
     """Return register names that have a Number translation entry in en.json.
 
     Used as a whitelist: only registers present here will produce a Number
     entity, preventing unnamed "Rekuperator" fallback entries for reserved or
     undocumented registers (e.g. ``reserved_8145``–``reserved_8151``).
+
+    Result is cached after the first call so the file is read at most once per
+    process.  Call ``_number_translation_keys.cache_clear()`` in tests that need
+    a fresh read.
     """
     try:
         _translations_dir = Path(__file__).resolve().parents[1] / "translations"
@@ -112,9 +117,14 @@ def _number_translation_keys() -> set[str]:
         return set()
 
 
+@functools.cache
 def _load_translation_keys() -> dict[str, set[str]]:
-    """Return available translation keys for supported entity types."""
+    """Return available translation keys for supported entity types.
 
+    Result is cached after the first call so the file is read at most once per
+    process.  Call ``_load_translation_keys.cache_clear()`` in tests that need
+    a fresh read.
+    """
     try:
         _translations_dir = Path(__file__).resolve().parents[1] / "translations"
         with (_translations_dir / "en.json").open(encoding="utf-8") as f:
