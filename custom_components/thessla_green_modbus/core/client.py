@@ -16,7 +16,7 @@ import logging
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, cast
 
-from ..const import (
+from ..registers.maps import (
     coil_registers,
     discrete_input_registers,
     holding_registers,
