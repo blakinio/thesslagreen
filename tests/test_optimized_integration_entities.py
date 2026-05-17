@@ -4,7 +4,7 @@ import logging
 from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
-from custom_components.thessla_green_modbus.const import (
+from custom_components.thessla_green_modbus.registers.maps import (
     coil_registers,
     discrete_input_registers,
     holding_registers,
