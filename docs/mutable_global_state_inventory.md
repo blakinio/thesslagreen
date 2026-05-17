@@ -5,6 +5,121 @@ Branch: `claude/cleanup-coordinator-proxy-Dns7J`
 
 ---
 
+## Summary
+
+The integration uses six sites with module-level mutable state.  Four use the
+`global` keyword; two use module-level dict/list mutation without `global`.
+
+---
+
+## Inventory
+
+### 1. `_setup._platform_cache` / `_setup._get_platforms`
+
+| Field | Value |
+|---|---|
+| Owner module | `custom_components/thessla_green_modbus/_setup.py` |
+| Current purpose | Cache of `Platform` enum instances derived from `PLATFORM_DOMAINS` |
+| Type | Read-only cache (computed once, never mutated after first call) |
+
+**Action taken (Phase 4a):** Replaced with `@functools.lru_cache(maxsize=1)`.
+The parameter type was changed from `list[str]` (unhashable) to `tuple[str, ...]`
+(hashable).  Call sites updated to pass `tuple(platform_domains)`.  The unused
+`from functools import partial` import in `__init__.py` was removed.
+
+Tests: No tests directly patch `_platform_cache`.  No `cache_clear()` helper needed.
+
+---
+
+### 2. `entity_lookup._ENTITY_LOOKUP`
+
+| Field | Value |
+|---|---|
+| Owner module | `custom_components/thessla_green_modbus/entity_lookup.py` |
+| Current purpose | Cache of entity-key to register-info mapping for unique-ID migration |
+| Type | Read-only cache (computed once on first call) |
+
+**Action taken:** Deferred.  Tests in `test_migrate_unique_id.py` use
+`monkeypatch.setattr(lookup_mod, "_ENTITY_LOOKUP", fake_lookup)` and
+`monkeypatch.setattr(lookup_mod, "_ENTITY_LOOKUP", None)` to inject and reset
+the cache.  Replacing with `@functools.cache` would break these tests because
+`monkeypatch.setattr` on the module attribute would no longer affect the
+cached function.  Safe cleanup would require updating the tests — out of scope.
+
+---
+
+### 3. `mappings/_helpers._REGISTER_INFO_CACHE`
+
+| Field | Value |
+|---|---|
+| Owner module | `custom_components/thessla_green_modbus/mappings/_helpers.py` |
+| Current purpose | Cache of register metadata (name to {access, min, max, unit, ...}) |
+| Type | Read-only cache; sophisticated parent-module lookup for test compatibility |
+
+**Action taken:** Deferred.  The `sys.modules` parent-module lookup is
+specifically designed to make `monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", ...)`
+in `test_entity_mappings_base.py` and `test_entity_mappings_discrete.py` work
+correctly.  Any replacement with `@functools.cache` would lose this test
+compatibility shim, requiring significant test refactoring.
+
+---
+
+### 4. `scanner/register_maps.py` — Module-level dict mutation
+
+| Field | Value |
+|---|---|
+| Owner module | `custom_components/thessla_green_modbus/scanner/register_maps.py` |
+| Current purpose | Module-level dicts populated on demand with hash-based invalidation |
+| Type | Mutable runtime cache |
+
+**Action taken:** Retained as-is (**retained-by-design**).  This module was
+consolidated as the single source of truth in a previous PR.  The hash-based
+invalidation (`REGISTER_HASH`) detects register file changes at runtime and
+rebuilds the maps.  Replacing with `functools.cache` would lose the invalidation
+capability.
+
+---
+
+### 5. `options/__init__.py` — Module-level list mutation
+
+| Field | Value |
+|---|---|
+| Owner module | `custom_components/thessla_green_modbus/options/__init__.py` |
+| Current purpose | Shared option lists populated asynchronously from JSON files during integration setup |
+| Type | Mutable runtime state |
+
+**Action taken:** Deferred.  These are mutable runtime lists populated
+asynchronously.  `@functools.cache` does not fit because multiple list globals are
+assigned from a single async gather call and the lock is itself lazily initialized.
+
+---
+
+### 6. `mappings/_loaders.py` — Module-level dict mutation (no `global`)
+
+| Field | Value |
+|---|---|
+| Owner module | `custom_components/thessla_green_modbus/mappings/_loaders.py` |
+| Current purpose | Populates entity mapping dicts as module-global side effects |
+| Type | One-time initialization |
+
+**Action taken:** Deferred.  Intentional side-effect pattern consistent with
+other option-list initialization.
+
+---
+
+## Summary Table
+
+| Module | Global | Status |
+|---|---|---|
+| `_setup.py` | `_platform_cache` | **Done** — replaced with `@functools.lru_cache(maxsize=1)` |
+| `entity_lookup.py` | `_ENTITY_LOOKUP` | **Deferred** — test monkeypatching requires module-attribute access |
+| `mappings/_helpers.py` | `_REGISTER_INFO_CACHE` | **Deferred** — `sys.modules` parent-lookup pattern for test compat |
+| `scanner/register_maps.py` | `REGISTER_HASH` + dicts | **Retained** — hash-based invalidation is correct behavior |
+| `options/__init__.py` | 11 option lists + lock | **Deferred** — async init pattern; broader refactor required |
+| `mappings/_loaders.py` | entity mapping dicts | **Deferred** — intentional initialization side-effect |
+
+---
+
 ## Overview
 
 Six modules contain module-level mutable global state.  This document classifies
