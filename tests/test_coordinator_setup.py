@@ -3,28 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from unittest.mock import MagicMock
 
-from custom_components.thessla_green_modbus.coordinator.coordinator import (
-    ThesslaGreenModbusCoordinator,
-    _utcnow,
-)
+from custom_components.thessla_green_modbus.coordinator.coordinator import _utcnow
 
-
-def _make_coordinator(**kwargs) -> ThesslaGreenModbusCoordinator:
-    hass = MagicMock()
-    hass.async_add_executor_job = None
-    return ThesslaGreenModbusCoordinator.from_params(
-        hass=hass,
-        host="192.168.1.1",
-        port=502,
-        slave_id=1,
-        name="test",
-        scan_interval=30,
-        timeout=3,
-        retry=2,
-        **kwargs,
-    )
+from tests.helpers_coordinator import make_coordinator as _make_coordinator
 
 
 def test_utcnow_returns_timezone_aware_datetime():

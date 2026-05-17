@@ -6,10 +6,7 @@ import logging
 from typing import Any
 
 from ..const import DEFAULT_NAME, KNOWN_MISSING_REGISTERS, UNKNOWN_MODEL
-from ..core.scan_helpers import (  # noqa: F401 – re-exported for coordinator internal use
-    normalise_available_registers,
-    normalise_cached_register_name,
-)
+from ..core.scan_helpers import normalise_available_registers
 from ..scanner.device_info import DeviceCapabilities
 
 _LOGGER = logging.getLogger(__name__)

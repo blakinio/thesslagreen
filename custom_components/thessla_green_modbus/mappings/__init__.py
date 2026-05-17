@@ -28,9 +28,9 @@ from ..registers.maps import (
 # Submodule imports — each submodule owns its code; __init__ is the controller
 # ---------------------------------------------------------------------------
 from ._helpers import (
-    _REGISTER_INFO_CACHE,
     _get_register_info,
     _infer_icon,
+    _load_register_info,
     _load_translation_keys,
     _number_translation_keys,
     _parse_states,
@@ -64,13 +64,13 @@ __all__ = [
     "SWITCH_ENTITY_MAPPINGS",
     "TEXT_ENTITY_MAPPINGS",
     "TIME_ENTITY_MAPPINGS",
-    "_REGISTER_INFO_CACHE",
     "_build_entity_mappings",
     "_extend_entity_mappings_from_registers",
     "_get_register_info",
     "_infer_icon",
     "_load_discrete_mappings",
     "_load_number_mappings",
+    "_load_register_info",
     "_load_translation_keys",
     "_number_translation_keys",
     "_parse_states",

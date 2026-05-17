@@ -9,7 +9,7 @@ def test_get_register_info_skips_nameless_registers(monkeypatch):
     nameless = RegisterDef(function=3, address=100, name="", access="ro")
     named = RegisterDef(function=3, address=101, name="test_valid_reg_p8", access="ro", unit="°C")
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [nameless, named])
-    monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", None)
+    em._helpers._load_register_info.cache_clear()
 
     info = em._get_register_info("test_valid_reg_p8")
     assert info is not None
@@ -22,7 +22,7 @@ def test_get_register_info_numeric_suffix_fallback(monkeypatch):
     """Name ending with _<digit> falls back to base name (line 225)."""
     base_reg = RegisterDef(function=3, address=1, name="pump_speed_p8", access="rw", unit="%")
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [base_reg])
-    monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", None)
+    em._helpers._load_register_info.cache_clear()
 
     base = em._get_register_info("pump_speed_p8")
     assert base is not None
@@ -36,7 +36,7 @@ def test_load_number_mappings_skips_registers_without_info(monkeypatch):
     mystery = RegisterDef(function=3, address=999, name="mystery_reg_p8", access="rw")
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [mystery])
     # Pre-populate cache as empty dict → _get_register_info returns None for all names
-    monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", {})
+    monkeypatch.setattr(em._helpers, "_load_register_info", lambda: {})
 
     result = em._load_number_mappings()
     assert "mystery_reg_p8" not in result
@@ -48,7 +48,7 @@ def test_load_number_mappings_skips_enumerated_unit_registers(monkeypatch):
         function=3, address=1, name="mode_reg_p8", access="rw", unit="0 - off; 1 - on"
     )
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [enum_reg])
-    monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", None)
+    em._helpers._load_register_info.cache_clear()
 
     result = em._load_number_mappings()
     assert "mode_reg_p8" not in result
@@ -60,7 +60,7 @@ def test_load_number_mappings_includes_min_max_when_present(monkeypatch):
         function=3, address=2, name="speed_reg_p8", access="rw", unit="%", min=0, max=100
     )
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [bounded])
-    monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", None)
+    em._helpers._load_register_info.cache_clear()
     # Allow this synthetic register through the translation-key whitelist.
     monkeypatch.setattr(em, "_number_translation_keys", lambda: {"speed_reg_p8"})
 

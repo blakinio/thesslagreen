@@ -34,7 +34,7 @@ def test_load_discrete_mappings_skips_holding_regs_without_info(monkeypatch):
     monkeypatch.setattr(
         em, "holding_registers", lambda: {"unknown_holding_xyz_p8": 0, **original_holding()}
     )
-    monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", None)
+    em._helpers._load_register_info.cache_clear()
 
     binary, switch, select = em._load_discrete_mappings()
     assert "unknown_holding_xyz_p8" not in binary
@@ -127,9 +127,9 @@ def test_load_discrete_creates_switch_for_writable_2state_in_switch_keys(monkeyp
     monkeypatch.setattr(em, "discrete_input_registers", lambda: {})
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [])
     monkeypatch.setattr(
-        em,
-        "_REGISTER_INFO_CACHE",
-        {
+        em._helpers,
+        "_load_register_info",
+        lambda: {
             "sw_reg_p9": {
                 "access": "RW",
                 "unit": "0 - off; 1 - on",
@@ -162,9 +162,9 @@ def test_load_discrete_creates_binary_for_writable_2state_not_in_switch_keys(mon
     monkeypatch.setattr(em, "discrete_input_registers", lambda: {})
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [])
     monkeypatch.setattr(
-        em,
-        "_REGISTER_INFO_CACHE",
-        {
+        em._helpers,
+        "_load_register_info",
+        lambda: {
             "bin_reg_p9": {
                 "access": "RW",
                 "unit": "0 - off; 1 - on",
@@ -196,9 +196,9 @@ def test_load_discrete_creates_select_for_multistate_register(monkeypatch):
     monkeypatch.setattr(em, "discrete_input_registers", lambda: {})
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [])
     monkeypatch.setattr(
-        em,
-        "_REGISTER_INFO_CACHE",
-        {
+        em._helpers,
+        "_load_register_info",
+        lambda: {
             "sel_reg_p9": {
                 "access": "RW",
                 "unit": "0 - auto; 1 - manual; 2 - off",
@@ -236,7 +236,7 @@ def test_load_discrete_skips_diag_register_not_in_holding_on_second_check(monkey
     monkeypatch.setattr(em, "coil_registers", lambda: {})
     monkeypatch.setattr(em, "discrete_input_registers", lambda: {})
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [])
-    monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", {})
+    monkeypatch.setattr(em._helpers, "_load_register_info", lambda: {})
     monkeypatch.setattr(
         em,
         "_load_translation_keys",
@@ -256,7 +256,7 @@ def test_load_discrete_skips_diag_register_not_in_binary_keys(monkeypatch):
     monkeypatch.setattr(em, "coil_registers", lambda: {})
     monkeypatch.setattr(em, "discrete_input_registers", lambda: {})
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [])
-    monkeypatch.setattr(em, "_REGISTER_INFO_CACHE", {})
+    monkeypatch.setattr(em._helpers, "_load_register_info", lambda: {})
     monkeypatch.setattr(
         em,
         "_load_translation_keys",
