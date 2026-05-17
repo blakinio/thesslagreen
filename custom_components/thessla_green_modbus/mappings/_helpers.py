@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import json
 import logging
 import sys
@@ -14,7 +15,6 @@ from ..registers.loader import get_all_registers
 from ..utils import _to_snake_case
 
 _LOGGER = logging.getLogger(__name__)
-_REGISTER_INFO_CACHE: dict[str, dict[str, Any]] | None = None
 
 
 def _infer_icon(name: str, unit: str | None) -> str:
@@ -32,46 +32,38 @@ def _infer_icon(name: str, unit: str | None) -> str:
     return "mdi:numeric"
 
 
-def _get_register_info(name: str) -> dict[str, Any] | None:
-    """Return register metadata, handling numeric suffixes.
+@functools.cache
+def _load_register_info() -> dict[str, dict[str, Any]]:
+    """Build and return the full register-info mapping.
 
-    Looks up ``_REGISTER_INFO_CACHE`` through the parent ``mappings`` package
-    module so that test monkeypatching on ``em._REGISTER_INFO_CACHE`` is
-    respected at call time.
+    Reads get_all_registers through the parent mappings module so that
+    test monkeypatching on ``em.get_all_registers`` is respected at call time.
     """
-    global _REGISTER_INFO_CACHE
-
-    # Prefer the cache stored on the parent module so monkeypatch works.
     _parent = sys.modules.get(__package__)
-    cache: dict[str, Any] | None = (
-        getattr(_parent, "_REGISTER_INFO_CACHE", None)
-        if _parent is not None
-        else _REGISTER_INFO_CACHE
-    )
+    fn = (
+        getattr(_parent, "get_all_registers", None) if _parent is not None else None
+    ) or get_all_registers
+    cache: dict[str, dict[str, Any]] = {}
+    for reg in fn():
+        if not reg.name:
+            continue
+        scale = reg.multiplier or 1
+        step = reg.resolution or scale
+        cache[reg.name] = {
+            "access": reg.access,
+            "min": reg.min,
+            "max": reg.max,
+            "unit": reg.unit,
+            "information": reg.information,
+            "scale": scale,
+            "step": step,
+        }
+    return cache
 
-    if cache is None:
-        _fn = (
-            getattr(_parent, "get_all_registers", None) if _parent is not None else None
-        ) or get_all_registers
-        cache = {}
-        for reg in _fn():
-            if not reg.name:
-                continue
-            scale = reg.multiplier or 1
-            step = reg.resolution or scale
-            cache[reg.name] = {
-                "access": reg.access,
-                "min": reg.min,
-                "max": reg.max,
-                "unit": reg.unit,
-                "information": reg.information,
-                "scale": scale,
-                "step": step,
-            }
-        _REGISTER_INFO_CACHE = cache
-        if _parent is not None:
-            _parent._REGISTER_INFO_CACHE = cache  # type: ignore[attr-defined]
 
+def _get_register_info(name: str) -> dict[str, Any] | None:
+    """Return register metadata, handling numeric suffixes."""
+    cache = _load_register_info()
     info = cache.get(name)
     if info is None and (suffix := name.rsplit("_", 1)) and len(suffix) > 1 and suffix[1].isdigit():
         info = cache.get(suffix[0])
@@ -146,9 +138,9 @@ def _load_translation_keys() -> dict[str, set[str]]:
 
 
 __all__ = [
-    "_REGISTER_INFO_CACHE",
     "_get_register_info",
     "_infer_icon",
+    "_load_register_info",
     "_load_translation_keys",
     "_number_translation_keys",
     "_parse_states",

@@ -37,6 +37,12 @@ from ..core.connection_test import run_connection_test as _run_connection_test_i
 from ..core.io_mixin import _ModbusIOMixin
 from ..core.models import CoordinatorConfig
 from ..core.retry import _PermanentModbusError
+from ..core.scan_helpers import (
+    normalise_available_registers as _normalise_available_registers_impl,
+)
+from ..core.scan_helpers import (
+    normalise_cached_register_name as _normalise_cached_register_name_impl,
+)
 from ..errors import CannotConnect
 from ..register_defs_cache import get_register_definitions
 from ..registers.maps import input_registers
@@ -84,12 +90,6 @@ from .scan import (
 )
 from .scan import (
     load_full_register_list as _load_full_register_list_impl,
-)
-from .scan import (
-    normalise_available_registers as _normalise_available_registers_impl,
-)
-from .scan import (
-    normalise_cached_register_name as _normalise_cached_register_name_impl,
 )
 from .scan import (
     prepare_registers_for_setup as _prepare_registers_for_setup_impl,

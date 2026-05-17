@@ -1,4 +1,3 @@
-import custom_components.thessla_green_modbus.entity_lookup as lookup_mod
 from custom_components.thessla_green_modbus.const import (
     AIRFLOW_UNIT_M3H,
     AIRFLOW_UNIT_PERCENTAGE,
@@ -19,7 +18,9 @@ from custom_components.thessla_green_modbus.unique_id_migration import (
 )
 
 
-def migrate_unique_id(unique_id, *, serial_number, host, port, slave_id):
+def migrate_unique_id(
+    unique_id, *, serial_number, host, port, slave_id, get_entity_lookup=_build_entity_lookup
+):
     return _migrate_unique_id_raw(
         unique_id,
         serial_number=serial_number,
@@ -28,7 +29,7 @@ def migrate_unique_id(unique_id, *, serial_number, host, port, slave_id):
         slave_id=slave_id,
         domain=DOMAIN,
         airflow_units=(AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE),
-        get_entity_lookup=_build_entity_lookup,
+        get_entity_lookup=get_entity_lookup,
         holding_registers=holding_registers,
         input_registers=input_registers,
         coil_registers=coil_registers,
@@ -152,7 +153,7 @@ def test_migrate_unique_id_address_based_lookup():
     assert str(REGISTER_ADDRESS) in result  # nosec B101
 
 
-def test_migrate_unique_id_register_to_key_lookup(monkeypatch):
+def test_migrate_unique_id_register_to_key_lookup():
     """register_to_key path: remainder is register_name but not entity key (lines 330-333)."""
 
     # Inject lookup: entity key "flow_entity" uses register "supply_flow_rate"
@@ -160,19 +161,22 @@ def test_migrate_unique_id_register_to_key_lookup(monkeypatch):
     fake_lookup = {
         "flow_entity": ("supply_flow_rate", "input_registers", None),
     }
-    monkeypatch.setattr(lookup_mod, "_ENTITY_LOOKUP", fake_lookup)
 
     # remainder = "supply_flow_rate" → not in lookup → elif register_to_key path
     uid = f"{DOMAIN}_{HOST}_{PORT}_{SLAVE}_supply_flow_rate"
-    result = migrate_unique_id(uid, serial_number=None, host=HOST, port=PORT, slave_id=SLAVE)
+    result = migrate_unique_id(
+        uid,
+        serial_number=None,
+        host=HOST,
+        port=PORT,
+        slave_id=SLAVE,
+        get_entity_lookup=lambda: fake_lookup,
+    )
 
     # "supply_flow_rate" → register_to_key["supply_flow_rate"] = "flow_entity"
     # address 274 → base_uid = "10_flow_entity_274"
     assert "flow_entity" in result  # nosec B101
     assert str(REGISTER_ADDRESS) in result  # nosec B101
-
-    # Restore cache so subsequent tests see real lookup
-    monkeypatch.setattr(lookup_mod, "_ENTITY_LOOKUP", None)
 
 
 def test_migrate_unique_id_fan_remainder():
