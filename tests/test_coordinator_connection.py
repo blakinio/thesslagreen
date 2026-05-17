@@ -3,22 +3,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-
-
-@pytest.fixture
-def coordinator() -> ThesslaGreenModbusCoordinator:
-    coord = ThesslaGreenModbusCoordinator.from_params(
-        hass=MagicMock(),
-        host="localhost",
-        port=502,
-        slave_id=1,
-        name="test",
-        scan_interval=30,
-        timeout=10,
-        retry=3,
-    )
-    return coord
 
 
 @pytest.mark.asyncio

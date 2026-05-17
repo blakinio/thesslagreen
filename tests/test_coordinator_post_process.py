@@ -1,28 +1,9 @@
 """Coordinator post-processing and power estimation tests."""
 
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from custom_components.thessla_green_modbus.coordinator import (
-    ThesslaGreenModbusCoordinator,
-)
-
-
-@pytest.fixture
-def coordinator():
-    """Create a test coordinator."""
-    hass = MagicMock()
-    return ThesslaGreenModbusCoordinator.from_params(
-        hass=hass,
-        host="localhost",
-        port=502,
-        slave_id=1,
-        name="test",
-        scan_interval=30,
-        timeout=10,
-        retry=3,
-    )
 
 
 def test_post_process_data(coordinator):
