@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import inspect
 import logging
 from datetime import timedelta
@@ -44,8 +45,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 _LOGGER = logging.getLogger(__name__.rsplit(".", maxsplit=1)[0])
 
-_platform_cache: list[Any] | None = None
-
 
 def _scan_interval_seconds(scan_interval: timedelta | int) -> int:
     """Normalize scan interval (timedelta|int) to integer seconds."""
@@ -54,15 +53,12 @@ def _scan_interval_seconds(scan_interval: timedelta | int) -> int:
     return int(scan_interval)
 
 
-def _get_platforms(platform_domains: list[str]) -> list[Any]:
-    """Return Platform enums for the given domain strings."""
-    global _platform_cache
-    if _platform_cache is not None:
-        return _platform_cache
+@functools.lru_cache(maxsize=1)
+def _get_platforms(platform_domains: tuple[str, ...]) -> list[Any]:
+    """Return Platform enums for the given domain strings (cached per domain tuple)."""
     from homeassistant.const import Platform
 
-    _platform_cache = [Platform(d) for d in platform_domains]
-    return _platform_cache
+    return [Platform(d) for d in platform_domains]
 
 
 def _apply_log_level(log_level: str) -> None:
@@ -257,7 +253,7 @@ async def async_setup_platforms(
         except (TypeError, ValueError, RuntimeError, AttributeError, OSError) as err:
             _LOGGER.exception("Unexpected error preloading platform %s: %s", platform, err)
 
-    platforms = _get_platforms(platform_domains)
+    platforms = _get_platforms(tuple(platform_domains))
     _LOGGER.debug("Setting up platforms: %s", platforms)
     try:
         forward_result = hass.config_entries.async_forward_entry_setups(entry, platforms)

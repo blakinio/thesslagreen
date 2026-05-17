@@ -19,6 +19,8 @@ from ..const import (
     MAX_REGS_PER_REQUEST,
     SERIAL_PARITY_MAP,
     SERIAL_STOP_BITS_MAP,
+)
+from ..registers.maps import (
     coil_registers,
     discrete_input_registers,
     holding_registers,

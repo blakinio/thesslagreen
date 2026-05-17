@@ -9,12 +9,12 @@ from typing import Any
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.helpers.entity import EntityCategory
 
-from ..const import (
+from ..registers.loader import get_all_registers
+from ..registers.maps import (
     coil_registers,
     discrete_input_registers,
     holding_registers,
 )
-from ..registers.loader import get_all_registers
 from ..utils import BCD_TIME_PREFIXES
 from ._helpers import (
     _get_register_info,

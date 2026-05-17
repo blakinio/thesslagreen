@@ -29,7 +29,6 @@ from ..const import (
     DOMAIN,
     KNOWN_MISSING_REGISTERS,
     UNKNOWN_MODEL,
-    input_registers,
 )
 from ..core.capabilities_mixin import _CoordinatorCapabilitiesMixin
 from ..core.client import ThesslaGreenDeviceClient
@@ -40,6 +39,7 @@ from ..core.models import CoordinatorConfig
 from ..core.retry import _PermanentModbusError
 from ..errors import CannotConnect
 from ..register_defs_cache import get_register_definitions
+from ..registers.maps import input_registers
 from ..registers.register_def import RegisterDef
 from ..scanner import (
     DeviceCapabilities,
@@ -173,6 +173,11 @@ class ThesslaGreenModbusCoordinator(
     # DeviceClient instead of the coordinator, the corresponding proxy
     # can be removed at that point.
     # ------------------------------------------------------------------
+
+    @property
+    def device_client(self) -> ThesslaGreenDeviceClient:
+        """Return the underlying DeviceClient instance."""
+        return self._device_client
 
     @property
     def config(self) -> CoordinatorConfig:
