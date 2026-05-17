@@ -73,7 +73,7 @@ def enable_event_loop_debug():
 @pytest.fixture
 def mock_coordinator():
     """Return a mock coordinator using MagicMock(spec=ThesslaGreenModbusCoordinator)."""
-    from custom_components.thessla_green_modbus.const import (
+    from custom_components.thessla_green_modbus.registers.maps import (
         coil_registers,
         discrete_input_registers,
         holding_registers,
