@@ -18,6 +18,27 @@ def _make_config_entry(data: dict, options: dict | None = None) -> MagicMock:
     return entry
 
 
+def make_coordinator(**kwargs) -> ThesslaGreenModbusCoordinator:
+    """Create a ThesslaGreenModbusCoordinator with test-friendly defaults.
+
+    Shared factory used across coordinator test modules to avoid repetition.
+    All keyword arguments are forwarded to ``from_params`` and override defaults.
+    """
+    hass = MagicMock()
+    hass.async_add_executor_job = None
+    return ThesslaGreenModbusCoordinator.from_params(
+        hass=hass,
+        host="192.168.1.1",
+        port=502,
+        slave_id=1,
+        name="test",
+        scan_interval=30,
+        timeout=3,
+        retry=2,
+        **kwargs,
+    )
+
+
 INPUT_REGISTERS = {r.name: r.address for r in get_registers_by_function("04")}
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
 

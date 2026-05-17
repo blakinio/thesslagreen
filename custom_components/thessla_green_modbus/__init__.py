@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-from functools import partial
 from typing import TYPE_CHECKING, Any, cast
 
 try:
@@ -39,7 +38,7 @@ if TYPE_CHECKING:  # pragma: no cover
 def _get_platforms() -> list[Any]:
     from ._setup import _get_platforms as _setup_get_platforms
 
-    return partial(_setup_get_platforms, PLATFORM_DOMAINS)()
+    return _setup_get_platforms(tuple(PLATFORM_DOMAINS))
 
 
 def _apply_log_level(log_level: str) -> None:
