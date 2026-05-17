@@ -28,6 +28,100 @@ async def _read_holding_fallback(
     await read_holding_individually(owner, read_method, chunk_start, register_names, data)
 
 
+def _merge_batch_read_results(
+    owner: Any,
+    response: Any,
+    chunk_start: int,
+    data: dict[str, Any],
+) -> None:
+    """Merge successfully-read batch register values into data."""
+    for i, value in enumerate(response.registers):
+        addr = chunk_start + i
+        register_name = owner._find_register_name("input_registers", addr)
+        if register_name and register_name in owner.available_registers["input_registers"]:
+            processed_value = owner._process_register_value(register_name, value)
+            if processed_value is not None:
+                data[register_name] = processed_value
+                owner.statistics["total_registers_read"] += 1
+                owner._clear_register_failure(register_name)
+
+
+async def _fallback_individual_input_reads(
+    owner: Any,
+    read_method: Any,
+    chunk_start: int,
+    register_names: list[str | None],
+    data: dict[str, Any],
+) -> None:
+    """Read input registers one-by-one as fallback when a batch returns empty."""
+    for idx, reg_name in enumerate(register_names):
+        if not reg_name:
+            continue
+        addr = chunk_start + idx
+        try:
+            single = await owner._read_with_retry(read_method, addr, 1, register_type="input")
+            if single.registers:
+                pv = owner._process_register_value(reg_name, single.registers[0])
+                if pv is not None:
+                    data[reg_name] = pv
+                    owner.statistics["total_registers_read"] += 1
+                    owner._clear_register_failure(reg_name)
+                else:
+                    owner._mark_registers_failed([reg_name])
+            else:
+                owner._mark_registers_failed([reg_name])
+        except _PermanentModbusError:
+            owner._mark_registers_failed([reg_name])
+        except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
+            owner._mark_registers_failed([reg_name])
+
+
+async def _handle_batch_read_failure(
+    owner: Any,
+    response: Any,
+    chunk_count: int,
+    register_names: list[str | None],
+    read_method: Any,
+    chunk_start: int,
+    data: dict[str, Any],
+) -> None:
+    """Handle a partial or empty batch response."""
+    if len(response.registers) == 0:
+        await _fallback_individual_input_reads(
+            owner, read_method, chunk_start, register_names, data
+        )
+    else:
+        missing = register_names[len(response.registers) :]
+        owner._mark_registers_failed(missing)
+
+
+async def _read_input_register_batch(
+    owner: Any,
+    read_method: Any,
+    chunk_start: int,
+    chunk_count: int,
+    register_names: list[str | None],
+    data: dict[str, Any],
+    failed: set[str],
+) -> None:
+    """Read one input register chunk, with fallback on partial or empty response."""
+    if all(name in failed for name in register_names if name):
+        return
+    try:
+        response = await owner._read_with_retry(
+            read_method, chunk_start, chunk_count, register_type="input"
+        )
+        _merge_batch_read_results(owner, response, chunk_start, data)
+        if len(response.registers) < chunk_count:
+            await _handle_batch_read_failure(
+                owner, response, chunk_count, register_names, read_method, chunk_start, data
+            )
+    except _PermanentModbusError:
+        owner._mark_registers_failed(register_names)
+    except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
+        owner._mark_registers_failed(register_names)
+
+
 async def read_input_registers_optimized(owner: Any) -> dict[str, Any]:
     """Read input registers using optimized batch reading."""
     data: dict[str, Any] = {}
@@ -61,71 +155,9 @@ async def read_input_registers_optimized(owner: Any) -> dict[str, Any]:
                 owner._find_register_name("input_registers", chunk_start + i)
                 for i in range(chunk_count)
             ]
-            if all(name in failed for name in register_names if name):
-                continue
-            try:
-                response = await owner._read_with_retry(
-                    read_method,
-                    chunk_start,
-                    chunk_count,
-                    register_type="input",
-                )
-
-                for i, value in enumerate(response.registers):
-                    addr = chunk_start + i
-                    register_name = owner._find_register_name("input_registers", addr)
-                    if (
-                        register_name
-                        and register_name in owner.available_registers["input_registers"]
-                    ):
-                        processed_value = owner._process_register_value(register_name, value)
-                        if processed_value is not None:
-                            data[register_name] = processed_value
-                            owner.statistics["total_registers_read"] += 1
-                            owner._clear_register_failure(register_name)
-
-                if len(response.registers) < chunk_count:
-                    if len(response.registers) == 0:
-                        # Batch returned nothing — fall back to individual reads
-                        for idx, reg_name in enumerate(register_names):
-                            if not reg_name:
-                                continue
-                            addr = chunk_start + idx
-                            try:
-                                single = await owner._read_with_retry(
-                                    read_method, addr, 1, register_type="input"
-                                )
-                                if single.registers:
-                                    pv = owner._process_register_value(
-                                        reg_name, single.registers[0]
-                                    )
-                                    if pv is not None:
-                                        data[reg_name] = pv
-                                        owner.statistics["total_registers_read"] += 1
-                                        owner._clear_register_failure(reg_name)
-                                    else:
-                                        owner._mark_registers_failed([reg_name])
-                                else:
-                                    owner._mark_registers_failed([reg_name])
-                            except _PermanentModbusError:
-                                owner._mark_registers_failed([reg_name])
-                            except (
-                                ModbusException,
-                                ConnectionException,
-                                TimeoutError,
-                                OSError,
-                                ValueError,
-                            ):
-                                owner._mark_registers_failed([reg_name])
-                    else:
-                        missing = register_names[len(response.registers) :]
-                        owner._mark_registers_failed(missing)
-            except _PermanentModbusError:
-                owner._mark_registers_failed(register_names)
-                continue
-            except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
-                owner._mark_registers_failed(register_names)
-                continue
+            await _read_input_register_batch(
+                owner, read_method, chunk_start, chunk_count, register_names, data, failed
+            )
 
     return data
 
