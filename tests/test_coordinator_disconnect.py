@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from custom_components.thessla_green_modbus.coordinator import disconnect
+from custom_components.thessla_green_modbus.core import disconnect
 
 
 @pytest.mark.asyncio
