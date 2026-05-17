@@ -4,26 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-# ---------------------------------------------------------------------------
-# Entity lookup — implementation lives in entity_lookup.py.
-# ---------------------------------------------------------------------------
-from .entity_lookup import _build_entity_lookup as _build_entity_lookup
-
-# ---------------------------------------------------------------------------
-# Register map helpers — used internally by migrate_unique_id below.
-# Canonical import path: .registers.maps
-# ---------------------------------------------------------------------------
-from .registers.maps import coil_registers as coil_registers
-from .registers.maps import discrete_input_registers as discrete_input_registers
-from .registers.maps import holding_registers as holding_registers
-from .registers.maps import input_registers as input_registers
-
-# ---------------------------------------------------------------------------
-# Unique-ID helpers — thin façades over unique_id_migration.
-# ---------------------------------------------------------------------------
-from .unique_id_migration import device_unique_id_prefix as _device_unique_id_prefix_impl
-from .unique_id_migration import migrate_unique_id as _migrate_unique_id_impl
-
 try:
     from homeassistant.const import Platform as _HAPlatform
 except ModuleNotFoundError:  # pragma: no cover - test/runtime fallback without HA
@@ -260,37 +240,3 @@ SPECIAL_FUNCTION_MAP = {
     "summer": 10,
     "winter": 11,
 }
-
-
-def device_unique_id_prefix(
-    serial_number: str | None,
-    host: str,
-    port: int,
-) -> str:
-    """Return the device specific prefix used in entity unique IDs."""
-    return _device_unique_id_prefix_impl(serial_number, host, port)
-
-
-def migrate_unique_id(
-    unique_id: str,
-    *,
-    serial_number: str | None,
-    host: str,
-    port: int,
-    slave_id: int,
-) -> str:
-    """Migrate a historical unique_id to the current format."""
-    return _migrate_unique_id_impl(
-        unique_id,
-        serial_number=serial_number,
-        host=host,
-        port=port,
-        slave_id=slave_id,
-        domain=DOMAIN,
-        airflow_units=(AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE),
-        get_entity_lookup=_build_entity_lookup,
-        holding_registers=holding_registers,
-        input_registers=input_registers,
-        coil_registers=coil_registers,
-        discrete_input_registers=discrete_input_registers,
-    )

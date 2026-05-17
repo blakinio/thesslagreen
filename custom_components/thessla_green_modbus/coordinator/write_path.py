@@ -7,7 +7,7 @@ from typing import Any
 
 from pymodbus.exceptions import ConnectionException, ModbusException
 
-from ..core.write_path import SingleWritePlan, encode_write_value  # noqa: F401 – re-exported
+from ..core.write_path import SingleWritePlan
 
 _LOGGER = logging.getLogger(__name__)
 

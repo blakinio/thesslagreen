@@ -4,10 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
-from custom_components.thessla_green_modbus.coordinator.write_path import (
-    encode_write_value,
-    finalize_write_result,
-)
+from custom_components.thessla_green_modbus.coordinator.write_path import finalize_write_result
+from custom_components.thessla_green_modbus.core.write_path import encode_write_value
 from custom_components.thessla_green_modbus.registers.loader import RegisterDef
 
 

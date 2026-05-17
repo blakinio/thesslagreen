@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING, Any
 from pymodbus.exceptions import ConnectionException, ModbusException
 
 from .const import (
+    AIRFLOW_UNIT_M3H,
+    AIRFLOW_UNIT_PERCENTAGE,
     CONF_CONNECTION_MODE,
     CONF_LOG_LEVEL,
     CONNECTION_MODE_AUTO,
@@ -22,11 +24,18 @@ from .const import (
     DEFAULT_CONNECTION_TYPE,
     DEFAULT_LOG_LEVEL,
     DOMAIN,
-    migrate_unique_id,
 )
+from .entity_lookup import _build_entity_lookup
 from .errors import is_invalid_auth_error
 from .mappings import async_setup_entity_mappings
 from .options import async_setup_options
+from .registers.maps import (
+    coil_registers,
+    discrete_input_registers,
+    holding_registers,
+    input_registers,
+)
+from .unique_id_migration import migrate_unique_id
 from .utils import resolve_connection_settings
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -216,6 +225,13 @@ async def async_migrate_entity_unique_ids(
             host=str(host),
             port=int(port or 0),
             slave_id=int(slave_id or 0),
+            domain=DOMAIN,
+            airflow_units=(AIRFLOW_UNIT_M3H, AIRFLOW_UNIT_PERCENTAGE),
+            get_entity_lookup=_build_entity_lookup,
+            holding_registers=holding_registers,
+            input_registers=input_registers,
+            coil_registers=coil_registers,
+            discrete_input_registers=discrete_input_registers,
         )
         if new_unique_id != old_unique_id:
             try:

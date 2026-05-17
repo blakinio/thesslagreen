@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..scanner import register_maps as _register_maps
 from . import register_map_cache as _register_map_cache
 
 
@@ -27,13 +28,13 @@ async def async_build_register_maps(hass: Any | None) -> str:
 
 def ensure_register_maps(current_hash: str) -> str:
     """Ensure sync register maps are loaded and return latest hash."""
-    _register_map_cache.REGISTER_HASH = current_hash
+    _register_maps.REGISTER_HASH = current_hash
     _register_map_cache.ensure_register_maps()
     return _register_map_cache.sync_register_hash_from_maps()
 
 
 async def async_ensure_register_maps(current_hash: str, hass: Any | None) -> str:
     """Ensure async register maps are loaded and return latest hash."""
-    _register_map_cache.REGISTER_HASH = current_hash
+    _register_maps.REGISTER_HASH = current_hash
     await _register_map_cache.async_ensure_register_maps(hass)
     return _register_map_cache.sync_register_hash_from_maps()
