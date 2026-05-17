@@ -1,7 +1,8 @@
 # Real-Device Validation Checklist
 
-> **Status: TEMPLATE ONLY — not yet filled with real evidence.**
+> **Status: NOT YET COMPLETED**
 >
+> This document is a template. Real-device validation has not been performed.
 > Do not mark real-device validation complete until this document contains
 > a fully completed Evidence section signed by a tester with a real device.
 
@@ -120,33 +121,78 @@ lifecycle, and UI behaviour.
 | 10.1 | Restart Home Assistant | Integration re-initialises cleanly; no `ImportError` or `ConfigEntryNotReady` loop | | |
 | 10.2 | Check logs after restart | No repeated error messages; connection established within ~30 s | | |
 
-### 4.11 Log Review
+### 4.11 Options Flow Update
 
 | # | Step | Expected | Pass/Fail | Notes |
 |---|------|----------|-----------|-------|
-| 11.1 | Review full HA log after all above tests | No unhandled exceptions from `thessla_green_modbus`; no `ERROR` level messages during steady-state | | |
-| 11.2 | No memory growth / resource leak visible after extended operation (optional) | Memory stable over 1-hour run | | |
+| 11.1 | Open integration options via HA Settings → Devices & Services → Configure | Options form opens with current values pre-filled | | |
+| 11.2 | Change scan interval or another option; submit | Integration reloads with new settings; no errors in logs | | |
+
+### 4.12 Special Modes (Boost / Eco / Away / Others)
+
+| # | Step | Expected | Pass/Fail | Notes |
+|---|------|----------|-----------|-------|
+| 12.1 | Call `thessla_green_modbus.set_special_mode` service with `mode: boost` | Boost mode activated on controller; register value changes to 1 | | |
+| 12.2 | Call with `mode: eco` | Eco mode activated; register value changes to 2 | | |
+| 12.3 | Call with `mode: away` | Away mode activated; register value changes to 3 | | |
+| 12.4 | Call with `mode: none` (or deactivate) | Special mode deactivated; register resets to 0 | | |
+| 12.5 | Verify climate entity preset_mode reflects the active special mode | Climate entity shows correct preset after one poll cycle | | |
+
+### 4.13 Clock Sync
+
+| # | Step | Expected | Pass/Fail | Notes |
+|---|------|----------|-----------|-------|
+| 13.1 | Enable clock sync in options (`sync_device_clock_enabled: true`) | Integration writes current time to controller time registers on startup | | |
+| 13.2 | Wait for the sync interval (or call `thessla_green_modbus.sync_device_clock`) | Clock registers on controller updated; log shows "Clock sync" message | | |
+| 13.3 | Verify no `ModbusException` during clock write | No write error in logs | | |
+
+### 4.14 Diagnostics
+
+| # | Step | Expected | Pass/Fail | Notes |
+|---|------|----------|-----------|-------|
+| 14.1 | Navigate to the integration device page → Download diagnostics | Diagnostics JSON downloads without error | | |
+| 14.2 | Open diagnostics JSON | Contains `available_registers`, `statistics`, `device_info`, `scanned_registers` fields | | |
+| 14.3 | Verify no sensitive data (credentials, tokens) in diagnostics output | Diagnostics file safe to share | | |
+
+### 4.15 Service Calls
+
+| # | Step | Expected | Pass/Fail | Notes |
+|---|------|----------|-----------|-------|
+| 15.1 | Call `thessla_green_modbus.set_airflow_rate` with a valid value | Airflow rate register updated; entity reflects new value | | |
+| 15.2 | Call `thessla_green_modbus.set_temperature_curve` if applicable | Temperature curve registers updated without error | | |
+| 15.3 | Call `thessla_green_modbus.set_log_level` with `level: debug` | Log level changes; additional debug messages appear in HA log | | |
+
+### 4.16 Log Review (No Traceback)
+
+| # | Step | Expected | Pass/Fail | Notes |
+|---|------|----------|-----------|-------|
+| 16.1 | Review full HA log after all above tests | No unhandled exceptions from `thessla_green_modbus`; no `ERROR` level messages during steady-state | | |
+| 16.2 | No traceback (`Traceback (most recent call last)`) in log from integration code | Zero tracebacks during normal operation | | |
+| 16.3 | No memory growth / resource leak visible after extended operation (optional) | Memory stable over 1-hour run | | |
 
 ---
 
 ## 5. Evidence Record
 
 Fill this section after completing the tests above. **Do not claim validation
-complete unless all mandatory test cases (4.1–4.11) are marked Pass.**
+complete unless all mandatory test cases (4.1–4.16) are marked Pass.**
 
 | Field | Value |
 |-------|-------|
 | **Date** | _YYYY-MM-DD_ |
 | **Tester** | _Name / GitHub handle_ |
 | **Home Assistant version** | _e.g., 2026.2.3_ |
-| **Integration version** | _e.g., 2.8.0_ |
+| **Integration version / commit SHA** | _e.g., 2.8.0 / abc1234_ |
 | **Controller model** | _e.g., ThesslaGreen AirPack 4_ |
 | **Controller firmware** | _e.g., 3.14_ |
-| **Modbus TCP port** | _e.g., 502_ |
+| **Connection type** | _TCP / RTU / TCP\_RTU_ |
+| **Slave ID** | _e.g., 1_ |
+| **Modbus host:port** | _e.g., 192.168.1.50:502_ |
 | **Python version on HA host** | _e.g., 3.13.2_ |
 | **Overall result** | _PASS / FAIL / PARTIAL_ |
 | **Failed test cases** | _List IDs or "none"_ |
-| **Notable log excerpts** | _Paste key log lines or "none"_ |
+| **Debug log excerpt** | _Paste key log lines or "none"_ |
+| **Known limitations** | _Any known issues observed during test_ |
 | **Additional notes** | |
 
 ---
@@ -176,8 +222,8 @@ Harmonogram entity cleanup was **NOT** implemented in this PR.
 
 Real-device validation is **not** complete until:
 
-1. All test cases 4.1 through 4.11 are marked **Pass** in the Evidence Record above.
-2. The Evidence Record is signed by a named tester.
+1. All test cases 4.1 through 4.16 are marked **Pass** in the Evidence Record above.
+2. The Evidence Record is signed by a named tester with the commit SHA recorded.
 3. This document is committed to the repository with the completed evidence.
 
 Until that point, this document is a **template only** and real-device

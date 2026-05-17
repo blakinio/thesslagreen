@@ -1,62 +1,112 @@
 # Coordinator Proxy Remaining Plan
 
-## Why Full Proxy Elimination Is Deferred
+## Audit Date
 
-Full coordinator proxy elimination was explicitly deferred from this cleanup PR for the
-following reasons:
+2026-05-17 — audited against `refactor/final-cleanup-before-device-validation`.
 
-1. **Hardware validation first.** The immediate priority is physical real-device testing
-   with logs. A broad proxy migration before that carries meaningful risk: if a subtle
-   behavioral difference surfaces during hardware validation, it is harder to attribute
-   the cause when both proxy removal and hardware testing happen in the same window.
+## Current Proxy Count
 
-2. **Scope risk.** The coordinator proxy properties (`device_client`, and related
-   pass-through accessors on `ThesslaGreenModbusCoordinator`) are referenced across
-   many submodules. Removing them in bulk before verifying the full runtime loop
-   against real hardware is unsafe.
+`coordinator/coordinator.py` contains **43 proxy properties** (lines 177–512), covering:
 
-3. **Partial migration danger.** Removing some proxies while leaving others means some
-   call sites go direct and others go through the coordinator shim. This asymmetry
-   makes bugs harder to trace during device testing.
+- Configuration (12 properties): `config`, `_device_name`, `_resolved_connection_mode`, `timeout`,
+  `retry`, `backoff`, `backoff_jitter`, `force_full_register_list`, `scan_uart_settings`,
+  `deep_scan`, `safe_scan`, `skip_missing_registers`, `effective_batch`, `max_registers_per_request`
+- Connection state (6 properties): `client`, `_transport`, `_client_lock`, `_write_lock`,
+  `_update_in_progress`, `offline_state`
+- Device info / capabilities (2 properties): `capabilities`, `device_info`
+- Register maps (8 properties): `available_registers`, `_register_maps`, `_reverse_maps`,
+  `_input_registers_rev`, `_holding_registers_rev`, `_coil_registers_rev`, `_discrete_inputs_rev`,
+  `_register_groups`, `_failed_registers`
+- Statistics and failure tracking (3 properties): `statistics`, `_consecutive_failures`, `_max_failures`
+- Scan state (4 properties): `device_scan_result`, `unknown_registers`, `scanned_registers`, `last_scan`
+- Post-processing state (2 properties): `_last_power_timestamp`, `_total_energy`
+- DeviceClient accessor (1 property): `device_client`
 
-## Current Accessor Name
+Plus 3 additional `@property` definitions at lines 857–875 (not device-client proxies).
 
-The live device-client accessor added in the device-client redesign is **`device_client`**
-on `ThesslaGreenModbusCoordinator`. It returns the `ThesslaGreenDeviceClient` instance.
+## Removed Proxies (This PR)
 
-## Why `coordinator.client` Cannot Serve as the DeviceClient Accessor
+None. All proxies are in active use by runtime code or tests (see classification below).
 
-`coordinator.client` is the raw pymodbus client object (a `ModbusBaseClient` or compatible
-type). `ThesslaGreenDeviceClient` wraps this client together with transport, scanner state,
-and connection lifecycle helpers. Using `coordinator.client` directly in submodules that
-need the full `DeviceClient` interface would bypass all of that logic and break the
-abstraction layer.
+## Retained Proxies and Why
 
-## Safe Future Migration Strategy
+All proxy properties are retained. Classification:
 
-Migrate coordinator proxy properties incrementally, one submodule at a time:
+### runtime-required
+
+Properties accessed by coordinator submodules (`lifecycle.py`, `update.py`, `write_path.py`,
+`scan.py`, `errors.py`, `schedule.py`, `runtime.py`, etc.) which currently receive `coordinator`
+as their argument and access device state through it.
+
+- `device_client` — submodule entry point for DeviceClient access
+- `config` — read/write during options reload
+- `client`, `_transport`, `_client_lock`, `_write_lock` — connection management
+- `_update_in_progress`, `offline_state` — update-cycle state tracking
+- `capabilities` — entity availability checks
+- `available_registers`, `_register_maps`, `_register_groups`, `_failed_registers` — register access
+- `statistics`, `_consecutive_failures`, `_max_failures` — failure and backoff logic
+- `device_scan_result`, `scanned_registers`, `last_scan` — scan lifecycle
+
+### entity-required
+
+Properties accessed by HA entity platforms that receive `coordinator` as their injected
+dependency.
+
+- `available_registers`, `force_full_register_list` — sensor/switch/number/fan entity setup
+- `capabilities` — climate, fan, binary_sensor entity feature flags
+- `offline_state` — entity `available` property
+
+### test-required
+
+Properties set or read by unit tests that construct a `ThesslaGreenModbusCoordinator` and
+then mutate its state directly to exercise specific code paths (e.g.
+`coordinator._consecutive_failures = 1`, `coordinator.available_registers = {...}`).
+
+All of the above runtime-required and entity-required properties also appear in tests in
+this way; they are doubly-needed.
+
+## Removed Coordinator Re-exports (This PR)
+
+- `disconnect` — was re-exported from `coordinator/__init__.py` as
+  `from ..core import disconnect as disconnect`. Only `tests/test_coordinator_disconnect.py`
+  imported it via coordinator. That test was updated to import directly from
+  `custom_components.thessla_green_modbus.core import disconnect`. The re-export is removed.
+
+## Future Removal Path
+
+Remove proxy properties incrementally after real-device validation, following the strategy
+documented below:
 
 1. **Pick one submodule** (e.g. `coordinator/write_path.py` or `services/handlers_maintenance.py`)
-   that currently imports from `coordinator` to reach device behaviour.
+   that currently receives `coordinator` as an argument to reach device state.
 
-2. **Update that submodule** to accept a `ThesslaGreenDeviceClient` argument instead of
-   going through the coordinator proxy. Add or update the corresponding unit tests.
+2. **Update that submodule** to accept a `ThesslaGreenDeviceClient` argument directly.
+   Add or update the corresponding unit tests.
 
-3. **Update the call site** in the coordinator (or entry point) to pass `coordinator.device_client`
-   directly to the submodule.
+3. **Update the call site** in the coordinator to pass `coordinator.device_client` to
+   the submodule.
 
-4. **Verify** the change with tests and, once hardware testing proceeds, with real-device logs.
+4. **Verify** with tests and with real-device logs once hardware validation is underway.
 
 5. **Repeat** for the next submodule only after the previous migration is confirmed stable.
 
-6. **Remove proxy properties** (`coordinator.device_client` and any remaining shim accessors
-   on the coordinator) only after **zero callers** remain that go through the proxy.
+6. **Remove proxy properties** only after zero callers remain that go through the proxy.
 
-## Warning
+## Why Bulk Removal Is Deferred
 
-Do **not** remove proxy properties in bulk before real-device validation. A mass removal
-before hardware validation leaves no safe rollback path if the device behaves differently
-than the mocked test environment.
+- **Hardware validation first.** A broad proxy migration before real-device testing makes
+  it harder to attribute bugs during validation.
+- **Scope risk.** Proxy properties span many submodules. Bulk removal before validating
+  the full runtime loop on hardware is unsafe.
+- **Asymmetry danger.** Removing some proxies while leaving others creates tracing
+  difficulties if a device-level bug surfaces.
+
+## Why `coordinator.client` Cannot Serve as the DeviceClient Accessor
+
+`coordinator.client` is the raw pymodbus client object (`ModbusBaseClient` or compatible).
+`ThesslaGreenDeviceClient` wraps this together with transport, scanner state, and connection
+lifecycle helpers. Using `coordinator.client` where the full DeviceClient interface is needed
+would bypass that logic and break the abstraction.
 
 ## Tracking
 
