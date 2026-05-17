@@ -94,7 +94,13 @@ async def scan_firmware_info(scanner: Any, info_regs: list[int], device: Scanner
         msg = "Failed to read firmware version registers"
         if details:
             msg += ": " + "; ".join(details)
-        _LOGGER.warning(msg)
+        # version_patch (input register 4) is absent on some older firmware —
+        # that is expected.  Only escalate to WARNING when major or minor is
+        # also missing, which indicates a real communication problem.
+        if patch is None and major is not None and minor is not None:
+            _LOGGER.debug(msg)
+        else:
+            _LOGGER.warning(msg)
         device.firmware_available = False
 
 

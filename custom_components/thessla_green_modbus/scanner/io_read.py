@@ -125,13 +125,15 @@ def _handle_register_error_response(
 
     Returns (done, payload) — same contract as _process_register_response.
     """
-    _LOGGER.warning(
-        "Exception code %s while reading %s %d-%d",
-        code,
-        register_type.replace("_", " "),
-        start,
-        end,
-    )
+    # Input registers 4-15 (version_patch, compilation timestamps) are absent on
+    # some firmware versions; ILLEGAL DATA ADDRESS (code 2) is the expected response.
+    _rtype = register_type.replace("_", " ")
+    if register_type == "input_registers" and code == 2 and 4 <= start <= 15:
+        _LOGGER.debug(
+            "Expected missing input register (code %s): %s %d-%d", code, _rtype, start, end
+        )
+    else:
+        _LOGGER.warning("Exception code %s while reading %s %d-%d", code, _rtype, start, end)
     if register_type == "input_registers" or code == 2:
         _handle_error_response(
             scanner,

@@ -175,6 +175,10 @@ def _ensure_homeassistant_importable() -> None:
 def _load_validation_inputs() -> tuple[object, dict[str, Any], dict[str, Any], set[str]]:
     from custom_components.thessla_green_modbus import mappings as mappings_mod
 
+    # The module-level auto-build was removed to prevent blocking I/O on the HA
+    # event loop; tools must trigger it explicitly.
+    mappings_mod._run_build_entity_mappings()
+
     en = _load_json(CC_ROOT / "translations" / "en.json")
     pl = _load_json(CC_ROOT / "translations" / "pl.json")
     _load_json(CC_ROOT / "strings.json")

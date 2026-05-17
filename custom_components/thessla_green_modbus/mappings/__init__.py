@@ -105,12 +105,18 @@ def _run_build_entity_mappings() -> None:
 
 
 async def async_setup_entity_mappings(hass: HomeAssistant | None = None) -> None:
-    """Asynchronously build entity mappings."""
+    """Asynchronously build entity mappings.
 
+    When *hass* is provided the entire build — including translation file reads
+    via :func:`_number_translation_keys` and :func:`_load_translation_keys` —
+    runs in a thread-pool executor so that no blocking I/O occurs on the event
+    loop.  Both translation helpers cache their results after the first call, so
+    subsequent invocations pay no I/O cost regardless of how they are called.
+
+    When *hass* is ``None`` (tools and tests) the build runs synchronously in
+    the calling thread, which is safe because no event loop is active.
+    """
     if hass is not None:
         await hass.async_add_executor_job(_run_build_entity_mappings)
     else:
         _run_build_entity_mappings()
-
-
-_run_build_entity_mappings()
