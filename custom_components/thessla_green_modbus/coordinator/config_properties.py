@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .models import CoordinatorConfig
+    from ..core.models import CoordinatorConfig
 
 
 class _CoordinatorConfigPropertiesMixin:

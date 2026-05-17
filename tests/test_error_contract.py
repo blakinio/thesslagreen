@@ -31,7 +31,7 @@ def test_classify_error_reasons() -> None:
 
 
 def test_cross_layer_classification_contract() -> None:
-    from custom_components.thessla_green_modbus.coordinator.retry import classify_retry_error
+    from custom_components.thessla_green_modbus.core.retry import classify_retry_error
     from custom_components.thessla_green_modbus.scanner.io_runtime import classify_scanner_error
     from custom_components.thessla_green_modbus.transport.retry import classify_transport_error
 
@@ -44,7 +44,7 @@ def test_cross_layer_classification_contract() -> None:
 
 
 def test_cross_layer_retry_logging_contract(caplog: pytest.LogCaptureFixture) -> None:
-    from custom_components.thessla_green_modbus.coordinator.retry import log_coordinator_retry
+    from custom_components.thessla_green_modbus.core.retry import log_coordinator_retry
     from custom_components.thessla_green_modbus.scanner.io_runtime import log_scanner_retry
     from custom_components.thessla_green_modbus.transport.retry_logging import log_transport_retry
 
@@ -94,7 +94,7 @@ def test_cross_layer_retry_logging_contract(caplog: pytest.LogCaptureFixture) ->
 def test_cross_layer_classification_contract_matrix(
     exc: BaseException, expected_kind: str, expected_reason: str
 ) -> None:
-    from custom_components.thessla_green_modbus.coordinator.retry import classify_retry_error
+    from custom_components.thessla_green_modbus.core.retry import classify_retry_error
     from custom_components.thessla_green_modbus.scanner.io_runtime import classify_scanner_error
     from custom_components.thessla_green_modbus.transport.retry import classify_transport_error
 

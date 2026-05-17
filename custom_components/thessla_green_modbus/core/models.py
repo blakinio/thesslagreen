@@ -1,11 +1,9 @@
-"""Data models used by the Modbus coordinator."""
+"""Data models for the device-domain layer."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
-
-from homeassistant.config_entries import ConfigEntry
 
 from ..const import (
     DEFAULT_BACKOFF,
@@ -47,10 +45,3 @@ class CoordinatorConfig:
     baud_rate: int = DEFAULT_BAUD_RATE
     parity: str = DEFAULT_PARITY
     stop_bits: int = DEFAULT_STOP_BITS
-
-    @classmethod
-    def from_entry(cls, entry: ConfigEntry) -> CoordinatorConfig:
-        """Build coordinator config from a Home Assistant config entry."""
-        from .config_normalization import coordinator_config_from_entry
-
-        return coordinator_config_from_entry(entry, cls)
