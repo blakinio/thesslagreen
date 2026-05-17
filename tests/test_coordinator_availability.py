@@ -45,7 +45,7 @@ def test_process_register_value_sensor_unavailable_non_temperature():
 
 def test_process_register_value_decoded_equals_sensor_unavailable():
     from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
-    from custom_components.thessla_green_modbus.coordinator import register_processing as rp
+    from custom_components.thessla_green_modbus.core import register_processing as rp
 
     c = _make_coordinator()
     d = MagicMock()
