@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
 from typing import TYPE_CHECKING, Any, cast
 
 try:
@@ -18,13 +17,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from .coordinator import ThesslaGreenModbusCoordinator
 
 from .const import (
-    CONF_LOG_LEVEL,
-    CONF_SAFE_SCAN,
-    CONF_SCAN_INTERVAL,
-    DEFAULT_LOG_LEVEL,
     DEFAULT_NAME,
-    DEFAULT_SAFE_SCAN,
-    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
 from .const import PLATFORMS as PLATFORM_DOMAINS
@@ -39,12 +32,6 @@ def _get_platforms() -> list[Any]:
     from ._setup import _get_platforms as _setup_get_platforms
 
     return _setup_get_platforms(tuple(PLATFORM_DOMAINS))
-
-
-def _apply_log_level(log_level: str) -> None:
-    level = getattr(logging, log_level.upper(), logging.INFO)
-    base_logger = logging.getLogger(__package__ or DOMAIN)
-    base_logger.setLevel(level)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -117,35 +104,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Update options."""
-    _LOGGER.debug("Updating options for ThesslaGreen Modbus integration")
+    """Reload the config entry when options change.
 
-    coordinator = entry.runtime_data
-    if coordinator is not None:
-        new_interval = int(entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
-        coordinator.scan_interval = new_interval
-        try:
-            coordinator.async_set_update_interval(timedelta(seconds=new_interval))
-        except AttributeError:
-            coordinator.update_interval = timedelta(seconds=new_interval)
-
-        new_log_level = str(entry.options.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL))
-        _apply_log_level(new_log_level)
-
-        coordinator.safe_scan = bool(entry.options.get(CONF_SAFE_SCAN, DEFAULT_SAFE_SCAN))
-        try:
-            coordinator._compute_register_groups()
-        except (
-            TypeError,
-            ValueError,
-            AttributeError,
-            RuntimeError,
-            OSError,
-        ):
-            _LOGGER.debug("Failed to recompute register groups after option update", exc_info=True)
-
-        await coordinator.async_request_refresh()
-
+    A full reload is used because most options (force_full_register_list,
+    safe_scan, enable_device_scan, …) affect entity creation and register
+    availability, so only a reload guarantees a clean, consistent state.
+    Live-patching the coordinator and then reloading would cause a redundant
+    refresh cycle, so we do the reload directly.
+    """
+    _LOGGER.debug("Reloading ThesslaGreen Modbus integration after options update")
     await hass.config_entries.async_reload(entry.entry_id)
 
 

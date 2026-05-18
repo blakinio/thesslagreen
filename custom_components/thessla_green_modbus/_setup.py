@@ -145,17 +145,7 @@ async def async_start_coordinator(
         )
 
     try:
-        refresh_cb = None
-        if hasattr(coordinator, "async_config_entry_first_refresh"):
-            refresh_cb = coordinator.async_config_entry_first_refresh
-        elif hasattr(coordinator, "async_refresh"):
-            refresh_cb = coordinator.async_refresh
-        elif hasattr(coordinator, "async_request_refresh"):
-            refresh_cb = coordinator.async_request_refresh
-        if refresh_cb is not None:
-            refresh_result = refresh_cb()
-            if inspect.isawaitable(refresh_result):
-                await refresh_result
+        await coordinator.async_config_entry_first_refresh()
     except asyncio.CancelledError:
         raise
     except (TimeoutError, ConnectionException, ModbusException, UpdateFailed, OSError) as exc:

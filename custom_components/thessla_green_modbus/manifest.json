@@ -24,7 +24,7 @@
   ],
   "quality_scale": "bronze",
   "requirements": [
-    "pymodbus>=3.6.0"
+    "pymodbus>=3.6.0,<4.0"
   ],
   "version": "2.8.0",
   "zeroconf": [

@@ -8,13 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-
-try:
-    from homeassistant.config_entries import ConfigFlowResult
-except ImportError:  # pragma: no cover - HA < 2024.4 fallback
-    from homeassistant.data_entry_flow import (
-        FlowResult as ConfigFlowResult,  # type: ignore[assignment]
-    )
+from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
 from pymodbus.exceptions import ModbusIOException

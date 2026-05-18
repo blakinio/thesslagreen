@@ -554,21 +554,13 @@ class ThesslaGreenModbusCoordinator(
             entry=entry,
         )
 
-        try:
-            super().__init__(
-                hass,
-                _LOGGER,
-                config_entry=entry,
-                name=f"{DOMAIN}_{entry.entry_id if entry else normalized_cfg.name}",
-                update_interval=update_interval,
-            )
-        except TypeError:
-            super().__init__(
-                hass,
-                _LOGGER,
-                name=f"{DOMAIN}_{entry.entry_id if entry else normalized_cfg.name}",
-                update_interval=update_interval,
-            )
+        super().__init__(
+            hass,
+            _LOGGER,
+            config_entry=entry,
+            name=f"{DOMAIN}_{entry.entry_id if entry else normalized_cfg.name}",
+            update_interval=update_interval,
+        )
         self.hass = hass
 
         # Apply coordinator config — writes go through property proxies to DeviceClient.
