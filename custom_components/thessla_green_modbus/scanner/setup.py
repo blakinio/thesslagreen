@@ -17,7 +17,6 @@ from ..const import (
     CONNECTION_TYPE_TCP,
     DEFAULT_MAX_BACKOFF,
     DEFAULT_PARITY,
-    DEFAULT_PORT,
     DEFAULT_STOP_BITS,
     HOLDING_BATCH_BOUNDARIES,
     SERIAL_PARITY_MAP,
@@ -345,15 +344,17 @@ def build_tcp_transport(
 
 
 def build_auto_tcp_attempts(scanner: Any) -> list[tuple[str, BaseModbusTransport, float]]:
-    """Build AUTO-mode transport attempts ordered by likely protocol."""
+    """Build AUTO-mode transport attempts ordered by likely protocol.
+
+    Standard Modbus TCP is tried first; tcp_rtu (raw RTU framing over a TCP
+    socket) is the fallback.  The previous port-based heuristic that put
+    tcp_rtu first on non-standard ports caused a config-flow timeout when the
+    device actually speaks standard TCP: the tcp_rtu probe consumed its full
+    per-attempt timeout before the TCP attempt could complete.
+    """
     rtu_timeout = min(max(scanner.timeout, 2.0), 5.0)
     tcp_timeout = min(max(scanner.timeout, 5.0), 10.0)
-    prefer_tcp = scanner.port == DEFAULT_PORT
-    mode_order = (
-        [CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU]
-        if prefer_tcp
-        else [CONNECTION_MODE_TCP_RTU, CONNECTION_MODE_TCP]
-    )
+    mode_order = [CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU]
     attempts: list[tuple[str, BaseModbusTransport, float]] = []
     for mode in mode_order:
         timeout = rtu_timeout if mode == CONNECTION_MODE_TCP_RTU else tcp_timeout
