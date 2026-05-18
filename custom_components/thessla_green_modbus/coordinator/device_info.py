@@ -81,9 +81,8 @@ def warn_missing_device_info(
         device_details = f"{config.host}:{config.port}"
         if config.slave_id is not None:
             device_details += f", slave {config.slave_id}"
-        logger.warning(
-            "Device %s missing %s (%s). "
-            "Verify Modbus connectivity or ensure your firmware is supported.",
+        logger.debug(
+            "Device %s missing %s (%s); expected for some firmware versions.",
             device_name,
             " and ".join(missing),
             device_details,

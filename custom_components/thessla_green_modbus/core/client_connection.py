@@ -127,6 +127,7 @@ class _DeviceClientConnectionMixin:
             await _run_connection_test_impl(
                 ensure_connection=self.async_ensure_connected,
                 get_transport=lambda: self._transport,
+                get_client=lambda: self.client,
                 slave_id=self.config.slave_id,
                 test_addresses=list(input_registers().values())[:3],
                 is_cancelled_error=is_request_cancelled_error,
