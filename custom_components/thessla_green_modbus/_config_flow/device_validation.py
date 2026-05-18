@@ -101,6 +101,28 @@ def _require_verify_connection(scanner: Any) -> Callable[[], Any]:
     return verify_cb
 
 
+def _compute_verify_timeout(scanner: Any, timeout: float) -> float:
+    """Return an outer timeout for verify_connection that covers all AUTO attempts.
+
+    verify_connection manages per-attempt timeouts internally via asyncio.wait_for.
+    When connection_mode=AUTO it may probe two transports sequentially.  The outer
+    wrapper applied by run_scanner_call must be at least as long as the sum of all
+    per-attempt timeouts; otherwise a successful TCP connection is cancelled while
+    reading registers because the outer wait_for fires first.
+    """
+    from ..const import CONNECTION_MODE_AUTO
+
+    base = max(2.0, float(timeout))
+    if getattr(scanner, "connection_mode", None) != CONNECTION_MODE_AUTO:
+        return base
+    # AUTO mode probes TCP (tcp_timeout) then tcp_rtu (rtu_timeout) in sequence.
+    # Add a 2-second buffer on top so the outer wait_for never fires before the
+    # inner per-attempt timeouts have a chance to run to completion.
+    rtu_timeout = min(max(float(timeout), 2.0), 5.0)
+    tcp_timeout = min(max(float(timeout), 5.0), 10.0)
+    return tcp_timeout + rtu_timeout + 2.0
+
+
 def _build_timeout_runner(
     *,
     run_with_retry: Callable[[Callable[[], Awaitable[Any]], int, float], Awaitable[Any]],
@@ -135,9 +157,9 @@ async def _run_scanner_validation(
     run_scanner_call: Callable[[Callable[[], Any], float], Awaitable[Any]],
 ) -> dict[str, Any]:
     """Run connection verification and device scan."""
-    short_timeout = max(2, timeout)
+    verify_timeout = _compute_verify_timeout(scanner, timeout)
     verify_cb = _require_verify_connection(scanner)
-    await run_scanner_call(verify_cb, short_timeout)
+    await run_scanner_call(verify_cb, verify_timeout)
     return _validate_scan_result(await run_scanner_call(scanner.scan_device, timeout))
 
 
