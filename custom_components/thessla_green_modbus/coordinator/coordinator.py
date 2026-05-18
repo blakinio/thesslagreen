@@ -83,6 +83,9 @@ from .scan import (
     apply_scan_cache as _apply_scan_cache_impl,
 )
 from .scan import (
+    consume_config_flow_scan_cache as _consume_config_flow_scan_cache_impl,
+)
+from .scan import (
     firmware_lacks_known_missing as _firmware_lacks_known_missing_impl,
 )
 from .scan import (
@@ -718,6 +721,10 @@ class ThesslaGreenModbusCoordinator(
     def _get_scan_cache_from_entry(self) -> dict[str, Any]:
         """Return cached scan payload from config entry options."""
         return _get_scan_cache_from_entry_impl(self.entry)
+
+    def _consume_config_flow_scan_cache(self) -> dict[str, Any]:
+        """Read and clear the one-time config-flow scan cache from entry options."""
+        return _consume_config_flow_scan_cache_impl(self)
 
     def _load_full_register_list(self) -> None:
         """Load full register list when forced."""

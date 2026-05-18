@@ -54,6 +54,41 @@ def build_unique_id(data: dict[str, Any]) -> str:
     return f"{unique_host}:{port}:{slave_id}"
 
 
+def _build_config_flow_scan_cache(
+    scan_result: dict[str, Any],
+    cap_cls: Any,
+) -> dict[str, Any] | None:
+    """Build a one-time scan cache dict from a config-flow scan result."""
+    available = scan_result.get("available_registers")
+    if not isinstance(available, dict) or not available:
+        return None
+
+    serialized: dict[str, list[str]] = {}
+    for key, value in available.items():
+        if isinstance(value, (list, set)):
+            serialized[key] = sorted(value)
+
+    if not serialized:
+        return None
+
+    device_info = scan_result.get("device_info") or {}
+    caps = scan_result.get("capabilities")
+    if dataclasses.is_dataclass(caps) or isinstance(caps, cap_cls):
+        caps_dict: dict[str, Any] = caps_to_dict(caps)
+    elif isinstance(caps, dict):
+        caps_dict = dict(caps)
+    else:
+        caps_dict = {}
+
+    return {
+        "available_registers": serialized,
+        "device_info": device_info,
+        "capabilities": caps_dict,
+        "firmware": device_info.get("firmware") if isinstance(device_info, dict) else None,
+        "register_count": scan_result.get("register_count", 0),
+    }
+
+
 def prepare_entry_payload(
     data: dict[str, Any],
     scan_result: dict[str, Any],
@@ -98,7 +133,7 @@ def prepare_entry_payload(
         if CONF_PORT in data:
             entry_data[CONF_PORT] = data.get(CONF_PORT, DEFAULT_PORT)
 
-    options = {
+    options: dict[str, Any] = {
         CONF_DEEP_SCAN: data.get(CONF_DEEP_SCAN, DEFAULT_DEEP_SCAN),
         CONF_MAX_REGISTERS_PER_REQUEST: data.get(
             CONF_MAX_REGISTERS_PER_REQUEST, DEFAULT_MAX_REGISTERS_PER_REQUEST
@@ -106,5 +141,9 @@ def prepare_entry_payload(
         CONF_ENABLE_DEVICE_SCAN: data.get(CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN),
         CONF_LOG_LEVEL: DEFAULT_LOG_LEVEL,
     }
+
+    scan_cache = _build_config_flow_scan_cache(scan_result, cap_cls)
+    if scan_cache is not None:
+        options["config_flow_scan_cache"] = scan_cache
 
     return entry_data, options

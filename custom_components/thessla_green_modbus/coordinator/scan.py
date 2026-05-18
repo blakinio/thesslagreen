@@ -116,6 +116,23 @@ def store_scan_cache(coordinator: Any) -> None:
     coordinator.hass.config_entries.async_update_entry(coordinator.entry, options=options)
 
 
+def consume_config_flow_scan_cache(coordinator: Any) -> dict[str, Any]:
+    """Read and clear the one-time config-flow scan cache from entry options.
+
+    Returns the cache dict if present and valid, otherwise empty dict.
+    Removes the key so subsequent HA restarts perform a fresh device scan.
+    """
+    entry = coordinator.entry
+    if entry is None:
+        return {}
+    cache = entry.options.get("config_flow_scan_cache", {})
+    if not isinstance(cache, dict) or not cache:
+        return {}
+    options = {k: v for k, v in entry.options.items() if k != "config_flow_scan_cache"}
+    coordinator.hass.config_entries.async_update_entry(entry, options=options)
+    return cache
+
+
 async def prepare_registers_for_setup(coordinator: Any) -> None:
     """Prepare register availability from full list, cache, or device scan."""
     if coordinator.force_full_register_list:
@@ -132,4 +149,10 @@ async def prepare_registers_for_setup(coordinator: Any) -> None:
         coordinator._load_full_register_list()
         return
 
+    cache = coordinator._consume_config_flow_scan_cache()
+    if cache and coordinator._apply_scan_cache(cache):
+        _LOGGER.info("Using config-flow scan cache")
+        return
+
+    _LOGGER.info("Scanning device for available registers")
     await coordinator._run_device_scan()
