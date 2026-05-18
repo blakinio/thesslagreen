@@ -116,17 +116,20 @@ async def async_perform_clock_sync(
     payload = encode_rtc_registers(now)
     log.debug("Writing RTC registers: %s (for %s)", payload, now.strftime("%Y-%m-%d %H:%M:%S"))
 
+    # Write registers and immediately read them back under one lock so that no
+    # concurrent coordinator scan or update can interleave between the write and
+    # the read-back (which would cause Modbus TCP transaction-ID mismatches).
     try:
-        success = await coordinator.async_write_registers(
+        write_ok, readback_regs = await coordinator.async_write_and_read_holding_registers(
             start_address=RTC_START_ADDRESS,
             values=payload,
-            refresh=False,
+            readback_count=RTC_REGISTER_COUNT,
         )
     except Exception:
         log.exception("Exception while writing RTC registers")
         return False
 
-    if not success:
+    if not write_ok:
         log.error(
             "Failed to write RTC clock registers for coordinator at %s",
             coordinator.host if hasattr(coordinator, "host") else "unknown",
@@ -135,17 +138,14 @@ async def async_perform_clock_sync(
 
     log.info("Wrote RTC clock %s to device", now.strftime("%Y-%m-%d %H:%M:%S"))
 
-    # Read-back validation
-    try:
-        await coordinator.async_request_refresh()
-    except Exception:  # noqa: BLE001
-        log.warning("Could not trigger refresh for RTC read-back validation")
-        return True
-
-    readback_str = (coordinator.data or {}).get("device_clock")
-    if readback_str is None:
+    # Read-back validation using the locked register read (avoids stale coordinator.data).
+    if readback_regs is None:
         log.warning("Device clock unavailable after RTC write; skipping validation")
         return True
+
+    readback_str = decode_rtc_registers(*readback_regs)
+    if readback_str is None:
+        raise HomeAssistantError("RTC read-back validation failed: could not decode registers")
 
     drift_after = _drift_seconds(now, readback_str)
     if drift_after is None:

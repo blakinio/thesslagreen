@@ -384,6 +384,81 @@ class _CoordinatorScheduleMixin:
 
         return await finalize_write_result(self, refresh_after_write)
 
+    async def _locked_read_holding_registers(
+        self,
+        start_address: int,
+        count: int,
+    ) -> list[int] | None:
+        """Read holding registers without acquiring _write_lock.
+
+        Caller MUST already hold _write_lock. Returns None on any failure.
+        """
+        try:
+            if self._transport is not None:
+                response = await self._transport.read_holding_registers(
+                    self.slave_id,
+                    start_address,
+                    count=count,
+                    attempt=1,
+                )
+            elif self.client is not None:
+                response = await self._call_modbus(
+                    self.client.read_holding_registers,
+                    start_address,
+                    count=count,
+                    attempt=1,
+                )
+            else:
+                return None
+            if hasattr(response, "isError") and response.isError():
+                return None
+            regs = getattr(response, "registers", None)
+            return list(regs) if regs is not None else None
+        except (ModbusException, ConnectionException, TimeoutError, OSError, AttributeError):
+            _LOGGER.debug("Read-back at address %s failed", start_address)
+            return None
+
+    async def async_write_and_read_holding_registers(
+        self,
+        start_address: int,
+        values: list[int],
+        readback_count: int,
+        *,
+        require_single_request: bool = False,
+    ) -> tuple[bool, list[int] | None]:
+        """Write holding registers and immediately read them back under one lock.
+
+        Holds _write_lock for the entire write + read-back sequence so that no
+        concurrent Modbus operation (scan, update, or other write) can interleave
+        between the write and the read-back.  This prevents transaction-ID
+        mismatches that occur when a pymodbus TCP client is shared across
+        concurrent coroutines.
+
+        Returns (write_success, readback_registers_or_None).
+        """
+        if not self._validate_multi_register_write_request(
+            start_address, values, require_single_request
+        ):
+            return False, None
+
+        async with self._write_lock:
+            try:
+                await self._ensure_connection()
+                self._assert_write_connection_ready()
+
+                success, _ = await run_multi_register_write_attempts(
+                    self, start_address, values, require_single_request, False
+                )
+                if not success:
+                    return False, None
+
+                readback = await self._locked_read_holding_registers(start_address, readback_count)
+                return True, readback
+
+            except (ModbusException, ConnectionException) as exc:
+                _LOGGER.debug("Write+readback at address %s failed: %s", start_address, exc)
+                return False, None
+
     async def async_write_temporary_airflow(self, airflow: float, refresh: bool = True) -> bool:
         """Write temporary airflow settings using the 3-register block."""
 

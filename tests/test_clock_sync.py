@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -130,9 +131,16 @@ def test_decoder_matches_capabilities_decoder():
 # ---------------------------------------------------------------------------
 
 
-def _make_coordinator(*, write_ok=True, data=None):
+def _make_coordinator(*, write_ok=True, data=None, readback_regs=None):
+    """Build a mock coordinator for clock sync tests.
+
+    ``readback_regs`` is the list of raw register values that the mock
+    returns as the read-back result.  Pass None to simulate a failed/absent
+    read-back (the device clock is unavailable after write).
+    """
+    now_regs = readback_regs  # alias for clarity
     coord = MagicMock()
-    coord.async_write_registers = AsyncMock(return_value=write_ok)
+    coord.async_write_and_read_holding_registers = AsyncMock(return_value=(write_ok, now_regs))
     coord.async_request_refresh = AsyncMock()
     coord.data = data if data is not None else {}
     coord.host = "192.168.1.100"
@@ -151,7 +159,11 @@ def _fixed_now(dt: datetime.datetime):
 @pytest.mark.asyncio
 async def test_sync_force_writes_registers():
     now = datetime.datetime(2025, 5, 9, 14, 30, 45)
-    coord = _make_coordinator(data={"device_clock": "2025-05-09T14:30:46"})
+    regs = encode_rtc_registers(now)
+    coord = _make_coordinator(
+        data={"device_clock": "2025-05-09T14:30:46"},
+        readback_regs=regs,
+    )
 
     result = await async_perform_clock_sync(
         coord,
@@ -160,8 +172,8 @@ async def test_sync_force_writes_registers():
         dt_now_fn=_fixed_now(now),
     )
     assert result is True
-    coord.async_write_registers.assert_awaited_once()
-    call_kwargs = coord.async_write_registers.call_args
+    coord.async_write_and_read_holding_registers.assert_awaited_once()
+    call_kwargs = coord.async_write_and_read_holding_registers.call_args
     assert call_kwargs.kwargs["start_address"] == 0
     assert len(call_kwargs.kwargs["values"]) == 4
 
@@ -169,7 +181,11 @@ async def test_sync_force_writes_registers():
 @pytest.mark.asyncio
 async def test_sync_force_writes_correct_register_values():
     now = datetime.datetime(2025, 5, 9, 14, 30, 45)
-    coord = _make_coordinator(data={"device_clock": "2025-05-09T14:30:46"})
+    regs = encode_rtc_registers(now)
+    coord = _make_coordinator(
+        data={"device_clock": "2025-05-09T14:30:46"},
+        readback_regs=regs,
+    )
 
     await async_perform_clock_sync(
         coord,
@@ -177,7 +193,7 @@ async def test_sync_force_writes_correct_register_values():
         max_drift_seconds=300,
         dt_now_fn=_fixed_now(now),
     )
-    values = coord.async_write_registers.call_args.kwargs["values"]
+    values = coord.async_write_and_read_holding_registers.call_args.kwargs["values"]
     assert values == encode_rtc_registers(now)
 
 
@@ -198,19 +214,18 @@ async def test_sync_skipped_when_drift_below_threshold():
         dt_now_fn=_fixed_now(now),
     )
     assert result is True
-    coord.async_write_registers.assert_not_awaited()
+    coord.async_write_and_read_holding_registers.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_sync_proceeds_when_drift_exceeds_threshold():
     now = datetime.datetime(2025, 5, 9, 14, 30, 45)
     # Device clock is 400 seconds behind
-    coord = _make_coordinator(data={"device_clock": "2025-05-09T14:23:45"})
-
-    async def _refresh_side_effect():
-        coord.data = {"device_clock": "2025-05-09T14:30:45"}
-
-    coord.async_request_refresh.side_effect = _refresh_side_effect
+    regs = encode_rtc_registers(now)
+    coord = _make_coordinator(
+        data={"device_clock": "2025-05-09T14:23:45"},
+        readback_regs=regs,
+    )
 
     result = await async_perform_clock_sync(
         coord,
@@ -219,13 +234,14 @@ async def test_sync_proceeds_when_drift_exceeds_threshold():
         dt_now_fn=_fixed_now(now),
     )
     assert result is True
-    coord.async_write_registers.assert_awaited_once()
+    coord.async_write_and_read_holding_registers.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_sync_proceeds_when_device_clock_missing():
     now = datetime.datetime(2025, 5, 9, 14, 30, 45)
-    coord = _make_coordinator(data={})  # no device_clock key
+    regs = encode_rtc_registers(now)
+    coord = _make_coordinator(data={}, readback_regs=regs)  # no device_clock key
 
     result = await async_perform_clock_sync(
         coord,
@@ -234,7 +250,7 @@ async def test_sync_proceeds_when_device_clock_missing():
         dt_now_fn=_fixed_now(now),
     )
     assert result is True
-    coord.async_write_registers.assert_awaited_once()
+    coord.async_write_and_read_holding_registers.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
@@ -264,12 +280,8 @@ async def test_sync_returns_false_on_write_failure():
 @pytest.mark.asyncio
 async def test_sync_read_back_success():
     now = datetime.datetime(2025, 5, 9, 14, 30, 45)
-    coord = _make_coordinator(data={})
-
-    async def _refresh_side_effect():
-        coord.data = {"device_clock": "2025-05-09T14:30:45"}
-
-    coord.async_request_refresh.side_effect = _refresh_side_effect
+    regs = encode_rtc_registers(now)
+    coord = _make_coordinator(data={}, readback_regs=regs)
 
     result = await async_perform_clock_sync(
         coord,
@@ -284,12 +296,9 @@ async def test_sync_read_back_validation_failure_raises():
     from homeassistant.exceptions import HomeAssistantError
 
     now = datetime.datetime(2025, 5, 9, 14, 30, 45)
-    coord = _make_coordinator(data={})
-
-    async def _refresh_side_effect():
-        coord.data = {"device_clock": "2025-05-09T12:00:00"}
-
-    coord.async_request_refresh.side_effect = _refresh_side_effect
+    wrong_dt = datetime.datetime(2025, 5, 9, 12, 0, 0)
+    wrong_regs = encode_rtc_registers(wrong_dt)
+    coord = _make_coordinator(data={}, readback_regs=wrong_regs)
 
     with pytest.raises(HomeAssistantError):
         await async_perform_clock_sync(
@@ -302,8 +311,7 @@ async def test_sync_read_back_validation_failure_raises():
 @pytest.mark.asyncio
 async def test_sync_read_back_unavailable_returns_true():
     now = datetime.datetime(2025, 5, 9, 14, 30, 45)
-    coord = _make_coordinator(data={})
-    # data stays empty after refresh — device_clock not populated
+    coord = _make_coordinator(data={}, readback_regs=None)
 
     result = await async_perform_clock_sync(
         coord,
@@ -311,6 +319,334 @@ async def test_sync_read_back_unavailable_returns_true():
         dt_now_fn=_fixed_now(now),
     )
     assert result is True
+
+
+# ---------------------------------------------------------------------------
+# Serialization: write-path locking — new tests for RTC sync concurrency fix
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_sync_uses_atomic_write_and_read_method():
+    """async_perform_clock_sync delegates to async_write_and_read_holding_registers."""
+    now = datetime.datetime(2025, 5, 9, 14, 30, 45)
+    regs = encode_rtc_registers(now)
+    coord = _make_coordinator(readback_regs=regs)
+
+    await async_perform_clock_sync(coord, force=True, dt_now_fn=_fixed_now(now))
+
+    coord.async_write_and_read_holding_registers.assert_awaited_once()
+    call_kwargs = coord.async_write_and_read_holding_registers.call_args.kwargs
+    assert call_kwargs["start_address"] == 0
+    assert call_kwargs["values"] == encode_rtc_registers(now)
+    assert call_kwargs["readback_count"] == 4
+
+
+@pytest.mark.asyncio
+async def test_sync_does_not_call_request_refresh():
+    """No async_request_refresh during RTC sync — prevents stale coordinator.data race."""
+    now = datetime.datetime(2025, 5, 9, 14, 30, 45)
+    regs = encode_rtc_registers(now)
+    coord = _make_coordinator(readback_regs=regs)
+
+    await async_perform_clock_sync(coord, force=True, dt_now_fn=_fixed_now(now))
+
+    coord.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_readback_uses_locked_register_values_not_coordinator_data():
+    """Read-back validation uses register values from the locked read, not coordinator.data."""
+    now = datetime.datetime(2025, 5, 9, 14, 30, 45)
+    regs = encode_rtc_registers(now)
+    # coordinator.data intentionally holds stale/wrong clock data
+    coord = _make_coordinator(
+        data={"device_clock": "2000-01-01T00:00:00"},
+        readback_regs=regs,
+    )
+
+    # Should succeed because readback_regs matches now, even though coordinator.data is wrong
+    result = await async_perform_clock_sync(coord, force=True, dt_now_fn=_fixed_now(now))
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_concurrent_rtc_sync_and_update_serialized():
+    """Two concurrent write+read calls via _write_lock are serialized (never overlap)."""
+    from custom_components.thessla_green_modbus.coordinator.schedule import (
+        _CoordinatorScheduleMixin,
+    )
+
+    active_count = [0]
+    max_concurrent = [0]
+    call_log = []
+
+    class _FakeCoordinator(_CoordinatorScheduleMixin):
+        slave_id = 1
+        retry = 1
+        effective_batch = 16
+        _transport = None
+
+        def __init__(self):
+            self._write_lock = asyncio.Lock()
+            self._client = None
+
+        # Required stubs
+        async def _ensure_connection(self):
+            pass
+
+        def _assert_write_connection_ready(self):
+            pass
+
+        def _validate_multi_register_write_request(self, addr, vals, req_single):
+            return True
+
+        def _plan_multi_register_chunks(self, addr, vals, req_single):
+            return [(addr, vals)]
+
+        async def _execute_multi_register_chunks(self, chunks, attempt):
+            active_count[0] += 1
+            max_concurrent[0] = max(max_concurrent[0], active_count[0])
+            call_log.append("write_start")
+            await asyncio.sleep(0)
+            call_log.append("write_end")
+            active_count[0] -= 1
+            resp = MagicMock()
+            resp.isError.return_value = False
+            return resp, True
+
+        def _write_response_ok(self, resp):
+            return True
+
+        async def _handle_write_attempt_exception(self, **kw):
+            return False
+
+        def _handle_write_response_failure(self, **kw):
+            return False
+
+        async def _locked_read_holding_registers(self, addr, count):
+            active_count[0] += 1
+            max_concurrent[0] = max(max_concurrent[0], active_count[0])
+            call_log.append("read_start")
+            await asyncio.sleep(0)
+            call_log.append("read_end")
+            active_count[0] -= 1
+            return encode_rtc_registers(datetime.datetime(2025, 5, 9, 14, 30, 45))
+
+        async def _disconnect(self):
+            pass
+
+    coord = _FakeCoordinator()
+
+    values = encode_rtc_registers(datetime.datetime(2025, 5, 9, 14, 30, 45))
+
+    results = await asyncio.gather(
+        coord.async_write_and_read_holding_registers(0, values, 4),
+        coord.async_write_and_read_holding_registers(0, values, 4),
+    )
+
+    # Both operations should succeed
+    assert all(ok for ok, _ in results)
+    # The lock must prevent any concurrent active operations
+    assert max_concurrent[0] == 1, (
+        f"Detected concurrent Modbus access: max_concurrent={max_concurrent[0]}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_no_overlapping_read_write_calls_on_same_client():
+    """Under _write_lock, write and read-back can never overlap on the same client."""
+    from custom_components.thessla_green_modbus.coordinator.schedule import (
+        _CoordinatorScheduleMixin,
+    )
+
+    overlap_detected = [False]
+    lock_held_by = [None]
+
+    class _FakeCoordinator(_CoordinatorScheduleMixin):
+        slave_id = 1
+        retry = 1
+        effective_batch = 16
+        _transport = None
+
+        def __init__(self):
+            self._write_lock = asyncio.Lock()
+
+        async def _ensure_connection(self):
+            pass
+
+        def _assert_write_connection_ready(self):
+            pass
+
+        def _validate_multi_register_write_request(self, addr, vals, req_single):
+            return True
+
+        def _plan_multi_register_chunks(self, addr, vals, req_single):
+            return [(addr, vals)]
+
+        async def _execute_multi_register_chunks(self, chunks, attempt):
+            # Check that no other operation is active
+            if lock_held_by[0] is not None and lock_held_by[0] != id(self):
+                overlap_detected[0] = True
+            resp = MagicMock()
+            resp.isError.return_value = False
+            return resp, True
+
+        def _write_response_ok(self, resp):
+            return True
+
+        async def _handle_write_attempt_exception(self, **kw):
+            return False
+
+        def _handle_write_response_failure(self, **kw):
+            return False
+
+        async def _locked_read_holding_registers(self, addr, count):
+            # Check that no other operation is active
+            if lock_held_by[0] is not None and lock_held_by[0] != id(self):
+                overlap_detected[0] = True
+            return encode_rtc_registers(datetime.datetime(2025, 5, 9, 14, 30, 45))
+
+        async def _disconnect(self):
+            pass
+
+    coord = _FakeCoordinator()
+    values = encode_rtc_registers(datetime.datetime(2025, 5, 9, 14, 30, 45))
+
+    # Two concurrent calls: the _write_lock guarantees no overlap
+    async def op():
+        lock_held_by[0] = id(coord)
+        result = await coord.async_write_and_read_holding_registers(0, values, 4)
+        lock_held_by[0] = None
+        return result
+
+    await asyncio.gather(op(), op())
+
+    assert not overlap_detected[0], "Overlapping read/write calls detected on same client"
+
+
+@pytest.mark.asyncio
+async def test_readback_only_after_write_response_complete():
+    """Read-back cannot start until write response is fully received."""
+    from custom_components.thessla_green_modbus.coordinator.schedule import (
+        _CoordinatorScheduleMixin,
+    )
+
+    sequence = []
+
+    class _FakeCoordinator(_CoordinatorScheduleMixin):
+        slave_id = 1
+        retry = 1
+        effective_batch = 16
+        _transport = None
+
+        def __init__(self):
+            self._write_lock = asyncio.Lock()
+
+        async def _ensure_connection(self):
+            pass
+
+        def _assert_write_connection_ready(self):
+            pass
+
+        def _validate_multi_register_write_request(self, addr, vals, req_single):
+            return True
+
+        def _plan_multi_register_chunks(self, addr, vals, req_single):
+            return [(addr, vals)]
+
+        async def _execute_multi_register_chunks(self, chunks, attempt):
+            sequence.append("write_response_received")
+            resp = MagicMock()
+            resp.isError.return_value = False
+            return resp, True
+
+        def _write_response_ok(self, resp):
+            return True
+
+        async def _handle_write_attempt_exception(self, **kw):
+            return False
+
+        def _handle_write_response_failure(self, **kw):
+            return False
+
+        async def _locked_read_holding_registers(self, addr, count):
+            sequence.append("read_back_started")
+            return encode_rtc_registers(datetime.datetime(2025, 5, 9, 14, 30, 45))
+
+        async def _disconnect(self):
+            pass
+
+    coord = _FakeCoordinator()
+    values = encode_rtc_registers(datetime.datetime(2025, 5, 9, 14, 30, 45))
+
+    await coord.async_write_and_read_holding_registers(0, values, 4)
+
+    assert sequence == ["write_response_received", "read_back_started"], (
+        f"Wrong call order: {sequence}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_transaction_mismatch_prevented_by_lock_ordering():
+    """Transaction mismatch scenario: _write_lock must be acquired before any Modbus call."""
+    from custom_components.thessla_green_modbus.coordinator.schedule import (
+        _CoordinatorScheduleMixin,
+    )
+
+    lock_was_held_during_write = [False]
+    lock_was_held_during_read = [False]
+
+    class _FakeCoordinator(_CoordinatorScheduleMixin):
+        slave_id = 1
+        retry = 1
+        effective_batch = 16
+        _transport = None
+
+        def __init__(self):
+            self._write_lock = asyncio.Lock()
+
+        async def _ensure_connection(self):
+            pass
+
+        def _assert_write_connection_ready(self):
+            pass
+
+        def _validate_multi_register_write_request(self, addr, vals, req_single):
+            return True
+
+        def _plan_multi_register_chunks(self, addr, vals, req_single):
+            return [(addr, vals)]
+
+        async def _execute_multi_register_chunks(self, chunks, attempt):
+            lock_was_held_during_write[0] = self._write_lock.locked()
+            resp = MagicMock()
+            resp.isError.return_value = False
+            return resp, True
+
+        def _write_response_ok(self, resp):
+            return True
+
+        async def _handle_write_attempt_exception(self, **kw):
+            return False
+
+        def _handle_write_response_failure(self, **kw):
+            return False
+
+        async def _locked_read_holding_registers(self, addr, count):
+            lock_was_held_during_read[0] = self._write_lock.locked()
+            return encode_rtc_registers(datetime.datetime(2025, 5, 9, 14, 30, 45))
+
+        async def _disconnect(self):
+            pass
+
+    coord = _FakeCoordinator()
+    values = encode_rtc_registers(datetime.datetime(2025, 5, 9, 14, 30, 45))
+
+    await coord.async_write_and_read_holding_registers(0, values, 4)
+
+    assert lock_was_held_during_write[0], "_write_lock must be held during Modbus write"
+    assert lock_was_held_during_read[0], "_write_lock must be held during Modbus read-back"
 
 
 # ---------------------------------------------------------------------------
@@ -586,13 +922,9 @@ async def test_sync_device_clock_service_calls_write(monkeypatch):
 
     from custom_components.thessla_green_modbus.services import async_setup_services
 
-    coord = _make_coordinator(data={"device_clock": "2025-05-09T00:00:00"})
-    fixed_now = datetime.datetime(2025, 5, 9, 14, 30, 45)
-
-    async def _refresh():
-        coord.data = {"device_clock": "2025-05-09T14:30:45"}
-
-    coord.async_request_refresh.side_effect = _refresh
+    now = datetime.datetime(2025, 5, 9, 14, 30, 45)
+    regs = encode_rtc_registers(now)
+    coord = _make_coordinator(data={"device_clock": "2025-05-09T00:00:00"}, readback_regs=regs)
 
     class _Svc:
         def __init__(self):
@@ -619,9 +951,9 @@ async def test_sync_device_clock_service_calls_write(monkeypatch):
     handler = hass.services.handlers["sync_device_clock"]
     call = SimpleNamespace(data={"entity_id": ["climate.dev"], "force": True})
 
-    with patch("homeassistant.util.dt.now", return_value=fixed_now):
+    with patch("homeassistant.util.dt.now", return_value=now):
         await handler(call)
 
-    coord.async_write_registers.assert_awaited_once()
-    values = coord.async_write_registers.call_args.kwargs["values"]
-    assert values == encode_rtc_registers(fixed_now)
+    coord.async_write_and_read_holding_registers.assert_awaited_once()
+    values = coord.async_write_and_read_holding_registers.call_args.kwargs["values"]
+    assert values == encode_rtc_registers(now)
