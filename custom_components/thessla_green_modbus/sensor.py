@@ -265,19 +265,12 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
-        attrs = {}
-
-        # Add register address for debugging
         if hasattr(self.coordinator, "device_scan_result") and self.coordinator.device_scan_result:
-            attrs["register_name"] = self._register_name
-            attrs["register_type"] = self._sensor_def["register_type"]
-
-        # Add raw value for diagnostic purposes
-        raw_value = self.coordinator.data.get(self._register_name)
-        if raw_value is not None and isinstance(raw_value, int | float):
-            attrs["raw_value"] = raw_value
-
-        return attrs
+            return {
+                "register_name": self._register_name,
+                "register_type": self._sensor_def["register_type"],
+            }
+        return {}
 
     def _get_airflow_unit(self) -> str:
         """Return airflow unit option."""

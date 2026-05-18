@@ -28,14 +28,7 @@ class ThesslaGreenEntity(CoordinatorEntity):
         bit: int | None = None,
     ) -> None:
         """Initialize the entity."""
-        try:
-            super().__init__(coordinator)
-        except TypeError:
-            try:
-                super().__init__()
-            except TypeError:
-                _LOGGER.debug("CoordinatorEntity MRO fallback: super().__init__() also failed")
-            self.coordinator = coordinator
+        super().__init__(coordinator)
         self._key = key
         self._address = address
         self._bit = bit
