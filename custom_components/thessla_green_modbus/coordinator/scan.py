@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ..const import DEFAULT_NAME, KNOWN_MISSING_REGISTERS, UNKNOWN_MODEL
+from ..const import CONNECTION_MODE_AUTO, DEFAULT_NAME, KNOWN_MISSING_REGISTERS, UNKNOWN_MODEL
 from ..core.scan_helpers import normalise_available_registers
 from ..scanner.device_info import DeviceCapabilities
 
@@ -85,6 +85,10 @@ def apply_scan_cache(coordinator: Any, cache: dict[str, Any]) -> bool:
             _LOGGER.debug("Invalid cached capabilities", exc_info=True)
     coordinator.device_scan_result = cache
 
+    if getattr(coordinator.config, "connection_mode", None) == CONNECTION_MODE_AUTO:
+        if resolved := cache.get("resolved_connection_mode"):
+            coordinator._resolved_connection_mode = resolved
+
     if (
         coordinator.device_info.get("serial_number")
         and coordinator.device_info["serial_number"] != "Unknown"
@@ -110,6 +114,7 @@ def store_scan_cache(coordinator: Any) -> None:
         "device_info": coordinator.device_info,
         "capabilities": coordinator.capabilities.as_dict(),
         "firmware": coordinator.device_info.get("firmware"),
+        "resolved_connection_mode": coordinator._resolved_connection_mode,
     }
     options = dict(coordinator.entry.options)
     options["device_scan_cache"] = cache

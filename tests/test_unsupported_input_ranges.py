@@ -35,10 +35,13 @@ def test_log_skipped_ranges_omits_addresses_already_covered(caplog):
     scanner.failed_addresses["modbus_exceptions"]["holding_registers"].update(range(15, 31))
     scanner.failed_addresses["modbus_exceptions"]["holding_registers"].update({240, 241})
 
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.DEBUG):
         scanner._log_skipped_ranges()
 
-    assert "Skipping unsupported input registers 2-15" in caplog.text
+    # Firmware-range input registers (code 2, end <= 15) are demoted to DEBUG
+    assert "Skipping unsupported input registers 2-15" not in caplog.text
+    assert "optional firmware registers" in caplog.text
+    assert "2-15" in caplog.text
     assert "Skipping unsupported holding registers 15-30" in caplog.text
     assert "Failed to read input_registers at 0, 1, 16" in caplog.text
     assert "298" not in caplog.text.split("Failed to read input_registers at ")[1].split("\n")[0]

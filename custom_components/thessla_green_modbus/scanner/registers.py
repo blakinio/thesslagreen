@@ -339,11 +339,20 @@ async def load_registers(
 def log_skipped_ranges(scanner: Any) -> None:
     """Log summary of ranges skipped due to Modbus exceptions."""
     if scanner._unsupported_input_ranges:
-        ranges = ", ".join(
-            f"{start}-{end} (exception code {code})"
-            for (start, end), code in sorted(scanner._unsupported_input_ranges.items())
-        )
-        _LOGGER.warning("Skipping unsupported input registers %s", ranges)
+        firmware_ranges = []
+        other_ranges = []
+        for (start, end), code in sorted(scanner._unsupported_input_ranges.items()):
+            entry = f"{start}-{end} (exception code {code})"
+            if code == 2 and end <= 15:
+                firmware_ranges.append(entry)
+            else:
+                other_ranges.append(entry)
+        if other_ranges:
+            _LOGGER.warning("Skipping unsupported input registers %s", ", ".join(other_ranges))
+        if firmware_ranges:
+            _LOGGER.debug(
+                "Skipping expected optional firmware registers %s", ", ".join(firmware_ranges)
+            )
     if scanner._unsupported_holding_ranges:
         ranges = ", ".join(
             f"{start}-{end} (exception code {code})"

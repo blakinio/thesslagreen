@@ -14,6 +14,7 @@ async def run_connection_test(
     *,
     ensure_connection: Callable[[], Awaitable[None]],
     get_transport: Callable[[], BaseModbusTransport | None],
+    get_client: Callable[[], Any] | None = None,
     slave_id: int,
     test_addresses: Iterable[int],
     is_cancelled_error: Callable[[Exception], bool],
@@ -26,7 +27,13 @@ async def run_connection_test(
 
         transport = get_transport()
         if transport is None:
-            raise ConnectionException("Modbus transport is not connected")
+            # Direct-client path: ensure_connection() succeeded via AsyncModbusTcpClient
+            # without building a transport layer.  The connection is already verified.
+            client = get_client() if get_client is not None else None
+            if client is None:
+                raise ConnectionException("Modbus transport is not connected")
+            logger.debug("Connection test successful (direct client)")
+            return
 
         for addr in test_addresses:
             response = await transport.read_input_registers(
