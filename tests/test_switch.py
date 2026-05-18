@@ -10,26 +10,19 @@ from custom_components.thessla_green_modbus.mappings import ENTITY_MAPPINGS
 from custom_components.thessla_green_modbus.switch import ThesslaGreenSwitch
 from pymodbus.exceptions import ConnectionException
 
-# Ensure required test mapping is present when dynamic generation is unavailable
-ENTITY_MAPPINGS.setdefault("switch", {})
-ENTITY_MAPPINGS["switch"].setdefault(
-    "bypass",
-    {
-        "register": "bypass",
-        "register_type": "coil_registers",
-        "translation_key": "bypass",
-        "icon": "mdi:pipe-leak",
-    },
-)
+_BYPASS_CFG = {
+    "register": "bypass",
+    "register_type": "coil_registers",
+    "translation_key": "bypass",
+    "icon": "mdi:pipe-leak",
+}
 
 
 def test_switch_creation_and_state(mock_coordinator):
     """Test creation and state changes of coil switch."""
     mock_coordinator.data["bypass"] = 1
     address = 9
-    switch_entity = ThesslaGreenSwitch(
-        mock_coordinator, "bypass", address, ENTITY_MAPPINGS["switch"]["bypass"]
-    )
+    switch_entity = ThesslaGreenSwitch(mock_coordinator, "bypass", address, _BYPASS_CFG)
     assert switch_entity.is_on is True  # nosec B101
 
     mock_coordinator.data["bypass"] = 0
@@ -39,9 +32,7 @@ def test_switch_creation_and_state(mock_coordinator):
 def test_switch_turn_on_off(mock_coordinator):
     mock_coordinator.data["bypass"] = 0
     address = 9
-    switch_entity = ThesslaGreenSwitch(
-        mock_coordinator, "bypass", address, ENTITY_MAPPINGS["switch"]["bypass"]
-    )
+    switch_entity = ThesslaGreenSwitch(mock_coordinator, "bypass", address, _BYPASS_CFG)
     asyncio.run(switch_entity.async_turn_on())
     mock_coordinator.async_write_register.assert_awaited_with("bypass", 1, refresh=False, offset=0)
     mock_coordinator.async_request_refresh.assert_awaited_once()
@@ -57,9 +48,7 @@ def test_switch_turn_on_off(mock_coordinator):
 def test_switch_turn_on_modbus_failure(mock_coordinator):
     """Ensure Modbus errors are surfaced when turning on the switch."""
     address = 9
-    switch_entity = ThesslaGreenSwitch(
-        mock_coordinator, "bypass", address, ENTITY_MAPPINGS["switch"]["bypass"]
-    )
+    switch_entity = ThesslaGreenSwitch(mock_coordinator, "bypass", address, _BYPASS_CFG)
     mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("fail"))
     with pytest.raises(ConnectionException):
         asyncio.run(switch_entity.async_turn_on())
@@ -69,9 +58,7 @@ def test_switch_turn_on_write_failure(mock_coordinator):
     """A failed write should raise and avoid refresh."""
 
     address = 9
-    switch_entity = ThesslaGreenSwitch(
-        mock_coordinator, "bypass", address, ENTITY_MAPPINGS["switch"]["bypass"]
-    )
+    switch_entity = ThesslaGreenSwitch(mock_coordinator, "bypass", address, _BYPASS_CFG)
     mock_coordinator.async_write_register = AsyncMock(return_value=False)
 
     with pytest.raises(RuntimeError):
@@ -83,7 +70,7 @@ def test_switch_turn_on_write_failure(mock_coordinator):
 def test_switch_definitions_single_source():
     """Ensure switch definitions come from central ENTITY_MAPPINGS."""
     assert not hasattr(switch, "SWITCH_ENTITIES")
-    assert "bypass" in ENTITY_MAPPINGS["switch"]
+    assert "bypass_off" in ENTITY_MAPPINGS["switch"]
 
 
 def test_switch_is_on_register_not_in_data(mock_coordinator):
@@ -93,7 +80,7 @@ def test_switch_is_on_register_not_in_data(mock_coordinator):
         mock_coordinator,
         "bypass",
         9,
-        ENTITY_MAPPINGS["switch"]["bypass"],
+        _BYPASS_CFG,
     )
     assert switch_entity.is_on is None  # nosec B101
 
@@ -105,7 +92,7 @@ def test_switch_is_on_none_raw_value(mock_coordinator):
         mock_coordinator,
         "bypass",
         9,
-        ENTITY_MAPPINGS["switch"]["bypass"],
+        _BYPASS_CFG,
     )
     assert switch_entity.is_on is None  # nosec B101
 
@@ -152,7 +139,7 @@ def test_switch_turn_off_exception_raises(mock_coordinator):
         mock_coordinator,
         "bypass",
         9,
-        ENTITY_MAPPINGS["switch"]["bypass"],
+        _BYPASS_CFG,
     )
     mock_coordinator.data["bypass"] = 0
     with pytest.raises(ConnectionException):
