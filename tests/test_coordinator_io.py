@@ -28,7 +28,7 @@ def coordinator() -> ThesslaGreenModbusCoordinator:
         "discrete_inputs": set(),
     }
     coord._register_groups = {"holding_registers": [(100, 2)]}
-    coord._failed_registers = set()
+    coord.device_client._failed_registers = set()
     coord.effective_batch = 10
     mapping = {100: "mode", 101: "air_flow_rate_manual"}
     coord._find_register_name = lambda rt, addr: mapping.get(addr)

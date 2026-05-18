@@ -60,7 +60,7 @@ def coordinator() -> ThesslaGreenModbusCoordinator:
         "discrete_inputs": set(),
     }
     coord._register_groups = {"holding_registers": [(SUMMER_BASE_ADDR, len(SUMMER_NAMES))]}
-    coord._failed_registers = set()
+    coord.device_client._failed_registers = set()
     coord.effective_batch = 20
 
     addr_to_name = {SUMMER_BASE_ADDR + i: name for i, name in enumerate(SUMMER_NAMES)}
@@ -68,7 +68,7 @@ def coordinator() -> ThesslaGreenModbusCoordinator:
     coord._process_register_value = lambda _name, value: value
     coord._clear_register_failure = MagicMock()
     coord._mark_registers_failed = MagicMock(
-        side_effect=lambda regs: coord._failed_registers.update(r for r in regs if r)
+        side_effect=lambda regs: coord.device_client._failed_registers.update(r for r in regs if r)
     )
     return coord
 
@@ -113,7 +113,9 @@ async def test_schedule_summer_batch_bug_falls_back_to_individual_reads(
     assert [call.args[1] for call in single_calls] == [SUMMER_BASE_ADDR + i for i in range(4)]
 
     assert data == dict(zip(SUMMER_NAMES, [101, 202, 303, 404], strict=True))
-    assert not any(name.startswith("schedule_summer_") for name in coordinator._failed_registers)
+    assert not any(
+        name.startswith("schedule_summer_") for name in coordinator.device_client._failed_registers
+    )
 
 
 @pytest.mark.asyncio
@@ -146,7 +148,7 @@ async def test_schedule_summer_partial_batch_falls_back_for_tail_only(
     assert len(fallback_call.args[2]) == 2  # tail_names
 
     assert data == dict(zip(SUMMER_NAMES, [101, 202, 303, 404], strict=True))
-    assert not coordinator._failed_registers
+    assert not coordinator.device_client._failed_registers
 
 
 def test_summer_schedule_register_names_exist_in_registry() -> None:

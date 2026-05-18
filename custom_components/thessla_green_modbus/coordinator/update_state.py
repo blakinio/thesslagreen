@@ -18,7 +18,7 @@ def begin_update_cycle(coordinator: ThesslaGreenModbusCoordinator) -> dict[str, 
         return coordinator.data or {}
 
     coordinator._update_in_progress = True
-    coordinator._failed_registers = set()
+    coordinator.device_client._failed_registers = set()
     return None
 
 

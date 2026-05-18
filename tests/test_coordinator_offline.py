@@ -34,7 +34,7 @@ async def test_coordinator_tracks_offline_and_recovers(monkeypatch) -> None:
     with pytest.raises(UpdateFailed):
         await coordinator._async_update_data()
 
-    assert coordinator._consecutive_failures == 1  # nosec: explicit state check
+    assert coordinator.device_client._consecutive_failures == 1  # nosec: explicit state check
     coordinator._read_input_registers_optimized.reset_mock(side_effect=True)
     coordinator._read_input_registers_optimized.side_effect = None
     coordinator._read_input_registers_optimized.return_value = {"reg": 1}
@@ -42,7 +42,7 @@ async def test_coordinator_tracks_offline_and_recovers(monkeypatch) -> None:
     data = await coordinator._async_update_data()
 
     assert data["reg"] == 1  # nosec: explicit state check
-    assert coordinator._consecutive_failures == 0  # nosec: explicit state check
+    assert coordinator.device_client._consecutive_failures == 0  # nosec: explicit state check
     assert coordinator.statistics["last_successful_update"] is not None  # nosec
 
 
@@ -59,7 +59,7 @@ async def test_coordinator_disconnects_after_retries(monkeypatch) -> None:
         scan_interval=5,
         retry=1,
     )
-    coordinator._max_failures = 1
+    coordinator.device_client._max_failures = 1
     coordinator.client = MagicMock(connected=True)
     coordinator._disconnect = AsyncMock()
     coordinator._ensure_connection = AsyncMock()

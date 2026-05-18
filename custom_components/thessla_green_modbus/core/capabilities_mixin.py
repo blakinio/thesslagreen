@@ -245,7 +245,8 @@ class _CoordinatorCapabilitiesMixin:
         data["estimated_power"] = power
         data["electrical_power"] = power
         now = _utcnow()
-        last_ts = self._last_power_timestamp
+        device_client = self.device_client
+        last_ts = device_client._last_power_timestamp
         if not isinstance(last_ts, datetime):
             elapsed = 0.0
         else:
@@ -260,9 +261,9 @@ class _CoordinatorCapabilitiesMixin:
             ):
                 now = now.replace(tzinfo=UTC)
             elapsed = (now - last_ts).total_seconds()
-        self._total_energy += power * elapsed / 3600000.0
-        data["total_energy"] = self._total_energy
-        self._last_power_timestamp = now
+        device_client._total_energy += power * elapsed / 3600000.0
+        data["total_energy"] = device_client._total_energy
+        device_client._last_power_timestamp = now
 
     def _apply_device_clock(self, data: dict[str, Any]) -> None:
         """Decode and store device clock when valid."""

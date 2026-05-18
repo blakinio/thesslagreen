@@ -18,7 +18,7 @@ def test_apply_success_result_updates_coordinator_state() -> None:
             "last_successful_update": None,
             "average_response_time": 2.0,
         },
-        _consecutive_failures=4,
+        device_client=SimpleNamespace(_consecutive_failures=4),
         offline_state=True,
     )
 
@@ -32,6 +32,6 @@ def test_apply_success_result_updates_coordinator_state() -> None:
     assert result == data
     assert coordinator.statistics["successful_reads"] == 2
     assert coordinator.statistics["last_successful_update"] == now
-    assert coordinator._consecutive_failures == 0
+    assert coordinator.device_client._consecutive_failures == 0
     assert coordinator.offline_state is False
     assert coordinator.statistics["average_response_time"] == 3.5

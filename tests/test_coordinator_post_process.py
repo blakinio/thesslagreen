@@ -17,7 +17,7 @@ def test_post_process_data(coordinator):
         "dac_exhaust": 4.0,
     }
     fake_now = datetime(2024, 1, 1, 12, 0, 0)
-    coordinator._last_power_timestamp = fake_now - timedelta(hours=1)
+    coordinator.device_client._last_power_timestamp = fake_now - timedelta(hours=1)
     with patch(
         "custom_components.thessla_green_modbus.coordinator.coordinator.dt_util.utcnow",
         return_value=fake_now,

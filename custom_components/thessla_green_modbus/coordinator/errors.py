@@ -21,7 +21,7 @@ def apply_update_failure_state(
     if timeout_error:
         coordinator.statistics["timeout_errors"] += 1
     coordinator.statistics["last_error"] = str(exc)
-    coordinator._consecutive_failures += 1
+    coordinator.device_client._consecutive_failures += 1
     coordinator.offline_state = True
 
 
@@ -42,7 +42,7 @@ async def handle_update_error(
     apply_update_failure_state(coordinator, exc, timeout_error=timeout_error)
     await coordinator._disconnect()
 
-    if coordinator._consecutive_failures >= coordinator._max_failures:
+    if coordinator.device_client._consecutive_failures >= coordinator.device_client._max_failures:
         _LOGGER.error("Too many consecutive failures, disconnecting")
         coordinator._trigger_reauth(reauth_reason)
 

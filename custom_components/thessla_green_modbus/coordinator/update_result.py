@@ -23,7 +23,7 @@ def apply_success_result(
     """Apply successful update-cycle side effects and return payload."""
     coordinator.statistics["successful_reads"] += 1
     coordinator.statistics["last_successful_update"] = _utcnow()
-    coordinator._consecutive_failures = 0
+    coordinator.device_client._consecutive_failures = 0
     coordinator.offline_state = False
 
     response_time = (_utcnow() - start_time).total_seconds()

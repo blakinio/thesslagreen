@@ -114,3 +114,12 @@ See also:
 - `docs/coordinator_proxy_cleanup.md` — prior inventory of proxy properties
 - `docs/coordinator_proxy_migration_inventory.md` — migration inventory from previous PR
 - `docs/device_client_redesign.md` — design rationale for `ThesslaGreenDeviceClient`
+
+## 2026-05-18 update
+
+Consumer code has been migrated to prefer `coordinator.device_client` for device-domain state. Remaining proxy removals are deferred until direct proxy mutations in tests are fully migrated.
+
+
+## 2026-05-18 slice-1 removal
+
+Removed first internal proxy slice from `coordinator.py`: `_last_power_timestamp`, `_total_energy`, `_consecutive_failures`, `_max_failures`, `_failed_registers` (40 -> 35). These were safe because all runtime/test callers now use `coordinator.device_client.*`.
