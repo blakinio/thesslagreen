@@ -383,10 +383,10 @@
         "name": "Temporary Air Flow Rate (Extended)"
       },
       "air_temperature_summer_free_cooling": {
-        "name": "Bypass Temperature (Free Cooling)"
+        "name": "Bypass Temperature (Free Cooling) (Setpoint)"
       },
       "air_temperature_summer_free_heating": {
-        "name": "Bypass Temperature (Free Heating)"
+        "name": "Bypass Temperature (Free Heating) (Setpoint)"
       },
       "airing_bathroom_coef": {
         "name": "Airing Bathroom Coefficient"
@@ -467,13 +467,13 @@
         "name": "Min GWC Air Temperature"
       },
       "nominal_exhaust_air_flow": {
-        "name": "Nominal Exhaust Air Flow"
+        "name": "Nominal Exhaust Air Flow (Setpoint)"
       },
       "nominal_exhaust_air_flow_gwc": {
         "name": "Nominal Exhaust Air Flow (GWC)"
       },
       "nominal_supply_air_flow": {
-        "name": "Nominal Supply Air Flow"
+        "name": "Nominal Supply Air Flow (Setpoint)"
       },
       "nominal_supply_air_flow_gwc": {
         "name": "Nominal Supply Air Flow (GWC)"
@@ -485,7 +485,7 @@
         "name": "RTC Calibration"
       },
       "supply_air_temperature_manual": {
-        "name": "Manual Supply Air Temperature"
+        "name": "Manual Supply Air Temperature (Setpoint)"
       },
       "supply_air_temperature_temporary": {
         "name": "Temporary Supply Air Temperature"
@@ -1142,7 +1142,7 @@
         "name": "Eco"
       },
       "fireplace": {
-        "name": "Fireplace"
+        "name": "Fireplace (Control)"
       },
       "hood": {
         "name": "Hood"

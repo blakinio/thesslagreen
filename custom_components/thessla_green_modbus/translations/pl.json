@@ -383,10 +383,10 @@
         "name": "Intensywność wentylacji (tryb chwilowy, roz.)"
       },
       "air_temperature_summer_free_cooling": {
-        "name": "Temperatura bypassa (wolne chłodzenie)"
+        "name": "Temperatura bypassa (wolne chłodzenie) (nastawa)"
       },
       "air_temperature_summer_free_heating": {
-        "name": "Temperatura bypassa (wolne grzanie)"
+        "name": "Temperatura bypassa (wolne grzanie) (nastawa)"
       },
       "airing_bathroom_coef": {
         "name": "Współczynnik przewietrzania łazienki"
@@ -446,7 +446,7 @@
         "name": "Hasło blokady"
       },
       "max_exhaust_air_flow_rate": {
-        "name": "Maksymalny przepływ wywiewu"
+        "name": "Maksymalny przepływ wywiewu (nastawa)"
       },
       "max_exhaust_air_flow_rate_gwc": {
         "name": "Maks. przepływ wywiewu GWC"
@@ -455,25 +455,25 @@
         "name": "Maks. temperatura powietrza GWC"
       },
       "max_supply_air_flow_rate": {
-        "name": "Maksymalny przepływ nawiewu"
+        "name": "Maksymalny przepływ nawiewu (nastawa)"
       },
       "max_supply_air_flow_rate_gwc": {
         "name": "Maks. przepływ nawiewu GWC"
       },
       "min_bypass_temperature": {
-        "name": "Minimalna temperatura bypass"
+        "name": "Minimalna temperatura bypass (nastawa)"
       },
       "min_gwc_air_temperature": {
         "name": "Min. temperatura powietrza GWC"
       },
       "nominal_exhaust_air_flow": {
-        "name": "Nominalny przepływ wywiewu"
+        "name": "Nominalny przepływ wywiewu (nastawa)"
       },
       "nominal_exhaust_air_flow_gwc": {
         "name": "Nominalny przepływ wywiewu GWC"
       },
       "nominal_supply_air_flow": {
-        "name": "Nominalny przepływ nawiewu"
+        "name": "Nominalny przepływ nawiewu (nastawa)"
       },
       "nominal_supply_air_flow_gwc": {
         "name": "Nominalny przepływ nawiewu GWC"
@@ -485,7 +485,7 @@
         "name": "Kalibracja zegara RTC"
       },
       "supply_air_temperature_manual": {
-        "name": "Ręczna temperatura nawiewu"
+        "name": "Ręczna temperatura nawiewu (nastawa)"
       },
       "supply_air_temperature_temporary": {
         "name": "Temperatura nawiewu (tryb chwilowy)"
@@ -1142,7 +1142,7 @@
         "name": "Eco"
       },
       "fireplace": {
-        "name": "Kominek"
+        "name": "Kominek (sterowanie)"
       },
       "hood": {
         "name": "Okap"
