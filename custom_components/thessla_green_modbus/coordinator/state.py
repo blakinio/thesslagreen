@@ -120,8 +120,8 @@ def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> 
     coordinator._discrete_inputs_rev = coordinator._reverse_maps["discrete_inputs"]
 
     coordinator._register_groups = {}
-    coordinator._consecutive_failures = 0
-    coordinator._max_failures = 5
+    coordinator.device_client._consecutive_failures = 0
+    coordinator.device_client._max_failures = 5
 
     coordinator.device_scan_result = None
     coordinator.unknown_registers = {}
@@ -141,5 +141,5 @@ def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> 
     coordinator.last_scan = None
     from ..utils import utcnow
 
-    coordinator._last_power_timestamp = utcnow()
-    coordinator._total_energy = 0.0
+    coordinator.device_client._last_power_timestamp = utcnow()
+    coordinator.device_client._total_energy = 0.0

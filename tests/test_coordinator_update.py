@@ -155,7 +155,7 @@ def test_post_process_data_timezone_aware_timestamp():
     """Timezone-aware last timestamp is handled correctly (lines 1916-1919)."""
     coord = _make_coordinator()
     # Set a timezone-aware last timestamp
-    coord._last_power_timestamp = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
+    coord.device_client._last_power_timestamp = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
     data = {"dac_supply": 3.0, "dac_exhaust": 3.0}
     result = coord._post_process_data(data)
     assert "estimated_power" in result
@@ -181,7 +181,7 @@ def test_post_process_data_type_error_in_efficiency():
 def test_post_process_data_non_datetime_last_timestamp():
     """Non-datetime _last_power_timestamp → elapsed=0.0 (line 1914)."""
     coord = _make_coordinator()
-    coord._last_power_timestamp = "not_a_datetime"
+    coord.device_client._last_power_timestamp = "not_a_datetime"
     data = {"dac_supply": 3.0, "dac_exhaust": 3.0}
     result = coord._post_process_data(data)
     assert "estimated_power" in result
@@ -191,7 +191,7 @@ def test_post_process_data_non_datetime_last_timestamp():
 def test_post_process_data_naive_now_aware_last_ts():
     """Naive _utcnow with aware last_ts → adds UTC tz to now (line 1919)."""
     coord = _make_coordinator()
-    coord._last_power_timestamp = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
+    coord.device_client._last_power_timestamp = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
     # Patch _utcnow to return naive datetime
     with patch(
         "custom_components.thessla_green_modbus.coordinator.coordinator._utcnow",

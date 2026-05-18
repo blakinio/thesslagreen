@@ -405,7 +405,7 @@ def test_coordinator_retry_proxy():
 
 def test_coordinator_consecutive_failures_proxy():
     coord = _make_coordinator()
-    coord._consecutive_failures = 3
+    coord.device_client._consecutive_failures = 3
     assert coord.device_client._consecutive_failures == 3
 
 
@@ -424,7 +424,7 @@ def test_coordinator_register_maps_proxy():
 
 def test_coordinator_failed_registers_proxy():
     coord = _make_coordinator()
-    coord._failed_registers.add("fan_speed")
+    coord.device_client._failed_registers.add("fan_speed")
     assert "fan_speed" in coord.device_client._failed_registers
 
 

@@ -428,14 +428,6 @@ class ThesslaGreenModbusCoordinator(
     def _register_groups(self, value: dict[str, Any]) -> None:
         self._device_client._register_groups = value
 
-    @property
-    def _failed_registers(self) -> set[str]:
-        return self._device_client._failed_registers
-
-    @_failed_registers.setter
-    def _failed_registers(self, value: set[str]) -> None:
-        self._device_client._failed_registers = value
-
     # -- Statistics and failure tracking --
 
     @property
@@ -445,22 +437,6 @@ class ThesslaGreenModbusCoordinator(
     @statistics.setter
     def statistics(self, value: dict[str, Any]) -> None:
         self._device_client.statistics = value
-
-    @property
-    def _consecutive_failures(self) -> int:
-        return self._device_client._consecutive_failures
-
-    @_consecutive_failures.setter
-    def _consecutive_failures(self, value: int) -> None:
-        self._device_client._consecutive_failures = value
-
-    @property
-    def _max_failures(self) -> int:
-        return self._device_client._max_failures
-
-    @_max_failures.setter
-    def _max_failures(self, value: int) -> None:
-        self._device_client._max_failures = value
 
     # -- Scan state --
 
@@ -497,22 +473,6 @@ class ThesslaGreenModbusCoordinator(
         self._device_client.last_scan = value
 
     # -- Post-processing state (capabilities mixin) --
-
-    @property
-    def _last_power_timestamp(self) -> Any:
-        return self._device_client._last_power_timestamp
-
-    @_last_power_timestamp.setter
-    def _last_power_timestamp(self, value: Any) -> None:
-        self._device_client._last_power_timestamp = value
-
-    @property
-    def _total_energy(self) -> float:
-        return self._device_client._total_energy
-
-    @_total_energy.setter
-    def _total_energy(self, value: float) -> None:
-        self._device_client._total_energy = value
 
     def __init__(
         self,
