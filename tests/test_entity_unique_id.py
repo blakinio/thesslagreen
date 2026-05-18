@@ -237,8 +237,9 @@ def test_entity_init_typeerror_propagates(monkeypatch):
     self.coordinator has been removed; errors surface immediately.
     """
     import pytest
-
-    from custom_components.thessla_green_modbus.entity import ThesslaGreenEntity
+    from custom_components.thessla_green_modbus.entity import (
+        ThesslaGreenEntity,
+    )
 
     CoordBase = ThesslaGreenEntity.__bases__[0]
 
