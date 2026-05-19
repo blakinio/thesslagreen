@@ -27,10 +27,10 @@ async def run_update_cycle(
 ) -> dict[str, Any]:
     """Run a single successful update read cycle and update statistics."""
     await coordinator._ensure_connection()
-    transport = coordinator._transport
+    transport = coordinator.device_client._transport
     if transport is not None and not transport.is_connected():
         raise ConnectionException("Modbus transport is not connected")
-    if transport is None and coordinator.client is None:
+    if transport is None and coordinator.device_client.client is None:
         raise ConnectionException("Modbus client is not connected")
 
     data = await coordinator._read_all_register_data()
@@ -38,7 +38,7 @@ async def run_update_cycle(
     if transport is not None and not transport.is_connected():
         _LOGGER.debug("Modbus client disconnected during update; attempting reconnection")
         await coordinator._ensure_connection()
-        transport = coordinator._transport
+        transport = coordinator.device_client._transport
         if transport is None or not transport.is_connected():
             raise ConnectionException("Modbus transport is not connected")
 
@@ -53,7 +53,7 @@ async def async_update_data(coordinator: ThesslaGreenModbusCoordinator) -> dict[
     if prepared_data is not None:
         return prepared_data
 
-    async with coordinator._write_lock:
+    async with coordinator.device_client._write_lock:
         try:
             return await run_update_cycle(coordinator, start_time)
 

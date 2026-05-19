@@ -100,6 +100,97 @@ class _DeviceClientRegistersMixin:
     # Write support
     # ------------------------------------------------------------------
 
+    def _resolve_write_address(self, register_name: str, definition: Any) -> int | None:
+        if definition.function == 3:
+            address = self._register_maps.get("holding_registers", {}).get(register_name)
+        elif definition.function == 1:
+            address = self._register_maps.get("coil_registers", {}).get(register_name)
+        else:
+            _LOGGER.error(
+                "Register %s is not writable (function=%s)", register_name, definition.function
+            )
+            return None
+        if address is None:
+            _LOGGER.error("Register %s not found in register maps", register_name)
+        return address
+
+    async def _execute_modbus_write(self, plan: Any, function: int) -> Any:
+
+        if function == 3:
+            if plan.encoded_values is not None:
+                if self._transport is not None:
+                    return await self._transport.write_registers(
+                        self.slave_id, plan.address, values=plan.encoded_values, attempt=1
+                    )
+                return await self._call_modbus(
+                    self._get_client_method("write_registers"),
+                    plan.address,
+                    values=plan.encoded_values,
+                    attempt=1,
+                )
+            if self._transport is not None:
+                return await self._transport.write_register(
+                    self.slave_id, plan.address, value=int(plan.scalar_value), attempt=1
+                )
+            return await self._call_modbus(
+                self._get_client_method("write_register"),
+                plan.address,
+                value=int(plan.scalar_value),
+                attempt=1,
+            )
+        # function == 1, coil
+        return await self._call_modbus(
+            self._get_client_method("write_coil"),
+            plan.address,
+            value=bool(plan.scalar_value),
+            attempt=1,
+        )
+
+    def _build_write_plan(
+        self,
+        register_name: str,
+        value: Any,
+        offset: int,
+    ) -> Any | None:
+        from .write_path import SingleWritePlan, encode_write_value
+
+        definition = _get_register_definition(register_name)
+        address = self._resolve_write_address(register_name, definition)
+        if address is None:
+            return None
+        encoded_values, scalar_value = encode_write_value(register_name, definition, value, offset)
+        if encoded_values is None and scalar_value is None:
+            return None
+        return SingleWritePlan(
+            register_name=register_name,
+            address=address + offset,
+            encoded_values=encoded_values,
+            scalar_value=scalar_value,
+            original_value=value,
+        )
+
+    async def _perform_write_and_verify(
+        self,
+        register_name: str,
+        value: Any,
+        plan: Any,
+        function: int,
+    ) -> bool:
+        from pymodbus.exceptions import ConnectionException, ModbusException
+
+        await self._ensure_connection()
+        try:
+            response = await self._execute_modbus_write(plan, function)
+            if response is None or response.isError():
+                _LOGGER.error("Failed to write register %s", register_name)
+                return False
+            self._clear_register_failure(register_name)
+            _LOGGER.info("Successfully wrote %s to register %s", value, register_name)
+            return True
+        except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:
+            _LOGGER.exception("Error writing register %s: %s", register_name, exc)
+            return False
+
     async def async_write_register(
         self,
         register_name: str,
@@ -110,81 +201,8 @@ class _DeviceClientRegistersMixin:
         offset: int = 0,
     ) -> bool:
         """Write a single register by name."""
-        from pymodbus.exceptions import ConnectionException, ModbusException
-
-        from .write_path import SingleWritePlan, encode_write_value
-
+        plan = self._build_write_plan(register_name, value, offset)
+        if plan is None:
+            return False
         definition = _get_register_definition(register_name)
-
-        if definition.function == 3:
-            address = self._register_maps.get("holding_registers", {}).get(register_name)
-        elif definition.function == 1:
-            address = self._register_maps.get("coil_registers", {}).get(register_name)
-        else:
-            _LOGGER.error(
-                "Register %s is not writable (function=%s)", register_name, definition.function
-            )
-            return False
-
-        if address is None:
-            _LOGGER.error("Register %s not found in register maps", register_name)
-            return False
-
-        encoded_values, scalar_value = encode_write_value(register_name, definition, value, offset)
-        if encoded_values is None and scalar_value is None:
-            return False
-
-        plan = SingleWritePlan(
-            register_name=register_name,
-            address=address + offset,
-            encoded_values=encoded_values,
-            scalar_value=scalar_value,
-            original_value=value,
-        )
-
-        await self._ensure_connection()
-
-        try:
-            if definition.function == 3:
-                if plan.encoded_values is not None:
-                    if self._transport is not None:
-                        response = await self._transport.write_registers(
-                            self.slave_id, plan.address, values=plan.encoded_values, attempt=1
-                        )
-                    else:
-                        response = await self._call_modbus(
-                            self._get_client_method("write_registers"),
-                            plan.address,
-                            values=plan.encoded_values,
-                            attempt=1,
-                        )
-                else:
-                    if self._transport is not None:
-                        response = await self._transport.write_register(
-                            self.slave_id, plan.address, value=int(plan.scalar_value), attempt=1
-                        )
-                    else:
-                        response = await self._call_modbus(
-                            self._get_client_method("write_register"),
-                            plan.address,
-                            value=int(plan.scalar_value),
-                            attempt=1,
-                        )
-            else:  # function == 1, coil
-                response = await self._call_modbus(
-                    self._get_client_method("write_coil"),
-                    plan.address,
-                    value=bool(plan.scalar_value),
-                    attempt=1,
-                )
-
-            if response is None or response.isError():
-                _LOGGER.error("Failed to write register %s", register_name)
-                return False
-
-            self._clear_register_failure(register_name)
-            _LOGGER.info("Successfully wrote %s to register %s", value, register_name)
-            return True
-        except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:
-            _LOGGER.exception("Error writing register %s: %s", register_name, exc)
-            return False
+        return await self._perform_write_and_verify(register_name, value, plan, definition.function)

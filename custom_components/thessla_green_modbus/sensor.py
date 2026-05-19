@@ -265,7 +265,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
-        if hasattr(self.coordinator, "device_scan_result") and self.coordinator.device_scan_result:
+        if self.coordinator.device_client.device_scan_result:
             return {
                 "register_name": self._register_name,
                 "register_type": self._sensor_def["register_type"],
@@ -321,7 +321,7 @@ class ThesslaGreenSerialNumberSensor(ThesslaGreenSensor):
         """Return True when the coordinator has a valid serial number."""
         if not self.coordinator.last_update_success:
             return False
-        if getattr(self.coordinator, "offline_state", False):
+        if self.coordinator.offline_state:
             return False
         sn = (self.coordinator.device_info or {}).get("serial_number")
         return bool(sn and sn != "Unknown")

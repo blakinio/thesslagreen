@@ -194,4 +194,7 @@ def get_device_info(coordinator: Any) -> dict[str, Any]:
 
 def device_name(coordinator: Any) -> str:
     """Return the configured or detected device name."""
-    return cast(str, coordinator.device_info.get("device_name") or coordinator._device_name)
+    return cast(
+        str,
+        coordinator.device_info.get("device_name") or coordinator._device_name,
+    )

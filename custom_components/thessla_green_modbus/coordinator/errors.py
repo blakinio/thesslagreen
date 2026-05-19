@@ -17,12 +17,12 @@ def apply_update_failure_state(
     timeout_error: bool,
 ) -> None:
     """Apply standard state/statistics changes after an update failure."""
-    coordinator.statistics["failed_reads"] += 1
+    coordinator.device_client.statistics["failed_reads"] += 1
     if timeout_error:
-        coordinator.statistics["timeout_errors"] += 1
-    coordinator.statistics["last_error"] = str(exc)
+        coordinator.device_client.statistics["timeout_errors"] += 1
+    coordinator.device_client.statistics["last_error"] = str(exc)
     coordinator.device_client._consecutive_failures += 1
-    coordinator.offline_state = True
+    coordinator.device_client.offline_state = True
 
 
 async def handle_update_error(

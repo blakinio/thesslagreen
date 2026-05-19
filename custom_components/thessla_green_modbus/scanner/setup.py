@@ -229,16 +229,10 @@ async def async_setup_register_maps(scanner: Any) -> None:
         scanner._register_ranges = {}
 
 
-async def verify_connection(
-    scanner: Any,
-    *,
-    safe_registers: list[tuple[int, str]] = SAFE_REGISTERS,
-    register_definitions: dict[str, Any] = REGISTER_DEFINITIONS,
-    holding_batch_boundaries: frozenset[int] = HOLDING_BATCH_BOUNDARIES,
-    group_reads: Any = _group_reads,
-    rtu_transport_cls: Any = RtuModbusTransport,
-) -> None:
-    """Verify basic Modbus connectivity by reading a few safe registers."""
+def _collect_safe_register_addresses(
+    safe_registers: list[tuple[int, str]],
+    register_definitions: dict[str, Any],
+) -> tuple[list[int], list[int]]:
     safe_input: list[int] = []
     safe_holding: list[int] = []
     for func, name in safe_registers:
@@ -249,6 +243,92 @@ async def verify_connection(
             safe_input.append(reg.address)
         else:
             safe_holding.append(reg.address)
+    return safe_input, safe_holding
+
+
+async def _probe_safe_registers(
+    scanner: Any,
+    transport: Any,
+    safe_input: list[int],
+    safe_holding: list[int],
+    holding_batch_boundaries: frozenset[int],
+    group_reads: Any,
+) -> None:
+    for start, count in group_reads(safe_input, max_block_size=scanner.effective_batch):
+        _LOGGER.debug(
+            "verify_connection: read_input_registers start=%s count=%s",
+            start,
+            count,
+        )
+        await transport.read_input_registers(scanner.slave_id, start, count=count)
+
+    for start, count in group_reads(
+        safe_holding,
+        max_block_size=scanner.effective_batch,
+        boundaries=holding_batch_boundaries,
+    ):
+        _LOGGER.debug(
+            "verify_connection: read_holding_registers start=%s count=%s",
+            start,
+            count,
+        )
+        await transport.read_holding_registers(scanner.slave_id, start, count=count)
+
+
+def _store_resolved_mode(scanner: Any, mode_name: str | None) -> None:
+    if mode_name is not None:
+        if scanner.connection_mode == CONNECTION_MODE_AUTO:
+            _LOGGER.info(
+                "verify_connection: auto-selected Modbus transport %s for %s:%s",
+                mode_name,
+                scanner.host,
+                scanner.port,
+            )
+        scanner._resolved_connection_mode = mode_name
+
+
+async def _attempt_single_verification(
+    scanner: Any,
+    mode_name: str | None,
+    transport: Any,
+    timeout: float,
+    safe_input: list[int],
+    safe_holding: list[int],
+    holding_batch_boundaries: frozenset[int],
+    group_reads: Any,
+    closed_transports: set[int],
+) -> None:
+    """Connect one transport/mode and probe safe registers; raises on failure."""
+    try:
+        _LOGGER.info(
+            "verify_connection: connecting to %s:%s (mode=%s, timeout=%s)",
+            scanner.host,
+            scanner.port,
+            mode_name or scanner.connection_type,
+            timeout,
+        )
+        await asyncio.wait_for(transport.ensure_connected(), timeout=timeout)
+        await _probe_safe_registers(
+            scanner, transport, safe_input, safe_holding, holding_batch_boundaries, group_reads
+        )
+        _store_resolved_mode(scanner, mode_name)
+    finally:
+        await close_verification_transport_once(transport, closed_transports)
+
+
+async def verify_connection(
+    scanner: Any,
+    *,
+    safe_registers: list[tuple[int, str]] = SAFE_REGISTERS,
+    register_definitions: dict[str, Any] = REGISTER_DEFINITIONS,
+    holding_batch_boundaries: frozenset[int] = HOLDING_BATCH_BOUNDARIES,
+    group_reads: Any = _group_reads,
+    rtu_transport_cls: Any = RtuModbusTransport,
+) -> None:
+    """Verify basic Modbus connectivity by reading a few safe registers."""
+    safe_input, safe_holding = _collect_safe_register_addresses(
+        safe_registers, register_definitions
+    )
 
     attempts = build_verification_attempts(
         scanner,
@@ -259,44 +339,17 @@ async def verify_connection(
     closed_transports: set[int] = set()
     for mode_name, transport, timeout in attempts:
         try:
-            _LOGGER.info(
-                "verify_connection: connecting to %s:%s (mode=%s, timeout=%s)",
-                scanner.host,
-                scanner.port,
-                mode_name or scanner.connection_type,
+            await _attempt_single_verification(
+                scanner,
+                mode_name,
+                transport,
                 timeout,
-            )
-            await asyncio.wait_for(transport.ensure_connected(), timeout=timeout)
-
-            for start, count in group_reads(safe_input, max_block_size=scanner.effective_batch):
-                _LOGGER.debug(
-                    "verify_connection: read_input_registers start=%s count=%s",
-                    start,
-                    count,
-                )
-                await transport.read_input_registers(scanner.slave_id, start, count=count)
-
-            for start, count in group_reads(
+                safe_input,
                 safe_holding,
-                max_block_size=scanner.effective_batch,
-                boundaries=holding_batch_boundaries,
-            ):
-                _LOGGER.debug(
-                    "verify_connection: read_holding_registers start=%s count=%s",
-                    start,
-                    count,
-                )
-                await transport.read_holding_registers(scanner.slave_id, start, count=count)
-
-            if mode_name is not None:
-                if scanner.connection_mode == CONNECTION_MODE_AUTO:
-                    _LOGGER.info(
-                        "verify_connection: auto-selected Modbus transport %s for %s:%s",
-                        mode_name,
-                        scanner.host,
-                        scanner.port,
-                    )
-                scanner._resolved_connection_mode = mode_name
+                holding_batch_boundaries,
+                group_reads,
+                closed_transports,
+            )
             return
         except asyncio.CancelledError:
             raise
@@ -308,8 +361,6 @@ async def verify_connection(
             OSError,
         ) as exc:
             last_error = classify_verify_connection_exception(exc)
-        finally:
-            await close_verification_transport_once(transport, closed_transports)
 
     if last_error:
         raise last_error

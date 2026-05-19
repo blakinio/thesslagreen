@@ -190,53 +190,73 @@ class ThesslaGreenModbusCoordinator(
     def config(self, value: CoordinatorConfig) -> None:
         self._device_client.config = value
 
-    @property
-    def _device_name(self) -> str:
-        return self._device_client._device_name
-
-    @_device_name.setter
-    def _device_name(self, value: str) -> None:
-        self._device_client._device_name = value
-
-    @property
-    def _resolved_connection_mode(self) -> str | None:
-        return self._device_client._resolved_connection_mode
-
-    @_resolved_connection_mode.setter
-    def _resolved_connection_mode(self, value: str | None) -> None:
-        self._device_client._resolved_connection_mode = value
+    # -- Device-info / capabilities / runtime flags --
+    # These proxies are required because the capabilities mixin
+    # (_apply_serial_number_state), the entity base class
+    # (_coordinator_connected), and the schedule mixin all access
+    # ``self.device_info`` / ``self.offline_state`` / ``self._write_lock``
+    # on the coordinator directly (duck-typing with DeviceClient).
 
     @property
-    def timeout(self) -> int:
-        return self._device_client.timeout
+    def device_info(self) -> dict[str, Any]:
+        return self._device_client.device_info
 
-    @timeout.setter
-    def timeout(self, value: int) -> None:
-        self._device_client.timeout = value
-
-    @property
-    def retry(self) -> int:
-        return self._device_client.retry
-
-    @retry.setter
-    def retry(self, value: int) -> None:
-        self._device_client.retry = value
+    @device_info.setter
+    def device_info(self, value: dict[str, Any]) -> None:
+        self._device_client.device_info = value
 
     @property
-    def backoff(self) -> float:
-        return self._device_client.backoff
+    def capabilities(self) -> Any:
+        return self._device_client.capabilities
 
-    @backoff.setter
-    def backoff(self, value: float) -> None:
-        self._device_client.backoff = value
+    @capabilities.setter
+    def capabilities(self, value: Any) -> None:
+        self._device_client.capabilities = value
 
     @property
-    def backoff_jitter(self) -> float | tuple[float, float] | None:
-        return self._device_client.backoff_jitter
+    def offline_state(self) -> bool:
+        return self._device_client.offline_state
 
-    @backoff_jitter.setter
-    def backoff_jitter(self, value: float | tuple[float, float] | None) -> None:
-        self._device_client.backoff_jitter = value
+    @offline_state.setter
+    def offline_state(self, value: bool) -> None:
+        self._device_client.offline_state = value
+
+    @property
+    def _update_in_progress(self) -> bool:
+        return self._device_client._update_in_progress
+
+    @_update_in_progress.setter
+    def _update_in_progress(self, value: bool) -> None:
+        self._device_client._update_in_progress = value
+
+    # -- Low-level IO transport state --
+    # Required by read_batches.py, read_bits.py, retry.py and the schedule
+    # mixin which receive the coordinator as a duck-typed «owner» and access
+    # these attributes directly.
+
+    @property
+    def _transport(self) -> Any:
+        return self._device_client._transport
+
+    @_transport.setter
+    def _transport(self, value: Any) -> None:
+        self._device_client._transport = value
+
+    @property
+    def client(self) -> Any:
+        return self._device_client.client
+
+    @client.setter
+    def client(self, value: Any) -> None:
+        self._device_client.client = value
+
+    @property
+    def available_registers(self) -> dict[str, set[str]]:
+        return self._device_client.available_registers
+
+    @available_registers.setter
+    def available_registers(self, value: dict[str, set[str]]) -> None:
+        self._device_client.available_registers = value
 
     @property
     def force_full_register_list(self) -> bool:
@@ -247,36 +267,12 @@ class ThesslaGreenModbusCoordinator(
         self._device_client.force_full_register_list = value
 
     @property
-    def scan_uart_settings(self) -> bool:
-        return self._device_client.scan_uart_settings
+    def _register_groups(self) -> dict[str, list[tuple[int, int]]]:
+        return self._device_client._register_groups
 
-    @scan_uart_settings.setter
-    def scan_uart_settings(self, value: bool) -> None:
-        self._device_client.scan_uart_settings = value
-
-    @property
-    def deep_scan(self) -> bool:
-        return self._device_client.deep_scan
-
-    @deep_scan.setter
-    def deep_scan(self, value: bool) -> None:
-        self._device_client.deep_scan = value
-
-    @property
-    def safe_scan(self) -> bool:
-        return self._device_client.safe_scan
-
-    @safe_scan.setter
-    def safe_scan(self, value: bool) -> None:
-        self._device_client.safe_scan = value
-
-    @property
-    def skip_missing_registers(self) -> bool:
-        return self._device_client.skip_missing_registers
-
-    @skip_missing_registers.setter
-    def skip_missing_registers(self, value: bool) -> None:
-        self._device_client.skip_missing_registers = value
+    @_register_groups.setter
+    def _register_groups(self, value: dict[str, list[tuple[int, int]]]) -> None:
+        self._device_client._register_groups = value
 
     @property
     def effective_batch(self) -> int:
@@ -294,99 +290,61 @@ class ThesslaGreenModbusCoordinator(
     def max_registers_per_request(self, value: int) -> None:
         self._device_client.max_registers_per_request = value
 
-    # -- Connection state --
+    @property
+    def statistics(self) -> dict[str, Any]:
+        return self._device_client.statistics
+
+    @statistics.setter
+    def statistics(self, value: dict[str, Any]) -> None:
+        self._device_client.statistics = value
 
     @property
-    def client(self) -> Any:
-        return self._device_client.client
+    def retry(self) -> int:
+        return self._device_client.retry
 
-    @client.setter
-    def client(self, value: Any) -> None:
-        self._device_client.client = value
-
-    @property
-    def _transport(self) -> Any:
-        return self._device_client._transport
-
-    @_transport.setter
-    def _transport(self, value: Any) -> None:
-        self._device_client._transport = value
+    @retry.setter
+    def retry(self, value: int) -> None:
+        self._device_client.retry = value
 
     @property
-    def _client_lock(self) -> Any:
-        return self._device_client._client_lock
+    def timeout(self) -> float:
+        return self._device_client.timeout
 
-    @_client_lock.setter
-    def _client_lock(self, value: Any) -> None:
-        self._device_client._client_lock = value
+    @timeout.setter
+    def timeout(self, value: float) -> None:
+        self._device_client.timeout = value
+
+    @property
+    def backoff(self) -> float:
+        return self._device_client.backoff
+
+    @backoff.setter
+    def backoff(self, value: float) -> None:
+        self._device_client.backoff = value
+
+    @property
+    def backoff_jitter(self) -> Any:
+        return self._device_client.backoff_jitter
+
+    @backoff_jitter.setter
+    def backoff_jitter(self, value: Any) -> None:
+        self._device_client.backoff_jitter = value
+
+    @property
+    def _failed_registers(self) -> set[str]:
+        return self._device_client._failed_registers
+
+    @_failed_registers.setter
+    def _failed_registers(self, value: set[str]) -> None:
+        self._device_client._failed_registers = value
 
     @property
     def _write_lock(self) -> Any:
         return self._device_client._write_lock
 
-    @_write_lock.setter
-    def _write_lock(self, value: Any) -> None:
-        self._device_client._write_lock = value
-
     @property
-    def _update_in_progress(self) -> bool:
-        return self._device_client._update_in_progress
-
-    @_update_in_progress.setter
-    def _update_in_progress(self, value: bool) -> None:
-        self._device_client._update_in_progress = value
-
-    @property
-    def offline_state(self) -> bool:
-        return self._device_client.offline_state
-
-    @offline_state.setter
-    def offline_state(self, value: bool) -> None:
-        self._device_client.offline_state = value
-
-    # -- Device info / capabilities --
-
-    @property
-    def capabilities(self) -> Any:
-        return self._device_client.capabilities
-
-    @capabilities.setter
-    def capabilities(self, value: Any) -> None:
-        self._device_client.capabilities = value
-
-    @property
-    def device_info(self) -> dict[str, Any]:
-        return self._device_client.device_info
-
-    @device_info.setter
-    def device_info(self, value: dict[str, Any]) -> None:
-        self._device_client.device_info = value
-
-    # -- Register maps and groups --
-
-    @property
-    def available_registers(self) -> dict[str, Any]:
-        return self._device_client.available_registers
-
-    @available_registers.setter
-    def available_registers(self, value: dict[str, Any]) -> None:
-        self._device_client.available_registers = value
-
-    @property
-    def _register_maps(self) -> dict[str, Any]:
-        return self._device_client._register_maps
-
-    @_register_maps.setter
-    def _register_maps(self, value: dict[str, Any]) -> None:
-        self._device_client._register_maps = value
-
-    @property
-    def _reverse_maps(self) -> dict[str, Any]:
-        return self._device_client._reverse_maps
-
-    @_reverse_maps.setter
-    def _reverse_maps(self, value: dict[str, Any]) -> None:
-        self._device_client._reverse_maps = value
+    def _client_lock(self) -> Any:
+        return self._device_client._client_lock
 
     @property
     def _input_registers_rev(self) -> dict[int, str]:
@@ -405,40 +363,48 @@ class ThesslaGreenModbusCoordinator(
         self._device_client._holding_registers_rev = value
 
     @property
-    def _coil_registers_rev(self) -> dict[int, str]:
-        return self._device_client._coil_registers_rev
+    def _resolved_connection_mode(self) -> str | None:
+        return self._device_client._resolved_connection_mode
 
-    @_coil_registers_rev.setter
-    def _coil_registers_rev(self, value: dict[int, str]) -> None:
-        self._device_client._coil_registers_rev = value
-
-    @property
-    def _discrete_inputs_rev(self) -> dict[int, str]:
-        return self._device_client._discrete_inputs_rev
-
-    @_discrete_inputs_rev.setter
-    def _discrete_inputs_rev(self, value: dict[int, str]) -> None:
-        self._device_client._discrete_inputs_rev = value
+    @_resolved_connection_mode.setter
+    def _resolved_connection_mode(self, value: str | None) -> None:
+        self._device_client._resolved_connection_mode = value
 
     @property
-    def _register_groups(self) -> dict[str, Any]:
-        return self._device_client._register_groups
-
-    @_register_groups.setter
-    def _register_groups(self, value: dict[str, Any]) -> None:
-        self._device_client._register_groups = value
-
-    # -- Statistics and failure tracking --
+    def scan_uart_settings(self) -> bool:
+        return self._device_client.scan_uart_settings
 
     @property
-    def statistics(self) -> dict[str, Any]:
-        return self._device_client.statistics
+    def skip_missing_registers(self) -> bool:
+        return self._device_client.skip_missing_registers
 
-    @statistics.setter
-    def statistics(self, value: dict[str, Any]) -> None:
-        self._device_client.statistics = value
+    @property
+    def deep_scan(self) -> bool:
+        return self._device_client.deep_scan
 
-    # -- Scan state --
+    @property
+    def safe_scan(self) -> bool:
+        return self._device_client.safe_scan
+
+    @property
+    def _register_maps(self) -> dict[str, dict[str, int]]:
+        return self._device_client._register_maps
+
+    @_register_maps.setter
+    def _register_maps(self, value: dict[str, dict[str, int]]) -> None:
+        self._device_client._register_maps = value
+
+    @property
+    def _reverse_maps(self) -> dict[str, dict[int, str]]:
+        return self._device_client._reverse_maps
+
+    @property
+    def _device_name(self) -> str:
+        return self._device_client._device_name
+
+    @_device_name.setter
+    def _device_name(self, value: str) -> None:
+        self._device_client._device_name = value
 
     @property
     def device_scan_result(self) -> dict[str, Any] | None:
@@ -607,7 +573,9 @@ class ThesslaGreenModbusCoordinator(
             return
 
         self._reauth_scheduled = True
-        _LOGGER.warning("Starting reauthentication for %s (%s)", self._device_name, reason)
+        _LOGGER.warning(
+            "Starting reauthentication for %s (%s)", self._device_client._device_name, reason
+        )
         self.hass.async_create_task(self.entry.async_start_reauth(self.hass))
 
     def get_register_map(self, register_type: str) -> dict[str, int]:
@@ -655,9 +623,9 @@ class ThesslaGreenModbusCoordinator(
     def _warn_missing_device_info(self) -> None:
         """Log warnings when model or firmware could not be identified."""
         _warn_missing_device_info_impl(
-            device_info=self.device_info,
+            device_info=self._device_client.device_info,
             config=self.config,
-            device_name=self._device_name,
+            device_name=self._device_client._device_name,
             logger=_LOGGER,
             unknown_model=UNKNOWN_MODEL,
         )
@@ -720,11 +688,11 @@ class ThesslaGreenModbusCoordinator(
 
     async def _test_connection(self) -> None:
         """Test initial connection to the device."""
-        async with self._write_lock:
+        async with self._device_client._write_lock:
             await _run_connection_test_impl(
                 ensure_connection=self._ensure_connection,
-                get_transport=lambda: self._transport,
-                get_client=lambda: self.client,
+                get_transport=lambda: self._device_client._transport,
+                get_client=lambda: self._device_client.client,
                 slave_id=self.slave_id,
                 test_addresses=list(input_registers().values())[:3],
                 is_cancelled_error=is_request_cancelled_error,
@@ -794,7 +762,7 @@ class ThesslaGreenModbusCoordinator(
 
     async def _disconnect(self) -> None:
         """Disconnect from Modbus device."""
-        async with self._client_lock:
+        async with self._device_client._client_lock:
             await self._disconnect_locked()
 
     async def _async_handle_stop(self, _event: Any) -> None:

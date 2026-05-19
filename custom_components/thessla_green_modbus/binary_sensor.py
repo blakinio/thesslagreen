@@ -225,7 +225,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         attrs = {}
 
         # Add register information for debugging
-        if hasattr(self.coordinator, "device_scan_result") and self.coordinator.device_scan_result:
+        if self.coordinator.device_client.device_scan_result:
             attrs["register_name"] = self._register_name
             attrs["register_type"] = self._sensor_def["register_type"]
 

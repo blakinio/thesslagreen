@@ -258,7 +258,9 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         if register_name not in holding_registers():
             raise ValueError(f"Register {register_name} is not writable")
 
-        holding_regs = self.coordinator.available_registers.get("holding_registers", set())
+        holding_regs = self.coordinator.device_client.available_registers.get(
+            "holding_registers", set()
+        )
         if register_name not in holding_regs:
             _LOGGER.debug("Register %s unavailable, skipping write", register_name)
             return
@@ -276,7 +278,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         return (
             register_name in holding_registers()
             and register_name
-            in self.coordinator.available_registers.get("holding_registers", set())
+            in self.coordinator.device_client.available_registers.get("holding_registers", set())
         )
 
     @property
@@ -316,7 +318,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
         # Add last update time
         last_update = (
-            self.coordinator.statistics.get("last_successful_update")
+            self.coordinator.device_client.statistics.get("last_successful_update")
             or self.coordinator.last_update
         )
         if last_update is not None:
