@@ -83,7 +83,7 @@ async def _safe_disconnect_for_retry(
     if not callable(disconnect_cb):
         return None
 
-    previous_client = owner.client if restore_client else None
+    previous_client = owner.device_client.client if restore_client else None
     try:
         await disconnect_cb()  # pragma: no cover
     except DISCONNECT_EXCEPTIONS as disconnect_error:
@@ -91,12 +91,12 @@ async def _safe_disconnect_for_retry(
             register_type=register_type,
             start_address=start_address,
             attempt=attempt,
-            retry=owner.retry,
+            retry=owner.device_client.retry,
             error=disconnect_error,
         )
 
-    if restore_client and owner.client is None and previous_client is not None:
-        owner.client = previous_client
+    if restore_client and owner.device_client.client is None and previous_client is not None:
+        owner.device_client.client = previous_client
     return None
 
 
@@ -113,12 +113,12 @@ async def disconnect_and_reconnect_for_retry(
         register_type=register_type,
         start_address=start_address,
         attempt=attempt,
-        restore_client=owner._transport is None,
+        restore_client=owner.device_client._transport is None,
     )
     if disconnect_error is not None:
         return disconnect_error
 
-    if owner._transport is None:
+    if owner.device_client._transport is None:
         # Legacy/unit-test path that relies on ``self.client`` mocks.
         # Keep the existing client intact between attempts.
         return None
@@ -134,7 +134,7 @@ async def disconnect_and_reconnect_for_retry(
         log_coordinator_retry(
             operation=f"reconnect:{register_type}:{start_address}",
             attempt=attempt + 1,
-            max_attempts=owner.retry,
+            max_attempts=owner.device_client.retry,
             exc=reconnect,
             backoff=getattr(owner, "backoff", 0.0),
         )
@@ -153,7 +153,7 @@ async def _handle_retry_exception(
     timeout: bool = False,
 ) -> Exception:
     """Handle retryable read exception and return the most recent error."""
-    if attempt >= owner.retry:
+    if attempt >= owner.device_client.retry:
         raise exc
 
     if reconnect:
@@ -175,7 +175,7 @@ async def _handle_retry_exception(
             register_type,
             start_address,
             attempt,
-            owner.retry,
+            owner.device_client.retry,
             exc,
         )
         owner._log_read_retry(
@@ -190,7 +190,7 @@ async def _handle_retry_exception(
     log_coordinator_retry(
         operation=f"read:{register_type}:{start_address}",
         attempt=attempt,
-        max_attempts=owner.retry,
+        max_attempts=owner.device_client.retry,
         exc=exc,
         backoff=getattr(owner, "backoff", 0.0),
     )
@@ -214,7 +214,7 @@ async def read_with_retry(
 ) -> Any:
     """Read registers with retry/backoff on transient transport errors."""
     last_error: Exception | None = None
-    for attempt in range(1, owner.retry + 1):
+    for attempt in range(1, owner.device_client.retry + 1):
         try:
             response = await owner._execute_read_call(
                 read_method,

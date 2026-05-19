@@ -14,18 +14,18 @@ async def read_coil_registers_optimized(owner: Any) -> dict[str, Any]:
     """Read coil registers using optimized batch reading."""
     data: dict[str, Any] = {}
 
-    if "coil_registers" not in owner._register_groups:
+    if "coil_registers" not in owner.device_client._register_groups:
         return data
 
-    client = owner.client
+    client = owner.device_client.client
     if client is None or not getattr(client, "connected", True):
         raise ConnectionException("Modbus client is not connected")
 
     failed: set[str] = getattr(owner, "_failed_registers", set())
 
-    for start_addr, count in owner._register_groups["coil_registers"]:
+    for start_addr, count in owner.device_client._register_groups["coil_registers"]:
         for chunk_start, chunk_count in chunk_register_range(
-            start_addr, count, owner.effective_batch
+            start_addr, count, owner.device_client.effective_batch
         ):
             register_names = [
                 owner._find_register_name("coil_registers", chunk_start + i)
@@ -50,11 +50,11 @@ async def read_coil_registers_optimized(owner: Any) -> dict[str, Any]:
                     register_name = owner._find_register_name("coil_registers", addr)
                     if (
                         register_name
-                        and register_name in owner.available_registers["coil_registers"]
+                        and register_name in owner.device_client.available_registers["coil_registers"]
                     ):
                         bit = response.bits[i]
                         data[register_name] = bit
-                        owner.statistics["total_registers_read"] += 1
+                        owner.device_client.statistics["total_registers_read"] += 1
                         owner._clear_register_failure(register_name)
 
                 if len(response.bits) < chunk_count:
@@ -74,18 +74,18 @@ async def read_discrete_inputs_optimized(owner: Any) -> dict[str, Any]:
     """Read discrete input registers using optimized batch reading."""
     data: dict[str, Any] = {}
 
-    if "discrete_inputs" not in owner._register_groups:
+    if "discrete_inputs" not in owner.device_client._register_groups:
         return data
 
-    client = owner.client
+    client = owner.device_client.client
     if client is None or not getattr(client, "connected", True):
         raise ConnectionException("Modbus client is not connected")
 
     failed: set[str] = getattr(owner, "_failed_registers", set())
 
-    for start_addr, count in owner._register_groups["discrete_inputs"]:
+    for start_addr, count in owner.device_client._register_groups["discrete_inputs"]:
         for chunk_start, chunk_count in chunk_register_range(
-            start_addr, count, owner.effective_batch
+            start_addr, count, owner.device_client.effective_batch
         ):
             register_names = [
                 owner._find_register_name("discrete_inputs", chunk_start + i)
@@ -110,11 +110,11 @@ async def read_discrete_inputs_optimized(owner: Any) -> dict[str, Any]:
                     register_name = owner._find_register_name("discrete_inputs", addr)
                     if (
                         register_name
-                        and register_name in owner.available_registers["discrete_inputs"]
+                        and register_name in owner.device_client.available_registers["discrete_inputs"]
                     ):
                         bit = response.bits[i]
                         data[register_name] = bit
-                        owner.statistics["total_registers_read"] += 1
+                        owner.device_client.statistics["total_registers_read"] += 1
                         owner._clear_register_failure(register_name)
 
                 if len(response.bits) < chunk_count:

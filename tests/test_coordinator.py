@@ -60,8 +60,8 @@ def test_coordinator_clamps_effective_batch():
         name="test",
         entry=entry,
     )
-    assert coord.effective_batch == MAX_BATCH_REGISTERS
-    assert coord.max_registers_per_request == MAX_BATCH_REGISTERS
+    assert coord.device_client.effective_batch == MAX_BATCH_REGISTERS
+    assert coord.device_client.max_registers_per_request == MAX_BATCH_REGISTERS
 
 
 @pytest.mark.asyncio
@@ -73,7 +73,7 @@ async def test_async_write_multi_register_start(coordinator, monkeypatch):
     response = MagicMock()
     response.isError.return_value = False
     client.write_registers = AsyncMock(return_value=response)
-    coordinator.client = client
+    coordinator.device_client.client = client
 
     import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
@@ -99,7 +99,7 @@ async def test_async_write_multi_register_with_offset(coordinator, monkeypatch):
     response = MagicMock()
     response.isError.return_value = False
     client.write_registers = AsyncMock(return_value=response)
-    coordinator.client = client
+    coordinator.device_client.client = client
 
     import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
@@ -125,7 +125,7 @@ async def test_async_write_multi_register_non_start(coordinator, monkeypatch):
     client = MagicMock()
     client.write_registers = AsyncMock()
     client.write_register = AsyncMock()
-    coordinator.client = client
+    coordinator.device_client.client = client
 
     import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
@@ -148,7 +148,7 @@ async def test_async_write_multi_register_wrong_length(coordinator, monkeypatch)
     coordinator._ensure_connection = AsyncMock()
     client = MagicMock()
     client.write_registers = AsyncMock()
-    coordinator.client = client
+    coordinator.device_client.client = client
 
     import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
@@ -175,14 +175,14 @@ async def test_async_write_multi_register_wrong_length(coordinator, monkeypatch)
 )
 async def test_async_write_register_chunks(coordinator, batch, expected_calls, monkeypatch):
     """Writes are chunked according to configured batch size."""
-    coordinator.max_registers_per_request = batch
-    coordinator.effective_batch = min(batch, MAX_BATCH_REGISTERS)
+    coordinator.device_client.max_registers_per_request = batch
+    coordinator.device_client.effective_batch = min(batch, MAX_BATCH_REGISTERS)
     coordinator._ensure_connection = AsyncMock()
     client = MagicMock()
     response = MagicMock()
     response.isError.return_value = False
     client.write_registers = AsyncMock(return_value=response)
-    coordinator.client = client
+    coordinator.device_client.client = client
     coordinator.async_request_refresh = AsyncMock()
 
     import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
@@ -195,21 +195,21 @@ async def test_async_write_register_chunks(coordinator, batch, expected_calls, m
     assert result is True
     assert client.write_registers.await_count == expected_calls
     for call in client.write_registers.await_args_list:
-        assert len(call.kwargs["values"]) <= coordinator.effective_batch
+        assert len(call.kwargs["values"]) <= coordinator.device_client.effective_batch
     coordinator.async_request_refresh.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_async_write_register_truncates_over_limit(coordinator, monkeypatch):
     """Batch sizes over the limit are truncated to the maximum when writing."""
-    coordinator.max_registers_per_request = 100
-    coordinator.effective_batch = MAX_BATCH_REGISTERS
+    coordinator.device_client.max_registers_per_request = 100
+    coordinator.device_client.effective_batch = MAX_BATCH_REGISTERS
     coordinator._ensure_connection = AsyncMock()
     client = MagicMock()
     response = MagicMock()
     response.isError.return_value = False
     client.write_registers = AsyncMock(return_value=response)
-    coordinator.client = client
+    coordinator.device_client.client = client
     coordinator.async_request_refresh = AsyncMock()
 
     import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
@@ -232,11 +232,11 @@ async def test_async_write_register_truncates_over_limit(coordinator, monkeypatc
 async def test_read_holding_registers_chunking_and_retries(coordinator):
     """Read path retries on errors and honours chunk sizes."""
 
-    coordinator.client = MagicMock()
-    coordinator.client.connected = True
-    coordinator.retry = 2
+    coordinator.device_client.client = MagicMock()
+    coordinator.device_client.client.connected = True
+    coordinator.device_client.retry = 2
 
-    coordinator._register_groups = {
+    coordinator.device_client._register_groups = {
         "holding_registers": [
             (0, MAX_BATCH_REGISTERS),
             (MAX_BATCH_REGISTERS, 4),
@@ -244,7 +244,7 @@ async def test_read_holding_registers_chunking_and_retries(coordinator):
         ]
     }
     names = {f"reg{i}" for i in range(MAX_BATCH_REGISTERS + 5)}
-    coordinator.available_registers["holding_registers"] = names
+    coordinator.device_client.available_registers["holding_registers"] = names
     coordinator._find_register_name = lambda _kind, addr: f"reg{addr}"
     coordinator._process_register_value = lambda _name, value: value
     coordinator._clear_register_failure = lambda _name: None
@@ -254,7 +254,7 @@ async def test_read_holding_registers_chunking_and_retries(coordinator):
     response2 = SimpleNamespace(registers=[2] * 4, isError=lambda: False)
     response3 = SimpleNamespace(registers=[3], isError=lambda: False)
 
-    coordinator.client.read_holding_registers = AsyncMock(
+    coordinator.device_client.client.read_holding_registers = AsyncMock(
         side_effect=[
             TimeoutError(),
             response1,
@@ -266,8 +266,8 @@ async def test_read_holding_registers_chunking_and_retries(coordinator):
 
     data = await coordinator._read_holding_registers_optimized()
 
-    assert coordinator.client.read_holding_registers.await_count == 5
-    counts = [c.kwargs["count"] for c in coordinator.client.read_holding_registers.await_args_list]
+    assert coordinator.device_client.client.read_holding_registers.await_count == 5
+    counts = [c.kwargs["count"] for c in coordinator.device_client.client.read_holding_registers.await_args_list]
     assert counts == [MAX_BATCH_REGISTERS, MAX_BATCH_REGISTERS, 4, 4, 1]
     assert data["reg0"] == 1
     assert data[f"reg{MAX_BATCH_REGISTERS}"] == 2
@@ -284,10 +284,10 @@ def test_reverse_lookup_maps(coordinator):
     """Ensure reverse register maps resolve addresses to names."""
 
     addr = INPUT_REGISTERS["outside_temperature"]
-    assert coordinator._input_registers_rev[addr] == "outside_temperature"
+    assert coordinator.device_client._input_registers_rev[addr] == "outside_temperature"
 
     h_addr = HOLDING_REGISTERS["mode"]
-    assert coordinator._holding_registers_rev[h_addr] == "mode"
+    assert coordinator.device_client._holding_registers_rev[h_addr] == "mode"
 
 
 def test_reverse_lookup_performance(coordinator):
@@ -300,7 +300,7 @@ def test_reverse_lookup_performance(coordinator):
     start = time.perf_counter()
     for _ in range(iterations):
         for addr in addresses:
-            coordinator._input_registers_rev.get(addr)
+            coordinator.device_client._input_registers_rev.get(addr)
     dict_time = time.perf_counter() - start
 
     def linear_search(register_map, address):
@@ -333,12 +333,12 @@ def test_coordinator_initialization():
         timeout=10,
         retry=3,
     )
-    coordinator.available_registers = available_registers
+    coordinator.device_client.available_registers = available_registers
 
     assert coordinator.host == "192.168.1.100"
     assert coordinator.port == 502
     assert coordinator.slave_id == 10
-    assert coordinator.timeout == 10
+    assert coordinator.device_client.timeout == 10
 
 
 @pytest.mark.asyncio
@@ -369,7 +369,7 @@ async def test_reconfigure_does_not_leak_connections(coordinator):
         for _ in range(3):
             await coordinator._ensure_connection()
             assert FakeClient.open_connections == 1
-            coordinator.client.connected = False
+            coordinator.device_client.client.connected = False
 
         await coordinator._disconnect()
         assert FakeClient.open_connections == 0
@@ -378,8 +378,8 @@ async def test_reconfigure_does_not_leak_connections(coordinator):
 @pytest.mark.asyncio
 async def test_missing_client_raises_connection_exception(coordinator):
     """Missing client should raise ConnectionException instead of AttributeError."""
-    coordinator.client = None
-    coordinator._register_groups = {
+    coordinator.device_client.client = None
+    coordinator.device_client._register_groups = {
         "input_registers": [(0, 1)],
         "holding_registers": [(0, 1)],
         "coil_registers": [(0, 1)],
@@ -397,7 +397,7 @@ async def test_missing_client_raises_connection_exception(coordinator):
 @pytest.mark.asyncio
 async def test_async_update_data_missing_client(coordinator):
     """_async_update_data should raise UpdateFailed when client cannot be established."""
-    coordinator.client = None
+    coordinator.device_client.client = None
     coordinator._ensure_connection = AsyncMock()
 
     with pytest.raises(UpdateFailed):
@@ -408,8 +408,8 @@ async def test_async_update_data_missing_client(coordinator):
 async def test_setup_and_refresh_no_cancelled_error(coordinator):
     """Successful setup and refresh should not raise CancelledError."""
     coordinator._ensure_connection = AsyncMock()
-    coordinator.client = MagicMock()
-    coordinator.client.connected = True
+    coordinator.device_client.client = MagicMock()
+    coordinator.device_client.client.connected = True
 
     result = await coordinator._async_setup_client()
     assert result is True
@@ -454,7 +454,7 @@ async def test_capabilities_loaded_from_config_entry():
     coordinator._test_connection = AsyncMock()
     await coordinator.async_setup()
 
-    assert coordinator.capabilities.expansion_module is True
+    assert coordinator.device_client.capabilities.expansion_module is True
 
 
 def test_apply_scan_cache_normalises_legacy_error_status_names(coordinator):
@@ -472,10 +472,10 @@ def test_apply_scan_cache_normalises_legacy_error_status_names(coordinator):
     }
 
     assert coordinator._apply_scan_cache(cache) is True
-    assert "e_108" in coordinator.available_registers["holding_registers"]
-    assert "s_28" in coordinator.available_registers["holding_registers"]
-    assert "e108" not in coordinator.available_registers["holding_registers"]
-    assert "s28" not in coordinator.available_registers["holding_registers"]
+    assert "e_108" in coordinator.device_client.available_registers["holding_registers"]
+    assert "s_28" in coordinator.device_client.available_registers["holding_registers"]
+    assert "e108" not in coordinator.device_client.available_registers["holding_registers"]
+    assert "s28" not in coordinator.device_client.available_registers["holding_registers"]
 
 
 @pytest.mark.asyncio
@@ -512,13 +512,13 @@ async def test_async_update_data_handles_cancellation(coordinator) -> None:
     """Cancellation must close transport but not increment failure counters."""
     coordinator._ensure_connection = AsyncMock()
     coordinator._disconnect = AsyncMock()
-    coordinator.client = MagicMock(connected=True)
+    coordinator.device_client.client = MagicMock(connected=True)
     coordinator._read_input_registers_optimized = AsyncMock(side_effect=asyncio.CancelledError())
 
-    failed_before = coordinator.statistics["failed_reads"]
+    failed_before = coordinator.device_client.statistics["failed_reads"]
 
     with pytest.raises(asyncio.CancelledError):
         await coordinator._async_update_data()
 
-    assert coordinator.statistics["failed_reads"] == failed_before
+    assert coordinator.device_client.statistics["failed_reads"] == failed_before
     coordinator._disconnect.assert_awaited_once()

@@ -254,28 +254,28 @@ async def test_disconnected_client_no_warning_spam(caplog) -> None:
         timeout=5,
         retry=3,
     )
-    coordinator.available_registers = {
+    coordinator.device_client.available_registers = {
         "holding_registers": {"mode", "air_flow_rate_manual"},
         "input_registers": set(),
         "coil_registers": set(),
         "discrete_inputs": set(),
     }
-    coordinator._register_groups = {
+    coordinator.device_client._register_groups = {
         "holding_registers": [(100, 2), (200, 2), (300, 2)],
     }
     coordinator.device_client._failed_registers = set()
-    coordinator.effective_batch = 10
+    coordinator.device_client.effective_batch = 10
     coordinator._find_register_name = lambda rt, addr: "mode"
     coordinator._process_register_value = lambda _name, value: value
     coordinator._clear_register_failure = MagicMock()
     coordinator._mark_registers_failed = MagicMock()
 
     conn_exc = ConnectionException("Modbus client is not connected")
-    coordinator._transport = SimpleNamespace(
+    coordinator.device_client._transport = SimpleNamespace(
         is_connected=lambda: True,
         read_holding_registers=AsyncMock(),
     )
-    coordinator.client = None
+    coordinator.device_client.client = None
     coordinator._read_with_retry = AsyncMock(side_effect=conn_exc)
     coordinator._disconnect = AsyncMock()
 

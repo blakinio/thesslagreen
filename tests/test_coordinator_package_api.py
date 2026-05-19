@@ -38,13 +38,13 @@ def test_coordinator_init_entry_bad_max_registers_per_request():
     )
     from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
 
-    assert coord.effective_batch == MAX_BATCH_REGISTERS
+    assert coord.device_client.effective_batch == MAX_BATCH_REGISTERS
 
 
 def test_coordinator_init_max_registers_less_than_1():
     """effective_batch < 1 is raised to 1 (lines 375-376)."""
     coord = _make_coordinator(max_registers_per_request=0)
-    assert coord.effective_batch == 1
+    assert coord.device_client.effective_batch == 1
 
 
 def test_coordinator_init_entry_bad_capabilities():
@@ -71,7 +71,7 @@ def test_coordinator_init_entry_bad_capabilities():
             hass=hass, host="localhost", port=502, slave_id=1, entry=entry
         )
     # Should not raise; capabilities falls back to default (no capabilities set)
-    assert isinstance(coord.capabilities, DeviceCapabilities)
+    assert isinstance(coord.device_client.capabilities, DeviceCapabilities)
 
 
 # ---------------------------------------------------------------------------
@@ -82,13 +82,13 @@ def test_coordinator_init_entry_bad_capabilities():
 def test_coordinator_init_jitter_list_with_bad_values():
     """backoff_jitter=[None, None] triggers except (TypeError, ValueError) → jitter_value=None."""
     coord = _make_coordinator(backoff_jitter=[None, None])
-    assert coord.backoff_jitter is None
+    assert coord.device_client.backoff_jitter is None
 
 
 def test_coordinator_init_jitter_else_none():
     """backoff_jitter=None hits else branch → jitter_value = None."""
     coord = _make_coordinator(backoff_jitter=None)
-    assert coord.backoff_jitter is None
+    assert coord.device_client.backoff_jitter is None
 
 
 def test_coordinator_init_jitter_else_default():
@@ -96,7 +96,7 @@ def test_coordinator_init_jitter_else_default():
     from custom_components.thessla_green_modbus.const import DEFAULT_BACKOFF_JITTER
 
     coord = _make_coordinator(backoff_jitter={})
-    assert coord.backoff_jitter == DEFAULT_BACKOFF_JITTER
+    assert coord.device_client.backoff_jitter == DEFAULT_BACKOFF_JITTER
 
 
 # ---------------------------------------------------------------------------
@@ -114,7 +114,7 @@ async def test_async_setup_force_full_register_list():
     result = await coord.async_setup()
     assert result is True
     # All registers should be loaded
-    assert len(coord.available_registers["input_registers"]) > 0
+    assert len(coord.device_client.available_registers["input_registers"]) > 0
 
 
 @pytest.mark.asyncio
@@ -122,7 +122,7 @@ async def test_async_setup_scan_disabled_no_entry():
     """scan disabled with no entry falls back to full register list (lines 720-728)."""
     coord = _make_coordinator()
     coord.enable_device_scan = False
-    coord.force_full_register_list = False
+    coord.device_client.force_full_register_list = False
     coord.entry = None
     coord._ensure_connection = AsyncMock()
     coord._test_connection = AsyncMock()
@@ -138,7 +138,7 @@ async def test_async_setup_rtu_connection_type():
 
     coord = _make_coordinator(connection_type=CONNECTION_TYPE_RTU, serial_port="/dev/ttyUSB0")
     coord.enable_device_scan = False
-    coord.force_full_register_list = False
+    coord.device_client.force_full_register_list = False
     coord.entry = None
     coord._ensure_connection = AsyncMock()
     coord._test_connection = AsyncMock()
@@ -157,7 +157,7 @@ def test_load_full_register_list_skips_missing():
     coord = _make_coordinator(skip_missing_registers=True)
     coord._load_full_register_list()
     # Should have loaded registers without raising
-    assert isinstance(coord.available_registers, dict)
+    assert isinstance(coord.device_client.available_registers, dict)
 
 
 # ---------------------------------------------------------------------------

@@ -50,7 +50,7 @@ class ThesslaGreenEntity(CoordinatorEntity):
     def unique_id(self) -> str:
         """Return unique ID for this entity."""
         bit_suffix = f"_bit{self._bit}" if self._bit is not None else ""
-        device_info = getattr(self.coordinator, "device_info", {}) or {}
+        device_info = getattr(self.coordinator.device_client, "device_info", {}) or {}
         serial_number = device_info.get("serial_number")
         prefix = device_unique_id_prefix(
             serial_number,
@@ -72,7 +72,7 @@ class ThesslaGreenEntity(CoordinatorEntity):
     def _coordinator_connected(self) -> bool:
         """Return True when coordinator has an up-to-date online state."""
         return self.coordinator.last_update_success and not getattr(
-            self.coordinator, "offline_state", False
+            self.coordinator.device_client, "offline_state", False
         )
 
     def _has_value(self, key: str) -> bool:

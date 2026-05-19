@@ -17,8 +17,8 @@ from tests.helpers_coordinator import make_coordinator as _make_coordinator
 @pytest.mark.asyncio
 async def test_read_coils_transport_raises_when_no_client():
     coord = _make_coordinator()
-    coord.client = None
-    coord._transport = None
+    coord.device_client.client = None
+    coord.device_client._transport = None
     with pytest.raises(ConnectionException):
         await coord._read_coils_transport(1, 0, count=1)
 
@@ -26,8 +26,8 @@ async def test_read_coils_transport_raises_when_no_client():
 @pytest.mark.asyncio
 async def test_read_discrete_inputs_transport_raises_when_no_client():
     coord = _make_coordinator()
-    coord.client = None
-    coord._transport = None
+    coord.device_client.client = None
+    coord.device_client._transport = None
     with pytest.raises(ConnectionException):
         await coord._read_discrete_inputs_transport(1, 0, count=1)
 
@@ -35,7 +35,7 @@ async def test_read_discrete_inputs_transport_raises_when_no_client():
 @pytest.mark.asyncio
 async def test_read_with_retry_awaitable_returning_none_raises():
     coord = _make_coordinator()
-    coord.retry = 1
+    coord.device_client.retry = 1
 
     async def read_method(slave_id, addr, *, count, attempt):
         return None
@@ -47,7 +47,7 @@ async def test_read_with_retry_awaitable_returning_none_raises():
 @pytest.mark.asyncio
 async def test_read_with_retry_transient_error_raises_modbus_io():
     coord = _make_coordinator()
-    coord.retry = 1
+    coord.device_client.retry = 1
     error_response = MagicMock()
     error_response.isError.return_value = True
     error_response.exception_code = 3

@@ -38,11 +38,11 @@ def _merge_batch_read_results(
     for i, value in enumerate(response.registers):
         addr = chunk_start + i
         register_name = owner._find_register_name("input_registers", addr)
-        if register_name and register_name in owner.available_registers["input_registers"]:
+        if register_name and register_name in owner.device_client.available_registers["input_registers"]:
             processed_value = owner._process_register_value(register_name, value)
             if processed_value is not None:
                 data[register_name] = processed_value
-                owner.statistics["total_registers_read"] += 1
+                owner.device_client.statistics["total_registers_read"] += 1
                 owner._clear_register_failure(register_name)
 
 
@@ -64,7 +64,7 @@ async def _fallback_individual_input_reads(
                 pv = owner._process_register_value(reg_name, single.registers[0])
                 if pv is not None:
                     data[reg_name] = pv
-                    owner.statistics["total_registers_read"] += 1
+                    owner.device_client.statistics["total_registers_read"] += 1
                     owner._clear_register_failure(reg_name)
                 else:
                     owner._mark_registers_failed([reg_name])
@@ -128,11 +128,11 @@ async def read_input_registers_optimized(owner: Any) -> dict[str, Any]:
     """Read input registers using optimized batch reading."""
     data: dict[str, Any] = {}
 
-    if "input_registers" not in owner._register_groups:
+    if "input_registers" not in owner.device_client._register_groups:
         return data
 
-    transport = owner._transport
-    client = owner.client
+    transport = owner.device_client._transport
+    client = owner.device_client.client
     if transport is not None and transport.is_connected():
         read_method = transport.read_input_registers
     elif client is not None and getattr(client, "connected", True):
@@ -149,9 +149,9 @@ async def read_input_registers_optimized(owner: Any) -> dict[str, Any]:
 
     failed: set[str] = getattr(owner, "_failed_registers", set())
 
-    for start_addr, count in owner._register_groups["input_registers"]:
+    for start_addr, count in owner.device_client._register_groups["input_registers"]:
         for chunk_start, chunk_count in chunk_register_range(
-            start_addr, count, owner.effective_batch
+            start_addr, count, owner.device_client.effective_batch
         ):
             register_names = [
                 owner._find_register_name("input_registers", chunk_start + i)
@@ -182,7 +182,7 @@ async def read_holding_individually(
                 pv = owner._process_register_value(reg_name, single.registers[0])
                 if pv is not None:
                     data[reg_name] = pv
-                    owner.statistics["total_registers_read"] += 1
+                    owner.device_client.statistics["total_registers_read"] += 1
                     owner._clear_register_failure(reg_name)
                 else:
                     owner._mark_registers_failed([reg_name])
@@ -200,11 +200,11 @@ async def read_holding_registers_optimized(owner: Any) -> dict[str, Any]:
     """Read holding registers using optimized batch reading."""
     data: dict[str, Any] = {}
 
-    if "holding_registers" not in owner._register_groups:
+    if "holding_registers" not in owner.device_client._register_groups:
         return data
 
-    transport = owner._transport
-    client = owner.client
+    transport = owner.device_client._transport
+    client = owner.device_client.client
     if transport is not None and transport.is_connected():
         read_method = transport.read_holding_registers
     elif client is not None and getattr(client, "connected", True):
@@ -222,9 +222,9 @@ async def read_holding_registers_optimized(owner: Any) -> dict[str, Any]:
 
     failed: set[str] = getattr(owner, "_failed_registers", set())
 
-    for start_addr, count in owner._register_groups["holding_registers"]:
+    for start_addr, count in owner.device_client._register_groups["holding_registers"]:
         for chunk_start, chunk_count in chunk_register_range(
-            start_addr, count, owner.effective_batch
+            start_addr, count, owner.device_client.effective_batch
         ):
             register_names = [
                 owner._find_register_name("holding_registers", chunk_start + i)
@@ -245,12 +245,12 @@ async def read_holding_registers_optimized(owner: Any) -> dict[str, Any]:
                     register_name = owner._find_register_name("holding_registers", addr)
                     if (
                         register_name
-                        and register_name in owner.available_registers["holding_registers"]
+                        and register_name in owner.device_client.available_registers["holding_registers"]
                     ):
                         processed_value = owner._process_register_value(register_name, value)
                         if processed_value is not None:
                             data[register_name] = processed_value
-                            owner.statistics["total_registers_read"] += 1
+                            owner.device_client.statistics["total_registers_read"] += 1
                             owner._clear_register_failure(register_name)
 
                 if len(response.registers) < chunk_count:

@@ -83,10 +83,10 @@ class _ModbusIOMixin:
     async def _read_coils_transport(
         self, _slave_id: int, address: int, *, count: int, attempt: int = 1
     ) -> Any:
-        if not self.client:
+        if not self.device_client.client:
             raise ConnectionException("Modbus client is not connected")
         return await self._call_modbus(
-            self.client.read_coils,
+            self.device_client.client.read_coils,
             address,
             count=count,
             attempt=attempt,
@@ -95,10 +95,10 @@ class _ModbusIOMixin:
     async def _read_discrete_inputs_transport(
         self, _slave_id: int, address: int, *, count: int, attempt: int = 1
     ) -> Any:
-        if not self.client:
+        if not self.device_client.client:
             raise ConnectionException("Modbus client is not connected")
         return await self._call_modbus(
-            self.client.read_discrete_inputs,
+            self.device_client.client.read_discrete_inputs,
             address,
             count=count,
             attempt=attempt,

@@ -39,19 +39,20 @@ class _Coordinator:
     def __init__(self, write_result=True):
         self.async_write_register = AsyncMock(return_value=write_result)
         self.async_request_refresh = AsyncMock()
-        self.effective_batch = 2
-        self.available_registers = {
-            "holding_registers": {r.name for r in get_registers_by_function("03")}
-        }
         self.data = {}
         self.host = "127.0.0.1"
         self.port = 502
         self.slave_id = 1
-        self.timeout = 5
-        self.retry = 3
-        self.device_client = SimpleNamespace(scan_uart_settings=False)
-        self.unknown_registers = {}
-        self.scanned_registers = {}
+        self.device_client = SimpleNamespace(
+            scan_uart_settings=False,
+            effective_batch=2,
+            available_registers={"holding_registers": {r.name for r in get_registers_by_function("03")}},
+            timeout=5,
+            retry=3,
+            unknown_registers={},
+            scanned_registers={},
+            device_scan_result=None,
+        )
 
 
 def _make_hass(coordinator=None):
@@ -108,8 +109,8 @@ async def test_refresh_device_data(monkeypatch):
 async def test_get_unknown_registers(monkeypatch):
     """get_unknown_registers fires event with unknown_registers data."""
     coord = _Coordinator()
-    coord.unknown_registers = {"input": [100, 101]}
-    coord.scanned_registers = {"input": [100]}
+    coord.device_client.unknown_registers = {"input": [100, 101]}
+    coord.device_client.scanned_registers = {"input": [100]}
     hass = _make_hass()
     handler = await _setup_and_get(hass, "get_unknown_registers", coord, monkeypatch)
 
@@ -156,7 +157,7 @@ async def test_scan_all_registers(monkeypatch):
     assert result is not None
     assert "climate.dev" in result
     assert result["climate.dev"]["summary"]["register_count"] == 10
-    assert coord.device_scan_result == scan_result
+    assert coord.device_client.device_scan_result == scan_result
 
 
 @pytest.mark.asyncio

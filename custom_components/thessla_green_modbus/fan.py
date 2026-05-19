@@ -46,9 +46,9 @@ async def async_setup_entry(
 
     has_fan_registers = False
     for register in fan_registers:
-        if register in coordinator.available_registers.get(
+        if register in coordinator.device_client.available_registers.get(
             "holding_registers", set()
-        ) or register in coordinator.available_registers.get("input_registers", set()):
+        ) or register in coordinator.device_client.available_registers.get("input_registers", set()):
             has_fan_registers = True
             break
 

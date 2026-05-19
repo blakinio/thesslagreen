@@ -112,7 +112,7 @@ def test_fire_alarm_raw_true_means_no_alarm(mock_coordinator):
     """
     defn = BINARY_SENSOR_DEFINITIONS["fire_alarm"]
     reg_type = defn["register_type"]
-    address = mock_coordinator._register_maps[reg_type]["fire_alarm"]
+    address = mock_coordinator.device_client._register_maps[reg_type]["fire_alarm"]
     sensor = ThesslaGreenBinarySensor(mock_coordinator, "fire_alarm", address, defn)
 
     # NC closed → safe
@@ -144,7 +144,7 @@ def test_dp_duct_filter_overflow_raw_true_is_problem(mock_coordinator):
     """
     defn = BINARY_SENSOR_DEFINITIONS["dp_duct_filter_overflow"]
     reg_type = defn["register_type"]
-    address = mock_coordinator._register_maps[reg_type]["dp_duct_filter_overflow"]
+    address = mock_coordinator.device_client._register_maps[reg_type]["dp_duct_filter_overflow"]
     sensor = ThesslaGreenBinarySensor(mock_coordinator, "dp_duct_filter_overflow", address, defn)
 
     mock_coordinator.data["dp_duct_filter_overflow"] = True
@@ -177,10 +177,10 @@ def test_serial_number_sensor_unavailable_does_not_crash(mock_coordinator):
     defn = ENTITY_MAPPINGS["sensor"].get("serial_number", {"translation_key": "serial_number"})
     sensor = ThesslaGreenSerialNumberSensor(mock_coordinator, "serial_number", 100, defn)
 
-    mock_coordinator.device_info = {}
+    mock_coordinator.device_client.device_info = {}
     assert sensor.native_value is None
 
-    mock_coordinator.device_info = {"serial_number": "Unknown"}
+    mock_coordinator.device_client.device_info = {"serial_number": "Unknown"}
     assert sensor.native_value is None
 
 

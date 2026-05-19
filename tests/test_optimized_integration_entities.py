@@ -18,10 +18,10 @@ class TestThesslaGreenClimate:
         coordinator = MagicMock()
         coordinator.host = "192.168.1.100"
         coordinator.slave_id = 10
-        coordinator.device_scan_result = {
+        coordinator.device_client.device_scan_result = {
             "device_info": {"device_name": "Test AirPack", "firmware": "4.85.0"}
         }
-        coordinator.available_registers = {
+        coordinator.device_client.available_registers = {
             "holding_registers": {"mode", "on_off_panel_mode", "air_flow_rate_manual"}
         }
         coordinator.data = {
@@ -33,7 +33,7 @@ class TestThesslaGreenClimate:
             "special_mode": 0,
         }
         coordinator.async_write_register = AsyncMock(return_value=True)
-        coordinator._register_maps = {
+        coordinator.device_client._register_maps = {
             "input_registers": input_registers(),
             "holding_registers": holding_registers(),
             "coil_registers": coil_registers(),

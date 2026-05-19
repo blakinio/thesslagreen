@@ -28,7 +28,7 @@ def coordinator() -> ThesslaGreenModbusCoordinator:
         timeout=10,
         retry=3,
     )
-    coord.available_registers = available_registers
+    coord.device_client.available_registers = available_registers
     return coord
 
 
@@ -48,13 +48,13 @@ async def test_async_write_valid_register(coordinator):
     response = MagicMock()
     response.isError.return_value = False
     client.write_register = AsyncMock(return_value=response)
-    coordinator.client = client
+    coordinator.device_client.client = client
 
     lock_state_during_refresh = None
 
     async def refresh_side_effect():
         nonlocal lock_state_during_refresh
-        lock_state_during_refresh = coordinator._write_lock.locked()
+        lock_state_during_refresh = coordinator.device_client._write_lock.locked()
 
     coordinator.async_request_refresh = AsyncMock(side_effect=refresh_side_effect)
 
@@ -69,7 +69,7 @@ async def test_async_write_valid_register(coordinator):
 async def test_async_write_register_numeric_out_of_range(coordinator, monkeypatch):
     """Numeric values outside defined range should raise."""
     coordinator._ensure_connection = AsyncMock()
-    coordinator.client = MagicMock()
+    coordinator.device_client.client = MagicMock()
 
     import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
@@ -84,7 +84,7 @@ async def test_async_write_register_numeric_out_of_range(coordinator, monkeypatc
 async def test_async_write_register_enum_invalid(coordinator, monkeypatch):
     """Invalid enum values should raise and be propagated."""
     coordinator._ensure_connection = AsyncMock()
-    coordinator.client = MagicMock()
+    coordinator.device_client.client = MagicMock()
 
     import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
@@ -113,7 +113,7 @@ def test_validate_multi_register_write_request_limits(coordinator):
 
 def test_plan_multi_register_chunks_respects_single_request(coordinator):
     """Single-request mode should avoid chunking."""
-    coordinator.effective_batch = 2
+    coordinator.device_client.effective_batch = 2
     assert coordinator._plan_multi_register_chunks(200, [1, 2, 3], True) == [(200, [1, 2, 3])]
     assert coordinator._plan_multi_register_chunks(200, [1, 2, 3], False) == [
         (200, [1, 2]),
@@ -150,8 +150,8 @@ def test_handle_write_response_failure_logs_error(coordinator, caplog):
 @pytest.mark.asyncio
 async def test_handle_write_attempt_exception_timeout_disconnects_transport(coordinator, caplog):
     """Timeout should disconnect transport, log warning, and request retry."""
-    coordinator.retry = 3
-    coordinator._transport = MagicMock()
+    coordinator.device_client.retry = 3
+    coordinator.device_client._transport = MagicMock()
     coordinator._disconnect = AsyncMock()
 
     caplog.set_level("WARNING")
@@ -176,7 +176,7 @@ async def test_handle_write_attempt_exception_final_modbus_failure(coordinator, 
     """Final Modbus/connection failure should stop retries."""
     from pymodbus.exceptions import ModbusException
 
-    coordinator.retry = 2
+    coordinator.device_client.retry = 2
     coordinator._disconnect = AsyncMock()
     caplog.set_level("ERROR")
 

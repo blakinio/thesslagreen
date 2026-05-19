@@ -115,12 +115,12 @@ def test_disconnect_closes_client():
         )
 
         client = AsyncMock()
-        coordinator.client = client
+        coordinator.device_client.client = client
 
         await coordinator._disconnect()
 
         client.close.assert_awaited_once()
-        assert coordinator.client is None
+        assert coordinator.device_client.client is None
 
     import asyncio
 
@@ -144,12 +144,12 @@ def test_disconnect_closes_client_sync():
         )
 
         client = MagicMock()
-        coordinator.client = client
+        coordinator.device_client.client = client
 
         await coordinator._disconnect()
 
         client.close.assert_called_once()
-        assert coordinator.client is None
+        assert coordinator.device_client.client is None
 
     import asyncio
 

@@ -25,7 +25,7 @@ class TestThesslaGreenModbusCoordinator:
             timeout=10,
             retry=3,
         )
-        coordinator.available_registers = {
+        coordinator.device_client.available_registers = {
             "input_registers": {"outside_temperature", "supply_temperature"},
             "holding_registers": {"mode", "on_off_panel_mode"},
         }
@@ -39,7 +39,7 @@ class TestThesslaGreenModbusCoordinator:
             "mode": 0,
             "on_off_panel_mode": 1,
         }
-        coordinator_data.client = MagicMock()
+        coordinator_data.device_client.client = MagicMock()
         with (
             patch.object(coordinator_data, "_ensure_connection", AsyncMock()),
             patch.object(
@@ -76,7 +76,7 @@ class TestThesslaGreenModbusCoordinator:
         mock_client = AsyncMock()
         mock_client.write_register.return_value = mock_response
         with patch.object(coordinator_data, "_ensure_connection", AsyncMock()):
-            coordinator_data.client = mock_client
+            coordinator_data.device_client.client = mock_client
             result = await coordinator_data.async_write_register("mode", 1)
         assert result is True
 

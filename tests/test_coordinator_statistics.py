@@ -13,18 +13,18 @@ def test_status_overview_no_last_update():
 
 def test_status_overview_with_last_update_and_connected_transport():
     coord = _make_coordinator()
-    coord.statistics["last_successful_update"] = _utcnow()
+    coord.device_client.statistics["last_successful_update"] = _utcnow()
     transport = MagicMock()
     transport.is_connected.return_value = True
-    coord._transport = transport
+    coord.device_client._transport = transport
     assert coord.status_overview["online"] is True
 
 
 def test_status_overview_counts_all_errors():
     coord = _make_coordinator()
-    coord.statistics["failed_reads"] = 2
-    coord.statistics["connection_errors"] = 3
-    coord.statistics["timeout_errors"] = 1
+    coord.device_client.statistics["failed_reads"] = 2
+    coord.device_client.statistics["connection_errors"] = 3
+    coord.device_client.statistics["timeout_errors"] = 1
     assert coord.status_overview["error_count"] == 6
 
 
@@ -35,20 +35,20 @@ def test_performance_stats_structure():
 
 def test_performance_stats_success_rate():
     coord = _make_coordinator()
-    coord.statistics["successful_reads"] = 10
-    coord.statistics["failed_reads"] = 0
+    coord.device_client.statistics["successful_reads"] = 10
+    coord.device_client.statistics["failed_reads"] = 0
     assert coord.performance_stats["success_rate"] == 100.0
 
 
 def test_get_diagnostic_data_structure():
     coord = _make_coordinator()
-    coord.last_scan = _utcnow()
-    coord.statistics["last_successful_update"] = _utcnow()
+    coord.device_client.last_scan = _utcnow()
+    coord.device_client.statistics["last_successful_update"] = _utcnow()
     data = coord.get_diagnostic_data()
     assert {"connection", "statistics", "performance", "status_overview"}.issubset(data)
 
 
 def test_get_diagnostic_data_with_raw_registers():
     coord = _make_coordinator()
-    coord.device_scan_result = {"raw_registers": {"0": 123}, "total_addresses_scanned": 100}
+    coord.device_client.device_scan_result = {"raw_registers": {"0": 123}, "total_addresses_scanned": 100}
     assert "raw_registers" in coord.get_diagnostic_data()

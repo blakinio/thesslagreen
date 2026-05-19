@@ -352,54 +352,54 @@ async def test_async_close_is_alias_for_disconnect():
 def test_coordinator_client_proxy():
     coord = _make_coordinator()
     mock_client = MagicMock()
-    coord.client = mock_client
+    coord.device_client.client = mock_client
     assert coord.device_client.client is mock_client
-    assert coord.client is mock_client
+    assert coord.device_client.client is mock_client
 
 
 def test_coordinator_transport_proxy():
     coord = _make_coordinator()
     mock_transport = MagicMock()
-    coord._transport = mock_transport
+    coord.device_client._transport = mock_transport
     assert coord.device_client._transport is mock_transport
-    assert coord._transport is mock_transport
+    assert coord.device_client._transport is mock_transport
 
 
 def test_coordinator_locks_proxy_to_device_client_locks():
     coord = _make_coordinator()
-    assert coord._client_lock is coord.device_client._client_lock
-    assert coord._write_lock is coord.device_client._write_lock
+    assert coord.device_client._client_lock is coord.device_client._client_lock
+    assert coord.device_client._write_lock is coord.device_client._write_lock
 
 
 def test_coordinator_statistics_proxy():
     coord = _make_coordinator()
-    coord.statistics["successful_reads"] = 99
+    coord.device_client.statistics["successful_reads"] = 99
     assert coord.device_client.statistics["successful_reads"] == 99
 
 
 def test_coordinator_capabilities_proxy():
     coord = _make_coordinator()
     new_caps = DeviceCapabilities()
-    coord.capabilities = new_caps
+    coord.device_client.capabilities = new_caps
     assert coord.device_client.capabilities is new_caps
 
 
 def test_coordinator_offline_state_proxy():
     coord = _make_coordinator()
-    assert coord.offline_state is False
-    coord.offline_state = True
+    assert coord.device_client.offline_state is False
+    coord.device_client.offline_state = True
     assert coord.device_client.offline_state is True
 
 
 def test_coordinator_timeout_proxy():
     coord = _make_coordinator()
-    coord.timeout = 99
+    coord.device_client.timeout = 99
     assert coord.device_client.timeout == 99
 
 
 def test_coordinator_retry_proxy():
     coord = _make_coordinator()
-    coord.retry = 7
+    coord.device_client.retry = 7
     assert coord.device_client.retry == 7
 
 
@@ -411,13 +411,13 @@ def test_coordinator_consecutive_failures_proxy():
 
 def test_coordinator_config_proxy():
     coord = _make_coordinator()
-    original_config = coord.config
+    original_config = coord.device_client.config
     assert coord.device_client.config is original_config
 
 
 def test_coordinator_register_maps_proxy():
     coord = _make_coordinator()
-    maps = coord._register_maps
+    maps = coord.device_client._register_maps
     assert maps is coord.device_client._register_maps
     assert "input_registers" in maps
 
@@ -430,7 +430,7 @@ def test_coordinator_failed_registers_proxy():
 
 def test_coordinator_device_name_proxy():
     coord = _make_coordinator()
-    coord._device_name = "custom-name"
+    coord.device_client._device_name = "custom-name"
     assert coord.device_client._device_name == "custom-name"
 
 

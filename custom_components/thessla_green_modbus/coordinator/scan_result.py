@@ -21,7 +21,7 @@ def apply_scan_result(
     """Store and process a completed device scan result."""
 
     coordinator.device_client.device_scan_result = scan_result
-    if coordinator.config.connection_mode == connection_mode_auto:
+    if coordinator.device_client.config.connection_mode == connection_mode_auto:
         if resolved := coordinator.device_client.device_scan_result.get("resolved_connection_mode"):
             coordinator.device_client._resolved_connection_mode = resolved
     coordinator.device_client.last_scan = now_fn()

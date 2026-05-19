@@ -46,10 +46,10 @@ def _make_coordinator(data: dict | None = None) -> MagicMock:
     coord = MagicMock()
     coord.data = data or {}
     coord.last_update_success = True
-    coord.offline_state = False
+    coord.device_client.offline_state = False
     coord.slave_id = 1
-    coord.force_full_register_list = False
-    coord.available_registers = {"holding_registers": set()}
+    coord.device_client.force_full_register_list = False
+    coord.device_client.available_registers = {"holding_registers": set()}
     coord.async_write_register = AsyncMock(return_value=True)
     coord.async_request_refresh = AsyncMock()
     coord.get_register_map = lambda rtype: HOLDING_REGISTERS if rtype == "holding_registers" else {}
@@ -170,7 +170,7 @@ async def test_async_setup_entry_creates_entity(mock_coordinator, mock_config_en
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_config_entry.runtime_data = mock_coordinator
 
-    mock_coordinator.available_registers["holding_registers"].add("device_name")
+    mock_coordinator.device_client.available_registers["holding_registers"].add("device_name")
 
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)
@@ -188,8 +188,8 @@ async def test_async_setup_entry_skips_when_not_available(mock_coordinator, mock
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_config_entry.runtime_data = mock_coordinator
 
-    mock_coordinator.available_registers["holding_registers"].discard("device_name")
-    mock_coordinator.force_full_register_list = False
+    mock_coordinator.device_client.available_registers["holding_registers"].discard("device_name")
+    mock_coordinator.device_client.force_full_register_list = False
 
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)

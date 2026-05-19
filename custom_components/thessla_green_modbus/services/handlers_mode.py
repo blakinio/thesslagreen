@@ -32,7 +32,7 @@ def register_mode_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
 
             if duration > 0 and mode in ["boost", "fireplace", "hood", "party", "bathroom"]:
                 duration_register = f"{mode}_duration"
-                if duration_register in coordinator.available_registers.get(
+                if duration_register in coordinator.device_client.available_registers.get(
                     "holding_registers", set()
                 ):
                     if not await deps.write_register(

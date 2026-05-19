@@ -83,8 +83,8 @@ def test_apply_scan_cache_keeps_known_missing_for_newer_firmware(
         "device_info": {"firmware": "4.0.1", "serial_number": "Unknown"},
     }
     assert minimal_coordinator._apply_scan_cache(cache) is True
-    assert "compilation_days" in minimal_coordinator.available_registers["input_registers"]
-    assert "uart_0_id" in minimal_coordinator.available_registers["holding_registers"]
+    assert "compilation_days" in minimal_coordinator.device_client.available_registers["input_registers"]
+    assert "uart_0_id" in minimal_coordinator.device_client.available_registers["holding_registers"]
 
 
 def test_apply_scan_cache_strips_known_missing_for_fw311(
@@ -101,9 +101,9 @@ def test_apply_scan_cache_strips_known_missing_for_fw311(
         "device_info": {"firmware": "3.11", "serial_number": "Unknown"},
     }
     assert minimal_coordinator._apply_scan_cache(cache) is True
-    assert "compilation_days" not in minimal_coordinator.available_registers["input_registers"]
-    assert "uart_0_id" not in minimal_coordinator.available_registers["holding_registers"]
-    assert "outside_temperature" in minimal_coordinator.available_registers["input_registers"]
+    assert "compilation_days" not in minimal_coordinator.device_client.available_registers["input_registers"]
+    assert "uart_0_id" not in minimal_coordinator.device_client.available_registers["holding_registers"]
+    assert "outside_temperature" in minimal_coordinator.device_client.available_registers["input_registers"]
 
 
 def test_apply_scan_cache_accepts_set_values(
@@ -119,4 +119,4 @@ def test_apply_scan_cache_accepts_set_values(
         "device_info": {"serial_number": "Unknown"},
     }
     assert minimal_coordinator._apply_scan_cache(cache) is True
-    assert "outside_temperature" in minimal_coordinator.available_registers["input_registers"]
+    assert "outside_temperature" in minimal_coordinator.device_client.available_registers["input_registers"]

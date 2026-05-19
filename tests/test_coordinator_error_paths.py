@@ -21,7 +21,7 @@ async def test_test_connection_modbus_io_cancelled_skips():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.read_input_registers = AsyncMock(side_effect=ModbusIOException("request cancelled"))
-    coord._transport = transport
+    coord.device_client._transport = transport
     await coord._test_connection()
 
 
@@ -48,7 +48,7 @@ async def test_test_connection_modbus_io_non_cancelled_raises():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.read_input_registers = AsyncMock(side_effect=ModbusIOException("register error"))
-    coord._transport = transport
+    coord.device_client._transport = transport
     with pytest.raises(ModbusIOException):
         await coord._test_connection()
 
@@ -56,7 +56,7 @@ async def test_test_connection_modbus_io_non_cancelled_raises():
 @pytest.mark.asyncio
 async def test_test_connection_transport_none_raises():
     coord = _make_coordinator()
-    coord._transport = None
+    coord.device_client._transport = None
     coord._ensure_connection = AsyncMock()
     with pytest.raises(ConnectionException):
         await coord._test_connection()
@@ -69,7 +69,7 @@ async def test_test_connection_response_none_raises():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.read_input_registers = AsyncMock(return_value=None)
-    coord._transport = transport
+    coord.device_client._transport = transport
     with pytest.raises(ConnectionException):
         await coord._test_connection()
 
@@ -81,6 +81,6 @@ async def test_test_connection_modbus_exception_raises():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.read_input_registers = AsyncMock(side_effect=ModbusException("modbus error"))
-    coord._transport = transport
+    coord.device_client._transport = transport
     with pytest.raises(ModbusException):
         await coord._test_connection()

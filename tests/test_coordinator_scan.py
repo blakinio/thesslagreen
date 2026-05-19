@@ -24,7 +24,7 @@ def test_apply_scan_cache_valid_data_applies():
         }
     )
     assert result is True
-    assert coord.device_info == {"firmware": "4.8"}
+    assert coord.device_client.device_info == {"firmware": "4.8"}
 
 
 def test_apply_scan_cache_non_list_values_filtered():
@@ -33,4 +33,4 @@ def test_apply_scan_cache_non_list_values_filtered():
         {"available_registers": {"input_registers": "not_a_list", "holding_registers": ["mode"]}}
     )
     assert result is True
-    assert "holding_registers" in coord.available_registers
+    assert "holding_registers" in coord.device_client.available_registers

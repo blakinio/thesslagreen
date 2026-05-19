@@ -42,7 +42,7 @@ async def async_setup_entry(
     for key, config in ENTITY_MAPPINGS["switch"].items():
         register_name = config["register"]
 
-        if reason := capability_block_reason(register_name, coordinator.capabilities):
+        if reason := capability_block_reason(register_name, coordinator.device_client.capabilities):
             _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
             continue
 
@@ -50,13 +50,13 @@ async def async_setup_entry(
         is_available = False
 
         if config["register_type"] == "holding_registers":
-            if register_name in coordinator.available_registers.get("holding_registers", set()) or (
-                coordinator.force_full_register_list and register_name in holding_map
+            if register_name in coordinator.device_client.available_registers.get("holding_registers", set()) or (
+                coordinator.device_client.force_full_register_list and register_name in holding_map
             ):
                 is_available = True
         elif config["register_type"] == "coil_registers":
-            if register_name in coordinator.available_registers.get("coil_registers", set()) or (
-                coordinator.force_full_register_list and register_name in coil_map
+            if register_name in coordinator.device_client.available_registers.get("coil_registers", set()) or (
+                coordinator.device_client.force_full_register_list and register_name in coil_map
             ):
                 is_available = True
 

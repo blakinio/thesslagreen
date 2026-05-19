@@ -108,7 +108,7 @@ def mock_coordinator():
         "serial_number": "S/N: 1234 5678 9abc",
     }
     # Set on both coordinator and device_client so proxy and direct access work.
-    coordinator.device_info = _device_info
+    coordinator.device_client.device_info = _device_info
     coordinator.device_client.device_info = _device_info
     _capabilities = MagicMock(
         constant_flow=True,
@@ -126,7 +126,7 @@ def mock_coordinator():
         sensor_ambient_temperature=True,
         sensor_heating_temperature=True,
     )
-    coordinator.capabilities = _capabilities
+    coordinator.device_client.capabilities = _capabilities
     coordinator.device_client.capabilities = _capabilities
     _available_registers = {
         "input_registers": {"outside_temperature", "supply_temperature", "exhaust_temperature"},
@@ -135,7 +135,7 @@ def mock_coordinator():
         "discrete_inputs": {"expansion", "contamination_sensor"},
         "calculated": {"estimated_power", "total_energy"},
     }
-    coordinator.available_registers = _available_registers
+    coordinator.device_client.available_registers = _available_registers
     coordinator.device_client.available_registers = _available_registers
     _register_maps = {
         "input_registers": input_registers().copy(),
@@ -144,7 +144,7 @@ def mock_coordinator():
         "discrete_inputs": discrete_input_registers().copy(),
     }
     coordinator.get_register_map = lambda rt: _register_maps.get(rt, {})
-    coordinator.force_full_register_list = False
+    coordinator.device_client.force_full_register_list = False
     coordinator.device_client.force_full_register_list = False
     coordinator.device_client.device_scan_result = None
     coordinator.device_client.statistics = {
@@ -157,6 +157,7 @@ def mock_coordinator():
         "average_response_time": 0.0,
         "total_registers_read": 0,
     }
+    coordinator.device_client.offline_state = False
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.async_request_refresh = AsyncMock()
     return coordinator

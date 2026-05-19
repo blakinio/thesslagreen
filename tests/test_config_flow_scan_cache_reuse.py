@@ -194,7 +194,7 @@ _VALID_CACHE = {
 async def test_prepare_registers_uses_config_flow_cache_and_skips_scan(caplog):
     """Coordinator must reuse config-flow scan cache instead of scanning again."""
     coord = _make_coordinator()
-    coord.force_full_register_list = False
+    coord.device_client.force_full_register_list = False
     coord.enable_device_scan = True
 
     coord._consume_config_flow_scan_cache = MagicMock(return_value=_VALID_CACHE)
@@ -216,7 +216,7 @@ async def test_prepare_registers_uses_config_flow_cache_and_skips_scan(caplog):
 async def test_prepare_registers_scans_when_no_config_flow_cache(caplog):
     """When config-flow cache is absent, coordinator must scan the device."""
     coord = _make_coordinator()
-    coord.force_full_register_list = False
+    coord.device_client.force_full_register_list = False
     coord.enable_device_scan = True
 
     coord._consume_config_flow_scan_cache = MagicMock(return_value={})
@@ -236,7 +236,7 @@ async def test_prepare_registers_scans_when_no_config_flow_cache(caplog):
 async def test_prepare_registers_scans_when_config_flow_cache_invalid(caplog):
     """Invalid config-flow cache must fall through to device scan."""
     coord = _make_coordinator()
-    coord.force_full_register_list = False
+    coord.device_client.force_full_register_list = False
     coord.enable_device_scan = True
 
     coord._consume_config_flow_scan_cache = MagicMock(return_value={"bad": "data"})
@@ -253,7 +253,7 @@ async def test_prepare_registers_scans_when_config_flow_cache_invalid(caplog):
 async def test_prepare_registers_normal_restart_no_cache_scans():
     """On HA restart with no config-flow cache, normal scan must occur."""
     coord = _make_coordinator()
-    coord.force_full_register_list = False
+    coord.device_client.force_full_register_list = False
     coord.enable_device_scan = True
 
     coord._consume_config_flow_scan_cache = MagicMock(return_value={})
@@ -268,7 +268,7 @@ async def test_prepare_registers_normal_restart_no_cache_scans():
 async def test_prepare_registers_force_full_list_ignores_cache():
     """force_full_register_list must bypass cache and scan entirely."""
     coord = _make_coordinator()
-    coord.force_full_register_list = True
+    coord.device_client.force_full_register_list = True
     coord.enable_device_scan = True
 
     coord._consume_config_flow_scan_cache = MagicMock()
@@ -286,7 +286,7 @@ async def test_prepare_registers_force_full_list_ignores_cache():
 async def test_prepare_registers_device_scan_disabled_uses_persistent_cache():
     """When enable_device_scan=False, existing device_scan_cache is used (unchanged path)."""
     coord = _make_coordinator()
-    coord.force_full_register_list = False
+    coord.device_client.force_full_register_list = False
     coord.enable_device_scan = False
 
     coord._get_scan_cache_from_entry = MagicMock(return_value=_VALID_CACHE)

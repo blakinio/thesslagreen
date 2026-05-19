@@ -26,7 +26,7 @@ def test_coordinator_init_bad_backoff_falls_back():
     coord = _make_coordinator(backoff="not_a_float")
     from custom_components.thessla_green_modbus.const import DEFAULT_BACKOFF
 
-    assert coord.backoff == DEFAULT_BACKOFF
+    assert coord.device_client.backoff == DEFAULT_BACKOFF
 
 
 def test_coordinator_init_bad_baud_rate_falls_back():
@@ -40,22 +40,22 @@ def test_coordinator_init_bad_baud_rate_falls_back():
 def test_coordinator_init_jitter_list_two_floats():
     """backoff_jitter as list with 2 elements creates tuple jitter (lines 323-327)."""
     coord = _make_coordinator(backoff_jitter=[0.1, 0.5])
-    assert coord.backoff_jitter == (0.1, 0.5)
+    assert coord.device_client.backoff_jitter == (0.1, 0.5)
 
 
 def test_coordinator_init_jitter_string_float():
     """backoff_jitter as string float is parsed to float (lines 318-322)."""
     coord = _make_coordinator(backoff_jitter="0.3")
-    assert coord.backoff_jitter == 0.3
+    assert coord.device_client.backoff_jitter == 0.3
 
 
 def test_coordinator_init_jitter_bad_string():
     """backoff_jitter as bad string falls back to None (lines 319-322)."""
     coord = _make_coordinator(backoff_jitter="bad")
-    assert coord.backoff_jitter is None
+    assert coord.device_client.backoff_jitter is None
 
 
 def test_coordinator_init_jitter_zero():
     """backoff_jitter = 0 is stored as 0.0 (line 331-332)."""
     coord = _make_coordinator(backoff_jitter=0)
-    assert coord.backoff_jitter == 0.0
+    assert coord.device_client.backoff_jitter == 0.0

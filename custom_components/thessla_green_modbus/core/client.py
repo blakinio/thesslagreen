@@ -59,9 +59,14 @@ class ThesslaGreenDeviceClient(
     - Derived capability metrics: _CoordinatorCapabilitiesMixin (core/capabilities_mixin.py)
     """
 
-    #: Asyncio locks owned by this client (coordinator proxies access these).
+    #: Asyncio locks owned by this client.
     _client_lock: asyncio.Lock
     _write_lock: asyncio.Lock
+
+    @property
+    def device_client(self) -> ThesslaGreenDeviceClient:
+        """Return self — allows IO helpers to use owner.device_client.X uniformly."""
+        return self
 
     def __init__(
         self,

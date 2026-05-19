@@ -37,7 +37,7 @@ async def test_test_connection_modbus_io_cancelled_skips():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.read_input_registers = AsyncMock(side_effect=ModbusIOException("request cancelled"))
-    coord._transport = transport
+    coord.device_client._transport = transport
 
     # Should not raise
     await coord._test_connection()
@@ -69,7 +69,7 @@ async def test_test_connection_modbus_io_non_cancelled_raises():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.read_input_registers = AsyncMock(side_effect=ModbusIOException("register error"))
-    coord._transport = transport
+    coord.device_client._transport = transport
 
     with pytest.raises(ModbusIOException):
         await coord._test_connection()
@@ -78,7 +78,7 @@ async def test_test_connection_modbus_io_non_cancelled_raises():
 async def test_test_connection_transport_none_raises():
     """ConnectionException when transport is None after _ensure_connection (line 1095)."""
     coord = _make_coordinator()
-    coord._transport = None
+    coord.device_client._transport = None
     coord._ensure_connection = AsyncMock()  # does nothing, transport stays None
 
     with pytest.raises(ConnectionException):
@@ -93,7 +93,7 @@ async def test_test_connection_response_none_raises():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.read_input_registers = AsyncMock(return_value=None)
-    coord._transport = transport
+    coord.device_client._transport = transport
 
     with pytest.raises(ConnectionException):
         await coord._test_connection()
@@ -111,7 +111,7 @@ async def test_test_connection_successful():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.read_input_registers = AsyncMock(return_value=ok_response)
-    coord._transport = transport
+    coord.device_client._transport = transport
 
     # Should complete without exception
     await coord._test_connection()
@@ -125,7 +125,7 @@ async def test_test_connection_modbus_exception_raises():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.read_input_registers = AsyncMock(side_effect=ModbusException("modbus error"))
-    coord._transport = transport
+    coord.device_client._transport = transport
 
     with pytest.raises(ModbusException):
         await coord._test_connection()
@@ -134,12 +134,12 @@ async def test_test_connection_modbus_exception_raises():
 async def test_async_write_register_modbus_exception_retry():
     """ModbusException during write → disconnect, retry, return False."""
     coord = _make_coordinator()
-    coord.retry = 2
+    coord.device_client.retry = 2
     coord._ensure_connection = AsyncMock()
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_register = AsyncMock(side_effect=ModbusException("write failed"))
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord._disconnect = AsyncMock()
 
     result = await coord.async_write_register("mode", 1)
@@ -150,14 +150,14 @@ async def test_async_write_register_modbus_exception_retry():
 async def test_async_write_register_error_response_retries():
     """Error response on non-last attempt → continues, then fails."""
     coord = _make_coordinator()
-    coord.retry = 2
+    coord.device_client.retry = 2
     coord._ensure_connection = AsyncMock()
     transport = MagicMock()
     transport.is_connected.return_value = True
     error_response = MagicMock()
     error_response.isError.return_value = True
     transport.write_register = AsyncMock(return_value=error_response)
-    coord._transport = transport
+    coord.device_client._transport = transport
 
     result = await coord.async_write_register("mode", 1)
     assert result is False
@@ -171,7 +171,7 @@ async def test_test_connection_transport_not_connected():
     # All reads succeed but then is_connected() returns False
     transport.read_input_registers = AsyncMock(return_value=MagicMock())
     transport.is_connected.return_value = False
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord._ensure_connection = AsyncMock()
     with pytest.raises(ConnectionException):
         await coord._test_connection()
@@ -186,7 +186,7 @@ async def test_test_connection_basic_register_response_none():
         side_effect=[MagicMock(), MagicMock(), MagicMock(), None]
     )
     transport.is_connected.return_value = True
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord._ensure_connection = AsyncMock()
     with pytest.raises(ConnectionException):
         await coord._test_connection()
@@ -205,8 +205,8 @@ async def test_async_write_register_multi_reg_chunk_error_last_attempt():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_registers = AsyncMock(return_value=err_resp)
-    coord._transport = transport
-    coord.retry = 1
+    coord.device_client._transport = transport
+    coord.device_client.retry = 1
     with patch(
         "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
@@ -222,9 +222,9 @@ async def test_async_write_register_timeout_last_attempt():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_register = AsyncMock(side_effect=TimeoutError("write timeout"))
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord._disconnect = AsyncMock()
-    coord.retry = 1
+    coord.device_client.retry = 1
     result = await coord.async_write_register("mode", 1)
     assert result is False
 
@@ -238,10 +238,10 @@ async def test_async_write_register_timeout_with_retry():
     ok_resp = MagicMock()
     ok_resp.isError.return_value = False
     transport.write_register = AsyncMock(side_effect=[TimeoutError("write timeout"), ok_resp])
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord._disconnect = AsyncMock()
     coord.async_request_refresh = AsyncMock()
-    coord.retry = 2
+    coord.device_client.retry = 2
     result = await coord.async_write_register("mode", 1)
     assert result is True
 
@@ -253,7 +253,7 @@ async def test_async_write_register_oserror():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_register = AsyncMock(side_effect=OSError("io error"))
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord._disconnect = AsyncMock()
     result = await coord.async_write_register("mode", 1)
     assert result is False
@@ -263,14 +263,14 @@ async def test_async_write_registers_batch_error_last_attempt():
     """Batch error on last attempt → False (lines 2253-2258)."""
     coord = _make_coordinator()
     coord._ensure_connection = AsyncMock()
-    coord._transport = None
+    coord.device_client._transport = None
     client = MagicMock()
     err_resp = MagicMock()
     err_resp.isError.return_value = True
     client.write_registers = AsyncMock(return_value=err_resp)
-    coord.client = client
+    coord.device_client.client = client
     coord._disconnect = AsyncMock()
-    coord.retry = 1
+    coord.device_client.retry = 1
     result = await coord.async_write_registers(100, [1, 2])
     assert result is False
 
@@ -279,12 +279,12 @@ async def test_async_write_registers_modbus_exception():
     """ModbusException → disconnect + False (lines 2270-2284)."""
     coord = _make_coordinator()
     coord._ensure_connection = AsyncMock()
-    coord._transport = None
+    coord.device_client._transport = None
     client = MagicMock()
     client.write_registers = AsyncMock(side_effect=ModbusException("write error"))
-    coord.client = client
+    coord.device_client.client = client
     coord._disconnect = AsyncMock()
-    coord.retry = 1
+    coord.device_client.retry = 1
     result = await coord.async_write_registers(100, [1, 2])
     assert result is False
 
@@ -293,12 +293,12 @@ async def test_async_write_registers_timeout_error():
     """TimeoutError → False (lines 2285-2301)."""
     coord = _make_coordinator()
     coord._ensure_connection = AsyncMock()
-    coord._transport = None
+    coord.device_client._transport = None
     client = MagicMock()
     client.write_registers = AsyncMock(side_effect=TimeoutError("timeout"))
-    coord.client = client
+    coord.device_client.client = client
     coord._disconnect = AsyncMock()
-    coord.retry = 1
+    coord.device_client.retry = 1
     result = await coord.async_write_registers(100, [1, 2])
     assert result is False
 
@@ -307,10 +307,10 @@ async def test_async_write_registers_oserror():
     """OSError → False (lines 2302-2305)."""
     coord = _make_coordinator()
     coord._ensure_connection = AsyncMock()
-    coord._transport = None
+    coord.device_client._transport = None
     client = MagicMock()
     client.write_registers = AsyncMock(side_effect=OSError("io error"))
-    coord.client = client
+    coord.device_client.client = client
     coord._disconnect = AsyncMock()
     result = await coord.async_write_registers(100, [1, 2])
     assert result is False
@@ -331,8 +331,8 @@ async def test_async_write_register_multi_reg_chunk_error_retry():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_registers = AsyncMock(side_effect=[err_resp, ok_resp])
-    coord._transport = transport
-    coord.retry = 2
+    coord.device_client._transport = transport
+    coord.device_client.retry = 2
     coord.async_request_refresh = AsyncMock()
     with patch(
         "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
@@ -346,14 +346,14 @@ async def test_async_write_registers_modbus_exception_retry():
     """ModbusException with retry → retries (lines 2279-2284)."""
     coord = _make_coordinator()
     coord._ensure_connection = AsyncMock()
-    coord._transport = None
+    coord.device_client._transport = None
     client = MagicMock()
     ok_resp = MagicMock()
     ok_resp.isError.return_value = False
     client.write_registers = AsyncMock(side_effect=[ModbusException("write error"), ok_resp])
-    coord.client = client
+    coord.device_client.client = client
     coord._disconnect = AsyncMock()
-    coord.retry = 2
+    coord.device_client.retry = 2
     coord.async_request_refresh = AsyncMock()
     result = await coord.async_write_registers(100, [1, 2])
     assert result is True
@@ -368,9 +368,9 @@ async def test_async_write_registers_timeout_with_transport():
     ok_resp = MagicMock()
     ok_resp.isError.return_value = False
     transport.write_registers = AsyncMock(side_effect=[TimeoutError("timeout"), ok_resp])
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord._disconnect = AsyncMock()
-    coord.retry = 2
+    coord.device_client.retry = 2
     coord.async_request_refresh = AsyncMock()
     result = await coord.async_write_registers(100, [1, 2])
     assert result is True
@@ -380,14 +380,14 @@ async def test_async_write_registers_timeout_continue():
     """TimeoutError continue on non-last attempt (line 2301)."""
     coord = _make_coordinator()
     coord._ensure_connection = AsyncMock()
-    coord._transport = None
+    coord.device_client._transport = None
     client = MagicMock()
     ok_resp = MagicMock()
     ok_resp.isError.return_value = False
     client.write_registers = AsyncMock(side_effect=[TimeoutError("timeout"), ok_resp])
-    coord.client = client
+    coord.device_client.client = client
     coord._disconnect = AsyncMock()
-    coord.retry = 2
+    coord.device_client.retry = 2
     coord.async_request_refresh = AsyncMock()
     result = await coord.async_write_registers(100, [1, 2])
     assert result is True

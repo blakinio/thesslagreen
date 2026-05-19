@@ -59,13 +59,13 @@ async def async_setup_entry(
             skipped_stale_problem += 1
             continue
 
-        if reason := capability_block_reason(register_name, coordinator.capabilities):
+        if reason := capability_block_reason(register_name, coordinator.device_client.capabilities):
             _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
             continue
 
         register_map = coordinator.get_register_map(register_type)
-        available = coordinator.available_registers.get(register_type, set())
-        force_create = coordinator.force_full_register_list and register_name in register_map
+        available = coordinator.device_client.available_registers.get(register_type, set())
+        force_create = coordinator.device_client.force_full_register_list and register_name in register_map
 
         # Check if this register is available on the device or should be
         # forcibly added from the full register list.
@@ -183,7 +183,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
             self._DIAG_PREFIXES
         ):
             return self.coordinator.last_update_success and not getattr(
-                self.coordinator, "offline_state", False
+                self.coordinator.device_client, "offline_state", False
             )
         return super().available
 

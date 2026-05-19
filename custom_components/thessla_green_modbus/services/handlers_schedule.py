@@ -42,7 +42,7 @@ def register_schedule_services(hass: HomeAssistant, deps: ServiceHandlerDeps) ->
             )
 
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
-            holding = coordinator.available_registers.get("holding_registers", set())
+            holding = coordinator.device_client.available_registers.get("holding_registers", set())
             if schedule_register not in holding or setting_register not in holding:
                 deps.logger.error(
                     "set_airflow_schedule: %s or %s not available on %s — aborting",

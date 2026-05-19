@@ -17,28 +17,28 @@ async def call_modbus(
     **kwargs: Any,
 ) -> Any:
     """Wrapper around Modbus calls injecting the slave ID."""
-    if coordinator._transport is None:
-        if not coordinator.client:
+    if coordinator.device_client._transport is None:
+        if not coordinator.device_client.client:
             raise ConnectionException("Modbus client is not connected")
         return await _call_modbus(
             func,
             coordinator.slave_id,
             *args,
             attempt=attempt,
-            max_attempts=coordinator.retry,
-            timeout=coordinator.timeout,
-            backoff=coordinator.backoff,
-            backoff_jitter=coordinator.backoff_jitter,
+            max_attempts=coordinator.device_client.retry,
+            timeout=coordinator.device_client.timeout,
+            backoff=coordinator.device_client.backoff,
+            backoff_jitter=coordinator.device_client.backoff_jitter,
             **kwargs,
         )
-    return await coordinator._transport.call(
+    return await coordinator.device_client._transport.call(
         func,
         coordinator.slave_id,
         *args,
         attempt=attempt,
-        max_attempts=coordinator.retry,
-        backoff=coordinator.backoff,
-        backoff_jitter=coordinator.backoff_jitter,
+        max_attempts=coordinator.device_client.retry,
+        backoff=coordinator.device_client.backoff,
+        backoff_jitter=coordinator.device_client.backoff_jitter,
         **kwargs,
     )
 
