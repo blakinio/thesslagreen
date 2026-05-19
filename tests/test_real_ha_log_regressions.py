@@ -1,10 +1,12 @@
 """Regression tests for real HA log issues fixed in this branch.
 
-Covers four scenarios:
+Covers six scenarios:
 1. No blocking translation I/O on event loop during async setup.
 2. Cached-scan setup does NOT fail connection test via direct client.
 3. Unsupported firmware registers (input 0-15, exception code 2) log at DEBUG, not WARNING.
 4. Unknown model/firmware is handled as non-fatal (DEBUG only).
+5. Disconnected client produces bounded (no WARNING spam) logs per update cycle.
+6. Scanner batch-read cancellation does not generate ERROR when fallback succeeds.
 """
 
 from __future__ import annotations
@@ -222,3 +224,116 @@ def test_known_model_firmware_no_log(caplog) -> None:
         )
 
     assert not caplog.records
+
+
+# ---------------------------------------------------------------------------
+# 5. Disconnected client produces bounded logs (no per-register WARNING spam)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_disconnected_client_no_warning_spam(caplog) -> None:
+    """When client is globally disconnected, no WARNING is logged per register chunk.
+
+    The update cycle fails with a single ConnectionException that is logged
+    at ERROR by handle_update_error, not by the per-chunk retry loop.
+    """
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
+    from pymodbus.exceptions import ConnectionException
+
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass=MagicMock(),
+        host="localhost",
+        port=502,
+        slave_id=1,
+        name="test",
+        scan_interval=30,
+        timeout=5,
+        retry=3,
+    )
+    coordinator.available_registers = {
+        "holding_registers": {"mode", "air_flow_rate_manual"},
+        "input_registers": set(),
+        "coil_registers": set(),
+        "discrete_inputs": set(),
+    }
+    coordinator._register_groups = {
+        "holding_registers": [(100, 2), (200, 2), (300, 2)],
+    }
+    coordinator.device_client._failed_registers = set()
+    coordinator.effective_batch = 10
+    coordinator._find_register_name = lambda rt, addr: "mode"
+    coordinator._process_register_value = lambda _name, value: value
+    coordinator._clear_register_failure = MagicMock()
+    coordinator._mark_registers_failed = MagicMock()
+
+    conn_exc = ConnectionException("Modbus client is not connected")
+    coordinator._transport = SimpleNamespace(
+        is_connected=lambda: True,
+        read_holding_registers=AsyncMock(),
+    )
+    coordinator.client = None
+    coordinator._read_with_retry = AsyncMock(side_effect=conn_exc)
+    coordinator._disconnect = AsyncMock()
+
+    with caplog.at_level(logging.WARNING), pytest.raises(ConnectionException):
+        await coordinator._read_holding_registers_optimized()
+
+    warning_records = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert len(warning_records) == 0, (
+        "Expected zero WARNING-or-above logs when client disconnected, "
+        f"got {len(warning_records)}: {[r.message for r in warning_records]}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 6. Scanner batch-read cancellation: no ERROR when individual fallback succeeds
+# ---------------------------------------------------------------------------
+
+
+def test_scanner_batch_abort_transient_no_error_log(caplog) -> None:
+    """Transient batch abort (cancelled/timeout) must not produce an ERROR log.
+
+    When a batch read is cancelled and the caller retries individually,
+    logging an ERROR prematurely is misleading.  Only WARNING (abort note)
+    should appear; the ERROR is reserved for non-transient failures.
+    """
+    from custom_components.thessla_green_modbus.scanner.io_read_helpers import (
+        log_read_abort,
+        log_read_failure,
+        should_log_terminal_failure,
+    )
+
+    with caplog.at_level(logging.WARNING):
+        log_read_abort("holding", 4226, 4239, 1, 3)
+        if should_log_terminal_failure("holding_registers", aborted_transiently=True):
+            log_read_failure("holding", 4226, 4239, 3)
+
+    error_records = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert len(error_records) == 0, (
+        f"Expected no ERROR when batch aborted transiently, got: {[r.message for r in error_records]}"
+    )
+    warning_records = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warning_records) == 1, (
+        f"Expected exactly one WARNING (abort notice), got: {[r.message for r in warning_records]}"
+    )
+
+
+def test_scanner_batch_permanent_failure_logs_error(caplog) -> None:
+    """Non-transient batch failure must still produce an ERROR log."""
+    from custom_components.thessla_green_modbus.scanner.io_read_helpers import (
+        log_read_failure,
+        should_log_terminal_failure,
+    )
+
+    with caplog.at_level(logging.WARNING):
+        if should_log_terminal_failure("holding_registers", aborted_transiently=False):
+            log_read_failure("holding", 4226, 4239, 3)
+
+    error_records = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert len(error_records) == 1, (
+        f"Expected one ERROR for permanent failure, got: {[r.message for r in error_records]}"
+    )

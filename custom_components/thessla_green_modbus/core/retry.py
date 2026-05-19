@@ -166,6 +166,27 @@ async def _handle_retry_exception(
         if reconnect_error is not None:
             return reconnect_error
 
+    # Connection errors are expected when the transport is globally disconnected.
+    # Log at DEBUG per-attempt to avoid spam across hundreds of register chunks;
+    # the update cycle will surface a single ERROR when it ultimately fails.
+    if isinstance(exc, ConnectionException):
+        _LOGGER.debug(
+            "Connection error during read %s:%s attempt %s/%s: %s",
+            register_type,
+            start_address,
+            attempt,
+            owner.retry,
+            exc,
+        )
+        owner._log_read_retry(
+            register_type=register_type,
+            start_address=start_address,
+            attempt=attempt,
+            exc=exc,
+            timeout=timeout,
+        )
+        return exc
+
     log_coordinator_retry(
         operation=f"read:{register_type}:{start_address}",
         attempt=attempt,

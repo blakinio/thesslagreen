@@ -118,7 +118,9 @@ async def _read_input_register_batch(
             )
     except _PermanentModbusError:
         owner._mark_registers_failed(register_names)
-    except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
+    except ConnectionException:
+        raise
+    except (ModbusException, TimeoutError, OSError, ValueError):
         owner._mark_registers_failed(register_names)
 
 
@@ -188,7 +190,9 @@ async def read_holding_individually(
                 owner._mark_registers_failed([reg_name])
         except _PermanentModbusError:
             owner._mark_registers_failed([reg_name])
-        except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
+        except ConnectionException:
+            raise
+        except (ModbusException, TimeoutError, OSError, ValueError):
             owner._mark_registers_failed([reg_name])
 
 
@@ -263,7 +267,9 @@ async def read_holding_registers_optimized(owner: Any) -> dict[str, Any]:
                         )
             except _PermanentModbusError:
                 owner._mark_registers_failed(register_names)
-            except (ModbusException, ConnectionException, TimeoutError, OSError, ValueError):
+            except ConnectionException:
+                raise
+            except (ModbusException, TimeoutError, OSError, ValueError):
                 await _read_holding_fallback(owner, read_method, chunk_start, register_names, data)
 
     return data

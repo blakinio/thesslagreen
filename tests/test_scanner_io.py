@@ -123,7 +123,11 @@ async def test_read_input_exception_response_mentions_input_registers(caplog):
 
 
 async def test_read_holding_timeout_logging(caplog):
-    """Timeout errors should log a warning and a final error."""
+    """Timeout errors should log a warning abort notice but not a terminal ERROR.
+
+    Timeouts are transient; the caller may fall back to individual probes and
+    succeed.  Logging ERROR before the fallback result is known is misleading.
+    """
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
     mock_client = AsyncMock()
 
@@ -140,8 +144,9 @@ async def test_read_holding_timeout_logging(caplog):
     assert result is None
     warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
     assert any("Timeout reading holding 1" in msg for msg in warnings)
+    assert any("Aborted reading holding registers 1-1" in msg for msg in warnings)
     errors = [r.message for r in caplog.records if r.levelno == logging.ERROR]
-    assert any("Failed to read holding registers 1-1" in msg for msg in errors)
+    assert not any("Failed to read holding registers 1-1" in msg for msg in errors)
 
 
 async def test_read_holding_illegal_address_response_marks_unsupported():
@@ -369,10 +374,15 @@ def test_classify_skip_range_covers_skip_cache_unsupported_and_failed():
 
 
 def test_should_log_terminal_failure_tracks_holding_vs_input_aborts():
-    """Terminal failure logging policy should match prior behavior."""
+    """Terminal failure is only logged for non-transient failures.
+
+    When a read was aborted transiently (timeout/cancel), the abort WARNING is
+    sufficient; ERROR is reserved for definitive non-transient failures.
+    """
     assert should_log_terminal_failure("input_registers", True) is False
-    assert should_log_terminal_failure("holding_registers", True) is True
+    assert should_log_terminal_failure("holding_registers", True) is False
     assert should_log_terminal_failure("input_registers", False) is True
+    assert should_log_terminal_failure("holding_registers", False) is True
 
 
 async def test_attempt_bit_reconnect_no_transport_returns_original_client():

@@ -35,13 +35,14 @@ async def test_read_holding_registers_cancelled_error(coordinator, caplog):
 
 @pytest.mark.asyncio
 async def test_read_input_registers_reconnect_on_error(coordinator):
-    """Ensure disconnect is triggered after Modbus errors."""
+    """ConnectionException propagates (fails update cycle) and disconnect is triggered."""
     coordinator.client = MagicMock()
     coordinator.client.connected = True
     coordinator._register_groups = {"input_registers": [(0, 1)]}
     coordinator._call_modbus = AsyncMock(side_effect=ConnectionException("boom"))
     coordinator._disconnect = AsyncMock()
 
-    await coordinator._read_input_registers_optimized()
+    with pytest.raises(ConnectionException):
+        await coordinator._read_input_registers_optimized()
 
     coordinator._disconnect.assert_called()
