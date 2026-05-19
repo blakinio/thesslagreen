@@ -101,7 +101,7 @@ def _extract_scan_registers(
         unknown_regs = coordinator.device_scan_result.get("unknown_registers", {})
         failed_addrs = coordinator.device_scan_result.get("failed_addresses", {})
     if not unknown_regs:
-        unknown_regs = coordinator.unknown_registers
+        unknown_regs = getattr(coordinator, "unknown_registers", {})
     return unknown_regs, failed_addrs
 
 

@@ -390,6 +390,10 @@ class ThesslaGreenModbusCoordinator(
     def _register_maps(self) -> dict[str, dict[str, int]]:
         return self._device_client._register_maps
 
+    @_register_maps.setter
+    def _register_maps(self, value: dict[str, dict[str, int]]) -> None:
+        self._device_client._register_maps = value
+
     @property
     def _device_name(self) -> str:
         return self._device_client._device_name
