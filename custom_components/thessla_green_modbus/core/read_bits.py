@@ -50,7 +50,8 @@ async def read_coil_registers_optimized(owner: Any) -> dict[str, Any]:
                     register_name = owner._find_register_name("coil_registers", addr)
                     if (
                         register_name
-                        and register_name in owner.device_client.available_registers["coil_registers"]
+                        and register_name
+                        in owner.device_client.available_registers["coil_registers"]
                     ):
                         bit = response.bits[i]
                         data[register_name] = bit
@@ -110,7 +111,8 @@ async def read_discrete_inputs_optimized(owner: Any) -> dict[str, Any]:
                     register_name = owner._find_register_name("discrete_inputs", addr)
                     if (
                         register_name
-                        and register_name in owner.device_client.available_registers["discrete_inputs"]
+                        and register_name
+                        in owner.device_client.available_registers["discrete_inputs"]
                     ):
                         bit = response.bits[i]
                         data[register_name] = bit

@@ -116,9 +116,13 @@ class _CoordinatorScheduleMixin:
     async def _write_holding_single(self, address: int, value: Any, attempt: int) -> Any:
         """Write a single holding register."""
         if self._device_client._transport is None and self._device_client.client is not None:
-            return await self._device_client.client.write_register(address=address, value=int(value))
+            return await self._device_client.client.write_register(
+                address=address, value=int(value)
+            )
         if self._device_client._transport is not None:
-            return await self._device_client._transport.write_register(self.slave_id, address, value=int(value))
+            return await self._device_client._transport.write_register(
+                self.slave_id, address, value=int(value)
+            )
         return await self._call_modbus(
             self._get_client_method("write_register"),
             address,
@@ -157,7 +161,9 @@ class _CoordinatorScheduleMixin:
         """Build chunk plan for multi-register writes."""
         if require_single_request:
             return [(start_address, values)]
-        return list(chunk_register_values(start_address, values, self._device_client.effective_batch))
+        return list(
+            chunk_register_values(start_address, values, self._device_client.effective_batch)
+        )
 
     def _handle_write_response_failure(
         self,

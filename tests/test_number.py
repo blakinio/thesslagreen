@@ -116,9 +116,9 @@ async def test_async_setup_creates_new_numbers(mock_coordinator, mock_config_ent
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_config_entry.runtime_data = mock_coordinator
 
-    mock_coordinator.device_client.available_registers.setdefault("holding_registers", set()).update(
-        {"max_supply_air_flow_rate", "min_bypass_temperature"}
-    )
+    mock_coordinator.device_client.available_registers.setdefault(
+        "holding_registers", set()
+    ).update({"max_supply_air_flow_rate", "min_bypass_temperature"})
 
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)

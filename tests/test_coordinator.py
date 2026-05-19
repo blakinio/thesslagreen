@@ -267,7 +267,10 @@ async def test_read_holding_registers_chunking_and_retries(coordinator):
     data = await coordinator._read_holding_registers_optimized()
 
     assert coordinator.device_client.client.read_holding_registers.await_count == 5
-    counts = [c.kwargs["count"] for c in coordinator.device_client.client.read_holding_registers.await_args_list]
+    counts = [
+        c.kwargs["count"]
+        for c in coordinator.device_client.client.read_holding_registers.await_args_list
+    ]
     assert counts == [MAX_BATCH_REGISTERS, MAX_BATCH_REGISTERS, 4, 4, 1]
     assert data["reg0"] == 1
     assert data[f"reg{MAX_BATCH_REGISTERS}"] == 2

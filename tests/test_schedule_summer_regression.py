@@ -59,7 +59,9 @@ def coordinator() -> ThesslaGreenModbusCoordinator:
         "coil_registers": set(),
         "discrete_inputs": set(),
     }
-    coord.device_client._register_groups = {"holding_registers": [(SUMMER_BASE_ADDR, len(SUMMER_NAMES))]}
+    coord.device_client._register_groups = {
+        "holding_registers": [(SUMMER_BASE_ADDR, len(SUMMER_NAMES))]
+    }
     coord.device_client._failed_registers = set()
     coord.device_client.effective_batch = 20
 

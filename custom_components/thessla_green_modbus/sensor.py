@@ -107,9 +107,9 @@ async def async_setup_entry(
         # serial_number is always force-created: it reads from device_info (assembled
         # during scan from 6 registers) rather than via per-register polling, so it
         # works even when the device rejects block reads at those addresses.
-        force_create = (coordinator.device_client.force_full_register_list and register_name in register_map) or (
-            register_name == "serial_number" and register_name in register_map
-        )
+        force_create = (
+            coordinator.device_client.force_full_register_list and register_name in register_map
+        ) or (register_name == "serial_number" and register_name in register_map)
 
         # Check if this register is available on the device or should be
         # forcibly added from the full register list.

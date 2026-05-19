@@ -50,5 +50,8 @@ def test_get_diagnostic_data_structure():
 
 def test_get_diagnostic_data_with_raw_registers():
     coord = _make_coordinator()
-    coord.device_client.device_scan_result = {"raw_registers": {"0": 123}, "total_addresses_scanned": 100}
+    coord.device_client.device_scan_result = {
+        "raw_registers": {"0": 123},
+        "total_addresses_scanned": 100,
+    }
     assert "raw_registers" in coord.get_diagnostic_data()
