@@ -155,7 +155,6 @@ class ThesslaGreenModbusCoordinator(
         """Return the underlying DeviceClient instance."""
         return self._device_client
 
-
     def __init__(
         self,
         hass: HomeAssistant,

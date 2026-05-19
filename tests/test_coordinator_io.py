@@ -159,7 +159,9 @@ async def test_holding_falls_back_to_client_read_method(
 ) -> None:
     coordinator.device_client._transport = None
     client_read = AsyncMock(return_value=SimpleNamespace(registers=[7, 8]))
-    coordinator.device_client.client = SimpleNamespace(connected=True, read_holding_registers=client_read)
+    coordinator.device_client.client = SimpleNamespace(
+        connected=True, read_holding_registers=client_read
+    )
     coordinator._call_modbus = AsyncMock(return_value=SimpleNamespace(registers=[7, 8]))
 
     async def _fake_read_with_retry(read_method, address, count, **_kwargs):

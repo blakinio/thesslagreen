@@ -23,6 +23,7 @@ class DummyCoordinator:
         self.writes: list[tuple[int, object, int]] = []
         self.encoded: list[tuple[int, object, int]] = []
         from types import SimpleNamespace
+
         self.device_client = SimpleNamespace(
             available_registers={"holding_registers": set()},
             max_registers_per_request=max_registers_per_request,

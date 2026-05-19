@@ -191,9 +191,15 @@ async def async_migrate_entity_unique_ids(
     except (AttributeError, TypeError, ValueError):
         serial_number = None
 
-    host = getattr(coordinator, "host", None) or getattr(coordinator.device_client.config, "host", "")
-    port = getattr(coordinator, "port", None) or getattr(coordinator.device_client.config, "port", 0)
-    slave_id = getattr(coordinator, "slave_id", None) or getattr(coordinator.device_client.config, "slave_id", 0)
+    host = getattr(coordinator, "host", None) or getattr(
+        coordinator.device_client.config, "host", ""
+    )
+    port = getattr(coordinator, "port", None) or getattr(
+        coordinator.device_client.config, "port", 0
+    )
+    slave_id = getattr(coordinator, "slave_id", None) or getattr(
+        coordinator.device_client.config, "slave_id", 0
+    )
 
     entries = []
     try:

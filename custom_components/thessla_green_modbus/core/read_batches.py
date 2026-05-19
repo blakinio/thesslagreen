@@ -38,7 +38,10 @@ def _merge_batch_read_results(
     for i, value in enumerate(response.registers):
         addr = chunk_start + i
         register_name = owner._find_register_name("input_registers", addr)
-        if register_name and register_name in owner.device_client.available_registers["input_registers"]:
+        if (
+            register_name
+            and register_name in owner.device_client.available_registers["input_registers"]
+        ):
             processed_value = owner._process_register_value(register_name, value)
             if processed_value is not None:
                 data[register_name] = processed_value
@@ -245,7 +248,8 @@ async def read_holding_registers_optimized(owner: Any) -> dict[str, Any]:
                     register_name = owner._find_register_name("holding_registers", addr)
                     if (
                         register_name
-                        and register_name in owner.device_client.available_registers["holding_registers"]
+                        and register_name
+                        in owner.device_client.available_registers["holding_registers"]
                     ):
                         processed_value = owner._process_register_value(register_name, value)
                         if processed_value is not None:

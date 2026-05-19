@@ -46,7 +46,9 @@ class _Coordinator:
         self.device_client = SimpleNamespace(
             scan_uart_settings=False,
             effective_batch=2,
-            available_registers={"holding_registers": {r.name for r in get_registers_by_function("03")}},
+            available_registers={
+                "holding_registers": {r.name for r in get_registers_by_function("03")}
+            },
             timeout=5,
             retry=3,
             unknown_registers={},

@@ -77,9 +77,7 @@ def get_diagnostic_data(coordinator: Any) -> dict[str, Any]:
         statistics["last_successful_update"] = statistics["last_successful_update"].isoformat()
     total_registers = sum(len(v) for v in dc.available_registers.values())
     total_registers_json = len(get_all_registers())
-    registers_discovered = {
-        key: len(value) for key, value in dc.available_registers.items()
-    }
+    registers_discovered = {key: len(value) for key, value in dc.available_registers.items()}
     error_stats = {
         "connection_errors": statistics.get("connection_errors", 0),
         "timeout_errors": statistics.get("timeout_errors", 0),
@@ -114,9 +112,7 @@ def get_diagnostic_data(coordinator: Any) -> dict[str, Any]:
     if dc.device_scan_result and "raw_registers" in dc.device_scan_result:
         diagnostics["raw_registers"] = dc.device_scan_result["raw_registers"]
         if "total_addresses_scanned" in dc.device_scan_result:
-            statistics["total_addresses_scanned"] = dc.device_scan_result[
-                "total_addresses_scanned"
-            ]
+            statistics["total_addresses_scanned"] = dc.device_scan_result["total_addresses_scanned"]
 
     return diagnostics
 

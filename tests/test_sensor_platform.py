@@ -94,7 +94,9 @@ def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_c
         mock_config_entry.runtime_data = mock_coordinator
 
         mock_coordinator.data["s_2"] = 1
-        mock_coordinator.device_client.available_registers.setdefault("holding_registers", set()).add("s_2")
+        mock_coordinator.device_client.available_registers.setdefault(
+            "holding_registers", set()
+        ).add("s_2")
         add_entities = MagicMock()
         with patch(
             "custom_components.thessla_green_modbus.sensor.translation.async_get_translations",

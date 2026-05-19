@@ -95,7 +95,9 @@ async def test_all_platforms_create_at_least_one_entity(
     mock_coordinator.device_client.force_full_register_list = True
     mock_coordinator.device_client.capabilities = _make_full_capabilities()
 
-    holding = set(mock_coordinator.device_client.available_registers.get("holding_registers", set()))
+    holding = set(
+        mock_coordinator.device_client.available_registers.get("holding_registers", set())
+    )
     holding.add("air_flow_rate_manual")
     mock_coordinator.device_client.available_registers = dict(
         mock_coordinator.device_client.available_registers, holding_registers=holding
@@ -175,7 +177,9 @@ async def test_entity_counts_per_platform(
     mock_coordinator.device_client.force_full_register_list = True
     mock_coordinator.device_client.capabilities = _make_full_capabilities()
 
-    holding = set(mock_coordinator.device_client.available_registers.get("holding_registers", set()))
+    holding = set(
+        mock_coordinator.device_client.available_registers.get("holding_registers", set())
+    )
     holding.add("air_flow_rate_manual")
     mock_coordinator.device_client.available_registers = dict(
         mock_coordinator.device_client.available_registers, holding_registers=holding

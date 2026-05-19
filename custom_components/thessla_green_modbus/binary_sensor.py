@@ -65,7 +65,9 @@ async def async_setup_entry(
 
         register_map = coordinator.get_register_map(register_type)
         available = coordinator.device_client.available_registers.get(register_type, set())
-        force_create = coordinator.device_client.force_full_register_list and register_name in register_map
+        force_create = (
+            coordinator.device_client.force_full_register_list and register_name in register_map
+        )
 
         # Check if this register is available on the device or should be
         # forcibly added from the full register list.

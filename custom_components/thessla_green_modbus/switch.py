@@ -50,14 +50,16 @@ async def async_setup_entry(
         is_available = False
 
         if config["register_type"] == "holding_registers":
-            if register_name in coordinator.device_client.available_registers.get("holding_registers", set()) or (
+            if register_name in coordinator.device_client.available_registers.get(
+                "holding_registers", set()
+            ) or (
                 coordinator.device_client.force_full_register_list and register_name in holding_map
             ):
                 is_available = True
         elif config["register_type"] == "coil_registers":
-            if register_name in coordinator.device_client.available_registers.get("coil_registers", set()) or (
-                coordinator.device_client.force_full_register_list and register_name in coil_map
-            ):
+            if register_name in coordinator.device_client.available_registers.get(
+                "coil_registers", set()
+            ) or (coordinator.device_client.force_full_register_list and register_name in coil_map):
                 is_available = True
 
         if is_available:

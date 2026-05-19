@@ -54,7 +54,9 @@ async def async_setup_entry(
     available = coordinator.device_client.available_registers.get("holding_registers", set())
 
     for register_name, entity_config in number_mappings.items():
-        force_create = coordinator.device_client.force_full_register_list and register_name in holding_map
+        force_create = (
+            coordinator.device_client.force_full_register_list and register_name in holding_map
+        )
 
         if reason := capability_block_reason(register_name, coordinator.device_client.capabilities):
             _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)

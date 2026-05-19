@@ -73,12 +73,8 @@ def _coordinator_defaults(coordinator: ThesslaGreenModbusCoordinator) -> dict[st
         "effective_batch": dc.effective_batch,
         "capabilities": dc.capabilities.as_dict(),
         "firmware_version": dc.device_info.get("firmware"),
-        "total_available_registers": sum(
-            len(regs) for regs in dc.available_registers.values()
-        ),
-        "registers_discovered": {
-            key: len(val) for key, val in dc.available_registers.items()
-        },
+        "total_available_registers": sum(len(regs) for regs in dc.available_registers.values()),
+        "registers_discovered": {key: len(val) for key, val in dc.available_registers.items()},
         "status_overview": getattr(coordinator, "status_overview", None),
         "autoscan": not dc.force_full_register_list,
         "force_full": dc.force_full_register_list,
@@ -145,8 +141,13 @@ async def async_get_config_entry_diagnostics(
         },
     )
 
-    if coordinator.device_client.device_scan_result and "raw_registers" in coordinator.device_client.device_scan_result:
-        diagnostics.setdefault("raw_registers", coordinator.device_client.device_scan_result["raw_registers"])
+    if (
+        coordinator.device_client.device_scan_result
+        and "raw_registers" in coordinator.device_client.device_scan_result
+    ):
+        diagnostics.setdefault(
+            "raw_registers", coordinator.device_client.device_scan_result["raw_registers"]
+        )
 
     unknown_regs, failed_addrs = _extract_scan_registers(coordinator)
     diagnostics.setdefault("unknown_registers", unknown_regs)

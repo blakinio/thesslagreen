@@ -40,7 +40,10 @@ def test_fan_percentage_over_100_device_clamps(mock_coordinator):
 async def test_fan_set_percentage_clamps_to_limits():
     hass = SimpleNamespace()
     coordinator = ThesslaGreenModbusCoordinator.from_params(hass, "host", 502, 1, "dev")
-    coordinator.device_client.available_registers["holding_registers"] = {"mode", "air_flow_rate_manual"}
+    coordinator.device_client.available_registers["holding_registers"] = {
+        "mode",
+        "air_flow_rate_manual",
+    }
     coordinator.data = {"min_percentage": 30, "max_percentage": 120, "mode": 1}
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.async_request_refresh = AsyncMock()
