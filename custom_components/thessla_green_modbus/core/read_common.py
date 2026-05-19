@@ -66,14 +66,14 @@ def log_read_retry(
             register_type,
             start_address,
             attempt,
-            coordinator.device_client.retry,
+            coordinator.retry,
         )
     _LOGGER.debug(
         "Retrying %s registers at %s (attempt %s/%s): %s",
         register_type,
         start_address,
         attempt + 1,
-        coordinator.device_client.retry,
+        coordinator.retry,
         exc,
     )
 

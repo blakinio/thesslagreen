@@ -20,16 +20,16 @@ async def ensure_connected_lifecycle(
     logger: Any,
 ) -> None:
     """Drive connection establishment and state updates for coordinator."""
-    async with coordinator.device_client._client_lock:
+    async with coordinator._client_lock:
         try:
             transport, client, selected_mode = await ensure_connected_runtime_fn(
-                current_transport=coordinator.device_client._transport,
-                current_client=coordinator.device_client.client,
+                current_transport=coordinator._transport,
+                current_client=coordinator.client,
                 reconnect_client_if_needed_fn=reconnect_client_if_needed_fn,
                 disconnect_locked_fn=coordinator._disconnect_locked,
                 get_runtime_state_fn=lambda: (
-                    coordinator.device_client._transport,
-                    coordinator.device_client.client,
+                    coordinator._transport,
+                    coordinator.client,
                 ),
                 ensure_transport_selected_fn=ensure_transport_selected_fn_factory(),
                 connect_transport_or_client_fn=connect_transport_or_client_fn,
@@ -37,10 +37,10 @@ async def ensure_connected_lifecycle(
                 mark_connection_failure_fn=mark_connection_failure_fn,
                 logger=logger,
             )
-            coordinator.device_client._transport = transport
-            coordinator.device_client.client = client
+            coordinator._transport = transport
+            coordinator.client = client
             if selected_mode is not None:
-                coordinator.device_client._resolved_connection_mode = selected_mode
+                coordinator._resolved_connection_mode = selected_mode
         except (ModbusException, ConnectionException) as exc:
             logger.exception("Failed to establish connection: %s", exc)
             raise

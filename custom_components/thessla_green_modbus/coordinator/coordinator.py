@@ -346,6 +346,46 @@ class ThesslaGreenModbusCoordinator(
     def _client_lock(self) -> Any:
         return self._device_client._client_lock
 
+    @property
+    def _input_registers_rev(self) -> dict[int, str]:
+        return self._device_client._input_registers_rev
+
+    @_input_registers_rev.setter
+    def _input_registers_rev(self, value: dict[int, str]) -> None:
+        self._device_client._input_registers_rev = value
+
+    @property
+    def _holding_registers_rev(self) -> dict[int, str]:
+        return self._device_client._holding_registers_rev
+
+    @_holding_registers_rev.setter
+    def _holding_registers_rev(self, value: dict[int, str]) -> None:
+        self._device_client._holding_registers_rev = value
+
+    @property
+    def _resolved_connection_mode(self) -> str | None:
+        return self._device_client._resolved_connection_mode
+
+    @_resolved_connection_mode.setter
+    def _resolved_connection_mode(self, value: str | None) -> None:
+        self._device_client._resolved_connection_mode = value
+
+    @property
+    def scan_uart_settings(self) -> bool:
+        return self._device_client.scan_uart_settings
+
+    @property
+    def skip_missing_registers(self) -> bool:
+        return self._device_client.skip_missing_registers
+
+    @property
+    def deep_scan(self) -> bool:
+        return self._device_client.deep_scan
+
+    @property
+    def safe_scan(self) -> bool:
+        return self._device_client.safe_scan
+
     # -- Post-processing state (capabilities mixin) --
 
     def __init__(
