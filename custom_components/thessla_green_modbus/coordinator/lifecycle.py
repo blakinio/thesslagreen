@@ -17,9 +17,9 @@ _LOGGER = logging.getLogger(__name__.rsplit(".", maxsplit=1)[0])
 
 def resolve_setup_endpoint(coordinator: ThesslaGreenModbusCoordinator) -> str:
     """Return user-friendly endpoint string for setup logs."""
-    if coordinator.config.connection_type == CONNECTION_TYPE_RTU:
-        return coordinator.config.serial_port or "serial"
-    return f"{coordinator.config.host}:{coordinator.config.port}"
+    if coordinator.device_client.config.connection_type == CONNECTION_TYPE_RTU:
+        return coordinator.device_client.config.serial_port or "serial"
+    return f"{coordinator.device_client.config.host}:{coordinator.device_client.config.port}"
 
 
 async def async_setup(coordinator: ThesslaGreenModbusCoordinator) -> bool:
@@ -28,7 +28,7 @@ async def async_setup(coordinator: ThesslaGreenModbusCoordinator) -> bool:
     _LOGGER.info(
         "Setting up ThesslaGreen coordinator for %s via %s",
         endpoint,
-        coordinator.config.connection_type.upper(),
+        coordinator.device_client.config.connection_type.upper(),
     )
 
     await coordinator._prepare_registers_for_setup()

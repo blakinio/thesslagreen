@@ -22,9 +22,12 @@ class DummyCoordinator:
         self.slave_id = 1
         self.writes: list[tuple[int, object, int]] = []
         self.encoded: list[tuple[int, object, int]] = []
-        self.available_registers = {"holding_registers": set()}
-        self.max_registers_per_request = max_registers_per_request
-        self.effective_batch = min(max_registers_per_request, MAX_BATCH_REGISTERS)
+        from types import SimpleNamespace
+        self.device_client = SimpleNamespace(
+            available_registers={"holding_registers": set()},
+            max_registers_per_request=max_registers_per_request,
+            effective_batch=min(max_registers_per_request, MAX_BATCH_REGISTERS),
+        )
 
     async def async_write_register(self, register_name, value, refresh=True, *, offset=0) -> bool:
         address = HOLDING_REGISTERS.get(register_name, 0) + offset
@@ -58,7 +61,7 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
     hass = SimpleNamespace()
     hass.services = Services()
     coordinator = DummyCoordinator()
-    coordinator.available_registers["holding_registers"].update(
+    coordinator.device_client.available_registers["holding_registers"].update(
         {"schedule_summer_mon_1", "setting_summer_mon_1"}
     )
 

@@ -10,14 +10,14 @@ from tests.helpers_coordinator import make_coordinator as _make_coordinator
 def test_compute_register_groups_safe_scan():
     """safe_scan=True produces per-register (addr, length) tuples (lines 1026-1047)."""
     coord = _make_coordinator(safe_scan=True)
-    coord.available_registers = {
+    coord.device_client.available_registers = {
         "input_registers": {"outside_temperature"},
         "holding_registers": set(),
         "coil_registers": set(),
         "discrete_inputs": set(),
     }
     coord._compute_register_groups()
-    groups = coord._register_groups.get("input_registers", [])
+    groups = coord.device_client._register_groups.get("input_registers", [])
     assert isinstance(groups, list)
     assert len(groups) >= 1
     addr, length = groups[0]
@@ -28,7 +28,7 @@ def test_compute_register_groups_safe_scan():
 def test_compute_register_groups_safe_scan_unknown_register():
     """Unknown register in safe_scan mode is skipped gracefully."""
     coord = _make_coordinator(safe_scan=True)
-    coord.available_registers = {
+    coord.device_client.available_registers = {
         "input_registers": {"__unknown_reg_xyz__"},
         "holding_registers": set(),
         "coil_registers": set(),
@@ -36,7 +36,7 @@ def test_compute_register_groups_safe_scan_unknown_register():
     }
     coord._compute_register_groups()
     # No exception should be raised; groups for input_registers is empty since reg not in map
-    groups = coord._register_groups.get("input_registers", [])
+    groups = coord.device_client._register_groups.get("input_registers", [])
     assert isinstance(groups, list)
 
 
@@ -80,36 +80,36 @@ def test_apply_scan_cache_invalid_capabilities():
 def test_compute_register_groups_safe_scan_key_error():
     """KeyError in get_register_definition with safe_scan=True (lines 1035-1037)."""
     coord = _make_coordinator(safe_scan=True)
-    coord.available_registers = {"holding_registers": {"mode"}}
-    coord._register_maps = {"holding_registers": {"mode": 100}}
+    coord.device_client.available_registers = {"holding_registers": {"mode"}}
+    coord.device_client._register_maps = {"holding_registers": {"mode": 100}}
     with patch(
         "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         side_effect=KeyError("mode"),
     ):
         coord._compute_register_groups()
-    assert "holding_registers" in coord._register_groups
+    assert "holding_registers" in coord.device_client._register_groups
 
 
 def test_compute_register_groups_non_safe_addr_none():
     """addr=None in register map hits continue (line 1053)."""
     coord = _make_coordinator(safe_scan=False)
-    coord.available_registers = {"holding_registers": {"unknown_reg"}}
-    coord._register_maps = {"holding_registers": {}}  # addr will be None
+    coord.device_client.available_registers = {"holding_registers": {"unknown_reg"}}
+    coord.device_client._register_maps = {"holding_registers": {}}  # addr will be None
     coord._compute_register_groups()
-    assert coord._register_groups.get("holding_registers", []) == []
+    assert coord.device_client._register_groups.get("holding_registers", []) == []
 
 
 def test_compute_register_groups_non_safe_key_error():
     """KeyError in get_register_definition with safe_scan=False (lines 1057-1059)."""
     coord = _make_coordinator(safe_scan=False)
-    coord.available_registers = {"holding_registers": {"mode"}}
-    coord._register_maps = {"holding_registers": {"mode": 100}}
+    coord.device_client.available_registers = {"holding_registers": {"mode"}}
+    coord.device_client._register_maps = {"holding_registers": {"mode": 100}}
     with patch(
         "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         side_effect=KeyError("mode"),
     ):
         coord._compute_register_groups()
-    assert "holding_registers" in coord._register_groups
+    assert "holding_registers" in coord.device_client._register_groups
 
 
 # ---------------------------------------------------------------------------

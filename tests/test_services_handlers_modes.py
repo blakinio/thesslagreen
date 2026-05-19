@@ -40,19 +40,20 @@ class _Coordinator:
     def __init__(self, write_result=True):
         self.async_write_register = AsyncMock(return_value=write_result)
         self.async_request_refresh = AsyncMock()
-        self.effective_batch = 2
-        self.available_registers = {
-            "holding_registers": {r.name for r in get_registers_by_function("03")}
-        }
         self.data = {}
         self.host = "127.0.0.1"
         self.port = 502
         self.slave_id = 1
-        self.timeout = 5
-        self.retry = 3
-        self.scan_uart_settings = False
-        self.unknown_registers = {}
-        self.scanned_registers = {}
+        _available = {"holding_registers": {r.name for r in get_registers_by_function("03")}}
+        self.device_client = SimpleNamespace(
+            effective_batch=2,
+            available_registers=_available,
+            timeout=5,
+            retry=3,
+            scan_uart_settings=False,
+            unknown_registers={},
+            scanned_registers={},
+        )
 
 
 def _make_hass(coordinator=None):
@@ -105,7 +106,7 @@ async def test_set_special_mode_basic(monkeypatch):
 async def test_set_special_mode_with_duration(monkeypatch):
     """set_special_mode writes duration register when available."""
     coord = _Coordinator()
-    coord.available_registers = {"holding_registers": {"boost_duration"}}
+    coord.device_client.available_registers = {"holding_registers": {"boost_duration"}}
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_special_mode", coord, monkeypatch)
 
@@ -154,7 +155,7 @@ async def test_set_special_mode_duration_write_failure(monkeypatch):
     coord = _Coordinator()
     # First write (special_mode) succeeds; second (duration) fails
     coord.async_write_register = AsyncMock(side_effect=[True, False])
-    coord.available_registers = {"holding_registers": {"boost_duration"}}
+    coord.device_client.available_registers = {"holding_registers": {"boost_duration"}}
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_special_mode", coord, monkeypatch)
 

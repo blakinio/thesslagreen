@@ -10,6 +10,8 @@ DOMAIN = "thessla_green_modbus"
 @pytest.mark.asyncio
 async def test_diagnostics_expected_keys_when_missing_scan_data():
     class DummyCoordinator:
+        device_client = property(lambda self: self)
+
         def __init__(self) -> None:
             self.last_scan = None
             self.device_scan_result = None
@@ -18,9 +20,10 @@ async def test_diagnostics_expected_keys_when_missing_scan_data():
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
-            self.device_client = SimpleNamespace(deep_scan=False)
+            self.deep_scan = False
             self.force_full_register_list = False
             self.effective_batch = 0
+            self.unknown_registers = {}
 
         def get_diagnostic_data(self):
             return {}
@@ -46,6 +49,8 @@ async def test_diagnostics_expected_keys_when_missing_scan_data():
 @pytest.mark.asyncio
 async def test_diagnostics_offline_active_error_formatting():
     class DummyCoordinator:
+        device_client = property(lambda self: self)
+
         def __init__(self) -> None:
             self.last_scan = None
             self.device_scan_result = None
@@ -54,9 +59,10 @@ async def test_diagnostics_offline_active_error_formatting():
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
-            self.device_client = SimpleNamespace(deep_scan=False)
+            self.deep_scan = False
             self.force_full_register_list = False
             self.effective_batch = 0
+            self.unknown_registers = {}
 
         def get_diagnostic_data(self):
             return {}

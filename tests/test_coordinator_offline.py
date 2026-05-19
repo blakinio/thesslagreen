@@ -21,7 +21,7 @@ async def test_coordinator_tracks_offline_and_recovers(monkeypatch) -> None:
         scan_interval=5,
         retry=1,
     )
-    coordinator.client = MagicMock(connected=True)
+    coordinator.device_client.client = MagicMock(connected=True)
     coordinator._disconnect = AsyncMock()
     coordinator._ensure_connection = AsyncMock()
     coordinator._read_input_registers_optimized = AsyncMock(
@@ -43,7 +43,7 @@ async def test_coordinator_tracks_offline_and_recovers(monkeypatch) -> None:
 
     assert data["reg"] == 1  # nosec: explicit state check
     assert coordinator.device_client._consecutive_failures == 0  # nosec: explicit state check
-    assert coordinator.statistics["last_successful_update"] is not None  # nosec
+    assert coordinator.device_client.statistics["last_successful_update"] is not None  # nosec
 
 
 @pytest.mark.asyncio
@@ -60,7 +60,7 @@ async def test_coordinator_disconnects_after_retries(monkeypatch) -> None:
         retry=1,
     )
     coordinator.device_client._max_failures = 1
-    coordinator.client = MagicMock(connected=True)
+    coordinator.device_client.client = MagicMock(connected=True)
     coordinator._disconnect = AsyncMock()
     coordinator._ensure_connection = AsyncMock()
     coordinator._read_input_registers_optimized = AsyncMock(side_effect=TimeoutError("boom"))
@@ -72,4 +72,4 @@ async def test_coordinator_disconnects_after_retries(monkeypatch) -> None:
         await coordinator._async_update_data()
 
     coordinator._disconnect.assert_awaited_once()
-    assert coordinator.client.connected  # nosec: explicit state check
+    assert coordinator.device_client.client.connected  # nosec: explicit state check

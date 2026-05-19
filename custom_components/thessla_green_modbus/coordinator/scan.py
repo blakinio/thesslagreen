@@ -88,7 +88,7 @@ def apply_scan_cache(coordinator: Any, cache: dict[str, Any]) -> bool:
             _LOGGER.debug("Invalid cached capabilities", exc_info=True)
     coordinator.device_client.device_scan_result = cache
 
-    if getattr(coordinator.config, "connection_mode", None) == CONNECTION_MODE_AUTO:
+    if getattr(coordinator.device_client.config, "connection_mode", None) == CONNECTION_MODE_AUTO:
         if resolved := cache.get("resolved_connection_mode"):
             coordinator.device_client._resolved_connection_mode = resolved
 

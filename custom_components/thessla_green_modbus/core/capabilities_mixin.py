@@ -233,7 +233,7 @@ class _CoordinatorCapabilitiesMixin:
         """Expose known device serial number in coordinator data."""
         # Expose the full serial number (assembled from 6 registers by the scanner)
         # as a sensor value so the serial_number entity has a meaningful state.
-        device_serial = (self.device_info or {}).get("serial_number")
+        device_serial = (self.device_client.device_info or {}).get("serial_number")
         if device_serial and device_serial != "Unknown":
             data["serial_number"] = device_serial
 

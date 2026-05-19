@@ -45,9 +45,9 @@ async def async_setup_entry(
     for register_name, select_def in ENTITY_MAPPINGS["select"].items():
         register_type = select_def["register_type"]
         register_map = coordinator.get_register_map(register_type)
-        available = coordinator.available_registers.get(register_type, set())
-        force_create = coordinator.force_full_register_list and register_name in register_map
-        if reason := capability_block_reason(register_name, coordinator.capabilities):
+        available = coordinator.device_client.available_registers.get(register_type, set())
+        force_create = coordinator.device_client.force_full_register_list and register_name in register_map
+        if reason := capability_block_reason(register_name, coordinator.device_client.capabilities):
             _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
             continue
         if register_name in available or force_create:

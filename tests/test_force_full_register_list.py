@@ -73,8 +73,8 @@ def test_force_full_register_list():
         for mapping in ENTITY_MAPPINGS.values():
             entity_regs.update(mapping.keys())
 
-        # Registers exposed via diagnostics (coordinator.available_registers)
-        diag_regs = set().union(*coordinator.available_registers.values())
+        # Registers exposed via diagnostics (coordinator.device_client.available_registers)
+        diag_regs = set().union(*coordinator.device_client.available_registers.values())
 
         # Full register list should be loaded
         assert diag_regs == all_regs

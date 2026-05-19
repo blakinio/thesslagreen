@@ -90,7 +90,7 @@ async def async_setup_entry(
         register_type = sensor_def["register_type"]
         is_temp = sensor_def.get("device_class") == SensorDeviceClass.TEMPERATURE
 
-        if reason := capability_block_reason(register_name, coordinator.capabilities):
+        if reason := capability_block_reason(register_name, coordinator.device_client.capabilities):
             _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
             if is_temp:
                 temp_skipped += 1
@@ -103,11 +103,11 @@ async def async_setup_entry(
             continue
 
         register_map = coordinator.get_register_map(register_type)
-        available = coordinator.available_registers.get(register_type, set())
+        available = coordinator.device_client.available_registers.get(register_type, set())
         # serial_number is always force-created: it reads from device_info (assembled
         # during scan from 6 registers) rather than via per-register polling, so it
         # works even when the device rejects block reads at those addresses.
-        force_create = (coordinator.force_full_register_list and register_name in register_map) or (
+        force_create = (coordinator.device_client.force_full_register_list and register_name in register_map) or (
             register_name == "serial_number" and register_name in register_map
         )
 
@@ -140,7 +140,7 @@ async def async_setup_entry(
     entities.append(ThesslaGreenErrorCodesSensor(coordinator, translations))
     error_registers = [
         key
-        for key in coordinator.available_registers.get("holding_registers", set())
+        for key in coordinator.device_client.available_registers.get("holding_registers", set())
         if _is_error_or_status_register(key)
     ]
     if error_registers:
@@ -247,7 +247,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         value = self.coordinator.data.get(self._register_name)
 
         if not self.coordinator.last_update_success or getattr(
-            self.coordinator, "offline_state", False
+            self.coordinator.device_client, "offline_state", False
         ):
             return False
 
@@ -304,14 +304,14 @@ class ThesslaGreenSerialNumberSensor(ThesslaGreenSensor):
     The serial number spans 6 input registers (addresses 24-29) and is
     assembled by the scanner during device discovery.  Some devices reject
     block reads for that address range, so this sensor reads the pre-assembled
-    value from ``coordinator.device_info["serial_number"]`` instead of polling
+    value from ``coordinator.device_client.device_info["serial_number"]`` instead of polling
     the registers individually on every update cycle.
     """
 
     @property
     def native_value(self) -> str | None:
         """Return the serial number string assembled during device scan."""
-        sn = (self.coordinator.device_info or {}).get("serial_number")
+        sn = (self.coordinator.device_client.device_info or {}).get("serial_number")
         if sn and sn != "Unknown":
             return str(sn)
         return None
@@ -321,9 +321,9 @@ class ThesslaGreenSerialNumberSensor(ThesslaGreenSensor):
         """Return True when the coordinator has a valid serial number."""
         if not self.coordinator.last_update_success:
             return False
-        if self.coordinator.offline_state:
+        if self.coordinator.device_client.offline_state:
             return False
-        sn = (self.coordinator.device_info or {}).get("serial_number")
+        sn = (self.coordinator.device_client.device_info or {}).get("serial_number")
         return bool(sn and sn != "Unknown")
 
 
@@ -396,7 +396,7 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
         """
         return bool(
             self.coordinator.last_update_success
-            and not getattr(self.coordinator, "offline_state", False)
+            and not getattr(self.coordinator.device_client, "offline_state", False)
         )
 
     @property

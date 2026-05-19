@@ -27,8 +27,8 @@ def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
                 f"{deps.domain}_unknown_registers",
                 {
                     "entity_id": entity_id,
-                    "unknown_registers": coordinator.unknown_registers,
-                    "scanned_registers": coordinator.scanned_registers,
+                    "unknown_registers": coordinator.device_client.unknown_registers,
+                    "scanned_registers": coordinator.device_client.scanned_registers,
                 },
             )
 
@@ -41,12 +41,12 @@ def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
                     host=coordinator.host,
                     port=coordinator.port,
                     slave_id=coordinator.slave_id,
-                    timeout=int(coordinator.timeout),
-                    retry=coordinator.retry,
+                    timeout=int(coordinator.device_client.timeout),
+                    retry=coordinator.device_client.retry,
                     scan_uart_settings=coordinator.device_client.scan_uart_settings,
                     skip_known_missing=False,
                     full_register_scan=True,
-                    max_registers_per_request=coordinator.effective_batch,
+                    max_registers_per_request=coordinator.device_client.effective_batch,
                     hass=hass,
                 )
                 scan_result = await scanner.scan_device()
@@ -54,7 +54,7 @@ def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
                 if scanner is not None:
                     await scanner.close()
 
-            coordinator.device_scan_result = scan_result
+            coordinator.device_client.device_scan_result = scan_result
             unknown_registers = scan_result.get("unknown_registers", {})
             summary = {
                 "register_count": scan_result.get("register_count", 0),

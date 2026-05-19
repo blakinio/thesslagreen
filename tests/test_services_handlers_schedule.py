@@ -37,19 +37,21 @@ class _Coordinator:
     def __init__(self, write_result=True):
         self.async_write_register = AsyncMock(return_value=write_result)
         self.async_request_refresh = AsyncMock()
-        self.effective_batch = 2
-        self.available_registers = {
-            "holding_registers": {r.name for r in get_registers_by_function("03")}
-        }
         self.data = {}
         self.host = "127.0.0.1"
         self.port = 502
         self.slave_id = 1
-        self.timeout = 5
-        self.retry = 3
-        self.scan_uart_settings = False
-        self.unknown_registers = {}
-        self.scanned_registers = {}
+        self.device_client = SimpleNamespace(
+            effective_batch=2,
+            available_registers={
+                "holding_registers": {r.name for r in get_registers_by_function("03")}
+            },
+            timeout=5,
+            retry=3,
+            scan_uart_settings=False,
+            unknown_registers={},
+            scanned_registers={},
+        )
 
 
 def _make_hass(coordinator=None):

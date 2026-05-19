@@ -9,8 +9,8 @@ import pytest
 async def test_disconnect_retry_transportless_restores_client(coordinator):
     """Transport-less retry restores client when disconnect clears it."""
     client = MagicMock()
-    coordinator.client = client
-    coordinator._transport = None
+    coordinator.device_client.client = client
+    coordinator.device_client._transport = None
     coordinator._disconnect = _disconnect_clear_client(coordinator)
     coordinator._ensure_connection = AsyncMock()
 
@@ -21,7 +21,7 @@ async def test_disconnect_retry_transportless_restores_client(coordinator):
     )
 
     assert reconnect_error is None
-    assert coordinator.client is client
+    assert coordinator.device_client.client is client
     coordinator._ensure_connection.assert_not_awaited()
 
 
@@ -29,8 +29,8 @@ async def test_disconnect_retry_transportless_restores_client(coordinator):
 async def test_disconnect_retry_transportless_returns_disconnect_error(coordinator):
     """Transport-less retry returns disconnect error and skips reconnect."""
     client = MagicMock()
-    coordinator.client = client
-    coordinator._transport = None
+    coordinator.device_client.client = client
+    coordinator.device_client._transport = None
     coordinator._disconnect = _disconnect_raise_oserror()
     coordinator._ensure_connection = AsyncMock()
 
@@ -46,7 +46,7 @@ async def test_disconnect_retry_transportless_returns_disconnect_error(coordinat
 
 def _disconnect_clear_client(coordinator):
     async def _disconnect() -> None:
-        coordinator.client = None
+        coordinator.device_client.client = None
 
     return _disconnect
 

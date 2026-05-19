@@ -10,8 +10,8 @@ from tests.helpers_coordinator import make_coordinator as _make_coordinator
 @pytest.mark.asyncio
 async def test_get_client_method_fallback_noop():
     coord = _make_coordinator()
-    coord.client = None
-    coord._transport = None
+    coord.device_client.client = None
+    coord.device_client._transport = None
     method = coord._get_client_method("nonexistent_method_xyz")
     assert callable(method)
     assert await method() is None
@@ -19,11 +19,11 @@ async def test_get_client_method_fallback_noop():
 
 async def test_get_client_method_from_client():
     coord = _make_coordinator()
-    coord._transport = None
+    coord.device_client._transport = None
     client = MagicMock()
     expected = AsyncMock(return_value="ok")
     client.read_holding_registers = expected
-    coord.client = client
+    coord.device_client.client = client
     assert coord._get_client_method("read_holding_registers") is expected
 
 
@@ -35,7 +35,7 @@ async def test_async_write_register_via_transport():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_register = AsyncMock(return_value=ok_response)
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord.async_request_refresh = AsyncMock()
     assert await coord.async_write_register("mode", 1) is True
 
@@ -47,7 +47,7 @@ async def test_async_write_register_coil():
     ok_response.isError.return_value = False
     transport = MagicMock()
     transport.is_connected.return_value = True
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord._call_modbus = AsyncMock(return_value=ok_response)
     coord.async_request_refresh = AsyncMock()
     assert await coord.async_write_register("bypass", 1) is True
@@ -61,7 +61,7 @@ async def test_async_write_register_refresh_type_error():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_register = AsyncMock(return_value=ok_response)
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord.async_request_refresh = AsyncMock(side_effect=TypeError("mock ctx"))
     assert await coord.async_write_register("mode", 1, refresh=True) is True
 
@@ -79,7 +79,7 @@ async def test_async_write_register_multi_reg_with_offset_via_transport():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_registers = AsyncMock(return_value=ok_resp)
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord.async_request_refresh = AsyncMock()
     with patch(
         "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
@@ -98,7 +98,7 @@ async def test_async_write_registers_single_request_rtu_transport():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_registers = AsyncMock(return_value=ok_resp)
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord.async_request_refresh = AsyncMock()
     assert await coord.async_write_registers(100, [1, 2], require_single_request=True) is True
 
@@ -111,7 +111,7 @@ async def test_async_write_registers_single_request_tcp_call_modbus():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_registers = AsyncMock(return_value=ok_resp)
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord.async_request_refresh = AsyncMock()
     assert await coord.async_write_registers(100, [1, 2], require_single_request=True) is True
 
@@ -119,12 +119,12 @@ async def test_async_write_registers_single_request_tcp_call_modbus():
 async def test_async_write_registers_batch_via_client():
     coord = _make_coordinator()
     coord._ensure_connection = AsyncMock()
-    coord._transport = None
+    coord.device_client._transport = None
     client = MagicMock()
     ok_resp = MagicMock()
     ok_resp.isError.return_value = False
     client.write_registers = AsyncMock(return_value=ok_resp)
-    coord.client = client
+    coord.device_client.client = client
     coord.async_request_refresh = AsyncMock()
     assert await coord.async_write_registers(100, [1, 2]) is True
 
@@ -132,12 +132,12 @@ async def test_async_write_registers_batch_via_client():
 async def test_async_write_registers_refresh_type_error():
     coord = _make_coordinator()
     coord._ensure_connection = AsyncMock()
-    coord._transport = None
+    coord.device_client._transport = None
     client = MagicMock()
     ok_resp = MagicMock()
     ok_resp.isError.return_value = False
     client.write_registers = AsyncMock(return_value=ok_resp)
-    coord.client = client
+    coord.device_client.client = client
     coord.async_request_refresh = AsyncMock(side_effect=TypeError("mock ctx"))
     assert await coord.async_write_registers(100, [1, 2], refresh=True) is True
 
@@ -155,7 +155,7 @@ async def test_async_write_register_encoded_non_list():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_registers = AsyncMock(return_value=ok_resp)
-    coord._transport = transport
+    coord.device_client._transport = transport
     coord.async_request_refresh = AsyncMock()
     with patch(
         "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",

@@ -63,5 +63,5 @@ def coordinator():
         timeout=10,
         retry=3,
     )
-    coordinator.available_registers = available_registers
+    coordinator.device_client.available_registers = available_registers
     return coordinator

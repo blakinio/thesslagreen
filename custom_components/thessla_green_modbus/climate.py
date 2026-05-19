@@ -108,7 +108,7 @@ async def async_setup_entry(
     hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator: ThesslaGreenModbusCoordinator = config_entry.runtime_data
-    if coordinator.capabilities.basic_control:
+    if coordinator.device_client.capabilities.basic_control:
         entities = [ThesslaGreenClimate(coordinator)]
         try:
             async_add_entities(entities, True)

@@ -116,7 +116,7 @@ async def test_async_setup_creates_new_numbers(mock_coordinator, mock_config_ent
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_config_entry.runtime_data = mock_coordinator
 
-    mock_coordinator.available_registers.setdefault("holding_registers", set()).update(
+    mock_coordinator.device_client.available_registers.setdefault("holding_registers", set()).update(
         {"max_supply_air_flow_rate", "min_bypass_temperature"}
     )
 
@@ -134,7 +134,7 @@ async def test_async_setup_skips_missing_numbers(mock_coordinator, mock_config_e
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_config_entry.runtime_data = mock_coordinator
 
-    mock_coordinator.available_registers = {"holding_registers": set()}
+    mock_coordinator.device_client.available_registers = {"holding_registers": set()}
 
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)
@@ -171,7 +171,7 @@ async def test_async_setup_skips_unknown_register(mock_coordinator, mock_config_
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_config_entry.runtime_data = mock_coordinator
 
-    mock_coordinator.available_registers["holding_registers"] = {"invalid_register"}
+    mock_coordinator.device_client.available_registers["holding_registers"] = {"invalid_register"}
 
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)
@@ -186,21 +186,21 @@ async def test_force_full_register_list_adds_missing_number(mock_coordinator, mo
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_config_entry.runtime_data = mock_coordinator
 
-    mock_coordinator.available_registers = {
+    mock_coordinator.device_client.available_registers = {
         "input_registers": set(),
         "holding_registers": set(),
         "coil_registers": set(),
         "discrete_inputs": set(),
         "calculated": set(),
     }
-    mock_coordinator.force_full_register_list = True
+    mock_coordinator.device_client.force_full_register_list = True
 
     number_map = {"max_supply_air_flow_rate": {"translation_key": "max"}}
 
     with (
         patch.dict(ENTITY_MAPPINGS["number"], number_map, clear=True),
         patch.dict(
-            mock_coordinator._register_maps["holding_registers"],
+            mock_coordinator.device_client._register_maps["holding_registers"],
             {"max_supply_air_flow_rate": 1},
             clear=True,
         ),

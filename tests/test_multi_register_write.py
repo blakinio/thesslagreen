@@ -25,7 +25,7 @@ async def test_async_write_registers_calls_modbus():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_registers = AsyncMock(return_value=response)
-    coordinator._transport = transport
+    coordinator.device_client._transport = transport
 
     assert await coordinator.async_write_registers(100, [1, 2, 3]) is True
     transport.write_registers.assert_called_once()
@@ -47,7 +47,7 @@ async def test_async_write_registers_chunks_oversize():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_registers = AsyncMock(return_value=response)
-    coordinator._transport = transport
+    coordinator.device_client._transport = transport
 
     oversized = list(range(17))
     assert await coordinator.async_write_registers(100, oversized) is True
@@ -73,7 +73,7 @@ async def test_async_write_registers_passes_attempt():
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_registers = AsyncMock(side_effect=[response_error, response_ok])
-    coordinator._transport = transport
+    coordinator.device_client._transport = transport
     coordinator._disconnect = AsyncMock()
 
     assert await coordinator.async_write_registers(100, [1, 2]) is True
@@ -94,7 +94,7 @@ async def test_async_write_registers_retries_from_first_chunk_after_chunk_error(
     )
     coordinator._ensure_connection = AsyncMock()
     coordinator._disconnect = AsyncMock()
-    coordinator.effective_batch = 2
+    coordinator.device_client.effective_batch = 2
 
     response_error = MagicMock()
     response_error.isError.return_value = True
@@ -103,7 +103,7 @@ async def test_async_write_registers_retries_from_first_chunk_after_chunk_error(
     transport = MagicMock()
     transport.is_connected.return_value = True
     transport.write_registers = AsyncMock(side_effect=[response_error, response_ok, response_ok])
-    coordinator._transport = transport
+    coordinator.device_client._transport = transport
 
     assert await coordinator.async_write_registers(100, [1, 2, 3]) is True
     addresses = [call.args[1] for call in transport.write_registers.await_args_list]
@@ -122,12 +122,12 @@ async def test_async_write_registers_single_request_override():
         name="test",
     )
     coordinator._ensure_connection = AsyncMock()
-    coordinator.effective_batch = 1
+    coordinator.device_client.effective_batch = 1
     response = MagicMock()
     response.isError.return_value = False
     client = MagicMock(connected=True)
     client.write_registers = AsyncMock(return_value=response)
-    coordinator.client = client
+    coordinator.device_client.client = client
 
     assert (
         await coordinator.async_write_registers(
@@ -216,7 +216,7 @@ async def test_async_write_temporary_airflow_writes_three_registers(monkeypatch)
     response.isError.return_value = False
     client = MagicMock(connected=True)
     client.write_registers = AsyncMock(return_value=response)
-    coordinator.client = client
+    coordinator.device_client.client = client
 
     def fake_def(_name):
         return SimpleNamespace(encode=lambda value: value)

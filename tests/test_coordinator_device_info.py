@@ -21,7 +21,7 @@ from tests.helpers_coordinator import make_coordinator as _make_coordinator
 def coordinator():
     """Create a test coordinator."""
     coordinator = _make_coordinator()
-    coordinator.available_registers = {
+    coordinator.device_client.available_registers = {
         "holding_registers": {"mode", "air_flow_rate_manual", "special_mode"},
         "input_registers": {"outside_temperature", "supply_temperature"},
         "coil_registers": {"system_on_off"},
@@ -108,7 +108,7 @@ def test_sw_version_uses_version_registers_when_firmware_unknown():
     from custom_components.thessla_green_modbus.coordinator.diagnostics import _resolve_sw_version
 
     coord = _make_coordinator()
-    coord.device_info = {}
+    coord.device_client.device_info = {}
     coord.data = {"version_major": 3, "version_minor": 11, "cf_version": 13}
 
     result = _resolve_sw_version(coord)
@@ -120,7 +120,7 @@ def test_sw_version_prefers_firmware_string_over_registers():
     from custom_components.thessla_green_modbus.coordinator.diagnostics import _resolve_sw_version
 
     coord = _make_coordinator()
-    coord.device_info = {"firmware": "v3.11-stable"}
+    coord.device_client.device_info = {"firmware": "v3.11-stable"}
     coord.data = {"version_major": 3, "version_minor": 11, "cf_version": 13}
 
     assert _resolve_sw_version(coord) == "v3.11-stable"
@@ -131,7 +131,7 @@ def test_sw_version_falls_back_to_unknown_when_no_data():
     from custom_components.thessla_green_modbus.coordinator.diagnostics import _resolve_sw_version
 
     coord = _make_coordinator()
-    coord.device_info = {}
+    coord.device_client.device_info = {}
     coord.data = {}
 
     assert _resolve_sw_version(coord) == "Unknown"
@@ -142,7 +142,7 @@ def test_sw_version_partial_registers():
     from custom_components.thessla_green_modbus.coordinator.diagnostics import _resolve_sw_version
 
     coord = _make_coordinator()
-    coord.device_info = {}
+    coord.device_client.device_info = {}
     coord.data = {"version_major": 3, "version_minor": 11}
 
     assert _resolve_sw_version(coord) == "3.11"
@@ -151,7 +151,7 @@ def test_sw_version_partial_registers():
 def test_get_device_info_uses_version_registers_for_sw_version():
     """get_device_info exposes version-register-assembled sw_version."""
     coord = _make_coordinator()
-    coord.device_info = {}
+    coord.device_client.device_info = {}
     coord.data = {"version_major": 3, "version_minor": 11, "cf_version": 13}
     coord.device_client.device_scan_result = {}
     coord.entry = None

@@ -386,9 +386,11 @@ async def test_concurrent_rtc_sync_and_update_serialized():
         retry = 1
         effective_batch = 16
         _transport = None
+        device_client = property(lambda self: self)
 
         def __init__(self):
             self._write_lock = asyncio.Lock()
+            self._device_client = self
             self._client = None
 
         # Required stubs
@@ -468,9 +470,11 @@ async def test_no_overlapping_read_write_calls_on_same_client():
         retry = 1
         effective_batch = 16
         _transport = None
+        device_client = property(lambda self: self)
 
         def __init__(self):
             self._write_lock = asyncio.Lock()
+            self._device_client = self
 
         async def _ensure_connection(self):
             pass
@@ -539,9 +543,11 @@ async def test_readback_only_after_write_response_complete():
         retry = 1
         effective_batch = 16
         _transport = None
+        device_client = property(lambda self: self)
 
         def __init__(self):
             self._write_lock = asyncio.Lock()
+            self._device_client = self
 
         async def _ensure_connection(self):
             pass
@@ -602,9 +608,11 @@ async def test_transaction_mismatch_prevented_by_lock_ordering():
         retry = 1
         effective_batch = 16
         _transport = None
+        device_client = property(lambda self: self)
 
         def __init__(self):
             self._write_lock = asyncio.Lock()
+            self._device_client = self
 
         async def _ensure_connection(self):
             pass

@@ -17,7 +17,7 @@ async def run_single_write_attempts(
 ) -> tuple[bool, bool]:
     """Execute retry loop for single-register write."""
     refresh_after_write = False
-    for attempt in range(1, coordinator.retry + 1):
+    for attempt in range(1, coordinator.device_client.retry + 1):
         try:
             response, success = await coordinator._execute_single_register_write_attempt(
                 definition=definition,
@@ -29,7 +29,7 @@ async def run_single_write_attempts(
             )
             if not success:
                 should_retry = coordinator._handle_write_response_failure(
-                    is_final_attempt=attempt == coordinator.retry,
+                    is_final_attempt=attempt == coordinator.device_client.retry,
                     final_error_message="Error writing to register %s: %s",
                     retry_message=f"Retrying write to register {plan.register_name}",
                     error_args=(plan.register_name, response),
@@ -70,7 +70,7 @@ async def run_multi_register_write_attempts(
 ) -> tuple[bool, bool]:
     """Execute retry loop for multi-register write. Returns (success, refresh_after_write)."""
     refresh_after_write = False
-    for attempt in range(1, coordinator.retry + 1):
+    for attempt in range(1, coordinator.device_client.retry + 1):
         try:
             response, success = await coordinator._execute_multi_register_chunks(
                 coordinator._plan_multi_register_chunks(
@@ -80,7 +80,7 @@ async def run_multi_register_write_attempts(
             )
             if not success:
                 should_retry = coordinator._handle_write_response_failure(
-                    is_final_attempt=attempt == coordinator.retry,
+                    is_final_attempt=attempt == coordinator.device_client.retry,
                     final_error_message="Error writing registers at %s: %s",
                     retry_message=f"Retrying multi-register write at {start_address}",
                     error_args=(start_address, response),

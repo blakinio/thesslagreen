@@ -71,12 +71,12 @@ async def test_read_retries_logged(monkeypatch, caplog):
 
     hass = core.HomeAssistant(tempfile.mkdtemp())
     coord = ThesslaGreenModbusCoordinator.from_params(hass, "host", 1, 1, "name", scan_interval=1)
-    coord.client = DummyClient()
-    coord.retry = 2
-    coord.available_registers["input_registers"] = {"reg0", "reg1"}
-    coord._register_maps["input_registers"] = {"reg0": 0, "reg1": 1}
-    coord._reverse_maps["input_registers"] = {0: "reg0", 1: "reg1"}
-    coord._register_groups["input_registers"] = [(0, 2)]
+    coord.device_client.client = DummyClient()
+    coord.device_client.retry = 2
+    coord.device_client.available_registers["input_registers"] = {"reg0", "reg1"}
+    coord.device_client._register_maps["input_registers"] = {"reg0": 0, "reg1": 1}
+    coord.device_client._reverse_maps["input_registers"] = {0: "reg0", 1: "reg1"}
+    coord.device_client._register_groups["input_registers"] = [(0, 2)]
     coord._process_register_value = lambda name, value: value
 
     caplog.set_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus")
@@ -132,8 +132,8 @@ async def test_write_retries_logged(monkeypatch, caplog):
 
     hass = core.HomeAssistant(tempfile.mkdtemp())
     coord = ThesslaGreenModbusCoordinator.from_params(hass, "host", 1, 1, "name", scan_interval=1)
-    coord.client = DummyClient()
-    coord.retry = 2
+    coord.device_client.client = DummyClient()
+    coord.device_client.retry = 2
     monkeypatch.setattr(coord, "_ensure_connection", lambda: asyncio.sleep(0))
 
     caplog.set_level(logging.INFO)

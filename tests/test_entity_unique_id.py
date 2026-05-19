@@ -26,8 +26,8 @@ def _create_coordinator(
     coordinator.slave_id = slave_id
     coordinator.host = host
     coordinator.port = port
-    coordinator.device_info = {"serial_number": serial} if serial else {}
-    coordinator.get_device_info.return_value = coordinator.device_info
+    coordinator.device_client.device_info = {"serial_number": serial} if serial else {}
+    coordinator.get_device_info.return_value = coordinator.device_client.device_info
     return coordinator
 
 
@@ -186,8 +186,8 @@ async def test_migrate_entity_unique_ids(hass):
         coordinator.host = host
         coordinator.port = port
         coordinator.slave_id = slave_id
-        coordinator.device_info = {"serial_number": "ABC123"}
-        coordinator.get_device_info.return_value = coordinator.device_info
+        coordinator.device_client.device_info = {"serial_number": "ABC123"}
+        coordinator.get_device_info.return_value = coordinator.device_client.device_info
         mock_coordinator_class.return_value = coordinator
         mock_coordinator_class.from_config.return_value = coordinator
 

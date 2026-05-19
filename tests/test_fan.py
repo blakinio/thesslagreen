@@ -144,7 +144,7 @@ def test_fan_turn_off_success(mock_coordinator):
 def test_fan_turn_off_via_airflow_register(mock_coordinator):
     """When on_off_panel_mode unavailable, turn off via air_flow_rate_manual (lines 194-204)."""
     mock_coordinator.data["mode"] = 1  # manual mode
-    mock_coordinator.available_registers["holding_registers"].discard("on_off_panel_mode")
+    mock_coordinator.device_client.available_registers["holding_registers"].discard("on_off_panel_mode")
     mock_coordinator.async_write_register = AsyncMock(return_value=True)
     mock_coordinator.async_request_refresh = AsyncMock()
     fan = ThesslaGreenFan(mock_coordinator)
@@ -196,7 +196,7 @@ def test_fan_set_percentage_auto_mode_uses_temporary_register(mock_coordinator, 
     from custom_components.thessla_green_modbus import fan as fan_module
 
     mock_coordinator.data["mode"] = 0  # auto mode
-    mock_coordinator.available_registers["holding_registers"].add("air_flow_rate_temporary_2")
+    mock_coordinator.device_client.available_registers["holding_registers"].add("air_flow_rate_temporary_2")
     mock_coordinator.async_write_register = AsyncMock(return_value=True)
     mock_coordinator.async_request_refresh = AsyncMock()
 
@@ -234,7 +234,7 @@ def test_fan_write_register_invalid_raises(mock_coordinator):
 
 def test_fan_write_register_not_in_available_skips(mock_coordinator):
     """_write_register skips write when register not in available_registers (lines 281-283)."""
-    mock_coordinator.available_registers["holding_registers"].discard("air_flow_rate_manual")
+    mock_coordinator.device_client.available_registers["holding_registers"].discard("air_flow_rate_manual")
     mock_coordinator.async_write_register = AsyncMock(return_value=True)
     fan = ThesslaGreenFan(mock_coordinator)
     asyncio.run(fan._write_register("air_flow_rate_manual", 50))
@@ -249,6 +249,6 @@ def test_is_writable_holding_register_true(mock_coordinator):
 
 def test_is_writable_holding_register_false_when_missing(mock_coordinator):
     """Helper reports False when register was not discovered on the device."""
-    mock_coordinator.available_registers["holding_registers"].discard("air_flow_rate_manual")
+    mock_coordinator.device_client.available_registers["holding_registers"].discard("air_flow_rate_manual")
     fan = ThesslaGreenFan(mock_coordinator)
     assert fan._is_writable_holding_register("air_flow_rate_manual") is False  # nosec B101

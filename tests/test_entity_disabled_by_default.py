@@ -28,7 +28,7 @@ def _make_coordinator() -> MagicMock:
     coordinator.slave_id = 10
     coordinator.last_update_success = True
     coordinator.data = {}
-    coordinator.device_info = {}
+    coordinator.device_client.device_info = {}
     coordinator.get_device_info = MagicMock(return_value={})
     return coordinator
 

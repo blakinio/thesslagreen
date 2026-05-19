@@ -61,19 +61,19 @@ class _CoordinatorScheduleMixin:
 
     def _assert_write_connection_ready(self) -> None:
         """Ensure transport/client is present and connected for writes."""
-        transport = self._transport
+        transport = self._device_client._transport
         if transport is not None and not transport.is_connected():
             raise ConnectionException("Modbus transport is not connected")
-        if transport is None and self.client is None:
+        if transport is None and self._device_client.client is None:
             raise ConnectionException("Modbus client is not connected")
 
     async def _write_registers_payload(self, address: int, values: list[int], attempt: int) -> Any:
         """Write a holding-register payload via client, transport, or fallback call."""
         payload = [int(v) for v in values]
-        if self._transport is None and self.client is not None:
-            return await self.client.write_registers(address=address, values=payload)
-        if self._transport is not None:
-            return await self._transport.write_registers(
+        if self._device_client._transport is None and self._device_client.client is not None:
+            return await self._device_client.client.write_registers(address=address, values=payload)
+        if self._device_client._transport is not None:
+            return await self._device_client._transport.write_registers(
                 self.slave_id,
                 address,
                 values=payload,
@@ -106,7 +106,7 @@ class _CoordinatorScheduleMixin:
         """Write multiple holding registers in chunks. Returns (last_response, success)."""
         response = None
         for chunk_start, chunk in chunk_register_values(
-            address, encoded_values, self.effective_batch
+            address, encoded_values, self._device_client.effective_batch
         ):
             response = await self._write_registers_payload(chunk_start, chunk, attempt)
             if response is None or response.isError():
@@ -115,10 +115,10 @@ class _CoordinatorScheduleMixin:
 
     async def _write_holding_single(self, address: int, value: Any, attempt: int) -> Any:
         """Write a single holding register."""
-        if self._transport is None and self.client is not None:
-            return await self.client.write_register(address=address, value=int(value))
-        if self._transport is not None:
-            return await self._transport.write_register(self.slave_id, address, value=int(value))
+        if self._device_client._transport is None and self._device_client.client is not None:
+            return await self._device_client.client.write_register(address=address, value=int(value))
+        if self._device_client._transport is not None:
+            return await self._device_client._transport.write_register(self.slave_id, address, value=int(value))
         return await self._call_modbus(
             self._get_client_method("write_register"),
             address,
@@ -157,7 +157,7 @@ class _CoordinatorScheduleMixin:
         """Build chunk plan for multi-register writes."""
         if require_single_request:
             return [(start_address, values)]
-        return list(chunk_register_values(start_address, values, self.effective_batch))
+        return list(chunk_register_values(start_address, values, self._device_client.effective_batch))
 
     def _handle_write_response_failure(
         self,
@@ -195,23 +195,23 @@ class _CoordinatorScheduleMixin:
         """
         if isinstance(exc, (ModbusException, ConnectionException)):
             await self._disconnect()
-            if attempt == self.retry:
+            if attempt == self._device_client.retry:
                 _LOGGER.error(failed_message, register_name, exc_info=True)
                 return False
             _LOGGER.info(retry_message, register_name, exc)
             return True
 
         if isinstance(exc, TimeoutError):
-            if self._transport is not None:
+            if self._device_client._transport is not None:
                 await self._disconnect()
             _LOGGER.warning(
                 timed_out_message,
                 register_name,
                 attempt,
-                self.retry,
+                self._device_client.retry,
                 exc_info=True,
             )
-            if attempt == self.retry:
+            if attempt == self._device_client.retry:
                 _LOGGER.error(persistent_timeout_message, register_name)
                 return False
             return True
@@ -336,7 +336,7 @@ class _CoordinatorScheduleMixin:
         Modbus representation before sending to the device.
         """
         refresh_after_write = False
-        async with self._write_lock:
+        async with self._device_client._write_lock:
             try:
                 success, refresh_after_write = await self._locked_single_register_write(
                     register_name=register_name,
@@ -367,7 +367,7 @@ class _CoordinatorScheduleMixin:
         ):
             return False
         refresh_after_write = False
-        async with self._write_lock:
+        async with self._device_client._write_lock:
             try:
                 await self._ensure_connection()
                 self._assert_write_connection_ready()
@@ -394,16 +394,16 @@ class _CoordinatorScheduleMixin:
         Caller MUST already hold _write_lock. Returns None on any failure.
         """
         try:
-            if self._transport is not None:
-                response = await self._transport.read_holding_registers(
+            if self._device_client._transport is not None:
+                response = await self._device_client._transport.read_holding_registers(
                     self.slave_id,
                     start_address,
                     count=count,
                     attempt=1,
                 )
-            elif self.client is not None:
+            elif self._device_client.client is not None:
                 response = await self._call_modbus(
-                    self.client.read_holding_registers,
+                    self._device_client.client.read_holding_registers,
                     start_address,
                     count=count,
                     attempt=1,
@@ -441,7 +441,7 @@ class _CoordinatorScheduleMixin:
         ):
             return False, None
 
-        async with self._write_lock:
+        async with self._device_client._write_lock:
             try:
                 await self._ensure_connection()
                 self._assert_write_connection_ready()

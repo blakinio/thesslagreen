@@ -60,8 +60,8 @@ async def test_set_temperature_scaling():
     coordinator.async_request_refresh = AsyncMock()
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.data = {}
-    coordinator.available_registers["holding_registers"].add("required_temperature")
-    coordinator.capabilities.basic_control = True
+    coordinator.device_client.available_registers["holding_registers"].add("required_temperature")
+    coordinator.device_client.capabilities.basic_control = True
 
     climate = ThesslaGreenClimate(coordinator)
 
@@ -78,7 +78,7 @@ def test_target_temperature_none_when_unavailable():
     coordinator = ThesslaGreenModbusCoordinator.from_params(
         hass, "host", 502, 1, "dev", timedelta(seconds=1)
     )
-    coordinator.capabilities.basic_control = True
+    coordinator.device_client.capabilities.basic_control = True
     coordinator.data = {}
 
     climate = ThesslaGreenClimate(coordinator)
@@ -95,7 +95,7 @@ def test_hvac_mode_off_uses_on_off_panel_mode():
     coordinator = ThesslaGreenModbusCoordinator.from_params(
         hass, "host", 502, 1, "dev", timedelta(seconds=1)
     )
-    coordinator.capabilities.basic_control = True
+    coordinator.device_client.capabilities.basic_control = True
     coordinator.data = {"on_off_panel_mode": 0, "mode": 0}
 
     climate = ThesslaGreenClimate(coordinator)
@@ -109,7 +109,7 @@ def test_hvac_mode_auto_when_panel_on():
     coordinator = ThesslaGreenModbusCoordinator.from_params(
         hass, "host", 502, 1, "dev", timedelta(seconds=1)
     )
-    coordinator.capabilities.basic_control = True
+    coordinator.device_client.capabilities.basic_control = True
     coordinator.data = {"on_off_panel_mode": 1, "mode": 0}
 
     climate = ThesslaGreenClimate(coordinator)
@@ -208,15 +208,15 @@ async def test_force_full_register_list_creates_climate(mock_coordinator, mock_c
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_config_entry.runtime_data = mock_coordinator
 
-    mock_coordinator.available_registers = {
+    mock_coordinator.device_client.available_registers = {
         "input_registers": set(),
         "holding_registers": set(),
         "coil_registers": set(),
         "discrete_inputs": set(),
         "calculated": set(),
     }
-    mock_coordinator.force_full_register_list = True
-    mock_coordinator.capabilities.basic_control = True
+    mock_coordinator.device_client.force_full_register_list = True
+    mock_coordinator.device_client.capabilities.basic_control = True
 
     add_entities = MagicMock()
     await async_setup_entry(hass, mock_config_entry, add_entities)

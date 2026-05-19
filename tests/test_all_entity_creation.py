@@ -92,13 +92,13 @@ async def test_all_platforms_create_at_least_one_entity(
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_config_entry.runtime_data = mock_coordinator
 
-    mock_coordinator.force_full_register_list = True
-    mock_coordinator.capabilities = _make_full_capabilities()
+    mock_coordinator.device_client.force_full_register_list = True
+    mock_coordinator.device_client.capabilities = _make_full_capabilities()
 
-    holding = set(mock_coordinator.available_registers.get("holding_registers", set()))
+    holding = set(mock_coordinator.device_client.available_registers.get("holding_registers", set()))
     holding.add("air_flow_rate_manual")
-    mock_coordinator.available_registers = dict(
-        mock_coordinator.available_registers, holding_registers=holding
+    mock_coordinator.device_client.available_registers = dict(
+        mock_coordinator.device_client.available_registers, holding_registers=holding
     )
 
     from custom_components.thessla_green_modbus import (
@@ -172,13 +172,13 @@ async def test_entity_counts_per_platform(
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_config_entry.runtime_data = mock_coordinator
 
-    mock_coordinator.force_full_register_list = True
-    mock_coordinator.capabilities = _make_full_capabilities()
+    mock_coordinator.device_client.force_full_register_list = True
+    mock_coordinator.device_client.capabilities = _make_full_capabilities()
 
-    holding = set(mock_coordinator.available_registers.get("holding_registers", set()))
+    holding = set(mock_coordinator.device_client.available_registers.get("holding_registers", set()))
     holding.add("air_flow_rate_manual")
-    mock_coordinator.available_registers = dict(
-        mock_coordinator.available_registers, holding_registers=holding
+    mock_coordinator.device_client.available_registers = dict(
+        mock_coordinator.device_client.available_registers, holding_registers=holding
     )
 
     from custom_components.thessla_green_modbus import (

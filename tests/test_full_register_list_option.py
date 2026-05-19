@@ -82,6 +82,10 @@ class FakeCoordinator:
         self.capabilities = _Capabilities()
         self._listeners: list = []
 
+    @property
+    def device_client(self):
+        return self
+
     async def async_setup(self):
         return True
 

@@ -75,7 +75,7 @@ def apply_coordinator_config(
 ) -> None:
     """Assign normalized config attributes to a fresh coordinator instance."""
     coordinator.device_client._device_name = normalized_cfg.name
-    coordinator.config = normalized_cfg
+    coordinator.device_client.config = normalized_cfg
     coordinator.device_client._resolved_connection_mode = resolved_connection_mode
     coordinator.device_client.timeout = normalized_cfg.timeout
     coordinator.device_client.retry = normalized_cfg.retry
@@ -93,6 +93,6 @@ def apply_coordinator_config(
     effective_batch = resolve_effective_batch_fn(entry, normalized_cfg.max_registers_per_request)
     coordinator.device_client.effective_batch = effective_batch
     coordinator.device_client.max_registers_per_request = effective_batch
-    coordinator.config.max_registers_per_request = effective_batch
-    coordinator.config.backoff = coordinator.device_client.backoff
-    coordinator.config.backoff_jitter = coordinator.device_client.backoff_jitter
+    coordinator.device_client.config.max_registers_per_request = effective_batch
+    coordinator.device_client.config.backoff = coordinator.device_client.backoff
+    coordinator.device_client.config.backoff_jitter = coordinator.device_client.backoff_jitter

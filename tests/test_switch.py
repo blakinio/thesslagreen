@@ -154,8 +154,8 @@ def test_switch_icon_fallback(hass, mock_config_entry, mock_coordinator):
         "translation_key": "mock_switch_no_icon",
     }
     mock_coordinator.data["mock_register"] = 0
-    mock_coordinator.available_registers = {"coil_registers": {"mock_register"}}
-    mock_coordinator.force_full_register_list = False
+    mock_coordinator.device_client.available_registers = {"coil_registers": {"mock_register"}}
+    mock_coordinator.device_client.force_full_register_list = False
     hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
     mock_config_entry.runtime_data = mock_coordinator
 

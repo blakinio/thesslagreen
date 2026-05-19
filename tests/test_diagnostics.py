@@ -94,6 +94,8 @@ async def test_last_scan_in_diagnostics():
     last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     class DummyCoordinator:
+        device_client = property(lambda self: self)
+
         def __init__(self) -> None:
             self.last_scan = last_scan
             self.device_scan_result = None
@@ -102,9 +104,10 @@ async def test_last_scan_in_diagnostics():
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
-            self.device_client = SimpleNamespace(deep_scan=False)
+            self.deep_scan = False
             self.force_full_register_list = False
             self.effective_batch = 0
+            self.unknown_registers = {}
 
         def get_diagnostic_data(self):
             return {}
@@ -131,6 +134,8 @@ async def test_additional_diagnostic_fields():
     last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     class DummyCoordinator:
+        device_client = property(lambda self: self)
+
         def __init__(self) -> None:
             self.last_scan = last_scan
             self.device_scan_result = None
@@ -142,9 +147,10 @@ async def test_additional_diagnostic_fields():
             }
             self.statistics = {"connection_errors": 2, "timeout_errors": 1}
             self.capabilities = SimpleNamespace(as_dict=lambda: {"fan": True})
-            self.device_client = SimpleNamespace(deep_scan=True)
+            self.deep_scan = True
             self.force_full_register_list = False
             self.effective_batch = 7
+            self.unknown_registers = {}
 
         def get_diagnostic_data(self):
             return {}
@@ -170,7 +176,7 @@ async def test_additional_diagnostic_fields():
     }
     assert isinstance(result["total_registers_json"], int)
     assert result["total_registers_json"] >= 0
-    assert result["effective_batch"] == coord.effective_batch
+    assert result["effective_batch"] == coord.device_client.effective_batch
     assert result["deep_scan"] is True
     assert result["force_full_register_list"] is False
     assert result["force_full"] is False
@@ -197,6 +203,8 @@ async def test_unknown_registers_in_diagnostics():
     }
 
     class DummyCoordinator:
+        device_client = property(lambda self: self)
+
         def __init__(self) -> None:
             self.last_scan = last_scan
             self.device_scan_result = scan_result
@@ -206,7 +214,7 @@ async def test_unknown_registers_in_diagnostics():
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {"fan": True})
             self.unknown_registers = scan_result["unknown_registers"]
-            self.device_client = SimpleNamespace(deep_scan=False)
+            self.deep_scan = False
             self.force_full_register_list = False
             self.effective_batch = 0
 
@@ -246,6 +254,8 @@ async def test_raw_registers_in_diagnostics():
     }
 
     class DummyCoordinator:
+        device_client = property(lambda self: self)
+
         def __init__(self) -> None:
             self.last_scan = last_scan
             self.device_scan_result = scan_result
@@ -254,9 +264,10 @@ async def test_raw_registers_in_diagnostics():
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
-            self.device_client = SimpleNamespace(deep_scan=False)
+            self.deep_scan = False
             self.force_full_register_list = False
             self.effective_batch = 0
+            self.unknown_registers = {}
 
         def get_diagnostic_data(self):
             return {}
@@ -284,6 +295,8 @@ async def test_anomalies_in_diagnostics():
     """Ensure diagnostics include detected data anomalies when present."""
 
     class DummyCoordinator:
+        device_client = property(lambda self: self)
+
         def __init__(self) -> None:
             self.last_scan = None
             self.device_scan_result = None
@@ -298,9 +311,10 @@ async def test_anomalies_in_diagnostics():
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
-            self.device_client = SimpleNamespace(deep_scan=False)
+            self.deep_scan = False
             self.force_full_register_list = False
             self.effective_batch = 0
+            self.unknown_registers = {}
 
         def get_diagnostic_data(self):
             return {}
@@ -328,6 +342,8 @@ async def test_diagnostics_json_serializable():
     last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     class DummyCoordinator:
+        device_client = property(lambda self: self)
+
         def __init__(self) -> None:
             self.last_scan = last_scan
             self.device_scan_result = None
@@ -339,9 +355,10 @@ async def test_diagnostics_json_serializable():
                 temperature_sensors={"t1", "t2"},
                 flow_sensors={"f1"},
             )
-            self.device_client = SimpleNamespace(deep_scan=False)
+            self.deep_scan = False
             self.force_full_register_list = False
             self.effective_batch = 0
+            self.unknown_registers = {}
 
         def get_diagnostic_data(self):
             return {}
@@ -370,6 +387,8 @@ async def test_translation_failure_handled(caplog):
     last_scan = datetime(2024, 1, 1, tzinfo=UTC)
 
     class DummyCoordinator:
+        device_client = property(lambda self: self)
+
         def __init__(self) -> None:
             self.last_scan = last_scan
             self.device_scan_result = None
@@ -378,9 +397,10 @@ async def test_translation_failure_handled(caplog):
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
-            self.device_client = SimpleNamespace(deep_scan=False)
+            self.deep_scan = False
             self.force_full_register_list = False
             self.effective_batch = 0
+            self.unknown_registers = {}
 
         def get_diagnostic_data(self):
             return {}

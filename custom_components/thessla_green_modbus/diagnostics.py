@@ -68,26 +68,27 @@ def _detect_data_anomalies(data: dict[str, Any]) -> list[str]:
 
 def _coordinator_defaults(coordinator: ThesslaGreenModbusCoordinator) -> dict[str, Any]:
     """Build diagnostics defaults derived from coordinator state."""
+    dc = coordinator.device_client
     return {
-        "effective_batch": coordinator.effective_batch,
-        "capabilities": coordinator.capabilities.as_dict(),
-        "firmware_version": coordinator.device_info.get("firmware"),
+        "effective_batch": dc.effective_batch,
+        "capabilities": dc.capabilities.as_dict(),
+        "firmware_version": dc.device_info.get("firmware"),
         "total_available_registers": sum(
-            len(regs) for regs in coordinator.available_registers.values()
+            len(regs) for regs in dc.available_registers.values()
         ),
         "registers_discovered": {
-            key: len(val) for key, val in coordinator.available_registers.items()
+            key: len(val) for key, val in dc.available_registers.items()
         },
         "status_overview": getattr(coordinator, "status_overview", None),
-        "autoscan": not coordinator.force_full_register_list,
-        "force_full": coordinator.force_full_register_list,
-        "force_full_register_list": coordinator.force_full_register_list,
-        "deep_scan": coordinator.device_client.deep_scan,
+        "autoscan": not dc.force_full_register_list,
+        "force_full": dc.force_full_register_list,
+        "force_full_register_list": dc.force_full_register_list,
+        "deep_scan": dc.deep_scan,
         "error_statistics": {
-            "connection_errors": coordinator.statistics.get("connection_errors", 0),
-            "timeout_errors": coordinator.statistics.get("timeout_errors", 0),
+            "connection_errors": dc.statistics.get("connection_errors", 0),
+            "timeout_errors": dc.statistics.get("timeout_errors", 0),
         },
-        "last_scan": coordinator.last_scan.isoformat() if coordinator.last_scan else None,
+        "last_scan": dc.last_scan.isoformat() if dc.last_scan else None,
     }
 
 
@@ -97,11 +98,12 @@ def _extract_scan_registers(
     """Extract unknown/failed scan register results with fallback behavior."""
     unknown_regs: dict[str, dict[int, Any]] = {}
     failed_addrs: dict[str, dict[str, list[int]]] = {}
-    if coordinator.device_scan_result:
-        unknown_regs = coordinator.device_scan_result.get("unknown_registers", {})
-        failed_addrs = coordinator.device_scan_result.get("failed_addresses", {})
+    dc = coordinator.device_client
+    if dc.device_scan_result:
+        unknown_regs = dc.device_scan_result.get("unknown_registers", {})
+        failed_addrs = dc.device_scan_result.get("failed_addresses", {})
     if not unknown_regs:
-        unknown_regs = getattr(coordinator, "unknown_registers", {})
+        unknown_regs = dc.unknown_registers
     return unknown_regs, failed_addrs
 
 
@@ -143,8 +145,8 @@ async def async_get_config_entry_diagnostics(
         },
     )
 
-    if coordinator.device_scan_result and "raw_registers" in coordinator.device_scan_result:
-        diagnostics.setdefault("raw_registers", coordinator.device_scan_result["raw_registers"])
+    if coordinator.device_client.device_scan_result and "raw_registers" in coordinator.device_client.device_scan_result:
+        diagnostics.setdefault("raw_registers", coordinator.device_client.device_scan_result["raw_registers"])
 
     unknown_regs, failed_addrs = _extract_scan_registers(coordinator)
     diagnostics.setdefault("unknown_registers", unknown_regs)
