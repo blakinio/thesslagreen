@@ -187,7 +187,7 @@ async def async_migrate_entity_unique_ids(
 
     serial_number = None
     try:
-        serial_number = (coordinator.device_client.device_info or {}).get("serial_number")
+        serial_number = (coordinator.device_info or {}).get("serial_number")
     except (AttributeError, TypeError, ValueError):
         serial_number = None
 

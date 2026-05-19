@@ -311,7 +311,7 @@ class ThesslaGreenSerialNumberSensor(ThesslaGreenSensor):
     @property
     def native_value(self) -> str | None:
         """Return the serial number string assembled during device scan."""
-        sn = (self.coordinator.device_client.device_info or {}).get("serial_number")
+        sn = (self.coordinator.device_info or {}).get("serial_number")
         if sn and sn != "Unknown":
             return str(sn)
         return None
@@ -321,9 +321,9 @@ class ThesslaGreenSerialNumberSensor(ThesslaGreenSensor):
         """Return True when the coordinator has a valid serial number."""
         if not self.coordinator.last_update_success:
             return False
-        if self.coordinator.device_client.offline_state:
+        if self.coordinator.offline_state:
             return False
-        sn = (self.coordinator.device_client.device_info or {}).get("serial_number")
+        sn = (self.coordinator.device_info or {}).get("serial_number")
         return bool(sn and sn != "Unknown")
 
 
