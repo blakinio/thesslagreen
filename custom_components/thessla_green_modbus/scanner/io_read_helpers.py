@@ -85,10 +85,13 @@ def classify_skip_range(
 
 
 def should_log_terminal_failure(register_type: str, aborted_transiently: bool) -> bool:
-    """Return True when terminal failure should be logged for the read type."""
-    if not aborted_transiently:
-        return True
-    return register_type == "holding_registers"
+    """Return True when terminal failure should be logged for the read type.
+
+    When a read was aborted transiently (cancelled/timeout), the abort WARNING
+    already captures the event.  The ERROR is reserved for non-transient failures
+    where no fallback can recover the data.
+    """
+    return not aborted_transiently
 
 
 def mark_failed_addresses(scanner: Any, register_type: str, start: int, end: int) -> None:

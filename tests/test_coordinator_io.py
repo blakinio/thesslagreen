@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import logging
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 from custom_components.thessla_green_modbus.core.retry import _PermanentModbusError
-from pymodbus.exceptions import ModbusIOException
+from pymodbus.exceptions import ConnectionException, ModbusIOException
 
 
 @pytest.fixture
@@ -174,4 +175,65 @@ async def test_holding_falls_back_to_client_read_method(
         100,
         count=2,
         attempt=1,
+    )
+
+
+@pytest.mark.asyncio
+async def test_holding_connection_exception_propagates_not_swallowed(
+    coordinator: ThesslaGreenModbusCoordinator,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """ConnectionException from a batch read propagates to abort the update cycle.
+
+    When the Modbus transport is globally disconnected, re-raising rather than
+    swallowing prevents WARNING spam across every register chunk.  The single
+    ERROR is emitted by the coordinator update-cycle error handler instead.
+    """
+    coordinator._transport = SimpleNamespace(
+        is_connected=lambda: True,
+        read_holding_registers=AsyncMock(),
+    )
+    coordinator.client = None
+    coordinator._read_with_retry = AsyncMock(
+        side_effect=ConnectionException("Modbus client is not connected")
+    )
+    coordinator._read_holding_individually = AsyncMock()
+
+    with caplog.at_level(logging.WARNING), pytest.raises(ConnectionException):
+        await coordinator._read_holding_registers_optimized()
+
+    coordinator._read_holding_individually.assert_not_called()
+    warning_texts = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert len(warning_texts) == 0, (
+        f"Expected no WARNING logs for connection error, got: {[r.message for r in warning_texts]}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_input_connection_exception_propagates_not_swallowed(
+    coordinator: ThesslaGreenModbusCoordinator,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """ConnectionException in input register batch propagates to abort update cycle."""
+    coordinator._transport = SimpleNamespace(
+        is_connected=lambda: True,
+        read_input_registers=AsyncMock(),
+    )
+    coordinator.client = None
+    coordinator.available_registers = {
+        **coordinator.available_registers,
+        "input_registers": {"outside_temperature"},
+    }
+    coordinator._register_groups = {"input_registers": [(0, 1)]}
+    coordinator._find_register_name = lambda rt, addr: "outside_temperature" if addr == 0 else None
+    coordinator._read_with_retry = AsyncMock(
+        side_effect=ConnectionException("Modbus client is not connected")
+    )
+
+    with caplog.at_level(logging.WARNING), pytest.raises(ConnectionException):
+        await coordinator._read_input_registers_optimized()
+
+    warning_texts = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert len(warning_texts) == 0, (
+        f"Expected no WARNING logs for connection error, got: {[r.message for r in warning_texts]}"
     )
