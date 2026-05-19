@@ -84,7 +84,7 @@ async def _probe_missing_version_parts(
 
 
 def _apply_firmware_version_to_device(
-    device: "ScannerDeviceInfo",
+    device: ScannerDeviceInfo,
     major: int | None,
     minor: int | None,
     patch: int | None,

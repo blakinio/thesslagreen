@@ -115,7 +115,6 @@ class _DeviceClientRegistersMixin:
         return address
 
     async def _execute_modbus_write(self, plan: Any, function: int) -> Any:
-        from pymodbus.exceptions import ConnectionException, ModbusException
 
         if function == 3:
             if plan.encoded_values is not None:
