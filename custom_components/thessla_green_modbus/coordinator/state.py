@@ -80,23 +80,23 @@ def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> 
     )
 
     coordinator._reauth_scheduled = False
-    coordinator.offline_state = False
+    coordinator.device_client.offline_state = False
 
-    coordinator.client = None
-    coordinator._transport = None
-    coordinator._client_lock = asyncio.Lock()
-    coordinator._write_lock = asyncio.Lock()
-    coordinator._update_in_progress = False
+    coordinator.device_client.client = None
+    coordinator.device_client._transport = None
+    coordinator.device_client._client_lock = asyncio.Lock()
+    coordinator.device_client._write_lock = asyncio.Lock()
+    coordinator.device_client._update_in_progress = False
 
     coordinator._stop_listener = None
 
-    coordinator.device_info = {}
-    coordinator.capabilities = DeviceCapabilities()
+    coordinator.device_client.device_info = {}
+    coordinator.device_client.capabilities = DeviceCapabilities()
     if entry and isinstance(entry.data.get("capabilities"), dict):
         with suppress(TypeError, ValueError):
-            coordinator.capabilities = DeviceCapabilities(**entry.data["capabilities"])
+            coordinator.device_client.capabilities = DeviceCapabilities(**entry.data["capabilities"])
 
-    coordinator.available_registers = {
+    coordinator.device_client.available_registers = {
         "input_registers": set(),
         "holding_registers": set(),
         "coil_registers": set(),
@@ -104,30 +104,30 @@ def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> 
         "calculated": {"estimated_power", "total_energy"},
     }
 
-    coordinator._register_maps = {
+    coordinator.device_client._register_maps = {
         "input_registers": input_registers().copy(),
         "holding_registers": holding_registers().copy(),
         "coil_registers": coil_registers().copy(),
         "discrete_inputs": discrete_input_registers().copy(),
     }
-    coordinator._reverse_maps = {
+    coordinator.device_client._reverse_maps = {
         key: {addr: name for name, addr in mapping.items()}
-        for key, mapping in coordinator._register_maps.items()
+        for key, mapping in coordinator.device_client._register_maps.items()
     }
-    coordinator._input_registers_rev = coordinator._reverse_maps["input_registers"]
-    coordinator._holding_registers_rev = coordinator._reverse_maps["holding_registers"]
-    coordinator._coil_registers_rev = coordinator._reverse_maps["coil_registers"]
-    coordinator._discrete_inputs_rev = coordinator._reverse_maps["discrete_inputs"]
+    coordinator.device_client._input_registers_rev = coordinator.device_client._reverse_maps["input_registers"]
+    coordinator.device_client._holding_registers_rev = coordinator.device_client._reverse_maps["holding_registers"]
+    coordinator.device_client._coil_registers_rev = coordinator.device_client._reverse_maps["coil_registers"]
+    coordinator.device_client._discrete_inputs_rev = coordinator.device_client._reverse_maps["discrete_inputs"]
 
-    coordinator._register_groups = {}
+    coordinator.device_client._register_groups = {}
     coordinator.device_client._consecutive_failures = 0
     coordinator.device_client._max_failures = 5
 
-    coordinator.device_scan_result = None
-    coordinator.unknown_registers = {}
-    coordinator.scanned_registers = {}
+    coordinator.device_client.device_scan_result = None
+    coordinator.device_client.unknown_registers = {}
+    coordinator.device_client.scanned_registers = {}
 
-    coordinator.statistics = {
+    coordinator.device_client.statistics = {
         "successful_reads": 0,
         "failed_reads": 0,
         "connection_errors": 0,
@@ -138,7 +138,7 @@ def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> 
         "total_registers_read": 0,
     }
 
-    coordinator.last_scan = None
+    coordinator.device_client.last_scan = None
     from ..utils import utcnow
 
     coordinator.device_client._last_power_timestamp = utcnow()

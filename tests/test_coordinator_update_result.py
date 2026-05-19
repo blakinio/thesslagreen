@@ -13,13 +13,15 @@ def test_apply_success_result_updates_coordinator_state() -> None:
     now = datetime(2026, 4, 30, 12, 0, 5, tzinfo=UTC)
     start_time = now - timedelta(seconds=5)
     coordinator = SimpleNamespace(
-        statistics={
-            "successful_reads": 1,
-            "last_successful_update": None,
-            "average_response_time": 2.0,
-        },
-        device_client=SimpleNamespace(_consecutive_failures=4),
-        offline_state=True,
+        device_client=SimpleNamespace(
+            _consecutive_failures=4,
+            offline_state=True,
+            statistics={
+                "successful_reads": 1,
+                "last_successful_update": None,
+                "average_response_time": 2.0,
+            },
+        ),
     )
 
     import custom_components.thessla_green_modbus.coordinator.update_result as update_result_module
@@ -30,8 +32,8 @@ def test_apply_success_result_updates_coordinator_state() -> None:
     result = apply_success_result(coordinator, start_time=start_time, data=data)
 
     assert result == data
-    assert coordinator.statistics["successful_reads"] == 2
-    assert coordinator.statistics["last_successful_update"] == now
+    assert coordinator.device_client.statistics["successful_reads"] == 2
+    assert coordinator.device_client.statistics["last_successful_update"] == now
     assert coordinator.device_client._consecutive_failures == 0
-    assert coordinator.offline_state is False
-    assert coordinator.statistics["average_response_time"] == 3.5
+    assert coordinator.device_client.offline_state is False
+    assert coordinator.device_client.statistics["average_response_time"] == 3.5

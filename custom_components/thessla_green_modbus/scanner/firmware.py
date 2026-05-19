@@ -13,13 +13,13 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-async def scan_firmware_info(scanner: Any, info_regs: list[int], device: ScannerDeviceInfo) -> None:
-    """Parse firmware version from info_regs and update device."""
+def _parse_version_from_info_regs(
+    info_regs: list[int],
+) -> tuple[int | None, int | None, int | None, Exception | None]:
     major: int | None = None
     minor: int | None = None
     patch: int | None = None
     firmware_err: Exception | None = None
-
     for name in ("version_major", "version_minor", "version_patch"):
         idx = INPUT_REGISTERS.get(name)
         if idx is not None and len(info_regs) > idx:
@@ -38,41 +38,58 @@ async def scan_firmware_info(scanner: Any, info_regs: list[int], device: Scanner
                 minor = value
             else:
                 patch = value
+    return major, minor, patch, firmware_err
 
-    if None in (major, minor, patch):
-        fallback_results: dict[str, int] = {}
-        for name in ("version_major", "version_minor", "version_patch"):
-            current = (
-                major if name == "version_major" else minor if name == "version_minor" else patch
-            )
-            if current is not None:
+
+async def _probe_missing_version_parts(
+    scanner: Any,
+    major: int | None,
+    minor: int | None,
+    patch: int | None,
+    firmware_err: Exception | None,
+) -> tuple[int | None, int | None, int | None, Exception | None]:
+    fallback_results: dict[str, int] = {}
+    for name in ("version_major", "version_minor", "version_patch"):
+        current = (
+            major if name == "version_major" else minor if name == "version_minor" else patch
+        )
+        if current is not None:
+            continue
+        probe = None
+        try:
+            addr = INPUT_REGISTERS.get(name)
+            if addr is None:
                 continue
-            probe = None
             try:
-                addr = INPUT_REGISTERS.get(name)
-                if addr is None:
-                    continue
-                try:
-                    probe = (
-                        await scanner._read_input(scanner._client, addr, 1, skip_cache=True)
-                        if scanner._client is not None
-                        else await scanner._read_input(addr, 1, skip_cache=True)
-                    )
-                except TypeError:
-                    probe = await scanner._read_input(addr, 1, skip_cache=True)
-            except (TypeError, ValueError, IndexError) as exc:
-                firmware_err = exc
-                continue
-            except (AttributeError, RuntimeError) as exc:
-                _LOGGER.exception("Unexpected firmware probe error for %s: %s", name, exc)
-                firmware_err = exc
-                continue
-            if probe:
-                fallback_results[name] = probe[0]
-        major = fallback_results.get("version_major", major)
-        minor = fallback_results.get("version_minor", minor)
-        patch = fallback_results.get("version_patch", patch)
+                probe = (
+                    await scanner._read_input(scanner._client, addr, 1, skip_cache=True)
+                    if scanner._client is not None
+                    else await scanner._read_input(addr, 1, skip_cache=True)
+                )
+            except TypeError:
+                probe = await scanner._read_input(addr, 1, skip_cache=True)
+        except (TypeError, ValueError, IndexError) as exc:
+            firmware_err = exc
+            continue
+        except (AttributeError, RuntimeError) as exc:
+            _LOGGER.exception("Unexpected firmware probe error for %s: %s", name, exc)
+            firmware_err = exc
+            continue
+        if probe:
+            fallback_results[name] = probe[0]
+    major = fallback_results.get("version_major", major)
+    minor = fallback_results.get("version_minor", minor)
+    patch = fallback_results.get("version_patch", patch)
+    return major, minor, patch, firmware_err
 
+
+def _apply_firmware_version_to_device(
+    device: "ScannerDeviceInfo",
+    major: int | None,
+    minor: int | None,
+    patch: int | None,
+    firmware_err: Exception | None,
+) -> None:
     missing_regs: list[str] = []
     if None in (major, minor, patch):
         for name, missing_value in (
@@ -102,6 +119,18 @@ async def scan_firmware_info(scanner: Any, info_regs: list[int], device: Scanner
         else:
             _LOGGER.warning(msg)
         device.firmware_available = False
+
+
+async def scan_firmware_info(scanner: Any, info_regs: list[int], device: ScannerDeviceInfo) -> None:
+    """Parse firmware version from info_regs and update device."""
+    major, minor, patch, firmware_err = _parse_version_from_info_regs(info_regs)
+
+    if None in (major, minor, patch):
+        major, minor, patch, firmware_err = await _probe_missing_version_parts(
+            scanner, major, minor, patch, firmware_err
+        )
+
+    _apply_firmware_version_to_device(device, major, minor, patch, firmware_err)
 
 
 async def scan_device_identity(

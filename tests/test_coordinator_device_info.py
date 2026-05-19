@@ -39,8 +39,8 @@ def test_get_device_info_model_from_entry():
     entry.options = {"model": "Thessla Air 350"}
     entry.data = {}
     coord.entry = entry
-    coord.device_scan_result = {}
-    coord.device_info = {}
+    coord.device_client.device_scan_result = {}
+    coord.device_client.device_info = {}
     info = coord.get_device_info()
     assert info["model"] == "Thessla Air 350"
 
@@ -56,7 +56,7 @@ def test_compat_device_info_getattr_key_error():
 # Moved from test_coordinator.py
 def test_device_info(coordinator):
     """Test device info property."""
-    coordinator.device_info = {"model": "AirPack Home"}
+    coordinator.device_client.device_info = {"model": "AirPack Home"}
     device_info = coordinator.get_device_info()
     assert device_info["manufacturer"] == "ThesslaGreen"
     assert device_info["model"] == "AirPack Home"
@@ -93,7 +93,7 @@ def test_get_device_info_fallback(monkeypatch):
         timeout=10,
         retry=3,
     )
-    coord.device_info = {"model": "AirPack Home"}
+    coord.device_client.device_info = {"model": "AirPack Home"}
     device_info = coord.get_device_info()
     assert device_info["manufacturer"] == "ThesslaGreen"
     assert device_info["model"] == "AirPack Home"
@@ -153,7 +153,7 @@ def test_get_device_info_uses_version_registers_for_sw_version():
     coord = _make_coordinator()
     coord.device_info = {}
     coord.data = {"version_major": 3, "version_minor": 11, "cf_version": 13}
-    coord.device_scan_result = {}
+    coord.device_client.device_scan_result = {}
     coord.entry = None
 
     info = coord.get_device_info()

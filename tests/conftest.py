@@ -102,12 +102,15 @@ def mock_coordinator():
         "on_off_panel_mode": 1,
         "supply_percentage": 50,
     }
-    coordinator.device_info = {
+    _device_info = {
         "device_name": "ThesslaGreen AirPack",
         "firmware": "4.85.0",
         "serial_number": "S/N: 1234 5678 9abc",
     }
-    coordinator.capabilities = MagicMock(
+    # Set on both coordinator and device_client so proxy and direct access work.
+    coordinator.device_info = _device_info
+    coordinator.device_client.device_info = _device_info
+    _capabilities = MagicMock(
         constant_flow=True,
         gwc_system=True,
         bypass_system=True,
@@ -123,13 +126,17 @@ def mock_coordinator():
         sensor_ambient_temperature=True,
         sensor_heating_temperature=True,
     )
-    coordinator.available_registers = {
+    coordinator.capabilities = _capabilities
+    coordinator.device_client.capabilities = _capabilities
+    _available_registers = {
         "input_registers": {"outside_temperature", "supply_temperature", "exhaust_temperature"},
         "holding_registers": {"mode", "on_off_panel_mode", "air_flow_rate_manual"},
         "coil_registers": {"power_supply_fans", "bypass"},
         "discrete_inputs": {"expansion", "contamination_sensor"},
         "calculated": {"estimated_power", "total_energy"},
     }
+    coordinator.available_registers = _available_registers
+    coordinator.device_client.available_registers = _available_registers
     _register_maps = {
         "input_registers": input_registers().copy(),
         "holding_registers": holding_registers().copy(),
@@ -138,6 +145,18 @@ def mock_coordinator():
     }
     coordinator.get_register_map = lambda rt: _register_maps.get(rt, {})
     coordinator.force_full_register_list = False
+    coordinator.device_client.force_full_register_list = False
+    coordinator.device_client.device_scan_result = None
+    coordinator.device_client.statistics = {
+        "successful_reads": 0,
+        "failed_reads": 0,
+        "connection_errors": 0,
+        "timeout_errors": 0,
+        "last_error": None,
+        "last_successful_update": None,
+        "average_response_time": 0.0,
+        "total_registers_read": 0,
+    }
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.async_request_refresh = AsyncMock()
     return coordinator

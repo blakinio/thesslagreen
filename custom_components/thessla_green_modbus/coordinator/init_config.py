@@ -74,23 +74,23 @@ def apply_coordinator_config(
     resolve_effective_batch_fn: Callable[[Any, int], int],
 ) -> None:
     """Assign normalized config attributes to a fresh coordinator instance."""
-    coordinator._device_name = normalized_cfg.name
+    coordinator.device_client._device_name = normalized_cfg.name
     coordinator.config = normalized_cfg
-    coordinator._resolved_connection_mode = resolved_connection_mode
-    coordinator.timeout = normalized_cfg.timeout
-    coordinator.retry = normalized_cfg.retry
-    coordinator.backoff = normalize_backoff_fn(normalized_cfg.backoff)
-    coordinator.backoff_jitter = parse_backoff_jitter_fn(normalized_cfg.backoff_jitter)
-    coordinator.force_full_register_list = normalized_cfg.force_full_register_list
-    coordinator.scan_uart_settings = normalized_cfg.scan_uart_settings
-    coordinator.deep_scan = normalized_cfg.deep_scan
-    coordinator.safe_scan = normalized_cfg.safe_scan
+    coordinator.device_client._resolved_connection_mode = resolved_connection_mode
+    coordinator.device_client.timeout = normalized_cfg.timeout
+    coordinator.device_client.retry = normalized_cfg.retry
+    coordinator.device_client.backoff = normalize_backoff_fn(normalized_cfg.backoff)
+    coordinator.device_client.backoff_jitter = parse_backoff_jitter_fn(normalized_cfg.backoff_jitter)
+    coordinator.device_client.force_full_register_list = normalized_cfg.force_full_register_list
+    coordinator.device_client.scan_uart_settings = normalized_cfg.scan_uart_settings
+    coordinator.device_client.deep_scan = normalized_cfg.deep_scan
+    coordinator.device_client.safe_scan = normalized_cfg.safe_scan
     coordinator.entry = entry
-    coordinator.skip_missing_registers = normalized_cfg.skip_missing_registers
+    coordinator.device_client.skip_missing_registers = normalized_cfg.skip_missing_registers
 
     effective_batch = resolve_effective_batch_fn(entry, normalized_cfg.max_registers_per_request)
-    coordinator.effective_batch = effective_batch
-    coordinator.max_registers_per_request = effective_batch
+    coordinator.device_client.effective_batch = effective_batch
+    coordinator.device_client.max_registers_per_request = effective_batch
     coordinator.config.max_registers_per_request = effective_batch
-    coordinator.config.backoff = coordinator.backoff
-    coordinator.config.backoff_jitter = coordinator.backoff_jitter
+    coordinator.config.backoff = coordinator.device_client.backoff
+    coordinator.config.backoff_jitter = coordinator.device_client.backoff_jitter

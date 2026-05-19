@@ -139,6 +139,67 @@ async def _prepare_scan_transport(scanner: Any) -> None:
     scanner._transport = scanner._build_tcp_transport(mode)
 
 
+async def _run_word_phase(
+    scanner: Any,
+    max_addr: int,
+    scan_key: str,
+    func: int,
+    read_fn: Any,
+    unknown_registers: dict[str, dict[int, Any]],
+    scanned_registers: dict[str, int],
+) -> None:
+    for start, count in _group_reads(
+        range(max_addr + 1), max_block_size=scanner.effective_batch
+    ):
+        scanned_registers[scan_key] += count
+        data = await read_fn(start, count)
+        if data is None:
+            scanner.failed_addresses["modbus_exceptions"][scan_key].update(
+                range(start, start + count)
+            )
+            continue
+        apply_word_register_block(
+            scanner,
+            function=func,
+            register_group=scan_key,
+            start=start,
+            count=count,
+            data=data,
+            unknown_registers=unknown_registers,
+        )
+
+
+async def _run_bit_phase(
+    scanner: Any,
+    max_addr: int,
+    scan_key: str,
+    function: int,
+    read_fn: Any,
+    unknown_registers: dict[str, dict[int, Any]],
+    scanned_registers: dict[str, int],
+) -> None:
+    for start, count in _group_reads(
+        range(max_addr + 1), max_block_size=scanner.effective_batch
+    ):
+        scanned_registers[scan_key] += count
+        data = await read_fn(start, count)
+        if data is None:
+            scanner.failed_addresses["modbus_exceptions"][scan_key].update(
+                range(start, start + count)
+            )
+            continue
+        for offset, value in enumerate(data):
+            addr = start + offset
+            if (reg_name := scanner._registers.get(function, {}).get(addr)) is not None:
+                names = scanner._alias_names(function, addr)
+                if names:
+                    scanner.available_registers[scan_key].update(names)
+                else:
+                    scanner.available_registers[scan_key].add(reg_name)
+            else:
+                unknown_registers[scan_key][addr] = value
+
+
 async def run_full_scan(
     scanner: Any,
     input_max: int,
@@ -149,68 +210,31 @@ async def run_full_scan(
     scanned_registers: dict[str, int],
 ) -> None:
     """Scan all registers up to max known address (full_register_scan mode)."""
-
-    async def _run_word_phase(max_addr: int, scan_key: str, func: int, read_fn: Any) -> None:
-        for start, count in _group_reads(
-            range(max_addr + 1), max_block_size=scanner.effective_batch
-        ):
-            scanned_registers[scan_key] += count
-            data = await read_fn(start, count)
-            if data is None:
-                scanner.failed_addresses["modbus_exceptions"][scan_key].update(
-                    range(start, start + count)
-                )
-                continue
-            apply_word_register_block(
-                scanner,
-                function=func,
-                register_group=scan_key,
-                start=start,
-                count=count,
-                data=data,
-                unknown_registers=unknown_registers,
-            )
-
-    async def _run_bit_phase(max_addr: int, scan_key: str, function: int, read_fn: Any) -> None:
-        for start, count in _group_reads(
-            range(max_addr + 1), max_block_size=scanner.effective_batch
-        ):
-            scanned_registers[scan_key] += count
-            data = await read_fn(start, count)
-            if data is None:
-                scanner.failed_addresses["modbus_exceptions"][scan_key].update(
-                    range(start, start + count)
-                )
-                continue
-            for offset, value in enumerate(data):
-                addr = start + offset
-                if (reg_name := scanner._registers.get(function, {}).get(addr)) is not None:
-                    names = scanner._alias_names(function, addr)
-                    if names:
-                        scanner.available_registers[scan_key].update(names)
-                    else:
-                        scanner.available_registers[scan_key].add(reg_name)
-                else:
-                    unknown_registers[scan_key][addr] = value
-
     await _run_word_phase(
+        scanner,
         input_max,
         "input_registers",
         4,
         lambda start, count: scanner._read_input(
             scanner._client if scanner._client is not None else None, start, count, skip_cache=True
         ),
+        unknown_registers,
+        scanned_registers,
     )
     await _run_word_phase(
+        scanner,
         holding_max,
         "holding_registers",
         3,
         lambda start, count: scanner._read_holding(
             scanner._client if scanner._client is not None else None, start, count, skip_cache=True
         ),
+        unknown_registers,
+        scanned_registers,
     )
 
     await _run_bit_phase(
+        scanner,
         coil_max,
         "coil_registers",
         1,
@@ -219,8 +243,11 @@ async def run_full_scan(
             if scanner._client is not None
             else scanner._read_coil(start, count)
         ),
+        unknown_registers,
+        scanned_registers,
     )
     await _run_bit_phase(
+        scanner,
         discrete_max,
         "discrete_inputs",
         2,
@@ -229,6 +256,8 @@ async def run_full_scan(
             if scanner._client is not None
             else scanner._read_discrete(start, count)
         ),
+        unknown_registers,
+        scanned_registers,
     )
 
 

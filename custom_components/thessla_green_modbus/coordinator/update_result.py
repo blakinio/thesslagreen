@@ -21,17 +21,17 @@ def apply_success_result(
     data: dict[str, Any],
 ) -> dict[str, Any]:
     """Apply successful update-cycle side effects and return payload."""
-    coordinator.statistics["successful_reads"] += 1
-    coordinator.statistics["last_successful_update"] = _utcnow()
+    coordinator.device_client.statistics["successful_reads"] += 1
+    coordinator.device_client.statistics["last_successful_update"] = _utcnow()
     coordinator.device_client._consecutive_failures = 0
-    coordinator.offline_state = False
+    coordinator.device_client.offline_state = False
 
     response_time = (_utcnow() - start_time).total_seconds()
-    coordinator.statistics["average_response_time"] = (
-        coordinator.statistics["average_response_time"]
-        * (coordinator.statistics["successful_reads"] - 1)
+    coordinator.device_client.statistics["average_response_time"] = (
+        coordinator.device_client.statistics["average_response_time"]
+        * (coordinator.device_client.statistics["successful_reads"] - 1)
         + response_time
-    ) / coordinator.statistics["successful_reads"]
+    ) / coordinator.device_client.statistics["successful_reads"]
 
     _LOGGER.debug("Data update successful: %d values read in %.2fs", len(data), response_time)
     return data

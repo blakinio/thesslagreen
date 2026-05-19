@@ -3682,7 +3682,8 @@
         "type": "u32",
         "endianness": "little"
       },
-      "description_en": "User product key"
+      "description_en": "User product key",
+      "note": "Covers addresses 8187-8188 as a 32-bit little-endian word (u32)"
     },
     {
       "function": "03",
@@ -3695,7 +3696,8 @@
       "multiplier": 1,
       "resolution": 1,
       "description": "Klucz produktu użytkownika - słowo starsze",
-      "description_en": "Product key - upper word"
+      "description_en": "Product key - upper word",
+      "note": "Sub-register of lock_pass (addr 8187, length=2). Covered by the 32-bit lock_pass read; do not expose as separate entity."
     },
     {
       "function": "03",

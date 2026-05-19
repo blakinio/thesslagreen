@@ -231,7 +231,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
 
         # Add last update time
         last_update = (
-            self.coordinator.statistics.get("last_successful_update")
+            self.coordinator.device_client.statistics.get("last_successful_update")
             or self.coordinator.last_update
         )
         if last_update is not None:
