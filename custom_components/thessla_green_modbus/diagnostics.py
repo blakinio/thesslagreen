@@ -82,7 +82,7 @@ def _coordinator_defaults(coordinator: ThesslaGreenModbusCoordinator) -> dict[st
         "autoscan": not coordinator.force_full_register_list,
         "force_full": coordinator.force_full_register_list,
         "force_full_register_list": coordinator.force_full_register_list,
-        "deep_scan": coordinator.deep_scan,
+        "deep_scan": coordinator.device_client.deep_scan,
         "error_statistics": {
             "connection_errors": coordinator.statistics.get("connection_errors", 0),
             "timeout_errors": coordinator.statistics.get("timeout_errors", 0),

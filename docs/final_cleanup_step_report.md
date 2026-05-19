@@ -97,6 +97,55 @@ Updated `docs/real_ha_log_issue_fix_report.md` with sections 4, 5, and 6 documen
 
 ---
 
+## Step 4 — Coordinator proxy cleanup (scan-flag group)
+
+### Files changed
+- `custom_components/thessla_green_modbus/coordinator/coordinator.py` (proxy removal + docstring update)
+- `custom_components/thessla_green_modbus/diagnostics.py` (caller update)
+- `custom_components/thessla_green_modbus/coordinator/diagnostics.py` (caller update)
+- `custom_components/thessla_green_modbus/services/handlers_data.py` (caller update)
+- `tests/test_diagnostics.py` (mock update)
+- `tests/test_diagnostics_refactor.py` (mock update)
+- `tests/test_services_handlers_targets.py` (mock update)
+- `docs/coordinator_proxy_removal_inventory.md` (status update)
+
+### What changed
+Removed the four scan-flag proxy properties from `ThesslaGreenModbusCoordinator`:
+`scan_uart_settings`, `deep_scan`, `safe_scan`, `skip_missing_registers`.
+
+Updated callers in `diagnostics.py`, `coordinator/diagnostics.py`, and
+`services/handlers_data.py` to use `coordinator.device_client.X` directly.
+
+Note: `core/register_groups.py` and `core/scanner_kwargs.py` were NOT changed.
+Both functions receive a `ThesslaGreenDeviceClient` as their duck-typed
+`coordinator` argument (via `DeviceClient.compute_register_groups()` and
+`_ClientScannerMixin._build_scanner_kwargs()`), so they already access the
+attributes directly on the DeviceClient without using coordinator proxies.
+
+Updated test mock `DummyCoordinator` / `_Coordinator` classes in three test
+files to provide `self.device_client = SimpleNamespace(deep_scan=X /
+scan_uart_settings=False)` in place of the removed direct attributes.
+
+### Why safe
+- No register addresses, names, entity IDs, unique IDs, service IDs, or
+  translation keys changed
+- No Modbus read/write behavior changed
+- The proxy properties were read-only getters on the coordinator; removing
+  them cannot affect runtime state
+- All scan-flag values are still set correctly via `ThesslaGreenDeviceClient`
+  during `__init__`
+
+### Tests run
+```
+pytest tests/ --tb=no
+1 failed (pre-existing), 2147 passed, 4 skipped, 88 warnings, 2 errors (pre-existing)
+```
+
+### Rollback plan
+`git revert` the relevant commit.
+
+---
+
 ## Full Validation Results
 
 ```

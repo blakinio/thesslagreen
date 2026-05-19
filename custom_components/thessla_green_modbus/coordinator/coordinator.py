@@ -143,11 +143,9 @@ class ThesslaGreenModbusCoordinator(
     """Optimized data coordinator for ThesslaGreen Modbus device.
 
     Acts as the Home Assistant integration boundary.  All device-domain
-    operations are delegated to ``self._device_client`` which is a
-    ``ThesslaGreenDeviceClient`` instance.  The coordinator's device-state
-    attributes (transport, capabilities, register maps, statistics, …) are
-    properties that proxy to the device client, so existing coordinator
-    submodule functions continue to work unchanged via duck-typing.
+    operations are delegated to ``self._device_client``.  Selected
+    device-state attributes are proxied on the coordinator so that
+    submodule functions and entity platforms can access them via duck-typing.
     """
 
     _reauth_scheduled: bool
@@ -157,24 +155,11 @@ class ThesslaGreenModbusCoordinator(
     # Device-state property proxies
     #
     # All mutable device-domain state lives in ``self._device_client``.
-    # The properties below allow coordinator submodule functions (which
-    # receive the coordinator via duck-typing) and tests to continue
-    # accessing coordinator.X and have those accesses transparently
-    # read/write DeviceClient state.
-    #
-    # Retention rationale (applies to every proxy below):
-    #   - Coordinator submodules (runtime_io, read_batches, read_bits,
-    #     register_groups, scan_result, state, etc.) receive ``self``
-    #     (the coordinator) as their duck-typed owner and access these
-    #     attributes directly.
-    #   - Test files access these attributes on the coordinator directly
-    #     (e.g. coordinator.client, coordinator.available_registers).
-    #   - Entity platform files access coordinator.available_registers,
-    #     coordinator.capabilities, coordinator.statistics, etc.
-    #
-    # Future removal path: When a submodule is updated to accept a
-    # DeviceClient instead of the coordinator, the corresponding proxy
-    # can be removed at that point.
+    # These proxies let coordinator submodule functions (which receive
+    # ``self`` as a duck-typed owner) and entity platforms access
+    # coordinator.X transparently.  Scan-flag attributes (deep_scan,
+    # safe_scan, scan_uart_settings, skip_missing_registers) are accessed
+    # directly on ``device_client`` by callers that already hold it.
     # ------------------------------------------------------------------
 
     @property
@@ -369,22 +354,6 @@ class ThesslaGreenModbusCoordinator(
     @_resolved_connection_mode.setter
     def _resolved_connection_mode(self, value: str | None) -> None:
         self._device_client._resolved_connection_mode = value
-
-    @property
-    def scan_uart_settings(self) -> bool:
-        return self._device_client.scan_uart_settings
-
-    @property
-    def skip_missing_registers(self) -> bool:
-        return self._device_client.skip_missing_registers
-
-    @property
-    def deep_scan(self) -> bool:
-        return self._device_client.deep_scan
-
-    @property
-    def safe_scan(self) -> bool:
-        return self._device_client.safe_scan
 
     @property
     def _register_maps(self) -> dict[str, dict[str, int]]:

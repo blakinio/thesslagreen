@@ -43,7 +43,7 @@ def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
                     slave_id=coordinator.slave_id,
                     timeout=int(coordinator.timeout),
                     retry=coordinator.retry,
-                    scan_uart_settings=coordinator.scan_uart_settings,
+                    scan_uart_settings=coordinator.device_client.scan_uart_settings,
                     skip_known_missing=False,
                     full_register_scan=True,
                     max_registers_per_request=coordinator.effective_batch,
