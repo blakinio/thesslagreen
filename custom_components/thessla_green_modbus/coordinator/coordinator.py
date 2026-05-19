@@ -386,6 +386,50 @@ class ThesslaGreenModbusCoordinator(
     def safe_scan(self) -> bool:
         return self._device_client.safe_scan
 
+    @property
+    def _register_maps(self) -> dict[str, dict[str, int]]:
+        return self._device_client._register_maps
+
+    @property
+    def _device_name(self) -> str:
+        return self._device_client._device_name
+
+    @_device_name.setter
+    def _device_name(self, value: str) -> None:
+        self._device_client._device_name = value
+
+    @property
+    def device_scan_result(self) -> dict[str, Any] | None:
+        return self._device_client.device_scan_result
+
+    @device_scan_result.setter
+    def device_scan_result(self, value: dict[str, Any] | None) -> None:
+        self._device_client.device_scan_result = value
+
+    @property
+    def unknown_registers(self) -> dict[str, Any]:
+        return self._device_client.unknown_registers
+
+    @unknown_registers.setter
+    def unknown_registers(self, value: dict[str, Any]) -> None:
+        self._device_client.unknown_registers = value
+
+    @property
+    def scanned_registers(self) -> dict[str, Any]:
+        return self._device_client.scanned_registers
+
+    @scanned_registers.setter
+    def scanned_registers(self, value: dict[str, Any]) -> None:
+        self._device_client.scanned_registers = value
+
+    @property
+    def last_scan(self) -> Any:
+        return self._device_client.last_scan
+
+    @last_scan.setter
+    def last_scan(self, value: Any) -> None:
+        self._device_client.last_scan = value
+
     # -- Post-processing state (capabilities mixin) --
 
     def __init__(
