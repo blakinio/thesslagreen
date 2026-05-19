@@ -18,7 +18,7 @@ async def test_diagnostics_expected_keys_when_missing_scan_data():
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
-            self.deep_scan = False
+            self.device_client = SimpleNamespace(deep_scan=False)
             self.force_full_register_list = False
             self.effective_batch = 0
 
@@ -54,7 +54,7 @@ async def test_diagnostics_offline_active_error_formatting():
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
-            self.deep_scan = False
+            self.device_client = SimpleNamespace(deep_scan=False)
             self.force_full_register_list = False
             self.effective_batch = 0
 

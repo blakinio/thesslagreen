@@ -100,7 +100,7 @@ def get_diagnostic_data(coordinator: Any) -> dict[str, Any]:
         "total_available_registers": total_registers,
         "total_registers_json": total_registers_json,
         "effective_batch": coordinator.effective_batch,
-        "deep_scan": coordinator.deep_scan,
+        "deep_scan": coordinator.device_client.deep_scan,
         "force_full_register_list": coordinator.force_full_register_list,
         "autoscan": not coordinator.force_full_register_list,
         "registers_discovered": registers_discovered,

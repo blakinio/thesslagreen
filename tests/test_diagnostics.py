@@ -102,7 +102,7 @@ async def test_last_scan_in_diagnostics():
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
-            self.deep_scan = False
+            self.device_client = SimpleNamespace(deep_scan=False)
             self.force_full_register_list = False
             self.effective_batch = 0
 
@@ -142,7 +142,7 @@ async def test_additional_diagnostic_fields():
             }
             self.statistics = {"connection_errors": 2, "timeout_errors": 1}
             self.capabilities = SimpleNamespace(as_dict=lambda: {"fan": True})
-            self.deep_scan = True
+            self.device_client = SimpleNamespace(deep_scan=True)
             self.force_full_register_list = False
             self.effective_batch = 7
 
@@ -206,7 +206,7 @@ async def test_unknown_registers_in_diagnostics():
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {"fan": True})
             self.unknown_registers = scan_result["unknown_registers"]
-            self.deep_scan = False
+            self.device_client = SimpleNamespace(deep_scan=False)
             self.force_full_register_list = False
             self.effective_batch = 0
 
@@ -254,7 +254,7 @@ async def test_raw_registers_in_diagnostics():
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
-            self.deep_scan = False
+            self.device_client = SimpleNamespace(deep_scan=False)
             self.force_full_register_list = False
             self.effective_batch = 0
 
@@ -298,7 +298,7 @@ async def test_anomalies_in_diagnostics():
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
-            self.deep_scan = False
+            self.device_client = SimpleNamespace(deep_scan=False)
             self.force_full_register_list = False
             self.effective_batch = 0
 
@@ -339,7 +339,7 @@ async def test_diagnostics_json_serializable():
                 temperature_sensors={"t1", "t2"},
                 flow_sensors={"f1"},
             )
-            self.deep_scan = False
+            self.device_client = SimpleNamespace(deep_scan=False)
             self.force_full_register_list = False
             self.effective_batch = 0
 
@@ -378,7 +378,7 @@ async def test_translation_failure_handled(caplog):
             self.available_registers = {}
             self.statistics = {}
             self.capabilities = SimpleNamespace(as_dict=lambda: {})
-            self.deep_scan = False
+            self.device_client = SimpleNamespace(deep_scan=False)
             self.force_full_register_list = False
             self.effective_batch = 0
 

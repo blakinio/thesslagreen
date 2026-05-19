@@ -49,7 +49,7 @@ class _Coordinator:
         self.slave_id = 1
         self.timeout = 5
         self.retry = 3
-        self.scan_uart_settings = False
+        self.device_client = SimpleNamespace(scan_uart_settings=False)
         self.unknown_registers = {}
         self.scanned_registers = {}
 
