@@ -87,7 +87,9 @@ def _coordinator_defaults(coordinator: ThesslaGreenModbusCoordinator) -> dict[st
             "connection_errors": coordinator.device_client.statistics.get("connection_errors", 0),
             "timeout_errors": coordinator.device_client.statistics.get("timeout_errors", 0),
         },
-        "last_scan": coordinator.device_client.last_scan.isoformat() if coordinator.device_client.last_scan else None,
+        "last_scan": coordinator.device_client.last_scan.isoformat()
+        if coordinator.device_client.last_scan
+        else None,
     }
 
 
@@ -143,8 +145,13 @@ async def async_get_config_entry_diagnostics(
         },
     )
 
-    if coordinator.device_client.device_scan_result and "raw_registers" in coordinator.device_client.device_scan_result:
-        diagnostics.setdefault("raw_registers", coordinator.device_client.device_scan_result["raw_registers"])
+    if (
+        coordinator.device_client.device_scan_result
+        and "raw_registers" in coordinator.device_client.device_scan_result
+    ):
+        diagnostics.setdefault(
+            "raw_registers", coordinator.device_client.device_scan_result["raw_registers"]
+        )
 
     unknown_regs, failed_addrs = _extract_scan_registers(coordinator)
     diagnostics.setdefault("unknown_registers", unknown_regs)

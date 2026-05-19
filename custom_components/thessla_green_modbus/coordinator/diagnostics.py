@@ -14,7 +14,9 @@ def status_overview(coordinator: Any) -> dict[str, Any]:
     """Return a concise online/offline status summary."""
     last_update = coordinator.device_client.statistics.get("last_successful_update")
     last_update_iso = last_update.isoformat() if last_update else None
-    is_connected = bool(coordinator.device_client._transport and coordinator.device_client._transport.is_connected())
+    is_connected = bool(
+        coordinator.device_client._transport and coordinator.device_client._transport.is_connected()
+    )
     recent_update = False
     if last_update:
         recent_update = (utcnow() - last_update).total_seconds() < (coordinator.scan_interval * 3)
@@ -40,14 +42,17 @@ def performance_stats(coordinator: Any) -> dict[str, Any]:
             coordinator.device_client.statistics["successful_reads"]
             / max(
                 1,
-                coordinator.device_client.statistics["successful_reads"] + coordinator.device_client.statistics["failed_reads"],
+                coordinator.device_client.statistics["successful_reads"]
+                + coordinator.device_client.statistics["failed_reads"],
             )
         )
         * 100,
         "avg_response_time": coordinator.device_client.statistics["average_response_time"],
         "connection_errors": coordinator.device_client.statistics["connection_errors"],
         "last_error": coordinator.device_client.statistics["last_error"],
-        "registers_available": sum(len(regs) for regs in coordinator.device_client.available_registers.values()),
+        "registers_available": sum(
+            len(regs) for regs in coordinator.device_client.available_registers.values()
+        ),
         "registers_read": coordinator.device_client.statistics["total_registers_read"],
     }
 
@@ -59,7 +64,10 @@ def get_diagnostic_data(coordinator: Any) -> dict[str, Any]:
         "host": coordinator.config.host,
         "port": coordinator.config.port,
         "slave_id": coordinator.config.slave_id,
-        "connected": bool(coordinator.device_client._transport and coordinator.device_client._transport.is_connected()),
+        "connected": bool(
+            coordinator.device_client._transport
+            and coordinator.device_client._transport.is_connected()
+        ),
         "offline_state": coordinator.device_client.offline_state,
         "last_successful_update": last_update.isoformat() if last_update else None,
         "transport": coordinator.config.connection_type,
@@ -89,13 +97,16 @@ def get_diagnostic_data(coordinator: Any) -> dict[str, Any]:
         "status_overview": status_overview(coordinator),
         "device_info": coordinator.device_client.device_info,
         "available_registers": {
-            key: sorted(list(value)) for key, value in coordinator.device_client.available_registers.items()
+            key: sorted(list(value))
+            for key, value in coordinator.device_client.available_registers.items()
         },
         "capabilities": coordinator.device_client.capabilities.as_dict(),
         "scan_result": coordinator.device_client.device_scan_result,
         "unknown_registers": coordinator.device_client.unknown_registers,
         "scanned_registers": coordinator.device_client.scanned_registers,
-        "last_scan": coordinator.device_client.last_scan.isoformat() if coordinator.device_client.last_scan else None,
+        "last_scan": coordinator.device_client.last_scan.isoformat()
+        if coordinator.device_client.last_scan
+        else None,
         "firmware_version": coordinator.device_client.device_info.get("firmware"),
         "total_available_registers": total_registers,
         "total_registers_json": total_registers_json,
@@ -108,7 +119,10 @@ def get_diagnostic_data(coordinator: Any) -> dict[str, Any]:
         "register_map_version": REGISTER_MAP_VERSION,
     }
 
-    if coordinator.device_client.device_scan_result and "raw_registers" in coordinator.device_client.device_scan_result:
+    if (
+        coordinator.device_client.device_scan_result
+        and "raw_registers" in coordinator.device_client.device_scan_result
+    ):
         diagnostics["raw_registers"] = coordinator.device_client.device_scan_result["raw_registers"]
         if "total_addresses_scanned" in coordinator.device_client.device_scan_result:
             statistics["total_addresses_scanned"] = coordinator.device_client.device_scan_result[
@@ -194,4 +208,8 @@ def get_device_info(coordinator: Any) -> dict[str, Any]:
 
 def device_name(coordinator: Any) -> str:
     """Return the configured or detected device name."""
-    return cast(str, coordinator.device_client.device_info.get("device_name") or coordinator.device_client._device_name)
+    return cast(
+        str,
+        coordinator.device_client.device_info.get("device_name")
+        or coordinator.device_client._device_name,
+    )

@@ -27,7 +27,10 @@ async def ensure_connected_lifecycle(
                 current_client=coordinator.device_client.client,
                 reconnect_client_if_needed_fn=reconnect_client_if_needed_fn,
                 disconnect_locked_fn=coordinator._disconnect_locked,
-                get_runtime_state_fn=lambda: (coordinator.device_client._transport, coordinator.device_client.client),
+                get_runtime_state_fn=lambda: (
+                    coordinator.device_client._transport,
+                    coordinator.device_client.client,
+                ),
                 ensure_transport_selected_fn=ensure_transport_selected_fn_factory(),
                 connect_transport_or_client_fn=connect_transport_or_client_fn,
                 mark_connection_established_fn=mark_connection_established_fn,

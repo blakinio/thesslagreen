@@ -94,7 +94,9 @@ def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> 
     coordinator.device_client.capabilities = DeviceCapabilities()
     if entry and isinstance(entry.data.get("capabilities"), dict):
         with suppress(TypeError, ValueError):
-            coordinator.device_client.capabilities = DeviceCapabilities(**entry.data["capabilities"])
+            coordinator.device_client.capabilities = DeviceCapabilities(
+                **entry.data["capabilities"]
+            )
 
     coordinator.device_client.available_registers = {
         "input_registers": set(),
@@ -114,10 +116,18 @@ def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> 
         key: {addr: name for name, addr in mapping.items()}
         for key, mapping in coordinator.device_client._register_maps.items()
     }
-    coordinator.device_client._input_registers_rev = coordinator.device_client._reverse_maps["input_registers"]
-    coordinator.device_client._holding_registers_rev = coordinator.device_client._reverse_maps["holding_registers"]
-    coordinator.device_client._coil_registers_rev = coordinator.device_client._reverse_maps["coil_registers"]
-    coordinator.device_client._discrete_inputs_rev = coordinator.device_client._reverse_maps["discrete_inputs"]
+    coordinator.device_client._input_registers_rev = coordinator.device_client._reverse_maps[
+        "input_registers"
+    ]
+    coordinator.device_client._holding_registers_rev = coordinator.device_client._reverse_maps[
+        "holding_registers"
+    ]
+    coordinator.device_client._coil_registers_rev = coordinator.device_client._reverse_maps[
+        "coil_registers"
+    ]
+    coordinator.device_client._discrete_inputs_rev = coordinator.device_client._reverse_maps[
+        "discrete_inputs"
+    ]
 
     coordinator.device_client._register_groups = {}
     coordinator.device_client._consecutive_failures = 0

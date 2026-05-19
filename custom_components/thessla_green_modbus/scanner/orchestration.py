@@ -148,9 +148,7 @@ async def _run_word_phase(
     unknown_registers: dict[str, dict[int, Any]],
     scanned_registers: dict[str, int],
 ) -> None:
-    for start, count in _group_reads(
-        range(max_addr + 1), max_block_size=scanner.effective_batch
-    ):
+    for start, count in _group_reads(range(max_addr + 1), max_block_size=scanner.effective_batch):
         scanned_registers[scan_key] += count
         data = await read_fn(start, count)
         if data is None:
@@ -178,9 +176,7 @@ async def _run_bit_phase(
     unknown_registers: dict[str, dict[int, Any]],
     scanned_registers: dict[str, int],
 ) -> None:
-    for start, count in _group_reads(
-        range(max_addr + 1), max_block_size=scanner.effective_batch
-    ):
+    for start, count in _group_reads(range(max_addr + 1), max_block_size=scanner.effective_batch):
         scanned_registers[scan_key] += count
         data = await read_fn(start, count)
         if data is None:

@@ -80,7 +80,9 @@ def apply_coordinator_config(
     coordinator.device_client.timeout = normalized_cfg.timeout
     coordinator.device_client.retry = normalized_cfg.retry
     coordinator.device_client.backoff = normalize_backoff_fn(normalized_cfg.backoff)
-    coordinator.device_client.backoff_jitter = parse_backoff_jitter_fn(normalized_cfg.backoff_jitter)
+    coordinator.device_client.backoff_jitter = parse_backoff_jitter_fn(
+        normalized_cfg.backoff_jitter
+    )
     coordinator.device_client.force_full_register_list = normalized_cfg.force_full_register_list
     coordinator.device_client.scan_uart_settings = normalized_cfg.scan_uart_settings
     coordinator.device_client.deep_scan = normalized_cfg.deep_scan

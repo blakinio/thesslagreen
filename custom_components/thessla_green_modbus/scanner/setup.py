@@ -326,7 +326,9 @@ async def verify_connection(
     rtu_transport_cls: Any = RtuModbusTransport,
 ) -> None:
     """Verify basic Modbus connectivity by reading a few safe registers."""
-    safe_input, safe_holding = _collect_safe_register_addresses(safe_registers, register_definitions)
+    safe_input, safe_holding = _collect_safe_register_addresses(
+        safe_registers, register_definitions
+    )
 
     attempts = build_verification_attempts(
         scanner,

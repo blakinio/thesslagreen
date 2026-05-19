@@ -39,8 +39,12 @@ def apply_scan_result(
         for reg_type, names in known_missing_registers.items():
             coordinator.device_client.available_registers[reg_type].difference_update(names)
 
-    coordinator.device_client.device_info = coordinator.device_client.device_scan_result.get("device_info", {})
-    coordinator.device_client.device_info.setdefault("device_name", coordinator.device_client._device_name)
+    coordinator.device_client.device_info = coordinator.device_client.device_scan_result.get(
+        "device_info", {}
+    )
+    coordinator.device_client.device_info.setdefault(
+        "device_name", coordinator.device_client._device_name
+    )
 
     if (
         coordinator.device_client.device_info.get("serial_number")
@@ -62,8 +66,12 @@ def apply_scan_result(
         )
         raise cannot_connect_exc("invalid_capabilities")
 
-    coordinator.device_client.unknown_registers = coordinator.device_client.device_scan_result.get("unknown_registers", {})
-    coordinator.device_client.scanned_registers = coordinator.device_client.device_scan_result.get("scanned_registers", {})
+    coordinator.device_client.unknown_registers = coordinator.device_client.device_scan_result.get(
+        "unknown_registers", {}
+    )
+    coordinator.device_client.scanned_registers = coordinator.device_client.device_scan_result.get(
+        "scanned_registers", {}
+    )
     coordinator._store_scan_cache()
 
     logger.info(

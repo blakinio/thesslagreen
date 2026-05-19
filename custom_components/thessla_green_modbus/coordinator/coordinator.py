@@ -481,7 +481,9 @@ class ThesslaGreenModbusCoordinator(
             return
 
         self._reauth_scheduled = True
-        _LOGGER.warning("Starting reauthentication for %s (%s)", self._device_client._device_name, reason)
+        _LOGGER.warning(
+            "Starting reauthentication for %s (%s)", self._device_client._device_name, reason
+        )
         self.hass.async_create_task(self.entry.async_start_reauth(self.hass))
 
     def get_register_map(self, register_type: str) -> dict[str, int]:

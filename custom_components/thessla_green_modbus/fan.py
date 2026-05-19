@@ -258,7 +258,9 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         if register_name not in holding_registers():
             raise ValueError(f"Register {register_name} is not writable")
 
-        holding_regs = self.coordinator.device_client.available_registers.get("holding_registers", set())
+        holding_regs = self.coordinator.device_client.available_registers.get(
+            "holding_registers", set()
+        )
         if register_name not in holding_regs:
             _LOGGER.debug("Register %s unavailable, skipping write", register_name)
             return

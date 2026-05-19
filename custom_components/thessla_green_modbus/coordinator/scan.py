@@ -23,7 +23,8 @@ def get_scan_cache_from_entry(entry: Any) -> dict[str, Any]:
 def load_full_register_list(coordinator: Any) -> None:
     """Load full register list when forced."""
     coordinator.device_client.available_registers = {
-        key: set(mapping.keys()) for key, mapping in coordinator.device_client._register_maps.items()
+        key: set(mapping.keys())
+        for key, mapping in coordinator.device_client._register_maps.items()
     }
 
     coordinator.device_client.device_info = {
@@ -32,7 +33,9 @@ def load_full_register_list(coordinator: Any) -> None:
         "firmware": "Unknown",
         "serial_number": "Unknown",
         "input_registers": set(coordinator.device_client._register_maps["input_registers"].keys()),
-        "holding_registers": set(coordinator.device_client._register_maps["holding_registers"].keys()),
+        "holding_registers": set(
+            coordinator.device_client._register_maps["holding_registers"].keys()
+        ),
         "coil_registers": set(coordinator.device_client._register_maps["coil_registers"].keys()),
         "discrete_inputs": set(coordinator.device_client._register_maps["discrete_inputs"].keys()),
     }
@@ -108,7 +111,9 @@ def store_scan_cache(coordinator: Any) -> None:
     if coordinator.entry is None:
         return
 
-    available = {key: sorted(value) for key, value in coordinator.device_client.available_registers.items()}
+    available = {
+        key: sorted(value) for key, value in coordinator.device_client.available_registers.items()
+    }
     cache = {
         "available_registers": available,
         "device_info": coordinator.device_client.device_info,

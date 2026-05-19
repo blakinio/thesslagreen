@@ -50,9 +50,7 @@ async def _probe_missing_version_parts(
 ) -> tuple[int | None, int | None, int | None, Exception | None]:
     fallback_results: dict[str, int] = {}
     for name in ("version_major", "version_minor", "version_patch"):
-        current = (
-            major if name == "version_major" else minor if name == "version_minor" else patch
-        )
+        current = major if name == "version_major" else minor if name == "version_minor" else patch
         if current is not None:
             continue
         probe = None
