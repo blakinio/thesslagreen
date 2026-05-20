@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import voluptuous as vol
@@ -33,7 +33,7 @@ async def test_write_register_handles_connection_exception():
     coordinator = SimpleNamespace(
         async_write_register=AsyncMock(side_effect=ConnectionException("x"))
     )
-    logger = SimpleNamespace(error=AsyncMock(), info=AsyncMock())
+    logger = SimpleNamespace(error=MagicMock(), info=MagicMock())
 
     result = await write_register(coordinator, "reg", 1, "climate.a", "action", logger)
 
@@ -44,7 +44,7 @@ async def test_write_register_handles_connection_exception():
 @pytest.mark.asyncio
 async def test_refresh_and_log_success_requests_refresh_and_logs():
     coordinator = SimpleNamespace(async_request_refresh=AsyncMock())
-    logger = SimpleNamespace(info=AsyncMock())
+    logger = SimpleNamespace(info=MagicMock())
 
     await refresh_and_log_success(coordinator, logger, "Did %s", "thing")
 
@@ -55,7 +55,7 @@ async def test_refresh_and_log_success_requests_refresh_and_logs():
 @pytest.mark.asyncio
 async def test_write_optional_register_skips_none_value():
     write_func = AsyncMock()
-    logger = SimpleNamespace(error=AsyncMock())
+    logger = SimpleNamespace(error=MagicMock())
     coordinator = object()
 
     result = await write_optional_register(
@@ -103,7 +103,7 @@ def test_normalize_modbus_options_returns_normalized_values():
 @pytest.mark.asyncio
 async def test_write_mapped_optional_register_maps_and_writes():
     write_func = AsyncMock(return_value=True)
-    logger = SimpleNamespace(error=AsyncMock())
+    logger = SimpleNamespace(error=MagicMock())
 
     coordinator = object()
     result = await write_mapped_optional_register(
@@ -125,7 +125,7 @@ async def test_write_mapped_optional_register_maps_and_writes():
 @pytest.mark.asyncio
 async def test_write_register_batch_logs_and_stops_on_failure():
     write_func = AsyncMock(side_effect=[True, False])
-    logger = SimpleNamespace(error=AsyncMock())
+    logger = SimpleNamespace(error=MagicMock())
 
     result = await write_register_batch(
         object(),
@@ -145,7 +145,7 @@ async def test_write_register_batch_logs_and_stops_on_failure():
 @pytest.mark.asyncio
 async def test_write_register_steps_skips_optional_none_and_stops_on_failure():
     write_func = AsyncMock(side_effect=[True, False])
-    logger = SimpleNamespace(error=AsyncMock())
+    logger = SimpleNamespace(error=MagicMock())
 
     result = await write_register_steps(
         object(),
