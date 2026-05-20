@@ -25,9 +25,9 @@ from pymodbus.exceptions import (
     ModbusIOException,
 )
 
-pytestmark = pytest.mark.asyncio
 
 
+@pytest.mark.asyncio
 async def test_read_holding_skips_after_failure():
     """Holding registers are cached after a failed read."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
@@ -55,6 +55,7 @@ async def test_read_holding_skips_after_failure():
     assert 168 in scanner._failed_holding
 
 
+@pytest.mark.asyncio
 async def test_read_holding_skips_cached_failed_range_for_multi_register_read():
     """Cached failed holding registers skip overlapping multi-register requests."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
@@ -74,6 +75,7 @@ async def test_read_holding_skips_cached_failed_range_for_multi_register_read():
     )
 
 
+@pytest.mark.asyncio
 async def test_read_holding_exception_response(caplog):
     """Exception responses should include the exception code in logs."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
@@ -98,6 +100,7 @@ async def test_read_holding_exception_response(caplog):
     assert f"Exception code {error_response.exception_code}" in caplog.text
 
 
+@pytest.mark.asyncio
 async def test_read_input_exception_response_mentions_input_registers(caplog):
     """Input exception responses should log the proper register type."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10)
@@ -122,6 +125,7 @@ async def test_read_input_exception_response_mentions_input_registers(caplog):
     assert "while reading input registers 1-1" in caplog.text
 
 
+@pytest.mark.asyncio
 async def test_read_holding_timeout_logging(caplog):
     """Timeout errors should log a warning abort notice but not a terminal ERROR.
 
@@ -149,6 +153,7 @@ async def test_read_holding_timeout_logging(caplog):
     assert not any("Failed to read holding registers 1-1" in msg for msg in errors)
 
 
+@pytest.mark.asyncio
 async def test_read_holding_illegal_address_response_marks_unsupported():
     """Holding illegal-address response should terminate immediately and cache failure."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3)
@@ -168,6 +173,7 @@ async def test_read_holding_illegal_address_response_marks_unsupported():
     assert 50 in scanner._failed_holding
 
 
+@pytest.mark.asyncio
 async def test_read_input_skip_cache_marks_single_register_supported():
     """Single-register input success with skip_cache should mark support."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=2)
@@ -186,6 +192,7 @@ async def test_read_input_skip_cache_marks_single_register_supported():
     assert 77 not in scanner._failed_input
 
 
+@pytest.mark.asyncio
 async def test_read_holding_cancelled_modbusio_stops_retry_loop():
     """Cancelled ModbusIOException aborts holding retries immediately."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.3.17", 8899, 10, retry=3)
@@ -385,6 +392,7 @@ def test_should_log_terminal_failure_tracks_holding_vs_input_aborts():
     assert should_log_terminal_failure("holding_registers", False) is True
 
 
+@pytest.mark.asyncio
 async def test_attempt_bit_reconnect_no_transport_returns_original_client():
     """Returns original client unchanged when scanner has no transport."""
     scanner = MagicMock()
@@ -394,6 +402,7 @@ async def test_attempt_bit_reconnect_no_transport_returns_original_client():
     assert result is original
 
 
+@pytest.mark.asyncio
 async def test_attempt_bit_reconnect_with_transport_returns_transport_client():
     """Returns transport client and updates scanner._client when reconnect succeeds."""
     scanner = MagicMock()
@@ -411,6 +420,7 @@ async def test_attempt_bit_reconnect_with_transport_returns_transport_client():
     mock_transport.ensure_connected.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_attempt_bit_reconnect_transport_no_client_attr_returns_original():
     """Returns original client when transport has no .client attribute."""
     scanner = MagicMock()
@@ -425,6 +435,7 @@ async def test_attempt_bit_reconnect_transport_no_client_attr_returns_original()
     assert result is original
 
 
+@pytest.mark.asyncio
 async def test_attempt_bit_reconnect_ensure_connected_raises_returns_original():
     """Returns original client when ensure_connected raises any connection error."""
     scanner = MagicMock()
@@ -438,6 +449,7 @@ async def test_attempt_bit_reconnect_ensure_connected_raises_returns_original():
     assert result is original
 
 
+@pytest.mark.asyncio
 async def test_attempt_bit_reconnect_connection_exception_returns_original():
     """Returns original client when ensure_connected raises ConnectionException."""
     scanner = MagicMock()

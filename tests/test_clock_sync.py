@@ -691,6 +691,7 @@ def test_clock_sync_manager_disabled_explicitly():
 
 def test_clock_sync_manager_on_start_when_enabled_and_data_present():
     hass = MagicMock()
+    hass.async_create_task.side_effect = lambda coro: coro.close()
     coord = _make_coordinator(data={"device_clock": "2025-05-09T14:00:00"})
     entry = MagicMock()
     entry.options = {
@@ -719,6 +720,7 @@ def test_clock_sync_manager_on_start_not_triggered_without_data():
 
 def test_clock_sync_manager_on_start_runs_only_once():
     hass = MagicMock()
+    hass.async_create_task.side_effect = lambda coro: coro.close()
     coord = _make_coordinator(data={"device_clock": "2025-05-09T14:00:00"})
     entry = MagicMock()
     entry.options = {
@@ -742,6 +744,7 @@ def test_clock_sync_manager_on_start_runs_only_once():
 def test_clock_sync_manager_periodic_first_sync():
     """First sync always fires when enabled (no last_sync yet)."""
     hass = MagicMock()
+    hass.async_create_task.side_effect = lambda coro: coro.close()
     coord = _make_coordinator(data={"device_clock": "2025-05-09T14:00:00"})
     entry = MagicMock()
     entry.options = {
