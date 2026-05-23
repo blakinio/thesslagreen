@@ -26,7 +26,6 @@ from pymodbus.exceptions import (
 )
 
 
-
 @pytest.mark.asyncio
 async def test_read_holding_skips_after_failure():
     """Holding registers are cached after a failed read."""
