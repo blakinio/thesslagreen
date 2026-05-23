@@ -35,6 +35,7 @@ def extract_entity_ids_with_extractor(
 
     extracted = extractor(hass, call)
     if inspect.isawaitable(extracted):
+        extracted.close()
         raw_ids = call.data.get("entity_id")
         if raw_ids is None:
             return set()

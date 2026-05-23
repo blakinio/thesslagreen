@@ -6,9 +6,14 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+import warnings
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
+# Temporarily convert unawaited-coroutine RuntimeWarning into a hard error so
+# the exact failing test shows up in CI logs with a full traceback.
+warnings.filterwarnings("error", message="coroutine.*was never awaited", category=RuntimeWarning)
 
 pytest_plugins = ("tests.helpers_register_loader", "tests.helpers_coordinator")
 
