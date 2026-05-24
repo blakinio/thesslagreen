@@ -4533,6 +4533,27 @@
     },
     {
       "function": "03",
+      "address_dec": 8391,
+      "address_hex": "0x20C7",
+      "name": "e_197",
+      "access": "RW",
+      "unit": null,
+      "enum": {
+        "0": "brak",
+        "1": "jest"
+      },
+      "multiplier": 1.0,
+      "resolution": 1.0,
+      "description": "Regulacja instalacji została przerwana",
+      "description_en": "Installation regulation was interrupted",
+      "extra": {
+        "reset": "AUTOMATYCZNY",
+        "fw": "4.85",
+        "note": "Auto-reset alarm flag. Read-only in practice."
+      }
+    },
+    {
+      "function": "03",
       "address_dec": 8392,
       "address_hex": "0x20C8",
       "name": "e_200",

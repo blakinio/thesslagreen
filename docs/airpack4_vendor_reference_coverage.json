@@ -1,0 +1,3009 @@
+{
+  "summary": {
+    "vendor_total": 353,
+    "integration_total": 357,
+    "common": 353,
+    "missing_from_integration": 0,
+    "extras_in_integration": 4,
+    "name_mismatches": 299,
+    "mismatch_by_class": {
+      "probable_mismatch": 147,
+      "typo_normalization": 150,
+      "legacy_stable": 2
+    },
+    "vendor_duplicates": 0
+  },
+  "fc_counts": {
+    "FC01": {
+      "vendor": 8,
+      "integration": 8
+    },
+    "FC02": {
+      "vendor": 16,
+      "integration": 16
+    },
+    "FC03": {
+      "vendor": 302,
+      "integration": 304
+    },
+    "FC04": {
+      "vendor": 27,
+      "integration": 29
+    }
+  },
+  "missing": [],
+  "extras": [
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8442,
+      "address_hex": "0x20fa",
+      "integration_name": "e_250",
+      "known_intentional": true,
+      "reason": "known prefix 'e_'"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8444,
+      "address_hex": "0x20fc",
+      "integration_name": "e_252",
+      "known_intentional": true,
+      "reason": "known prefix 'e_'"
+    },
+    {
+      "fc": 4,
+      "fc_label": "FC04",
+      "address_dec": 23,
+      "address_hex": "0x17",
+      "integration_name": "heating_temperature",
+      "known_intentional": true,
+      "reason": "heating_temperature — TH sensor on AirPack4 h/v units"
+    },
+    {
+      "fc": 4,
+      "fc_label": "FC04",
+      "address_dec": 298,
+      "address_hex": "0x12a",
+      "integration_name": "water_removal_active",
+      "known_intentional": true,
+      "reason": "water_removal_active — HEWR procedure flag, series 4"
+    }
+  ],
+  "name_mismatches": [
+    {
+      "fc": 1,
+      "fc_label": "FC01",
+      "address_dec": 5,
+      "address_hex": "0x5",
+      "vendor_name": "duct_warter_heater_pump",
+      "integration_name": "duct_water_heater_pump",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 1,
+      "fc_label": "FC01",
+      "address_dec": 13,
+      "address_hex": "0xd",
+      "vendor_name": "workt_permit",
+      "integration_name": "work_permit",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 1,
+      "fc_label": "FC01",
+      "address_dec": 15,
+      "address_hex": "0xf",
+      "vendor_name": "hood",
+      "integration_name": "hood_output",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 2,
+      "fc_label": "FC02",
+      "address_dec": 4,
+      "address_hex": "0x4",
+      "vendor_name": "hood",
+      "integration_name": "hood_switch",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 2,
+      "fc_label": "FC02",
+      "address_dec": 15,
+      "address_hex": "0xf",
+      "vendor_name": "ppoz",
+      "integration_name": "fire_alarm",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 0,
+      "address_hex": "0x0",
+      "vendor_name": "date_time_year_month",
+      "integration_name": "date_time",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 1,
+      "address_hex": "0x1",
+      "vendor_name": "date_time_day_weekday",
+      "integration_name": "date_time_ddtt",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 2,
+      "address_hex": "0x2",
+      "vendor_name": "date_time_hour_minute",
+      "integration_name": "date_time_ggmm",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 3,
+      "address_hex": "0x3",
+      "vendor_name": "date_time_second_csec",
+      "integration_name": "date_time_sscc",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 7,
+      "address_hex": "0x7",
+      "vendor_name": "lock_date_year",
+      "integration_name": "lock_date",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8,
+      "address_hex": "0x8",
+      "vendor_name": "lock_date_month",
+      "integration_name": "lock_date_00mm",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 9,
+      "address_hex": "0x9",
+      "vendor_name": "lock_date_day",
+      "integration_name": "lock_date_00dd",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 16,
+      "address_hex": "0x10",
+      "vendor_name": "schedule_summer_mon_slot1_time",
+      "integration_name": "schedule_summer_mon_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 17,
+      "address_hex": "0x11",
+      "vendor_name": "schedule_summer_mon_slot2_time",
+      "integration_name": "schedule_summer_mon_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 18,
+      "address_hex": "0x12",
+      "vendor_name": "schedule_summer_mon_slot3_time",
+      "integration_name": "schedule_summer_mon_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 19,
+      "address_hex": "0x13",
+      "vendor_name": "schedule_summer_mon_slot4_time",
+      "integration_name": "schedule_summer_mon_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 20,
+      "address_hex": "0x14",
+      "vendor_name": "schedule_summer_tue_slot1_time",
+      "integration_name": "schedule_summer_tue_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 21,
+      "address_hex": "0x15",
+      "vendor_name": "schedule_summer_tue_slot2_time",
+      "integration_name": "schedule_summer_tue_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 22,
+      "address_hex": "0x16",
+      "vendor_name": "schedule_summer_tue_slot3_time",
+      "integration_name": "schedule_summer_tue_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 23,
+      "address_hex": "0x17",
+      "vendor_name": "schedule_summer_tue_slot4_time",
+      "integration_name": "schedule_summer_tue_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 24,
+      "address_hex": "0x18",
+      "vendor_name": "schedule_summer_wed_slot1_time",
+      "integration_name": "schedule_summer_wed_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 25,
+      "address_hex": "0x19",
+      "vendor_name": "schedule_summer_wed_slot2_time",
+      "integration_name": "schedule_summer_wed_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 26,
+      "address_hex": "0x1a",
+      "vendor_name": "schedule_summer_wed_slot3_time",
+      "integration_name": "schedule_summer_wed_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 27,
+      "address_hex": "0x1b",
+      "vendor_name": "schedule_summer_wed_slot4_time",
+      "integration_name": "schedule_summer_wed_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 28,
+      "address_hex": "0x1c",
+      "vendor_name": "schedule_summer_thu_slot1_time",
+      "integration_name": "schedule_summer_thu_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 29,
+      "address_hex": "0x1d",
+      "vendor_name": "schedule_summer_thu_slot2_time",
+      "integration_name": "schedule_summer_thu_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 30,
+      "address_hex": "0x1e",
+      "vendor_name": "schedule_summer_thu_slot3_time",
+      "integration_name": "schedule_summer_thu_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 31,
+      "address_hex": "0x1f",
+      "vendor_name": "schedule_summer_thu_slot4_time",
+      "integration_name": "schedule_summer_thu_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 32,
+      "address_hex": "0x20",
+      "vendor_name": "schedule_summer_fri_slot1_time",
+      "integration_name": "schedule_summer_fri_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 33,
+      "address_hex": "0x21",
+      "vendor_name": "schedule_summer_fri_slot2_time",
+      "integration_name": "schedule_summer_fri_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 34,
+      "address_hex": "0x22",
+      "vendor_name": "schedule_summer_fri_slot3_time",
+      "integration_name": "schedule_summer_fri_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 35,
+      "address_hex": "0x23",
+      "vendor_name": "schedule_summer_fri_slot4_time",
+      "integration_name": "schedule_summer_fri_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 36,
+      "address_hex": "0x24",
+      "vendor_name": "schedule_summer_sat_slot1_time",
+      "integration_name": "schedule_summer_sat_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 37,
+      "address_hex": "0x25",
+      "vendor_name": "schedule_summer_sat_slot2_time",
+      "integration_name": "schedule_summer_sat_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 38,
+      "address_hex": "0x26",
+      "vendor_name": "schedule_summer_sat_slot3_time",
+      "integration_name": "schedule_summer_sat_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 39,
+      "address_hex": "0x27",
+      "vendor_name": "schedule_summer_sat_slot4_time",
+      "integration_name": "schedule_summer_sat_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 40,
+      "address_hex": "0x28",
+      "vendor_name": "schedule_summer_sun_slot1_time",
+      "integration_name": "schedule_summer_sun_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 41,
+      "address_hex": "0x29",
+      "vendor_name": "schedule_summer_sun_slot2_time",
+      "integration_name": "schedule_summer_sun_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 42,
+      "address_hex": "0x2a",
+      "vendor_name": "schedule_summer_sun_slot3_time",
+      "integration_name": "schedule_summer_sun_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 43,
+      "address_hex": "0x2b",
+      "vendor_name": "schedule_summer_sun_slot4_time",
+      "integration_name": "schedule_summer_sun_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 44,
+      "address_hex": "0x2c",
+      "vendor_name": "schedule_winter_mon_slot1_time",
+      "integration_name": "schedule_winter_mon_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 45,
+      "address_hex": "0x2d",
+      "vendor_name": "schedule_winter_mon_slot2_time",
+      "integration_name": "schedule_winter_mon_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 46,
+      "address_hex": "0x2e",
+      "vendor_name": "schedule_winter_mon_slot3_time",
+      "integration_name": "schedule_winter_mon_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 47,
+      "address_hex": "0x2f",
+      "vendor_name": "schedule_winter_mon_slot4_time",
+      "integration_name": "schedule_winter_mon_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 48,
+      "address_hex": "0x30",
+      "vendor_name": "schedule_winter_tue_slot1_time",
+      "integration_name": "schedule_winter_tue_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 49,
+      "address_hex": "0x31",
+      "vendor_name": "schedule_winter_tue_slot2_time",
+      "integration_name": "schedule_winter_tue_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 50,
+      "address_hex": "0x32",
+      "vendor_name": "schedule_winter_tue_slot3_time",
+      "integration_name": "schedule_winter_tue_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 51,
+      "address_hex": "0x33",
+      "vendor_name": "schedule_winter_tue_slot4_time",
+      "integration_name": "schedule_winter_tue_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 52,
+      "address_hex": "0x34",
+      "vendor_name": "schedule_winter_wed_slot1_time",
+      "integration_name": "schedule_winter_wed_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 53,
+      "address_hex": "0x35",
+      "vendor_name": "schedule_winter_wed_slot2_time",
+      "integration_name": "schedule_winter_wed_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 54,
+      "address_hex": "0x36",
+      "vendor_name": "schedule_winter_wed_slot3_time",
+      "integration_name": "schedule_winter_wed_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 55,
+      "address_hex": "0x37",
+      "vendor_name": "schedule_winter_wed_slot4_time",
+      "integration_name": "schedule_winter_wed_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 56,
+      "address_hex": "0x38",
+      "vendor_name": "schedule_winter_thu_slot1_time",
+      "integration_name": "schedule_winter_thu_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 57,
+      "address_hex": "0x39",
+      "vendor_name": "schedule_winter_thu_slot2_time",
+      "integration_name": "schedule_winter_thu_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 58,
+      "address_hex": "0x3a",
+      "vendor_name": "schedule_winter_thu_slot3_time",
+      "integration_name": "schedule_winter_thu_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 59,
+      "address_hex": "0x3b",
+      "vendor_name": "schedule_winter_thu_slot4_time",
+      "integration_name": "schedule_winter_thu_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 60,
+      "address_hex": "0x3c",
+      "vendor_name": "schedule_winter_fri_slot1_time",
+      "integration_name": "schedule_winter_fri_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 61,
+      "address_hex": "0x3d",
+      "vendor_name": "schedule_winter_fri_slot2_time",
+      "integration_name": "schedule_winter_fri_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 62,
+      "address_hex": "0x3e",
+      "vendor_name": "schedule_winter_fri_slot3_time",
+      "integration_name": "schedule_winter_fri_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 63,
+      "address_hex": "0x3f",
+      "vendor_name": "schedule_winter_fri_slot4_time",
+      "integration_name": "schedule_winter_fri_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 64,
+      "address_hex": "0x40",
+      "vendor_name": "schedule_winter_sat_slot1_time",
+      "integration_name": "schedule_winter_sat_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 65,
+      "address_hex": "0x41",
+      "vendor_name": "schedule_winter_sat_slot2_time",
+      "integration_name": "schedule_winter_sat_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 66,
+      "address_hex": "0x42",
+      "vendor_name": "schedule_winter_sat_slot3_time",
+      "integration_name": "schedule_winter_sat_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 67,
+      "address_hex": "0x43",
+      "vendor_name": "schedule_winter_sat_slot4_time",
+      "integration_name": "schedule_winter_sat_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 68,
+      "address_hex": "0x44",
+      "vendor_name": "schedule_winter_sun_slot1_time",
+      "integration_name": "schedule_winter_sun_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 69,
+      "address_hex": "0x45",
+      "vendor_name": "schedule_winter_sun_slot2_time",
+      "integration_name": "schedule_winter_sun_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 70,
+      "address_hex": "0x46",
+      "vendor_name": "schedule_winter_sun_slot3_time",
+      "integration_name": "schedule_winter_sun_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 71,
+      "address_hex": "0x47",
+      "vendor_name": "schedule_winter_sun_slot4_time",
+      "integration_name": "schedule_winter_sun_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 72,
+      "address_hex": "0x48",
+      "vendor_name": "schedule_summer_mon_slot1_params",
+      "integration_name": "setting_summer_mon_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 73,
+      "address_hex": "0x49",
+      "vendor_name": "schedule_summer_mon_slot2_params",
+      "integration_name": "setting_summer_mon_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 74,
+      "address_hex": "0x4a",
+      "vendor_name": "schedule_summer_mon_slot3_params",
+      "integration_name": "setting_summer_mon_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 75,
+      "address_hex": "0x4b",
+      "vendor_name": "schedule_summer_mon_slot4_params",
+      "integration_name": "setting_summer_mon_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 76,
+      "address_hex": "0x4c",
+      "vendor_name": "schedule_summer_tue_slot1_params",
+      "integration_name": "setting_summer_tue_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 77,
+      "address_hex": "0x4d",
+      "vendor_name": "schedule_summer_tue_slot2_params",
+      "integration_name": "setting_summer_tue_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 78,
+      "address_hex": "0x4e",
+      "vendor_name": "schedule_summer_tue_slot3_params",
+      "integration_name": "setting_summer_tue_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 79,
+      "address_hex": "0x4f",
+      "vendor_name": "schedule_summer_tue_slot4_params",
+      "integration_name": "setting_summer_tue_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 80,
+      "address_hex": "0x50",
+      "vendor_name": "schedule_summer_wed_slot1_params",
+      "integration_name": "setting_summer_wed_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 81,
+      "address_hex": "0x51",
+      "vendor_name": "schedule_summer_wed_slot2_params",
+      "integration_name": "setting_summer_wed_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 82,
+      "address_hex": "0x52",
+      "vendor_name": "schedule_summer_wed_slot3_params",
+      "integration_name": "setting_summer_wed_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 83,
+      "address_hex": "0x53",
+      "vendor_name": "schedule_summer_wed_slot4_params",
+      "integration_name": "setting_summer_wed_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 84,
+      "address_hex": "0x54",
+      "vendor_name": "schedule_summer_thu_slot1_params",
+      "integration_name": "setting_summer_thu_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 85,
+      "address_hex": "0x55",
+      "vendor_name": "schedule_summer_thu_slot2_params",
+      "integration_name": "setting_summer_thu_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 86,
+      "address_hex": "0x56",
+      "vendor_name": "schedule_summer_thu_slot3_params",
+      "integration_name": "setting_summer_thu_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 87,
+      "address_hex": "0x57",
+      "vendor_name": "schedule_summer_thu_slot4_params",
+      "integration_name": "setting_summer_thu_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 88,
+      "address_hex": "0x58",
+      "vendor_name": "schedule_summer_fri_slot1_params",
+      "integration_name": "setting_summer_fri_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 89,
+      "address_hex": "0x59",
+      "vendor_name": "schedule_summer_fri_slot2_params",
+      "integration_name": "setting_summer_fri_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 90,
+      "address_hex": "0x5a",
+      "vendor_name": "schedule_summer_fri_slot3_params",
+      "integration_name": "setting_summer_fri_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 91,
+      "address_hex": "0x5b",
+      "vendor_name": "schedule_summer_fri_slot4_params",
+      "integration_name": "setting_summer_fri_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 92,
+      "address_hex": "0x5c",
+      "vendor_name": "schedule_summer_sat_slot1_params",
+      "integration_name": "setting_summer_sat_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 93,
+      "address_hex": "0x5d",
+      "vendor_name": "schedule_summer_sat_slot2_params",
+      "integration_name": "setting_summer_sat_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 94,
+      "address_hex": "0x5e",
+      "vendor_name": "schedule_summer_sat_slot3_params",
+      "integration_name": "setting_summer_sat_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 95,
+      "address_hex": "0x5f",
+      "vendor_name": "schedule_summer_sat_slot4_params",
+      "integration_name": "setting_summer_sat_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 96,
+      "address_hex": "0x60",
+      "vendor_name": "schedule_summer_sun_slot1_params",
+      "integration_name": "setting_summer_sun_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 97,
+      "address_hex": "0x61",
+      "vendor_name": "schedule_summer_sun_slot2_params",
+      "integration_name": "setting_summer_sun_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 98,
+      "address_hex": "0x62",
+      "vendor_name": "schedule_summer_sun_slot3_params",
+      "integration_name": "setting_summer_sun_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 99,
+      "address_hex": "0x63",
+      "vendor_name": "schedule_summer_sun_slot4_params",
+      "integration_name": "setting_summer_sun_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 100,
+      "address_hex": "0x64",
+      "vendor_name": "schedule_winter_mon_slot1_params",
+      "integration_name": "setting_winter_mon_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 101,
+      "address_hex": "0x65",
+      "vendor_name": "schedule_winter_mon_slot2_params",
+      "integration_name": "setting_winter_mon_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 102,
+      "address_hex": "0x66",
+      "vendor_name": "schedule_winter_mon_slot3_params",
+      "integration_name": "setting_winter_mon_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 103,
+      "address_hex": "0x67",
+      "vendor_name": "schedule_winter_mon_slot4_params",
+      "integration_name": "setting_winter_mon_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 104,
+      "address_hex": "0x68",
+      "vendor_name": "schedule_winter_tue_slot1_params",
+      "integration_name": "setting_winter_tue_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 105,
+      "address_hex": "0x69",
+      "vendor_name": "schedule_winter_tue_slot2_params",
+      "integration_name": "setting_winter_tue_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 106,
+      "address_hex": "0x6a",
+      "vendor_name": "schedule_winter_tue_slot3_params",
+      "integration_name": "setting_winter_tue_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 107,
+      "address_hex": "0x6b",
+      "vendor_name": "schedule_winter_tue_slot4_params",
+      "integration_name": "setting_winter_tue_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 108,
+      "address_hex": "0x6c",
+      "vendor_name": "schedule_winter_wed_slot1_params",
+      "integration_name": "setting_winter_wed_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 109,
+      "address_hex": "0x6d",
+      "vendor_name": "schedule_winter_wed_slot2_params",
+      "integration_name": "setting_winter_wed_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 110,
+      "address_hex": "0x6e",
+      "vendor_name": "schedule_winter_wed_slot3_params",
+      "integration_name": "setting_winter_wed_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 111,
+      "address_hex": "0x6f",
+      "vendor_name": "schedule_winter_wed_slot4_params",
+      "integration_name": "setting_winter_wed_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 112,
+      "address_hex": "0x70",
+      "vendor_name": "schedule_winter_thu_slot1_params",
+      "integration_name": "setting_winter_thu_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 113,
+      "address_hex": "0x71",
+      "vendor_name": "schedule_winter_thu_slot2_params",
+      "integration_name": "setting_winter_thu_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 114,
+      "address_hex": "0x72",
+      "vendor_name": "schedule_winter_thu_slot3_params",
+      "integration_name": "setting_winter_thu_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 115,
+      "address_hex": "0x73",
+      "vendor_name": "schedule_winter_thu_slot4_params",
+      "integration_name": "setting_winter_thu_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 116,
+      "address_hex": "0x74",
+      "vendor_name": "schedule_winter_fri_slot1_params",
+      "integration_name": "setting_winter_fri_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 117,
+      "address_hex": "0x75",
+      "vendor_name": "schedule_winter_fri_slot2_params",
+      "integration_name": "setting_winter_fri_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 118,
+      "address_hex": "0x76",
+      "vendor_name": "schedule_winter_fri_slot3_params",
+      "integration_name": "setting_winter_fri_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 119,
+      "address_hex": "0x77",
+      "vendor_name": "schedule_winter_fri_slot4_params",
+      "integration_name": "setting_winter_fri_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 120,
+      "address_hex": "0x78",
+      "vendor_name": "schedule_winter_sat_slot1_params",
+      "integration_name": "setting_winter_sat_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 121,
+      "address_hex": "0x79",
+      "vendor_name": "schedule_winter_sat_slot2_params",
+      "integration_name": "setting_winter_sat_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 122,
+      "address_hex": "0x7a",
+      "vendor_name": "schedule_winter_sat_slot3_params",
+      "integration_name": "setting_winter_sat_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 123,
+      "address_hex": "0x7b",
+      "vendor_name": "schedule_winter_sat_slot4_params",
+      "integration_name": "setting_winter_sat_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 124,
+      "address_hex": "0x7c",
+      "vendor_name": "schedule_winter_sun_slot1_params",
+      "integration_name": "setting_winter_sun_1",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 125,
+      "address_hex": "0x7d",
+      "vendor_name": "schedule_winter_sun_slot2_params",
+      "integration_name": "setting_winter_sun_2",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 126,
+      "address_hex": "0x7e",
+      "vendor_name": "schedule_winter_sun_slot3_params",
+      "integration_name": "setting_winter_sun_3",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 127,
+      "address_hex": "0x7f",
+      "vendor_name": "schedule_winter_sun_slot4_params",
+      "integration_name": "setting_winter_sun_4",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 128,
+      "address_hex": "0x80",
+      "vendor_name": "schedule_summer_mon_airing_time",
+      "integration_name": "airing_summer_mon",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 132,
+      "address_hex": "0x84",
+      "vendor_name": "schedule_summer_tue_airing_time",
+      "integration_name": "airing_summer_tue",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 136,
+      "address_hex": "0x88",
+      "vendor_name": "schedule_summer_wed_airing_time",
+      "integration_name": "airing_summer_wed",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 140,
+      "address_hex": "0x8c",
+      "vendor_name": "schedule_summer_thu_airing_time",
+      "integration_name": "airing_summer_thu",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 144,
+      "address_hex": "0x90",
+      "vendor_name": "schedule_summer_fri_airing_time",
+      "integration_name": "airing_summer_fri",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 148,
+      "address_hex": "0x94",
+      "vendor_name": "schedule_summer_sat_airing_time",
+      "integration_name": "airing_summer_sat",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 152,
+      "address_hex": "0x98",
+      "vendor_name": "schedule_summer_sun_airing_time",
+      "integration_name": "airing_summer_sun",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 156,
+      "address_hex": "0x9c",
+      "vendor_name": "schedule_winter_mon_airing_time",
+      "integration_name": "airing_winter_mon",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 160,
+      "address_hex": "0xa0",
+      "vendor_name": "schedule_winter_tue_airing_time",
+      "integration_name": "airing_winter_tue",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 164,
+      "address_hex": "0xa4",
+      "vendor_name": "schedule_winter_wed_airing_time",
+      "integration_name": "airing_winter_wed",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 168,
+      "address_hex": "0xa8",
+      "vendor_name": "schedule_winter_thu_airing_time",
+      "integration_name": "airing_winter_thu",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 172,
+      "address_hex": "0xac",
+      "vendor_name": "schedule_winter_fri_airing_time",
+      "integration_name": "airing_winter_fri",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 176,
+      "address_hex": "0xb0",
+      "vendor_name": "schedule_winter_sat_airing_time",
+      "integration_name": "airing_winter_sat",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 180,
+      "address_hex": "0xb4",
+      "vendor_name": "schedule_winter_sun_airing_time",
+      "integration_name": "airing_winter_sun",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 192,
+      "address_hex": "0xc0",
+      "vendor_name": "RTC_cal",
+      "integration_name": "rtc_cal",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 240,
+      "address_hex": "0xf0",
+      "vendor_name": "CF_version",
+      "integration_name": "cf_version",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 241,
+      "address_hex": "0xf1",
+      "vendor_name": "EXP_version",
+      "integration_name": "exp_version",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 256,
+      "address_hex": "0x100",
+      "vendor_name": "supplyAirFlow",
+      "integration_name": "supply_air_flow",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 257,
+      "address_hex": "0x101",
+      "vendor_name": "exhaustAirFlow",
+      "integration_name": "exhaust_air_flow",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4117,
+      "address_hex": "0x1015",
+      "vendor_name": "maxSupplyAirFlowRate",
+      "integration_name": "max_supply_air_flow_rate",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4118,
+      "address_hex": "0x1016",
+      "vendor_name": "maxSupplyAirFlowRateGwc",
+      "integration_name": "max_supply_air_flow_rate_gwc",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4119,
+      "address_hex": "0x1017",
+      "vendor_name": "maxExhaustAirFlowRate",
+      "integration_name": "max_exhaust_air_flow_rate",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4120,
+      "address_hex": "0x1018",
+      "vendor_name": "maxExhaustAirFlowRateGwc",
+      "integration_name": "max_exhaust_air_flow_rate_gwc",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4192,
+      "address_hex": "0x1060",
+      "vendor_name": "antifreezMode",
+      "integration_name": "antifreeze_mode",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4198,
+      "address_hex": "0x1066",
+      "vendor_name": "antifreezStage",
+      "integration_name": "antifreeze_stage",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4209,
+      "address_hex": "0x1071",
+      "vendor_name": "seasonMode",
+      "integration_name": "season_mode",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4210,
+      "address_hex": "0x1072",
+      "vendor_name": "airFlowRateManual",
+      "integration_name": "air_flow_rate_manual",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4211,
+      "address_hex": "0x1073",
+      "vendor_name": "airFlowRateTemporary",
+      "integration_name": "air_flow_rate_temporary",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4212,
+      "address_hex": "0x1074",
+      "vendor_name": "supplyAirTemperatureManual",
+      "integration_name": "supply_air_temperature_manual",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4213,
+      "address_hex": "0x1075",
+      "vendor_name": "supplyAirTemperatureTemporary",
+      "integration_name": "supply_air_temperature_temporary",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4216,
+      "address_hex": "0x1078",
+      "vendor_name": "fanSpeed1Coef",
+      "integration_name": "fan_speed_1_coef",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4217,
+      "address_hex": "0x1079",
+      "vendor_name": "fanSpeed2Coef",
+      "integration_name": "fan_speed_2_coef",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4218,
+      "address_hex": "0x107a",
+      "vendor_name": "fanSpeed3Coef",
+      "integration_name": "fan_speed_3_coef",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4219,
+      "address_hex": "0x107b",
+      "vendor_name": "manualAiringTimeToStart",
+      "integration_name": "manual_airing_time_to_start",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4224,
+      "address_hex": "0x1080",
+      "vendor_name": "specialMode",
+      "integration_name": "special_mode",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4226,
+      "address_hex": "0x1082",
+      "vendor_name": "hoodSupplyCoef",
+      "integration_name": "hood_supply_coef",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4227,
+      "address_hex": "0x1083",
+      "vendor_name": "hoodExhaustCoef",
+      "integration_name": "hood_exhaust_coef",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4228,
+      "address_hex": "0x1084",
+      "vendor_name": "fireplaceSupplyCoef",
+      "integration_name": "fireplace_supply_coef",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4229,
+      "address_hex": "0x1085",
+      "vendor_name": "airingBathroomCoef",
+      "integration_name": "airing_bathroom_coef",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4230,
+      "address_hex": "0x1086",
+      "vendor_name": "airingCoef",
+      "integration_name": "airing_coef",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4231,
+      "address_hex": "0x1087",
+      "vendor_name": "contaminationCoef",
+      "integration_name": "contamination_coef",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4232,
+      "address_hex": "0x1088",
+      "vendor_name": "emptyHouseCoef",
+      "integration_name": "empty_house_coef",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4233,
+      "address_hex": "0x1089",
+      "vendor_name": "airingPanelModeTime",
+      "integration_name": "airing_panel_mode_time",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4234,
+      "address_hex": "0x108a",
+      "vendor_name": "airingSwitchModeTime",
+      "integration_name": "airing_switch_mode_time",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4235,
+      "address_hex": "0x108b",
+      "vendor_name": "airingSwitchModeOnDelay",
+      "integration_name": "airing_switch_mode_on_delay",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4236,
+      "address_hex": "0x108c",
+      "vendor_name": "airingSwitchModeOffDelay",
+      "integration_name": "airing_switch_mode_off_delay",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4237,
+      "address_hex": "0x108d",
+      "vendor_name": "fireplaceModeTime",
+      "integration_name": "fireplace_mode_time",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4238,
+      "address_hex": "0x108e",
+      "vendor_name": "airingSwitchCoef",
+      "integration_name": "airing_switch_coef",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4239,
+      "address_hex": "0x108f",
+      "vendor_name": "openWindowCoef",
+      "integration_name": "open_window_coef",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4244,
+      "address_hex": "0x1094",
+      "vendor_name": "presCheckDay",
+      "integration_name": "pres_check_day",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4245,
+      "address_hex": "0x1095",
+      "vendor_name": "presCheckTime",
+      "integration_name": "pres_check_time",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4256,
+      "address_hex": "0x10a0",
+      "vendor_name": "gwcOff",
+      "integration_name": "gwc_off",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4257,
+      "address_hex": "0x10a1",
+      "vendor_name": "minGwcAirTemperature",
+      "integration_name": "min_gwc_air_temperature",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4258,
+      "address_hex": "0x10a2",
+      "vendor_name": "maxGwcAirTemperature",
+      "integration_name": "max_gwc_air_temperature",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4262,
+      "address_hex": "0x10a6",
+      "vendor_name": "gwcRegen",
+      "integration_name": "gwc_regen",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4263,
+      "address_hex": "0x10a7",
+      "vendor_name": "gwcMode",
+      "integration_name": "gwc_mode",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4264,
+      "address_hex": "0x10a8",
+      "vendor_name": "gwcRegenPeriod",
+      "integration_name": "gwc_regen_period",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4266,
+      "address_hex": "0x10aa",
+      "vendor_name": "deltaTGwc",
+      "integration_name": "delta_t_gwc",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4267,
+      "address_hex": "0x10ab",
+      "vendor_name": "startGwcRegenWinterTime",
+      "integration_name": "start_gwc_regen_winter_time",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4268,
+      "address_hex": "0x10ac",
+      "vendor_name": "stopGwcRegenWinterTime",
+      "integration_name": "stop_gwc_regen_winter_time",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4269,
+      "address_hex": "0x10ad",
+      "vendor_name": "startGwcRegenSummerTime",
+      "integration_name": "start_gwc_regen_summer_time",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4270,
+      "address_hex": "0x10ae",
+      "vendor_name": "stopGwcRegenSummerTime",
+      "integration_name": "stop_gwc_regen_summer_time",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4271,
+      "address_hex": "0x10af",
+      "vendor_name": "gwcRegenFlag",
+      "integration_name": "gwc_regen_flag",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4304,
+      "address_hex": "0x10d0",
+      "vendor_name": "comfortModePanel",
+      "integration_name": "comfort_mode_panel",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4305,
+      "address_hex": "0x10d1",
+      "vendor_name": "comfortMode",
+      "integration_name": "comfort_mode",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4320,
+      "address_hex": "0x10e0",
+      "vendor_name": "bypassOff",
+      "integration_name": "bypass_off",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4321,
+      "address_hex": "0x10e1",
+      "vendor_name": "minBypassTemperature",
+      "integration_name": "min_bypass_temperature",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4322,
+      "address_hex": "0x10e2",
+      "vendor_name": "airTemperatureSummerFreeHeating",
+      "integration_name": "air_temperature_summer_free_heating",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4323,
+      "address_hex": "0x10e3",
+      "vendor_name": "airTemperatureSummerFreeCooling",
+      "integration_name": "air_temperature_summer_free_cooling",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4330,
+      "address_hex": "0x10ea",
+      "vendor_name": "bypassMode",
+      "integration_name": "bypass_mode",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4331,
+      "address_hex": "0x10eb",
+      "vendor_name": "bypassUserMode",
+      "integration_name": "bypass_user_mode",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4332,
+      "address_hex": "0x10ec",
+      "vendor_name": "bypassCoef1",
+      "integration_name": "bypass_coef_1",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4333,
+      "address_hex": "0x10ed",
+      "vendor_name": "bypassCoef2",
+      "integration_name": "bypass_coef_2",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4354,
+      "address_hex": "0x1102",
+      "vendor_name": "nominalSupplyAirFlow",
+      "integration_name": "nominal_supply_air_flow",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4355,
+      "address_hex": "0x1103",
+      "vendor_name": "nominalExhaustAirFlow",
+      "integration_name": "nominal_exhaust_air_flow",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4356,
+      "address_hex": "0x1104",
+      "vendor_name": "nominalSupplyAirFlowGWC",
+      "integration_name": "nominal_supply_air_flow_gwc",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4357,
+      "address_hex": "0x1105",
+      "vendor_name": "nominalExhaustAirFlowGWC",
+      "integration_name": "nominal_exhaust_air_flow_gwc",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4384,
+      "address_hex": "0x1120",
+      "vendor_name": "stopAhuCode",
+      "integration_name": "stop_ahu_code",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4387,
+      "address_hex": "0x1123",
+      "vendor_name": "onOffPanelMode",
+      "integration_name": "on_off_panel_mode",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4400,
+      "address_hex": "0x1130",
+      "vendor_name": "cfgMode1",
+      "integration_name": "cfg_mode_1",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4401,
+      "address_hex": "0x1131",
+      "vendor_name": "airFlowRateTemporary_alt",
+      "integration_name": "air_flow_rate_temporary_4401",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4402,
+      "address_hex": "0x1132",
+      "vendor_name": "airflowRateChangeFlag",
+      "integration_name": "airflow_rate_change_flag",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4403,
+      "address_hex": "0x1133",
+      "vendor_name": "cfgMode2",
+      "integration_name": "cfg_mode_2",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4404,
+      "address_hex": "0x1134",
+      "vendor_name": "supplyAirTemperatureTemporary_alt",
+      "integration_name": "supply_air_temperature_temporary_4404",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4405,
+      "address_hex": "0x1135",
+      "vendor_name": "temperatureChangeFlag",
+      "integration_name": "temperature_change_flag",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4432,
+      "address_hex": "0x1150",
+      "vendor_name": "presCheckDay_alt",
+      "integration_name": "pres_check_day_4432",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4433,
+      "address_hex": "0x1151",
+      "vendor_name": "presCheckTime_alt",
+      "integration_name": "pres_check_time_ggmm",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4452,
+      "address_hex": "0x1164",
+      "vendor_name": "uart0Id",
+      "integration_name": "uart_0_id",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4453,
+      "address_hex": "0x1165",
+      "vendor_name": "uart0Baud",
+      "integration_name": "uart_0_baud",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4454,
+      "address_hex": "0x1166",
+      "vendor_name": "uart0Parity",
+      "integration_name": "uart_0_parity",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4455,
+      "address_hex": "0x1167",
+      "vendor_name": "uart0Stop",
+      "integration_name": "uart_0_stop",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4456,
+      "address_hex": "0x1168",
+      "vendor_name": "uart1Id",
+      "integration_name": "uart_1_id",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4457,
+      "address_hex": "0x1169",
+      "vendor_name": "uart1Baud",
+      "integration_name": "uart_1_baud",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4458,
+      "address_hex": "0x116a",
+      "vendor_name": "uart1Parity",
+      "integration_name": "uart_1_parity",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4459,
+      "address_hex": "0x116b",
+      "vendor_name": "uart1Stop",
+      "integration_name": "uart_1_stop",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4482,
+      "address_hex": "0x1182",
+      "vendor_name": "cfgSZF_FN_new",
+      "integration_name": "cfgszf_fn_new",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4483,
+      "address_hex": "0x1183",
+      "vendor_name": "cfgSZF_FW_new",
+      "integration_name": "cfgszf_fw_new",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4704,
+      "address_hex": "0x1260",
+      "vendor_name": "postHeater_on",
+      "integration_name": "post_heater_on",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4711,
+      "address_hex": "0x1267",
+      "vendor_name": "cfgPostHeaterMode",
+      "integration_name": "cfg_post_heater_mode",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8144,
+      "address_hex": "0x1fd0",
+      "vendor_name": "deviceName",
+      "integration_name": "device_name",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8145,
+      "address_hex": "0x1fd1",
+      "vendor_name": "deviceName_2",
+      "integration_name": "device_name_2",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8146,
+      "address_hex": "0x1fd2",
+      "vendor_name": "deviceName_3",
+      "integration_name": "device_name_3",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8147,
+      "address_hex": "0x1fd3",
+      "vendor_name": "deviceName_4",
+      "integration_name": "device_name_4",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8148,
+      "address_hex": "0x1fd4",
+      "vendor_name": "deviceName_5",
+      "integration_name": "device_name_5",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8149,
+      "address_hex": "0x1fd5",
+      "vendor_name": "deviceName_6",
+      "integration_name": "device_name_6",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8150,
+      "address_hex": "0x1fd6",
+      "vendor_name": "deviceName_7",
+      "integration_name": "device_name_7",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8151,
+      "address_hex": "0x1fd7",
+      "vendor_name": "deviceName_8",
+      "integration_name": "device_name_8",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8187,
+      "address_hex": "0x1ffb",
+      "vendor_name": "lockPass1",
+      "integration_name": "lock_pass",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8188,
+      "address_hex": "0x1ffc",
+      "vendor_name": "lockPass2",
+      "integration_name": "lock_pass_2",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8189,
+      "address_hex": "0x1ffd",
+      "vendor_name": "lockFlag",
+      "integration_name": "lock_flag",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8190,
+      "address_hex": "0x1ffe",
+      "vendor_name": "requiredTemp",
+      "integration_name": "required_temperature",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8191,
+      "address_hex": "0x1fff",
+      "vendor_name": "filterChange",
+      "integration_name": "filter_change",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8194,
+      "address_hex": "0x2002",
+      "vendor_name": "S2",
+      "integration_name": "s_2",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8198,
+      "address_hex": "0x2006",
+      "vendor_name": "S6",
+      "integration_name": "s_6",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8199,
+      "address_hex": "0x2007",
+      "vendor_name": "S7",
+      "integration_name": "s_7",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8200,
+      "address_hex": "0x2008",
+      "vendor_name": "S8",
+      "integration_name": "s_8",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8201,
+      "address_hex": "0x2009",
+      "vendor_name": "S9",
+      "integration_name": "s_9",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8202,
+      "address_hex": "0x200a",
+      "vendor_name": "S10",
+      "integration_name": "s_10",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8205,
+      "address_hex": "0x200d",
+      "vendor_name": "S13",
+      "integration_name": "s_13",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8206,
+      "address_hex": "0x200e",
+      "vendor_name": "S14",
+      "integration_name": "s_14",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8207,
+      "address_hex": "0x200f",
+      "vendor_name": "S15",
+      "integration_name": "s_15",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8208,
+      "address_hex": "0x2010",
+      "vendor_name": "S16",
+      "integration_name": "s_16",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8209,
+      "address_hex": "0x2011",
+      "vendor_name": "S17",
+      "integration_name": "s_17",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8211,
+      "address_hex": "0x2013",
+      "vendor_name": "S19",
+      "integration_name": "s_19",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8212,
+      "address_hex": "0x2014",
+      "vendor_name": "S20",
+      "integration_name": "s_20",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8214,
+      "address_hex": "0x2016",
+      "vendor_name": "S22",
+      "integration_name": "s_22",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8215,
+      "address_hex": "0x2017",
+      "vendor_name": "S23",
+      "integration_name": "s_23",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8216,
+      "address_hex": "0x2018",
+      "vendor_name": "S24",
+      "integration_name": "s_24",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8217,
+      "address_hex": "0x2019",
+      "vendor_name": "S25",
+      "integration_name": "s_25",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8218,
+      "address_hex": "0x201a",
+      "vendor_name": "S26",
+      "integration_name": "s_26",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8220,
+      "address_hex": "0x201c",
+      "vendor_name": "S28",
+      "integration_name": "s_28",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8221,
+      "address_hex": "0x201d",
+      "vendor_name": "S29",
+      "integration_name": "s_29",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8222,
+      "address_hex": "0x201e",
+      "vendor_name": "S30",
+      "integration_name": "s_30",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8223,
+      "address_hex": "0x201f",
+      "vendor_name": "S31",
+      "integration_name": "s_31",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8224,
+      "address_hex": "0x2020",
+      "vendor_name": "S32",
+      "integration_name": "s_32",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8291,
+      "address_hex": "0x2063",
+      "vendor_name": "E99",
+      "integration_name": "e_99",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8292,
+      "address_hex": "0x2064",
+      "vendor_name": "E100",
+      "integration_name": "e_100",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8293,
+      "address_hex": "0x2065",
+      "vendor_name": "E101",
+      "integration_name": "e_101",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8294,
+      "address_hex": "0x2066",
+      "vendor_name": "E102",
+      "integration_name": "e_102",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8295,
+      "address_hex": "0x2067",
+      "vendor_name": "E103",
+      "integration_name": "e_103",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8296,
+      "address_hex": "0x2068",
+      "vendor_name": "E104",
+      "integration_name": "e_104",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8297,
+      "address_hex": "0x2069",
+      "vendor_name": "E105",
+      "integration_name": "e_105",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8298,
+      "address_hex": "0x206a",
+      "vendor_name": "E106",
+      "integration_name": "e_106",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8300,
+      "address_hex": "0x206c",
+      "vendor_name": "E108",
+      "integration_name": "e_108",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8330,
+      "address_hex": "0x208a",
+      "vendor_name": "E138",
+      "integration_name": "e_138",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8331,
+      "address_hex": "0x208b",
+      "vendor_name": "E139",
+      "integration_name": "e_139",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8332,
+      "address_hex": "0x208c",
+      "vendor_name": "E140",
+      "integration_name": "e_140",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8333,
+      "address_hex": "0x208d",
+      "vendor_name": "E141",
+      "integration_name": "e_141",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8334,
+      "address_hex": "0x208e",
+      "vendor_name": "F142",
+      "integration_name": "f_142",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8335,
+      "address_hex": "0x208f",
+      "vendor_name": "F143",
+      "integration_name": "f_143",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8336,
+      "address_hex": "0x2090",
+      "vendor_name": "E144",
+      "integration_name": "e_144",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8337,
+      "address_hex": "0x2091",
+      "vendor_name": "E145",
+      "integration_name": "e_145",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8338,
+      "address_hex": "0x2092",
+      "vendor_name": "F146",
+      "integration_name": "f_146",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8339,
+      "address_hex": "0x2093",
+      "vendor_name": "F147",
+      "integration_name": "f_147",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8340,
+      "address_hex": "0x2094",
+      "vendor_name": "E148",
+      "integration_name": "e_148",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8341,
+      "address_hex": "0x2095",
+      "vendor_name": "E149",
+      "integration_name": "e_149",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8342,
+      "address_hex": "0x2096",
+      "vendor_name": "E150",
+      "integration_name": "e_150",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8343,
+      "address_hex": "0x2097",
+      "vendor_name": "E151",
+      "integration_name": "e_151",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8344,
+      "address_hex": "0x2098",
+      "vendor_name": "E152",
+      "integration_name": "e_152",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8348,
+      "address_hex": "0x209c",
+      "vendor_name": "E156",
+      "integration_name": "e_156",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8349,
+      "address_hex": "0x209d",
+      "vendor_name": "E157",
+      "integration_name": "e_157",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8390,
+      "address_hex": "0x20c6",
+      "vendor_name": "E196",
+      "integration_name": "e_196_e_199",
+      "classification": "legacy_stable"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8391,
+      "address_hex": "0x20c7",
+      "vendor_name": "E197",
+      "integration_name": "e_197",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8392,
+      "address_hex": "0x20c8",
+      "vendor_name": "E198_E200",
+      "integration_name": "e_200",
+      "classification": "legacy_stable"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8393,
+      "address_hex": "0x20c9",
+      "vendor_name": "E201",
+      "integration_name": "e_201",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8394,
+      "address_hex": "0x20ca",
+      "vendor_name": "E202",
+      "integration_name": "e_202",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8395,
+      "address_hex": "0x20cb",
+      "vendor_name": "E203",
+      "integration_name": "e_203",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8441,
+      "address_hex": "0x20f9",
+      "vendor_name": "E249",
+      "integration_name": "e_249",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8443,
+      "address_hex": "0x20fb",
+      "vendor_name": "E251",
+      "integration_name": "e_251",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 4,
+      "fc_label": "FC04",
+      "address_dec": 0,
+      "address_hex": "0x0",
+      "vendor_name": "VERSION_MAJOR",
+      "integration_name": "version_major",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 4,
+      "fc_label": "FC04",
+      "address_dec": 1,
+      "address_hex": "0x1",
+      "vendor_name": "VERSION_MINOR",
+      "integration_name": "version_minor",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 4,
+      "fc_label": "FC04",
+      "address_dec": 4,
+      "address_hex": "0x4",
+      "vendor_name": "VERSION_PATCH",
+      "integration_name": "version_patch",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 4,
+      "fc_label": "FC04",
+      "address_dec": 24,
+      "address_hex": "0x18",
+      "vendor_name": "serial_number_1",
+      "integration_name": "serial_number",
+      "classification": "probable_mismatch"
+    },
+    {
+      "fc": 4,
+      "fc_label": "FC04",
+      "address_dec": 274,
+      "address_hex": "0x112",
+      "vendor_name": "supply_flowrate",
+      "integration_name": "supply_flow_rate",
+      "classification": "typo_normalization"
+    },
+    {
+      "fc": 4,
+      "fc_label": "FC04",
+      "address_dec": 275,
+      "address_hex": "0x113",
+      "vendor_name": "exhaust_flowrate",
+      "integration_name": "exhaust_flow_rate",
+      "classification": "typo_normalization"
+    }
+  ],
+  "vendor_duplicates": [],
+  "dangerous_registers": [
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 13,
+      "address_hex": "0xd",
+      "vendor_name": "configuration_mode",
+      "integration_name": "configuration_mode",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 15,
+      "address_hex": "0xf",
+      "vendor_name": "access_level",
+      "integration_name": "access_level",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4413,
+      "address_hex": "0x113d",
+      "vendor_name": "hard_reset_settings",
+      "integration_name": "hard_reset_settings",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4414,
+      "address_hex": "0x113e",
+      "vendor_name": "hard_reset_schedule",
+      "integration_name": "hard_reset_schedule",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4452,
+      "address_hex": "0x1164",
+      "vendor_name": "uart0Id",
+      "integration_name": "uart_0_id",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4453,
+      "address_hex": "0x1165",
+      "vendor_name": "uart0Baud",
+      "integration_name": "uart_0_baud",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4454,
+      "address_hex": "0x1166",
+      "vendor_name": "uart0Parity",
+      "integration_name": "uart_0_parity",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4455,
+      "address_hex": "0x1167",
+      "vendor_name": "uart0Stop",
+      "integration_name": "uart_0_stop",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4456,
+      "address_hex": "0x1168",
+      "vendor_name": "uart1Id",
+      "integration_name": "uart_1_id",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4457,
+      "address_hex": "0x1169",
+      "vendor_name": "uart1Baud",
+      "integration_name": "uart_1_baud",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4458,
+      "address_hex": "0x116a",
+      "vendor_name": "uart1Parity",
+      "integration_name": "uart_1_parity",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 4459,
+      "address_hex": "0x116b",
+      "vendor_name": "uart1Stop",
+      "integration_name": "uart_1_stop",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8144,
+      "address_hex": "0x1fd0",
+      "vendor_name": "deviceName",
+      "integration_name": "device_name",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8145,
+      "address_hex": "0x1fd1",
+      "vendor_name": "deviceName_2",
+      "integration_name": "device_name_2",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8146,
+      "address_hex": "0x1fd2",
+      "vendor_name": "deviceName_3",
+      "integration_name": "device_name_3",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8147,
+      "address_hex": "0x1fd3",
+      "vendor_name": "deviceName_4",
+      "integration_name": "device_name_4",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8148,
+      "address_hex": "0x1fd4",
+      "vendor_name": "deviceName_5",
+      "integration_name": "device_name_5",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8149,
+      "address_hex": "0x1fd5",
+      "vendor_name": "deviceName_6",
+      "integration_name": "device_name_6",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8150,
+      "address_hex": "0x1fd6",
+      "vendor_name": "deviceName_7",
+      "integration_name": "device_name_7",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8151,
+      "address_hex": "0x1fd7",
+      "vendor_name": "deviceName_8",
+      "integration_name": "device_name_8",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8187,
+      "address_hex": "0x1ffb",
+      "vendor_name": "lockPass1",
+      "integration_name": "lock_pass",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8188,
+      "address_hex": "0x1ffc",
+      "vendor_name": "lockPass2",
+      "integration_name": "lock_pass_2",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8189,
+      "address_hex": "0x1ffd",
+      "vendor_name": "lockFlag",
+      "integration_name": "lock_flag",
+      "access": "RW",
+      "in_integration": true
+    },
+    {
+      "fc": 3,
+      "fc_label": "FC03",
+      "address_dec": 8191,
+      "address_hex": "0x1fff",
+      "vendor_name": "filterChange",
+      "integration_name": "filter_change",
+      "access": "RW",
+      "in_integration": true
+    }
+  ]
+}
