@@ -39,14 +39,14 @@ async def _reset_transport_before_fallback(
     )
     try:
         await transport.close()
-    except (OSError, ConnectionException, ModbusException, ModbusIOException) as exc:
+    except (OSError, TypeError, ConnectionException, ModbusException, ModbusIOException) as exc:
         _LOGGER.debug("Transport close during fallback reset: %s", exc)
     try:
         await transport.ensure_connected()
         new_client = getattr(transport, "client", None)
         if new_client is not None:
             scanner._client = new_client
-    except (OSError, ConnectionException, ModbusException, ModbusIOException) as exc:
+    except (OSError, TypeError, ConnectionException, ModbusException, ModbusIOException) as exc:
         _LOGGER.debug("Transport reconnect during fallback reset: %s", exc)
 
 
