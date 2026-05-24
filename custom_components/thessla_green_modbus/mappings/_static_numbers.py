@@ -94,15 +94,39 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     },
     "fireplace_mode_time": {"icon": "mdi:timer", "min": 1, "max": 10, "step": 1},
     # Modbus port device IDs
-    "uart_0_id": {"icon": "mdi:identifier", "min": 10, "max": 19, "step": 1},
-    "uart_1_id": {"icon": "mdi:identifier", "min": 10, "max": 19, "step": 1},
+    "uart_0_id": {
+        "icon": "mdi:identifier",
+        "min": 10,
+        "max": 19,
+        "step": 1,
+        "risk_level": "advanced",
+        "risk_category": "communication_lockout",
+        "safety_warning": "Advanced communication setting: changing this may break Modbus communication or make the device unreachable.",
+    },
+    "uart_1_id": {
+        "icon": "mdi:identifier",
+        "min": 10,
+        "max": 19,
+        "step": 1,
+        "risk_level": "advanced",
+        "risk_category": "communication_lockout",
+        "safety_warning": "Advanced communication setting: changing this may break Modbus communication or make the device unreachable.",
+    },
     # Filter wear thresholds (0–127 %)
     "cfgszf_fn_new": {"icon": "mdi:filter-check", "min": 0, "max": 127, "step": 1},
     "cfgszf_fw_new": {"icon": "mdi:filter-check", "min": 0, "max": 127, "step": 1},
     # RTC calibration register (0–255, signed offset encoded as unsigned; no SI unit)
     "rtc_cal": {"icon": "mdi:clock-edit", "min": 0, "max": 255, "step": 1, "unit": None},
     # lock_pass — product key passphrase, first 16-bit word (0–0x423f = 16959)
-    "lock_pass": {"icon": "mdi:lock", "min": 0, "max": 16959, "step": 1},
+    "lock_pass": {
+        "icon": "mdi:lock",
+        "min": 0,
+        "max": 16959,
+        "step": 1,
+        "risk_level": "advanced",
+        "risk_category": "security_lock",
+        "safety_warning": "Advanced security setting: changing this may lock or unlock the device.",
+    },
 }
 
 NUMBER_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {}

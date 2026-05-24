@@ -239,6 +239,12 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         if last_update is not None:
             attributes["last_updated"] = last_update.isoformat()
 
+        # Surface risk metadata from entity mapping
+        for meta_key in ("risk_level", "risk_category", "safety_warning"):
+            meta_val = self.entity_config.get(meta_key)
+            if meta_val is not None:
+                attributes[meta_key] = meta_val
+
         return attributes
 
     @property

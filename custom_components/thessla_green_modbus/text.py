@@ -83,6 +83,7 @@ class ThesslaGreenText(ThesslaGreenEntity, TextEntity):
     ) -> None:
         super().__init__(coordinator, register_name, address)
         self._register_name = register_name
+        self._definition = definition
         self._attr_translation_key = definition["translation_key"]
         self._attr_icon = definition.get("icon", "mdi:rename")
         self._attr_has_entity_name = True
@@ -92,6 +93,16 @@ class ThesslaGreenText(ThesslaGreenEntity, TextEntity):
     def available(self) -> bool:
         """Return True whenever the coordinator is connected."""
         return self._coordinator_connected()
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return risk metadata for advanced/dangerous entities."""
+        attrs: dict[str, Any] = {}
+        for meta_key in ("risk_level", "risk_category", "safety_warning"):
+            meta_val = self._definition.get(meta_key)
+            if meta_val is not None:
+                attrs[meta_key] = meta_val
+        return attrs
 
     @property
     def native_value(self) -> str | None:

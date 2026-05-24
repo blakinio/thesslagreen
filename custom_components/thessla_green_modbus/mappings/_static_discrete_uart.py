@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
+_UART_RISK = {
+    "risk_level": "advanced",
+    "risk_category": "communication_lockout",
+    "safety_warning": "Advanced communication setting: changing this may break Modbus communication or make the device unreachable.",
+}
+
 UART_SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "uart_0_baud": {
         "icon": "mdi:serial-port",
@@ -20,18 +26,21 @@ UART_SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
             "baud_115200": 8,
         },
         "register_type": "holding_registers",
+        **_UART_RISK,
     },
     "uart_0_parity": {
         "icon": "mdi:serial-port",
         "translation_key": "uart_0_parity",
         "states": {"none": 0, "even": 1, "odd": 2},
         "register_type": "holding_registers",
+        **_UART_RISK,
     },
     "uart_0_stop": {
         "icon": "mdi:serial-port",
         "translation_key": "uart_0_stop",
         "states": {"one": 0, "two": 1},
         "register_type": "holding_registers",
+        **_UART_RISK,
     },
     "uart_1_baud": {
         "icon": "mdi:serial-port",
@@ -48,18 +57,21 @@ UART_SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
             "baud_115200": 8,
         },
         "register_type": "holding_registers",
+        **_UART_RISK,
     },
     "uart_1_parity": {
         "icon": "mdi:serial-port",
         "translation_key": "uart_1_parity",
         "states": {"none": 0, "even": 1, "odd": 2},
         "register_type": "holding_registers",
+        **_UART_RISK,
     },
     "uart_1_stop": {
         "icon": "mdi:serial-port",
         "translation_key": "uart_1_stop",
         "states": {"one": 0, "two": 1},
         "register_type": "holding_registers",
+        **_UART_RISK,
     },
 }
 

@@ -72,6 +72,29 @@ change with a migration path.
 |----------|-------------|-------|
 | `e_197` | `E197` | Auto-reset alarm: installation regulation interrupted (FC03 0x20C7) |
 
+## Risk metadata marking
+
+Dangerous/advanced entities carry three optional fields in their mapping
+dictionaries that are surfaced as `extra_state_attributes` at runtime:
+
+| Field | Type | Values |
+|-------|------|--------|
+| `risk_level` | `str` | `"advanced"` |
+| `risk_category` | `str` | `"destructive_action"`, `"communication_lockout"`, `"security_lock"`, `"advanced_configuration"` |
+| `safety_warning` | `str` | Human-readable warning message |
+
+These fields are set directly in the mapping dict of the entity (e.g. inside
+`SWITCH_ENTITY_MAPPINGS`, `SELECT_ENTITY_MAPPINGS`, `UART_SELECT_ENTITY_MAPPINGS`,
+`NUMBER_OVERRIDES`, or `TEXT_ENTITY_MAPPINGS`).  No changes are needed to the
+platform files to propagate them — each platform's `extra_state_attributes`
+property iterates over these three keys and includes any that are set.
+
+Normal entities do **not** have these fields.  Absence of `risk_level` is the
+signal that an entity is safe for everyday use.
+
+The full inventory of marked entities is in
+[`docs/airpack4_dangerous_entities_inventory.md`](airpack4_dangerous_entities_inventory.md).
+
 ## Adding new entity exposures for dangerous registers
 
 Before exposing any of the "map only" registers as HA entities, ensure:
