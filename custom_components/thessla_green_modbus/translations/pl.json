@@ -1680,7 +1680,35 @@
     },
     "scan_all_registers": {
       "description": "Wykonaj pełny skan rejestrów Modbus do diagnostyki",
+      "fields": {
+        "delay_between_requests_ms": {
+          "description": "Przerwa między kolejnymi odczytami Modbus (0–1000 ms)",
+          "name": "Opóźnienie między żądaniami (ms)"
+        },
+        "known_registers_only": {
+          "description": "Skanuj tylko rejestry zdefiniowane w integracji; pomiń brute-force luk adresowych",
+          "name": "Tylko znane rejestry"
+        },
+        "max_registers_per_request": {
+          "description": "Maksymalna liczba rejestrów na żądanie Modbus (1–16)",
+          "name": "Maks. rejestrów na żądanie"
+        }
+      },
       "name": "Skanuj wszystkie rejestry"
+    },
+    "validate_known_registers": {
+      "description": "Odczytaj tylko rejestry zdefiniowane w integracji, aby potwierdzić które są obsługiwane przez urządzenie",
+      "fields": {
+        "delay_between_requests_ms": {
+          "description": "Przerwa między kolejnymi odczytami Modbus (0–1000 ms)",
+          "name": "Opóźnienie między żądaniami (ms)"
+        },
+        "max_registers_per_request": {
+          "description": "Maksymalna liczba rejestrów na żądanie Modbus (1–16)",
+          "name": "Maks. rejestrów na żądanie"
+        }
+      },
+      "name": "Weryfikuj znane rejestry"
     },
     "set_debug_logging": {
       "description": "Tymczasowo podnieś poziom logów integracji do debugowania z automatycznym przywróceniem.",

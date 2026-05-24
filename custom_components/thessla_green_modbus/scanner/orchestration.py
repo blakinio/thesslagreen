@@ -299,7 +299,7 @@ async def scan(scanner: Any) -> dict[str, Any]:
     if transport is None:
         if scanner._client is None:
             raise ConnectionException("Transport not connected")
-    elif not transport.is_connected() and scanner._client is None:
+    elif scanner._client is None and not transport.is_connected():
         raise ConnectionException("Transport not connected")
 
     device = ScannerDeviceInfo()

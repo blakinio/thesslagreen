@@ -1680,7 +1680,35 @@
     },
     "scan_all_registers": {
       "description": "Perform full Modbus register scan for diagnostics",
+      "fields": {
+        "delay_between_requests_ms": {
+          "description": "Pause between consecutive Modbus reads (0–1000 ms)",
+          "name": "Delay Between Requests (ms)"
+        },
+        "known_registers_only": {
+          "description": "Scan only registers defined in the integration; skip brute-force address gaps",
+          "name": "Known Registers Only"
+        },
+        "max_registers_per_request": {
+          "description": "Maximum registers per Modbus request (1–16)",
+          "name": "Max Registers Per Request"
+        }
+      },
       "name": "Scan All Registers"
+    },
+    "validate_known_registers": {
+      "description": "Read only integration-defined registers to confirm which are supported on this device",
+      "fields": {
+        "delay_between_requests_ms": {
+          "description": "Pause between consecutive Modbus reads (0–1000 ms)",
+          "name": "Delay Between Requests (ms)"
+        },
+        "max_registers_per_request": {
+          "description": "Maximum registers per Modbus request (1–16)",
+          "name": "Max Registers Per Request"
+        }
+      },
+      "name": "Validate Known Registers"
     },
     "set_debug_logging": {
       "description": "Temporarily increase integration log level for debugging and restore automatically.",
