@@ -148,6 +148,7 @@ class ThesslaGreenModbusCoordinator(
     """
 
     _reauth_scheduled: bool
+    _shutting_down: bool
     _stop_listener: Callable[..., Any] | None
 
     @property
@@ -487,6 +488,7 @@ class ThesslaGreenModbusCoordinator(
     async def async_shutdown(self) -> None:
         """Shutdown coordinator and disconnect."""
         _LOGGER.debug("Shutting down ThesslaGreen coordinator")
+        self._shutting_down = True
         if self._stop_listener is not None:
             self._stop_listener()
             self._stop_listener = None
