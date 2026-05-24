@@ -6,11 +6,48 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any, cast
 
+from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
+
 from ..const import HOLDING_BATCH_BOUNDARIES, KNOWN_MISSING_REGISTERS
 from ..scanner.helpers import UART_OPTIONAL_REGS
 from .register_maps import MULTI_REGISTER_SIZES
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def _reset_transport_before_fallback(
+    scanner: Any,
+    reg_type: str,
+    start: int,
+    end: int,
+) -> None:
+    """Reset transport connection before individual fallback probes.
+
+    When a Modbus TCP batch read is cancelled or times out, the underlying TCP
+    connection may carry a stale in-flight response. Closing and reconnecting
+    before fallback probes ensures pymodbus starts with a clean transaction ID
+    sequence, preventing transaction_id mismatch errors on the next request.
+    """
+    transport = getattr(scanner, "_transport", None)
+    if transport is None:
+        return
+    _LOGGER.debug(
+        "Resetting transport before %s fallback probes %d-%d",
+        reg_type.replace("_", " "),
+        start,
+        end,
+    )
+    try:
+        await transport.close()
+    except (OSError, TypeError, ConnectionException, ModbusException, ModbusIOException) as exc:
+        _LOGGER.debug("Transport close during fallback reset: %s", exc)
+    try:
+        await transport.ensure_connected()
+        new_client = getattr(transport, "client", None)
+        if new_client is not None:
+            scanner._client = new_client
+    except (OSError, TypeError, ConnectionException, ModbusException, ModbusIOException) as exc:
+        _LOGGER.debug("Transport reconnect during fallback reset: %s", exc)
 
 
 async def scan_register_batch(
@@ -30,6 +67,7 @@ async def scan_register_batch(
             data = None
 
         if data is None:
+            await _reset_transport_before_fallback(scanner, reg_type, start, start + count - 1)
             scanner.failed_addresses["modbus_exceptions"][reg_type].update(
                 range(start, start + count)
             )
@@ -408,6 +446,7 @@ def log_skipped_ranges(scanner: Any) -> None:
 
 
 __all__ = [
+    "_reset_transport_before_fallback",
     "collect_missing_registers",
     "compute_scan_blocks",
     "load_registers",
