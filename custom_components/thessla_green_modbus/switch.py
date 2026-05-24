@@ -240,6 +240,12 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         elif "mode" in self.register_name:
             attributes["control_type"] = "operating_mode"
 
+        # Surface risk metadata from entity mapping
+        for meta_key in ("risk_level", "risk_category", "safety_warning"):
+            meta_val = self.entity_config.get(meta_key)
+            if meta_val is not None:
+                attributes[meta_key] = meta_val
+
         return attributes
 
     @property

@@ -56,6 +56,9 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
             "cleanpad_pure": 4,
         },
         "register_type": "holding_registers",
+        "risk_level": "advanced",
+        "risk_category": "destructive_action",
+        "safety_warning": "Advanced filter action: write values can mark filters as replaced. Verify filter type and direction before use.",
     },
     "gwc_regen": {
         "icon": "mdi:heat-wave",
@@ -80,6 +83,9 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "translation_key": "configuration_mode",
         "states": {"normal": 0, "duct_filter_pressure": 47, "afc_filter_pressure": 65},
         "register_type": "holding_registers",
+        "risk_level": "advanced",
+        "risk_category": "advanced_configuration",
+        "safety_warning": "Advanced configuration mode: use only when intentionally configuring the unit.",
     },
     "pres_check_day": _select_payload("mdi:calendar-week", "pres_check_day", _weekday_states()),
     "pres_check_day_4432": _select_payload(
@@ -90,6 +96,9 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "translation_key": "access_level",
         "states": {"user": 0, "service": 1, "manufacturer": 3},
         "register_type": "holding_registers",
+        "risk_level": "advanced",
+        "risk_category": "security_lock",
+        "safety_warning": "Advanced access setting: changing this affects Modbus access level.",
     },
     "special_mode": {
         "icon": "mdi:lightning-bolt",
@@ -332,6 +341,9 @@ SWITCH_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "register_type": "holding_registers",
         "category": None,
         "translation_key": "hard_reset_settings",
+        "risk_level": "advanced",
+        "risk_category": "destructive_action",
+        "safety_warning": "Advanced action: writing this can reset user/device settings.",
     },
     "hard_reset_schedule": {
         "icon": "mdi:restore-alert",
@@ -339,6 +351,9 @@ SWITCH_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "register_type": "holding_registers",
         "category": None,
         "translation_key": "hard_reset_schedule",
+        "risk_level": "advanced",
+        "risk_category": "destructive_action",
+        "safety_warning": "Advanced action: writing this can reset schedule/settings.",
     },
     "comfort_mode_panel": {
         "icon": "mdi:sofa",
@@ -367,6 +382,9 @@ SWITCH_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "register_type": "holding_registers",
         "category": None,
         "translation_key": "lock_flag",
+        "risk_level": "advanced",
+        "risk_category": "security_lock",
+        "safety_warning": "Advanced security setting: changing this may lock or unlock the device.",
     },
 }
 

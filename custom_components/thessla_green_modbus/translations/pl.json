@@ -163,6 +163,9 @@
       "e_196_e_199_e_199": {
         "name": "Błąd E199"
       },
+      "e_197": {
+        "name": "E197: Regulacja instalacji przerwana"
+      },
       "e_200": {
         "name": "E200: Ochrona termiczna nagrzewnicy (centrala)"
       },

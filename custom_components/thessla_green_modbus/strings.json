@@ -163,6 +163,9 @@
       "e_196_e_199_e_199": {
         "name": "Error E199"
       },
+      "e_197": {
+        "name": "E197: Installation Regulation Interrupted"
+      },
       "e_200": {
         "name": "E200: Central Heater Thermal Protection"
       },

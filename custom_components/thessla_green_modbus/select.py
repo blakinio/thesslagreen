@@ -87,6 +87,7 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
     ) -> None:
         super().__init__(coordinator, register_name, address)
         self._register_name = register_name
+        self._definition = definition
 
         self._attr_translation_key = definition["translation_key"]
         self._attr_icon = definition.get("icon")
@@ -108,6 +109,16 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         if self._register_name.startswith(BCD_TIME_PREFIXES + SETTING_SCHEDULE_PREFIXES):
             return self._coordinator_connected()
         return super().available
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return risk metadata for advanced/dangerous entities."""
+        attrs: dict[str, Any] = {}
+        for meta_key in ("risk_level", "risk_category", "safety_warning"):
+            meta_val = self._definition.get(meta_key)
+            if meta_val is not None:
+                attrs[meta_key] = meta_val
+        return attrs
 
     @property
     def current_option(self) -> str | None:

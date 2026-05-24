@@ -39,6 +39,13 @@ DIAGNOSTIC_BINARY_SENSOR_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "device_class": BinarySensorDeviceClass.HEAT,
         "register_type": "holding_registers",
     },
+    # E197 — auto-reset alarm: installation regulation interrupted (FC03 0x20C7)
+    "e_197": {
+        "translation_key": "e_197",
+        "icon": "mdi:alert-circle-outline",
+        "device_class": BinarySensorDeviceClass.PROBLEM,
+        "register_type": "holding_registers",
+    },
 }
 
 __all__ = ["DIAGNOSTIC_BINARY_SENSOR_ENTITY_MAPPINGS"]
