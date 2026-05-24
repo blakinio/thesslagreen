@@ -231,7 +231,9 @@ async def test_reset_transport_before_fallback_close_exception_handled(caplog):
     transport = _make_transport(close_raises=OSError("close failed"))
     scanner = _make_scanner(transport=transport)
 
-    with caplog.at_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.scanner.registers"):
+    with caplog.at_level(
+        logging.DEBUG, logger="custom_components.thessla_green_modbus.scanner.registers"
+    ):
         await _reset_transport_before_fallback(scanner, "holding_registers", 4262, 4264)
 
     assert any(
@@ -246,7 +248,9 @@ async def test_reset_transport_before_fallback_ensure_connected_exception_handle
     transport = _make_transport(ensure_raises=OSError("connect failed"))
     scanner = _make_scanner(transport=transport)
 
-    with caplog.at_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.scanner.registers"):
+    with caplog.at_level(
+        logging.DEBUG, logger="custom_components.thessla_green_modbus.scanner.registers"
+    ):
         await _reset_transport_before_fallback(scanner, "holding_registers", 4262, 4264)
 
     assert any(
