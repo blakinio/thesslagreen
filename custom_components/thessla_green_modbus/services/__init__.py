@@ -151,6 +151,7 @@ SERVICE_REGISTRATION_GROUPS: tuple[ServiceRegistrationGroup, ...] = (
             "refresh_device_data",
             "get_unknown_registers",
             "scan_all_registers",
+            "validate_known_registers",
         ),
     ),
     ServiceRegistrationGroup(

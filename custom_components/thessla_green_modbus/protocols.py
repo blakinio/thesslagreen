@@ -31,6 +31,7 @@ class ScannerFactory(Protocol):
         skip_known_missing: bool,
         full_register_scan: bool,
         max_registers_per_request: int,
+        delay_between_requests_ms: int = 0,
         hass: HomeAssistant,
     ) -> Awaitable[ScannerProtocol]: ...
 
