@@ -94,6 +94,7 @@ def apply_scanner_params(
     full_register_scan: bool,
     safe_scan: bool,
     max_registers_per_request: int,
+    delay_between_requests_ms: int = 0,
     connection_type: str,
     connection_mode: str | None,
     serial_port: str,
@@ -123,6 +124,7 @@ def apply_scanner_params(
         max_registers_per_request, max_batch=MAX_BATCH_REGISTERS
     )
     scanner.max_registers_per_request = scanner.effective_batch
+    scanner.delay_between_requests_ms = max(0, int(delay_between_requests_ms))
 
     resolved_type, resolved_mode, resolved_fixed_mode = _state.resolve_connection_configuration(
         connection_type, connection_mode, port
@@ -528,6 +530,7 @@ async def async_create_scanner_instance(
     full_register_scan: bool,
     max_registers_per_request: int,
     safe_scan: bool,
+    delay_between_requests_ms: int = 0,
     connection_type: str,
     connection_mode: str | None,
     serial_port: str,
@@ -554,6 +557,7 @@ async def async_create_scanner_instance(
         full_register_scan,
         safe_scan,
         max_registers_per_request,
+        delay_between_requests_ms,
         connection_type,
         connection_mode,
         serial_port,

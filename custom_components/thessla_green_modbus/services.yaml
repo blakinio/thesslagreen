@@ -312,8 +312,81 @@ refresh_device_data:
 
 scan_all_registers:
   name: Scan All Registers
-  description: Perform full register scan and report unknown registers.
+  description: >
+    Perform full register scan and report unknown registers.
+    Use max_registers_per_request and delay_between_requests_ms to throttle
+    the scan for real devices or Modbus TCP gateways that cannot handle rapid
+    back-to-back requests. Set known_registers_only to skip brute-force address
+    gaps and only read registers defined in the integration.
   target: *tg_target
+  fields:
+    max_registers_per_request:
+      name: Max Registers Per Request
+      description: >
+        Limit each Modbus read to this many registers (1-16).
+        Use 1-4 for real-device safe mode to avoid transaction ID mismatches.
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 16
+          step: 1
+          mode: box
+    delay_between_requests_ms:
+      name: Delay Between Requests (ms)
+      description: >
+        Pause this many milliseconds between consecutive Modbus reads.
+        Use 150-300 ms when scans cause transaction ID mismatches on real devices.
+      required: false
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 1000
+          step: 50
+          unit_of_measurement: ms
+    known_registers_only:
+      name: Known Registers Only
+      description: >
+        When true, scan only registers defined in the integration (named scan).
+        When false (default), brute-force all addresses up to the maximum known
+        address, which discovers unknown registers but generates many Modbus
+        exception code 2 responses on real devices.
+      required: false
+      default: false
+      selector:
+        boolean:
+
+validate_known_registers:
+  name: Validate Known Registers
+  description: >
+    Read only registers defined in the integration to confirm which are
+    supported on this device. Unlike scan_all_registers, this does not
+    brute-force unknown address gaps, making it safe for real devices and
+    Modbus TCP gateways without generating exception code 2 storms.
+  target: *tg_target
+  fields:
+    max_registers_per_request:
+      name: Max Registers Per Request
+      description: Limit each Modbus read to this many registers (1-16).
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 16
+          step: 1
+          mode: box
+    delay_between_requests_ms:
+      name: Delay Between Requests (ms)
+      description: Pause between consecutive Modbus reads (0-1000 ms).
+      required: false
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 1000
+          step: 50
+          unit_of_measurement: ms
 
 set_debug_logging:
   name: Set Debug Logging

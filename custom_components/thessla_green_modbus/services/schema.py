@@ -153,7 +153,29 @@ SYNC_DEVICE_CLOCK_SCHEMA = vol.Schema(
     }
 )
 REFRESH_DEVICE_DATA_SCHEMA = vol.Schema({vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR})
-SCAN_ALL_REGISTERS_SCHEMA = vol.Schema({vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR})
+SCAN_ALL_REGISTERS_SCHEMA = vol.Schema(
+    {
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
+        vol.Optional("max_registers_per_request"): vol.All(
+            vol.Coerce(int), vol.Range(min=1, max=16)
+        ),
+        vol.Optional("delay_between_requests_ms", default=0): vol.All(
+            vol.Coerce(int), vol.Range(min=0, max=1000)
+        ),
+        vol.Optional("known_registers_only", default=False): bool,
+    }
+)
+VALIDATE_KNOWN_REGISTERS_SCHEMA = vol.Schema(
+    {
+        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
+        vol.Optional("max_registers_per_request"): vol.All(
+            vol.Coerce(int), vol.Range(min=1, max=16)
+        ),
+        vol.Optional("delay_between_requests_ms", default=0): vol.All(
+            vol.Coerce(int), vol.Range(min=0, max=1000)
+        ),
+    }
+)
 SET_LOG_LEVEL_SCHEMA = vol.Schema(
     {
         vol.Optional("level", default="debug"): vol.In(["debug", "info", "warning", "error"]),

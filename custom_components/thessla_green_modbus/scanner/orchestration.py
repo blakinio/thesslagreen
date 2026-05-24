@@ -148,23 +148,27 @@ async def _run_word_phase(
     unknown_registers: dict[str, dict[int, Any]],
     scanned_registers: dict[str, int],
 ) -> None:
+    delay_ms = getattr(scanner, "delay_between_requests_ms", 0)
     for start, count in _group_reads(range(max_addr + 1), max_block_size=scanner.effective_batch):
+        _LOGGER.debug("Scanning %s: %d-%d", scan_key.replace("_", " "), start, start + count - 1)
         scanned_registers[scan_key] += count
         data = await read_fn(start, count)
         if data is None:
             scanner.failed_addresses["modbus_exceptions"][scan_key].update(
                 range(start, start + count)
             )
-            continue
-        apply_word_register_block(
-            scanner,
-            function=func,
-            register_group=scan_key,
-            start=start,
-            count=count,
-            data=data,
-            unknown_registers=unknown_registers,
-        )
+        else:
+            apply_word_register_block(
+                scanner,
+                function=func,
+                register_group=scan_key,
+                start=start,
+                count=count,
+                data=data,
+                unknown_registers=unknown_registers,
+            )
+        if delay_ms > 0:
+            await asyncio.sleep(delay_ms / 1000.0)
 
 
 async def _run_bit_phase(
@@ -176,24 +180,28 @@ async def _run_bit_phase(
     unknown_registers: dict[str, dict[int, Any]],
     scanned_registers: dict[str, int],
 ) -> None:
+    delay_ms = getattr(scanner, "delay_between_requests_ms", 0)
     for start, count in _group_reads(range(max_addr + 1), max_block_size=scanner.effective_batch):
+        _LOGGER.debug("Scanning %s: %d-%d", scan_key.replace("_", " "), start, start + count - 1)
         scanned_registers[scan_key] += count
         data = await read_fn(start, count)
         if data is None:
             scanner.failed_addresses["modbus_exceptions"][scan_key].update(
                 range(start, start + count)
             )
-            continue
-        for offset, value in enumerate(data):
-            addr = start + offset
-            if (reg_name := scanner._registers.get(function, {}).get(addr)) is not None:
-                names = scanner._alias_names(function, addr)
-                if names:
-                    scanner.available_registers[scan_key].update(names)
+        else:
+            for offset, value in enumerate(data):
+                addr = start + offset
+                if (reg_name := scanner._registers.get(function, {}).get(addr)) is not None:
+                    names = scanner._alias_names(function, addr)
+                    if names:
+                        scanner.available_registers[scan_key].update(names)
+                    else:
+                        scanner.available_registers[scan_key].add(reg_name)
                 else:
-                    scanner.available_registers[scan_key].add(reg_name)
-            else:
-                unknown_registers[scan_key][addr] = value
+                    unknown_registers[scan_key][addr] = value
+        if delay_ms > 0:
+            await asyncio.sleep(delay_ms / 1000.0)
 
 
 async def run_full_scan(
@@ -206,6 +214,15 @@ async def run_full_scan(
     scanned_registers: dict[str, int],
 ) -> None:
     """Scan all registers up to max known address (full_register_scan mode)."""
+    delay_ms = getattr(scanner, "delay_between_requests_ms", 0)
+    batch = scanner.effective_batch
+    _LOGGER.info(
+        "Full scan started: batch=%d, delay=%dms, input_max=%d, holding_max=%d",
+        batch,
+        delay_ms,
+        input_max,
+        holding_max,
+    )
     await _run_word_phase(
         scanner,
         input_max,
@@ -217,6 +234,11 @@ async def run_full_scan(
         unknown_registers,
         scanned_registers,
     )
+    _LOGGER.info(
+        "Full scan input registers done: scanned=%d, failed=%d",
+        scanned_registers.get("input_registers", 0),
+        len(scanner.failed_addresses["modbus_exceptions"]["input_registers"]),
+    )
     await _run_word_phase(
         scanner,
         holding_max,
@@ -227,6 +249,11 @@ async def run_full_scan(
         ),
         unknown_registers,
         scanned_registers,
+    )
+    _LOGGER.info(
+        "Full scan holding registers done: scanned=%d, failed=%d",
+        scanned_registers.get("holding_registers", 0),
+        len(scanner.failed_addresses["modbus_exceptions"]["holding_registers"]),
     )
 
     await _run_bit_phase(
@@ -255,6 +282,14 @@ async def run_full_scan(
         unknown_registers,
         scanned_registers,
     )
+    total_scanned = sum(scanned_registers.values())
+    total_failed = sum(len(v) for v in scanner.failed_addresses["modbus_exceptions"].values())
+    _LOGGER.info(
+        "Full scan completed: scanned=%d, failed=%d, unknown=%d",
+        total_scanned,
+        total_failed,
+        sum(len(v) for v in unknown_registers.values()),
+    )
 
 
 async def scan(scanner: Any) -> dict[str, Any]:
@@ -264,7 +299,7 @@ async def scan(scanner: Any) -> dict[str, Any]:
     if transport is None:
         if scanner._client is None:
             raise ConnectionException("Transport not connected")
-    elif not transport.is_connected() and scanner._client is None:
+    elif scanner._client is None and not transport.is_connected():
         raise ConnectionException("Transport not connected")
 
     device = ScannerDeviceInfo()
