@@ -69,11 +69,12 @@ async def test_async_write_multi_register_start(coordinator, monkeypatch):
     """Writing multi-register from start address succeeds."""
     coordinator.async_request_refresh = AsyncMock()
     coordinator._ensure_connection = AsyncMock()
-    client = MagicMock()
     response = MagicMock()
     response.isError.return_value = False
-    client.write_registers = AsyncMock(return_value=response)
-    coordinator.device_client.client = client
+    transport = MagicMock()
+    transport.is_connected.return_value = True
+    transport.write_registers = AsyncMock(return_value=response)
+    coordinator.device_client._transport = transport
 
     import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
@@ -84,8 +85,8 @@ async def test_async_write_multi_register_start(coordinator, monkeypatch):
     result = await coordinator.async_write_register("date_time_1", [1, 2, 3, 4])
 
     assert result is True
-    client.write_registers.assert_awaited_once_with(
-        address=HOLDING_REGISTERS["date_time_1"], values=[1, 2, 3, 4]
+    transport.write_registers.assert_awaited_once_with(
+        1, HOLDING_REGISTERS["date_time_1"], values=[1, 2, 3, 4], attempt=1
     )
     coordinator.async_request_refresh.assert_called_once()
 
@@ -95,11 +96,12 @@ async def test_async_write_multi_register_with_offset(coordinator, monkeypatch):
     """Writing a subset of a multi-register with an offset succeeds."""
     coordinator.async_request_refresh = AsyncMock()
     coordinator._ensure_connection = AsyncMock()
-    client = MagicMock()
     response = MagicMock()
     response.isError.return_value = False
-    client.write_registers = AsyncMock(return_value=response)
-    coordinator.device_client.client = client
+    transport = MagicMock()
+    transport.is_connected.return_value = True
+    transport.write_registers = AsyncMock(return_value=response)
+    coordinator.device_client._transport = transport
 
     import custom_components.thessla_green_modbus.coordinator.coordinator as coordinator_mod
 
@@ -110,9 +112,8 @@ async def test_async_write_multi_register_with_offset(coordinator, monkeypatch):
     result = await coordinator.async_write_register("date_time_1", [3, 4], offset=2)
 
     assert result is True
-    client.write_registers.assert_awaited_once_with(
-        address=HOLDING_REGISTERS["date_time_1"] + 2,
-        values=[3, 4],
+    transport.write_registers.assert_awaited_once_with(
+        1, HOLDING_REGISTERS["date_time_1"] + 2, values=[3, 4], attempt=1
     )
     coordinator.async_request_refresh.assert_called_once()
 

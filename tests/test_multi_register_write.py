@@ -125,9 +125,10 @@ async def test_async_write_registers_single_request_override():
     coordinator.device_client.effective_batch = 1
     response = MagicMock()
     response.isError.return_value = False
-    client = MagicMock(connected=True)
-    client.write_registers = AsyncMock(return_value=response)
-    coordinator.device_client.client = client
+    transport = MagicMock()
+    transport.is_connected.return_value = True
+    transport.write_registers = AsyncMock(return_value=response)
+    coordinator.device_client._transport = transport
 
     assert (
         await coordinator.async_write_registers(
@@ -137,9 +138,11 @@ async def test_async_write_registers_single_request_override():
         )
         is True
     )
-    client.write_registers.assert_awaited_once_with(
-        address=REG_TEMPORARY_FLOW_START,
+    transport.write_registers.assert_awaited_once_with(
+        1,
+        REG_TEMPORARY_FLOW_START,
         values=[1, 2, 3],
+        attempt=1,
     )
 
 
@@ -214,9 +217,10 @@ async def test_async_write_temporary_airflow_writes_three_registers(monkeypatch)
     coordinator._ensure_connection = AsyncMock()
     response = MagicMock()
     response.isError.return_value = False
-    client = MagicMock(connected=True)
-    client.write_registers = AsyncMock(return_value=response)
-    coordinator.device_client.client = client
+    transport = MagicMock()
+    transport.is_connected.return_value = True
+    transport.write_registers = AsyncMock(return_value=response)
+    coordinator.device_client._transport = transport
 
     def fake_def(_name):
         return SimpleNamespace(encode=lambda value: value)
@@ -227,7 +231,9 @@ async def test_async_write_temporary_airflow_writes_three_registers(monkeypatch)
     )
 
     assert await coordinator.async_write_temporary_airflow(55) is True
-    client.write_registers.assert_awaited_once_with(
-        address=REG_TEMPORARY_FLOW_START,
+    transport.write_registers.assert_awaited_once_with(
+        1,
+        REG_TEMPORARY_FLOW_START,
         values=[2, 55, 1],
+        attempt=1,
     )

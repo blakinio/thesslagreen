@@ -68,10 +68,8 @@ class _CoordinatorScheduleMixin:
             raise ConnectionException("Modbus client is not connected")
 
     async def _write_registers_payload(self, address: int, values: list[int], attempt: int) -> Any:
-        """Write a holding-register payload via client, transport, or fallback call."""
+        """Write a holding-register payload via transport or call_modbus (injects slave_id)."""
         payload = [int(v) for v in values]
-        if self._device_client._transport is None and self._device_client.client is not None:
-            return await self._device_client.client.write_registers(address=address, values=payload)
         if self._device_client._transport is not None:
             return await self._device_client._transport.write_registers(
                 self.slave_id,
@@ -114,11 +112,7 @@ class _CoordinatorScheduleMixin:
         return response, True
 
     async def _write_holding_single(self, address: int, value: Any, attempt: int) -> Any:
-        """Write a single holding register."""
-        if self._device_client._transport is None and self._device_client.client is not None:
-            return await self._device_client.client.write_register(
-                address=address, value=int(value)
-            )
+        """Write a single holding register via transport or call_modbus (injects slave_id)."""
         if self._device_client._transport is not None:
             return await self._device_client._transport.write_register(
                 self.slave_id, address, value=int(value)
