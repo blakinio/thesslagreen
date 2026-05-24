@@ -80,6 +80,7 @@ def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> 
     )
 
     coordinator._reauth_scheduled = False
+    coordinator._shutting_down = False
     coordinator.device_client.offline_state = False
 
     coordinator.device_client.client = None
