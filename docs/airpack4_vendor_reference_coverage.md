@@ -29,8 +29,8 @@ None — all vendor registers are present in the integration.
 
 | FC | Address (hex) | Address (dec) | Integration name | Known intentional | Reason |
 |-----|--------------|--------------|------------------|-------------------|--------|
-| FC03 | 0x20fa | 8442 | e_250 | yes | known prefix 'e_' |
-| FC03 | 0x20fc | 8444 | e_252 | yes | known prefix 'e_' |
+| FC03 | 0x20fa | 8442 | e_250 | yes | firmware-observed alarm: filter replacement required (unit without pressure switch); kept as real-device extra |
+| FC03 | 0x20fc | 8444 | e_252 | yes | firmware-observed alarm: filter replacement required (unit with pressure switch); kept as real-device extra |
 | FC04 | 0x17 | 23 | heating_temperature | yes | heating_temperature — TH sensor on AirPack4 h/v units |
 | FC04 | 0x12a | 298 | water_removal_active | yes | water_removal_active — HEWR procedure flag, series 4 |
 

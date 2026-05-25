@@ -40,6 +40,13 @@ SUMMER_NAMES = [
 ]
 SUMMER_BASE_ADDR = 0x10  # 16
 
+# All 28 summer + 28 winter + 14 airing time registers
+_DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+_SLOTS = ["1", "2", "3", "4"]
+ALL_SUMMER_NAMES = [f"schedule_summer_{d}_{s}" for d in _DAYS for s in _SLOTS]
+ALL_WINTER_NAMES = [f"schedule_winter_{d}_{s}" for d in _DAYS for s in _SLOTS]
+AIRING_NAMES = [f"airing_summer_{d}" for d in _DAYS] + [f"airing_winter_{d}" for d in _DAYS]
+
 
 @pytest.fixture
 def coordinator() -> ThesslaGreenModbusCoordinator:
@@ -163,3 +170,28 @@ def test_summer_schedule_register_names_exist_in_registry() -> None:
         definition = get_register_definition(name)
         assert definition is not None, f"Register {name!r} missing from registry JSON"
         assert definition.function == 3, f"{name} must be FC03 (holding register)"
+
+
+def test_all_schedule_and_airing_register_names_exist_in_registry() -> None:
+    """Guard against silent renames of all 28 summer + 28 winter + 14 airing registers."""
+    from custom_components.thessla_green_modbus.registers.loader import (
+        get_register_definition,
+    )
+
+    for name in ALL_SUMMER_NAMES + ALL_WINTER_NAMES + AIRING_NAMES:
+        definition = get_register_definition(name)
+        assert definition is not None, f"Register {name!r} missing from registry"
+        assert definition.function == 3, f"{name} must be FC03 (holding register)"
+
+
+def test_entity_mappings_time_contains_all_schedule_entries() -> None:
+    """ENTITY_MAPPINGS['time'] must include all 28 summer + 28 winter + 14 airing entries."""
+    from custom_components.thessla_green_modbus.mappings import ENTITY_MAPPINGS
+
+    time_keys = set(ENTITY_MAPPINGS["time"].keys())
+    for name in ALL_SUMMER_NAMES:
+        assert name in time_keys, f"Missing summer schedule time entity: {name!r}"
+    for name in ALL_WINTER_NAMES:
+        assert name in time_keys, f"Missing winter schedule time entity: {name!r}"
+    for name in AIRING_NAMES:
+        assert name in time_keys, f"Missing airing time entity: {name!r}"
