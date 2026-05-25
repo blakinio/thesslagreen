@@ -58,6 +58,8 @@ DANGEROUS_VENDOR_NAMES: set[str] = {
 KNOWN_EXTRA_WHITELIST: dict[tuple[int, int], str] = {
     (4, 0x0017): "heating_temperature — TH sensor on AirPack4 h/v units",
     (4, 0x012A): "water_removal_active — HEWR procedure flag, series 4",
+    (3, 0x20FA): "firmware-observed alarm: filter replacement required (unit without pressure switch); kept as real-device extra",
+    (3, 0x20FC): "firmware-observed alarm: filter replacement required (unit with pressure switch); kept as real-device extra",
 }
 
 KNOWN_EXTRA_PREFIXES = ("alarm", "error", "s_", "e_", "f_")

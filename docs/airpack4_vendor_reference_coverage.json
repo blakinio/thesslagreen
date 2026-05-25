@@ -40,7 +40,7 @@
       "address_hex": "0x20fa",
       "integration_name": "e_250",
       "known_intentional": true,
-      "reason": "known prefix 'e_'"
+      "reason": "firmware-observed alarm: filter replacement required (unit without pressure switch); kept as real-device extra"
     },
     {
       "fc": 3,
@@ -49,7 +49,7 @@
       "address_hex": "0x20fc",
       "integration_name": "e_252",
       "known_intentional": true,
-      "reason": "known prefix 'e_'"
+      "reason": "firmware-observed alarm: filter replacement required (unit with pressure switch); kept as real-device extra"
     },
     {
       "fc": 4,
