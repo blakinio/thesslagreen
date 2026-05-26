@@ -39,30 +39,31 @@ class TestThesslaGreenModbusCoordinator:
             "mode": 0,
             "on_off_panel_mode": 1,
         }
-        coordinator_data.device_client.client = MagicMock()
+        dc = coordinator_data.device_client
+        dc.client = MagicMock()
         with (
             patch.object(coordinator_data, "_ensure_connection", AsyncMock()),
             patch.object(
-                coordinator_data,
+                dc,
                 "_read_input_registers_optimized",
                 AsyncMock(return_value=mock_data),
             ),
             patch.object(
-                coordinator_data,
+                dc,
                 "_read_holding_registers_optimized",
                 AsyncMock(return_value={}),
             ),
             patch.object(
-                coordinator_data,
+                dc,
                 "_read_coil_registers_optimized",
                 AsyncMock(return_value={}),
             ),
             patch.object(
-                coordinator_data,
+                dc,
                 "_read_discrete_inputs_optimized",
                 AsyncMock(return_value={}),
             ),
-            patch.object(coordinator_data, "_post_process_data", side_effect=lambda d: d),
+            patch.object(dc, "_post_process_data", side_effect=lambda d: d),
         ):
             result = await coordinator_data._async_update_data()
 
@@ -86,20 +87,38 @@ class TestThesslaGreenModbusCoordinator:
         assert result is False
 
     def test_signed_value_processing(self, coordinator_data):
-        assert coordinator_data._process_register_value("outside_temperature", 205) == 20.5
         assert (
-            coordinator_data._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
+            coordinator_data.device_client._process_register_value("outside_temperature", 205)
+            == 20.5
+        )
+        assert (
+            coordinator_data.device_client._process_register_value(
+                "outside_temperature", SENSOR_UNAVAILABLE
+            )
             is None
         )
         assert (
-            coordinator_data._process_register_value("heating_temperature", SENSOR_UNAVAILABLE)
+            coordinator_data.device_client._process_register_value(
+                "heating_temperature", SENSOR_UNAVAILABLE
+            )
             is None
         )
-        assert coordinator_data._process_register_value("outside_temperature", 65486) == -5.0
-        assert coordinator_data._process_register_value("supply_temperature", 65511) == -2.5
-        assert coordinator_data._process_register_value("supply_flow_rate", 65436) == -100
         assert (
-            coordinator_data._process_register_value("exhaust_flow_rate", SENSOR_UNAVAILABLE)
+            coordinator_data.device_client._process_register_value("outside_temperature", 65486)
+            == -5.0
+        )
+        assert (
+            coordinator_data.device_client._process_register_value("supply_temperature", 65511)
+            == -2.5
+        )
+        assert (
+            coordinator_data.device_client._process_register_value("supply_flow_rate", 65436)
+            == -100
+        )
+        assert (
+            coordinator_data.device_client._process_register_value(
+                "exhaust_flow_rate", SENSOR_UNAVAILABLE
+            )
             == SENSOR_UNAVAILABLE
         )
 

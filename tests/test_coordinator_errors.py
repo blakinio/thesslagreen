@@ -9,7 +9,7 @@ from custom_components.thessla_green_modbus.core.retry import _PermanentModbusEr
 
 @pytest.mark.asyncio
 async def test_read_with_retry_retries_transient_errors():
-    """Coordinator retries transient read errors before succeeding."""
+    """DeviceClient retries transient read errors before succeeding."""
 
     coordinator = ThesslaGreenModbusCoordinator.from_params(
         MagicMock(),
@@ -19,12 +19,13 @@ async def test_read_with_retry_retries_transient_errors():
         "name",
         retry=2,
     )
-    coordinator._disconnect = AsyncMock()
+    dc = coordinator.device_client
+    dc._disconnect = AsyncMock()
     response = MagicMock()
     response.isError.return_value = False
-    coordinator._call_modbus = AsyncMock(side_effect=[TimeoutError("boom"), response])
+    dc._call_modbus = AsyncMock(side_effect=[TimeoutError("boom"), response])
 
-    result = await coordinator._read_with_retry(
+    result = await dc._read_with_retry(
         lambda *_args, **_kwargs: None,
         10,
         1,
@@ -32,7 +33,7 @@ async def test_read_with_retry_retries_transient_errors():
     )
 
     assert result is response  # nosec: explicit state check
-    assert coordinator._call_modbus.await_count == 2
+    assert dc._call_modbus.await_count == 2
 
 
 @pytest.mark.asyncio
@@ -47,20 +48,21 @@ async def test_read_with_retry_skips_illegal_data_address():
         "name",
         retry=3,
     )
-    coordinator._disconnect = AsyncMock()
+    dc = coordinator.device_client
+    dc._disconnect = AsyncMock()
 
     response = MagicMock()
     response.isError.return_value = True
     response.exception_code = 2
-    coordinator._call_modbus = AsyncMock(return_value=response)
+    dc._call_modbus = AsyncMock(return_value=response)
 
     with pytest.raises(_PermanentModbusError):
-        await coordinator._read_with_retry(
+        await dc._read_with_retry(
             lambda *_args, **_kwargs: None,
             10,
             1,
             register_type="input",
         )
 
-    assert coordinator._call_modbus.await_count == 1
-    coordinator._disconnect.assert_not_awaited()
+    assert dc._call_modbus.await_count == 1
+    dc._disconnect.assert_not_awaited()

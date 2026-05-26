@@ -12,7 +12,7 @@ async def test_get_client_method_fallback_noop():
     coord = _make_coordinator()
     coord.device_client.client = None
     coord.device_client._transport = None
-    method = coord._get_client_method("nonexistent_method_xyz")
+    method = coord.device_client._get_client_method("nonexistent_method_xyz")
     assert callable(method)
     assert await method() is None
 
@@ -24,7 +24,7 @@ async def test_get_client_method_from_client():
     expected = AsyncMock(return_value="ok")
     client.read_holding_registers = expected
     coord.device_client.client = client
-    assert coord._get_client_method("read_holding_registers") is expected
+    assert coord.device_client._get_client_method("read_holding_registers") is expected
 
 
 async def test_async_write_register_via_transport():
@@ -48,7 +48,7 @@ async def test_async_write_register_coil():
     transport = MagicMock()
     transport.is_connected.return_value = True
     coord.device_client._transport = transport
-    coord._call_modbus = AsyncMock(return_value=ok_response)
+    coord.device_client._call_modbus = AsyncMock(return_value=ok_response)
     coord.async_request_refresh = AsyncMock()
     assert await coord.async_write_register("bypass", 1) is True
 

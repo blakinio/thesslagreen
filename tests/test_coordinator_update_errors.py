@@ -14,34 +14,34 @@ from tests.helpers_coordinator import make_coordinator as _make_coordinator
 
 async def test_read_coils_transport_raises_when_no_client():
     c = _make_coordinator()
-    c.client = None
-    c._transport = None
+    c.device_client.client = None
+    c.device_client._transport = None
     with pytest.raises(ConnectionException):
-        await c._read_coils_transport(1, 0, count=1)
+        await c.device_client._read_coils_transport(1, 0, count=1)
 
 
 async def test_read_discrete_inputs_transport_raises_when_no_client():
     c = _make_coordinator()
-    c.client = None
-    c._transport = None
+    c.device_client.client = None
+    c.device_client._transport = None
     with pytest.raises(ConnectionException):
-        await c._read_discrete_inputs_transport(1, 0, count=1)
+        await c.device_client._read_discrete_inputs_transport(1, 0, count=1)
 
 
 async def test_read_with_retry_awaitable_returning_none_raises():
     c = _make_coordinator()
-    c.retry = 1
+    c.device_client.retry = 1
 
     async def read_method(slave_id, addr, *, count, attempt):
         return None
 
     with pytest.raises(ModbusException):
-        await c._read_with_retry(read_method, 0, 1, register_type="input_registers")
+        await c.device_client._read_with_retry(read_method, 0, 1, register_type="input_registers")
 
 
 async def test_read_with_retry_transient_error_raises_modbus_io():
     c = _make_coordinator()
-    c.retry = 1
+    c.device_client.retry = 1
     resp = MagicMock()
     resp.isError.return_value = True
     resp.exception_code = 3
@@ -50,7 +50,7 @@ async def test_read_with_retry_transient_error_raises_modbus_io():
         return resp
 
     with pytest.raises(ModbusIOException):
-        await c._read_with_retry(read_method, 0, 1, register_type="input_registers")
+        await c.device_client._read_with_retry(read_method, 0, 1, register_type="input_registers")
 
 
 async def test_async_write_register_multi_reg_offset_too_large():
@@ -58,7 +58,7 @@ async def test_async_write_register_multi_reg_offset_too_large():
     c._ensure_connection = AsyncMock()
     t = MagicMock()
     t.is_connected.return_value = True
-    c._transport = t
+    c.device_client._transport = t
     d = MagicMock()
     d.length = 2
     d.function = 3
@@ -73,14 +73,14 @@ async def test_async_write_register_multi_reg_offset_too_large():
 
 async def test_async_write_register_response_error_returns_false():
     c = _make_coordinator()
-    c.retry = 1
+    c.device_client.retry = 1
     c._ensure_connection = AsyncMock()
     e = MagicMock()
     e.isError.return_value = True
     t = MagicMock()
     t.is_connected.return_value = True
     t.write_register = AsyncMock(return_value=e)
-    c._transport = t
+    c.device_client._transport = t
     assert await c.async_write_register("mode", 1) is False
 
 
@@ -104,7 +104,7 @@ async def test_async_write_register_non_writable_function():
     c._ensure_connection = AsyncMock()
     t = MagicMock()
     t.is_connected.return_value = True
-    c._transport = t
+    c.device_client._transport = t
     d = MagicMock()
     d.length = 1
     d.function = 2
@@ -119,29 +119,29 @@ async def test_async_write_register_non_writable_function():
 
 async def test_call_modbus_no_client_raises():
     c = _make_coordinator()
-    c._transport = None
-    c.client = None
+    c.device_client._transport = None
+    c.device_client.client = None
 
     async def dummy(*args, **kwargs):
         return None
 
     with pytest.raises(ConnectionException):
-        await c._call_modbus(dummy, 100, count=1)
+        await c.device_client._call_modbus(dummy, 100, count=1)
 
 
 async def test_read_with_retry_response_none_via_call_modbus():
     c = _make_coordinator()
-    c.retry = 1
-    c._call_modbus = AsyncMock(return_value=None)
+    c.device_client.retry = 1
+    c.device_client._call_modbus = AsyncMock(return_value=None)
     t = MagicMock()
     t.is_connected.return_value = True
-    c._transport = t
+    c.device_client._transport = t
 
     def read_method(slave_id, addr, *, count, attempt):
         return None
 
     with pytest.raises(ModbusException):
-        await c._read_with_retry(read_method, 0, 1, register_type="input_registers")
+        await c.device_client._read_with_retry(read_method, 0, 1, register_type="input_registers")
 
 
 async def test_async_write_register_multi_reg_non_int_values():
@@ -153,7 +153,7 @@ async def test_async_write_register_multi_reg_non_int_values():
     d.address = 100
     t = MagicMock()
     t.is_connected.return_value = True
-    c._transport = t
+    c.device_client._transport = t
     with patch(
         "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=d,
@@ -171,7 +171,7 @@ async def test_async_write_register_offset_exceeds_length():
     d.encode.return_value = [1, 2]
     t = MagicMock()
     t.is_connected.return_value = True
-    c._transport = t
+    c.device_client._transport = t
     with patch(
         "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=d,
@@ -187,6 +187,6 @@ async def test_async_write_registers_single_request_error_response():
     e = MagicMock()
     e.isError.return_value = True
     t.write_registers = AsyncMock(return_value=e)
-    c._transport = t
-    c.retry = 1
+    c.device_client._transport = t
+    c.device_client.retry = 1
     assert await c.async_write_registers(100, [1, 2], require_single_request=True) is False

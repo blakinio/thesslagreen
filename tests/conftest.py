@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import os
 import sys
 import warnings
@@ -36,6 +37,19 @@ def _ensure_current_event_loop() -> asyncio.AbstractEventLoop:
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
+
+# HA 2024.3 doesn't accept config_entry in DataUpdateCoordinator.__init__.
+# Shim it away so tests run against the installed HA without changing production code.
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator as _DUC
+
+if "config_entry" not in inspect.signature(_DUC.__init__).parameters:
+    _duc_orig_init = _DUC.__init__
+
+    def _duc_compat_init(self, *args, **kwargs):
+        kwargs.pop("config_entry", None)
+        _duc_orig_init(self, *args, **kwargs)
+
+    _DUC.__init__ = _duc_compat_init
 
 from custom_components.thessla_green_modbus.const import DOMAIN
 from pytest_homeassistant_custom_component.common import MockConfigEntry

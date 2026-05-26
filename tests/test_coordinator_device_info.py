@@ -11,7 +11,6 @@ from custom_components.thessla_green_modbus.const import (
     SENSOR_UNAVAILABLE,
     SENSOR_UNAVAILABLE_REGISTERS,
 )
-from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 from custom_components.thessla_green_modbus.registers.loader import get_register_definition
 
 from tests.helpers_coordinator import make_coordinator as _make_coordinator
@@ -162,39 +161,39 @@ def test_get_device_info_uses_version_registers_for_sw_version():
 
 def test_register_value_processing(coordinator):
     """Test register value processing."""
-    temp_result = coordinator._process_register_value("outside_temperature", 250)
+    temp_result = coordinator.device_client._process_register_value("outside_temperature", 250)
     assert temp_result == 25.0
 
-    heating_result = coordinator._process_register_value("heating_temperature", 250)
+    heating_result = coordinator.device_client._process_register_value("heating_temperature", 250)
     assert heating_result == 25.0
 
-    invalid_temp = coordinator._process_register_value("outside_temperature", 32768)
+    invalid_temp = coordinator.device_client._process_register_value("outside_temperature", 32768)
     assert invalid_temp is None
 
-    percentage_result = coordinator._process_register_value("supply_percentage", 75)
+    percentage_result = coordinator.device_client._process_register_value("supply_percentage", 75)
     assert percentage_result == 75
 
-    mode_result = coordinator._process_register_value("mode", 1)
+    mode_result = coordinator.device_client._process_register_value("mode", 1)
     assert mode_result == 1
 
-    time_result = coordinator._process_register_value("schedule_summer_mon_1", 2069)
+    time_result = coordinator.device_client._process_register_value("schedule_summer_mon_1", 2069)
     assert time_result == "08:15"
 
 
 def test_dac_value_processing(coordinator, caplog):
     """Test DAC register value processing and validation."""
     # Valid mid-range value converts to approximately 5V
-    result = coordinator._process_register_value("dac_supply", 2048)
+    result = coordinator.device_client._process_register_value("dac_supply", 2048)
     assert result == pytest.approx(5.0, abs=0.01)
 
     # Zero value stays zero
-    result = coordinator._process_register_value("dac_supply", 0)
+    result = coordinator.device_client._process_register_value("dac_supply", 0)
     assert result == 0
 
     # Invalid values outside 0-4095 are rejected
     with caplog.at_level(logging.WARNING):
-        assert coordinator._process_register_value("dac_supply", 5000) is None
-        assert coordinator._process_register_value("dac_supply", -1) is None
+        assert coordinator.device_client._process_register_value("dac_supply", 5000) is None
+        assert coordinator.device_client._process_register_value("dac_supply", -1) is None
         assert "out of range" in caplog.text
 
 
@@ -205,7 +204,7 @@ def test_dac_value_processing(coordinator, caplog):
 )
 def test_process_register_value_sensor_unavailable(coordinator, register_name):
     """Return sentinel when sensors report unavailable for known sensor registers."""
-    result = coordinator._process_register_value(register_name, SENSOR_UNAVAILABLE)
+    result = coordinator.device_client._process_register_value(register_name, SENSOR_UNAVAILABLE)
     if "temperature" in register_name:
         assert result is None
     else:
@@ -221,15 +220,19 @@ def test_process_register_value_sensor_unavailable(coordinator, register_name):
 )
 def test_process_register_value_extremes(coordinator, register_name, value, expected):
     """Handle extreme raw register values correctly."""
-    result = coordinator._process_register_value(register_name, value)
+    result = coordinator.device_client._process_register_value(register_name, value)
     assert result == expected
 
 
 def test_process_register_value_no_magic_number_in_source():
-    """Regression guard against reintroducing literal 32768 in coordinator logic."""
+    """Regression guard against reintroducing literal 32768 in register processing."""
     import inspect
 
-    src = inspect.getsource(ThesslaGreenModbusCoordinator._process_register_value)
+    from custom_components.thessla_green_modbus.core.register_processing import (
+        process_register_value,
+    )
+
+    src = inspect.getsource(process_register_value)
     assert "32768" not in src
 
 
@@ -246,7 +249,7 @@ def test_process_register_value_no_magic_number_in_source():
 def test_process_register_value_dac_boundaries(coordinator, register_name, value):
     """Process DAC registers across boundary and out-of-range values."""
     expected = get_register_definition(register_name).decode(value)
-    result = coordinator._process_register_value(register_name, value)
+    result = coordinator.device_client._process_register_value(register_name, value)
     assert result == pytest.approx(expected)
 
 
@@ -257,7 +260,7 @@ def test_register_value_logging(coordinator, caplog):
         logging.DEBUG, logger="custom_components.thessla_green_modbus.coordinator"
     ):
         caplog.clear()
-        coordinator._process_register_value("outside_temperature", 250)
+        coordinator.device_client._process_register_value("outside_temperature", 250)
         assert "raw=250" in caplog.text
         assert "value=25.0" in caplog.text
 
@@ -265,5 +268,5 @@ def test_register_value_logging(coordinator, caplog):
         logging.WARNING, logger="custom_components.thessla_green_modbus.coordinator"
     ):
         caplog.clear()
-        coordinator._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
+        coordinator.device_client._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
         assert not caplog.records

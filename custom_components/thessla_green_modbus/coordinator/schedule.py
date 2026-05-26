@@ -50,11 +50,8 @@ class _CoordinatorScheduleMixin:
     effective_batch: int
     _write_lock: asyncio.Lock
 
-    async def _call_modbus(self, func: Any, *args: Any, attempt: int = 1, **kwargs: Any) -> Any: ...
-    def _get_client_method(self, name: str) -> Any: ...
     async def _ensure_connection(self) -> None: ...
     async def _disconnect(self) -> None: ...
-    def _clear_register_failure(self, name: str) -> None: ...
     async def _safe_request_refresh(self) -> None:
         """Request refresh and ignore mock-context TypeError in tests."""
         await _safe_request_refresh(self)
@@ -77,8 +74,8 @@ class _CoordinatorScheduleMixin:
                 values=payload,
                 attempt=attempt,
             )
-        return await self._call_modbus(
-            self._get_client_method("write_registers"),
+        return await self._device_client._call_modbus(
+            self._device_client._get_client_method("write_registers"),
             address,
             values=payload,
             attempt=attempt,
@@ -117,8 +114,8 @@ class _CoordinatorScheduleMixin:
             return await self._device_client._transport.write_register(
                 self.slave_id, address, value=int(value)
             )
-        return await self._call_modbus(
-            self._get_client_method("write_register"),
+        return await self._device_client._call_modbus(
+            self._device_client._get_client_method("write_register"),
             address,
             value=int(value),
             attempt=attempt,
@@ -233,7 +230,7 @@ class _CoordinatorScheduleMixin:
         """Apply common success side effects for single-register write path."""
         # Successful write: remove from failed set so the next
         # poll doesn't skip this register's chunk entirely.
-        self._clear_register_failure(register_name)
+        self._device_client._clear_register_failure(register_name)
         _LOGGER.info(
             "Successfully wrote %s to register %s",
             original_value,
@@ -264,8 +261,8 @@ class _CoordinatorScheduleMixin:
                 attempt=attempt,
             )
         elif definition.function == 1:
-            response = await self._call_modbus(
-                self._get_client_method("write_coil"),
+            response = await self._device_client._call_modbus(
+                self._device_client._get_client_method("write_coil"),
                 address=address,
                 value=bool(scalar_value),
                 attempt=attempt,
@@ -402,7 +399,7 @@ class _CoordinatorScheduleMixin:
                     attempt=1,
                 )
             elif self._device_client.client is not None:
-                response = await self._call_modbus(
+                response = await self._device_client._call_modbus(
                     self._device_client.client.read_holding_registers,
                     start_address,
                     count=count,
