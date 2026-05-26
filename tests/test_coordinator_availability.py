@@ -19,7 +19,10 @@ def test_process_register_value_sensor_unavailable_temperature():
         "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=d,
     ):
-        assert c._process_register_value("outside_temperature", SENSOR_UNAVAILABLE) is None
+        assert (
+            c.device_client._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
+            is None
+        )
 
 
 def test_process_register_value_sensor_unavailable_non_temperature():
@@ -40,7 +43,9 @@ def test_process_register_value_sensor_unavailable_non_temperature():
         "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=d,
     ):
-        assert c._process_register_value(reg, SENSOR_UNAVAILABLE) == SENSOR_UNAVAILABLE
+        assert (
+            c.device_client._process_register_value(reg, SENSOR_UNAVAILABLE) == SENSOR_UNAVAILABLE
+        )
 
 
 def test_process_register_value_decoded_equals_sensor_unavailable():
@@ -53,11 +58,13 @@ def test_process_register_value_decoded_equals_sensor_unavailable():
     d.enum = None
     d.decode.return_value = SENSOR_UNAVAILABLE
     with patch.object(rp, "get_register_definitions", return_value={"mode": d}):
-        assert c._process_register_value("mode", 1) == SENSOR_UNAVAILABLE
+        assert c.device_client._process_register_value("mode", 1) == SENSOR_UNAVAILABLE
 
 
 def test_process_register_value_unknown_register():
     assert (
-        _make_coordinator()._process_register_value("definitely_not_a_real_register_xyz", 42)
+        _make_coordinator().device_client._process_register_value(
+            "definitely_not_a_real_register_xyz", 42
+        )
         is False
     )

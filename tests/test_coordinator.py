@@ -246,10 +246,10 @@ async def test_read_holding_registers_chunking_and_retries(coordinator):
     }
     names = {f"reg{i}" for i in range(MAX_BATCH_REGISTERS + 5)}
     coordinator.device_client.available_registers["holding_registers"] = names
-    coordinator._find_register_name = lambda _kind, addr: f"reg{addr}"
-    coordinator._process_register_value = lambda _name, value: value
-    coordinator._clear_register_failure = lambda _name: None
-    coordinator._mark_registers_failed = lambda _names: None
+    coordinator.device_client._find_register_name = lambda _kind, addr: f"reg{addr}"
+    coordinator.device_client._process_register_value = lambda _name, value: value
+    coordinator.device_client._clear_register_failure = lambda _name: None
+    coordinator.device_client._mark_registers_failed = lambda _names: None
 
     response1 = SimpleNamespace(registers=[1] * MAX_BATCH_REGISTERS, isError=lambda: False)
     response2 = SimpleNamespace(registers=[2] * 4, isError=lambda: False)
@@ -265,7 +265,7 @@ async def test_read_holding_registers_chunking_and_retries(coordinator):
         ]
     )
 
-    data = await coordinator._read_holding_registers_optimized()
+    data = await coordinator.device_client._read_holding_registers_optimized()
 
     assert coordinator.device_client.client.read_holding_registers.await_count == 5
     counts = [
@@ -391,11 +391,11 @@ async def test_missing_client_raises_connection_exception(coordinator):
     }
 
     with pytest.raises(ConnectionException):
-        await coordinator._read_input_registers_optimized()
+        await coordinator.device_client._read_input_registers_optimized()
     with pytest.raises(ConnectionException):
-        await coordinator._read_coil_registers_optimized()
+        await coordinator.device_client._read_coil_registers_optimized()
     with pytest.raises(ConnectionException):
-        await coordinator._read_discrete_inputs_optimized()
+        await coordinator.device_client._read_discrete_inputs_optimized()
 
 
 @pytest.mark.asyncio
@@ -418,10 +418,10 @@ async def test_setup_and_refresh_no_cancelled_error(coordinator):
     result = await coordinator._async_setup_client()
     assert result is True
 
-    coordinator._read_input_registers_optimized = AsyncMock(return_value={})
-    coordinator._read_holding_registers_optimized = AsyncMock(return_value={})
-    coordinator._read_coil_registers_optimized = AsyncMock(return_value={})
-    coordinator._read_discrete_inputs_optimized = AsyncMock(return_value={})
+    coordinator.device_client._read_input_registers_optimized = AsyncMock(return_value={})
+    coordinator.device_client._read_holding_registers_optimized = AsyncMock(return_value={})
+    coordinator.device_client._read_coil_registers_optimized = AsyncMock(return_value={})
+    coordinator.device_client._read_discrete_inputs_optimized = AsyncMock(return_value={})
 
     data = await coordinator._async_update_data()
     assert data == {}
@@ -517,7 +517,9 @@ async def test_async_update_data_handles_cancellation(coordinator) -> None:
     coordinator._ensure_connection = AsyncMock()
     coordinator._disconnect = AsyncMock()
     coordinator.device_client.client = MagicMock(connected=True)
-    coordinator._read_input_registers_optimized = AsyncMock(side_effect=asyncio.CancelledError())
+    coordinator.device_client._read_input_registers_optimized = AsyncMock(
+        side_effect=asyncio.CancelledError()
+    )
 
     failed_before = coordinator.device_client.statistics["failed_reads"]
 

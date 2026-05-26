@@ -20,7 +20,7 @@ async def test_read_coils_transport_raises_when_no_client():
     coord.device_client.client = None
     coord.device_client._transport = None
     with pytest.raises(ConnectionException):
-        await coord._read_coils_transport(1, 0, count=1)
+        await coord.device_client._read_coils_transport(1, 0, count=1)
 
 
 @pytest.mark.asyncio
@@ -29,7 +29,7 @@ async def test_read_discrete_inputs_transport_raises_when_no_client():
     coord.device_client.client = None
     coord.device_client._transport = None
     with pytest.raises(ConnectionException):
-        await coord._read_discrete_inputs_transport(1, 0, count=1)
+        await coord.device_client._read_discrete_inputs_transport(1, 0, count=1)
 
 
 @pytest.mark.asyncio
@@ -41,7 +41,9 @@ async def test_read_with_retry_awaitable_returning_none_raises():
         return None
 
     with pytest.raises(ModbusException):
-        await coord._read_with_retry(read_method, 0, 1, register_type="input_registers")
+        await coord.device_client._read_with_retry(
+            read_method, 0, 1, register_type="input_registers"
+        )
 
 
 @pytest.mark.asyncio
@@ -56,7 +58,9 @@ async def test_read_with_retry_transient_error_raises_modbus_io():
         return error_response
 
     with pytest.raises(ModbusIOException):
-        await coord._read_with_retry(read_method, 0, 1, register_type="input_registers")
+        await coord.device_client._read_with_retry(
+            read_method, 0, 1, register_type="input_registers"
+        )
 
 
 def test_process_register_value_sensor_unavailable_temperature():
@@ -71,5 +75,7 @@ def test_process_register_value_sensor_unavailable_temperature():
         "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         return_value=mock_def,
     ):
-        result = coord._process_register_value("outside_temperature", SENSOR_UNAVAILABLE)
+        result = coord.device_client._process_register_value(
+            "outside_temperature", SENSOR_UNAVAILABLE
+        )
     assert result is None

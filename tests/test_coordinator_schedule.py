@@ -80,7 +80,7 @@ def test_process_register_value_schedule_hh_mm():
     mock_def.enum = None
     mock_def.decode.return_value = "06:30"
     with patch.object(rp, "get_register_definitions", return_value={"schedule_on_1": mock_def}):
-        result = coord._process_register_value("schedule_on_1", 390)
+        result = coord.device_client._process_register_value("schedule_on_1", 390)
     assert result == "06:30"
 
 
@@ -99,5 +99,5 @@ def test_process_register_value_schedule_hh_mm_invalid():
     mock_def.enum = None
     mock_def.decode.return_value = "ab:cd"  # valid format but int() will fail
     with patch.object(rp, "get_register_definitions", return_value={"schedule_on_1": mock_def}):
-        result = coord._process_register_value("schedule_on_1", 999)
+        result = coord.device_client._process_register_value("schedule_on_1", 999)
     assert result == "ab:cd"  # returned unchanged after ValueError

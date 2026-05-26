@@ -34,7 +34,7 @@ async def run_update_cycle(
     if transport is None and coordinator.device_client.client is None:
         raise ConnectionException("Modbus client is not connected")
 
-    data = await coordinator._read_all_register_data()
+    data = await coordinator.device_client._read_all_register_data()
 
     if transport is not None and not transport.is_connected():
         _LOGGER.debug("Modbus client disconnected during update; attempting reconnection")

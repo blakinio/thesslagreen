@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 import logging
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -34,7 +34,6 @@ from ..core.capabilities_mixin import _CoordinatorCapabilitiesMixin
 from ..core.client import ThesslaGreenDeviceClient
 from ..core.connection import setup_client_with_retry as _setup_client_with_retry_impl
 from ..core.connection_test import run_connection_test as _run_connection_test_impl
-from ..core.io_mixin import _ModbusIOMixin
 from ..core.models import CoordinatorConfig
 from ..core.retry import _PermanentModbusError
 from ..core.scan_helpers import (
@@ -133,7 +132,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ThesslaGreenModbusCoordinator(
-    _ModbusIOMixin,
     _CoordinatorCapabilitiesMixin,
     _CoordinatorConfigPropertiesMixin,
     _CoordinatorScheduleMixin,
@@ -297,10 +295,6 @@ class ThesslaGreenModbusCoordinator(
         """Return the register map for the given register type."""
         return self._device_client.get_register_map(register_type)
 
-    def _get_client_method(self, name: str) -> Callable[..., Any]:
-        """Return a Modbus method from transport/client or a no-op placeholder."""
-        return self._device_client._get_client_method(name)
-
     def _apply_scan_result(self, scan_result: dict[str, Any]) -> None:
         """Store and process a completed device scan result."""
         _apply_scan_result_impl(
@@ -381,14 +375,6 @@ class ThesslaGreenModbusCoordinator(
         """Store scan results in config entry options."""
         _store_scan_cache_impl(self)
 
-    def _mark_registers_failed(self, names: Iterable[str | None]) -> None:
-        """Record registers that failed to read."""
-        self._device_client._mark_registers_failed(names)
-
-    def _clear_register_failure(self, name: str) -> None:
-        """Remove register from failed list on successful read."""
-        self._device_client._clear_register_failure(name)
-
     async def _test_connection(self) -> None:
         """Test initial connection to the device."""
         async with self._device_client._write_lock:
@@ -435,14 +421,6 @@ class ThesslaGreenModbusCoordinator(
         and is called by Home Assistant to refresh entity state.
         """
         return await _async_update_data_impl(self)
-
-    def _find_register_name(self, register_type: str, address: int) -> str | None:
-        """Find register name by address using pre-built reverse maps."""
-        return self._device_client._find_register_name(register_type, address)
-
-    def _process_register_value(self, register_name: str, value: int) -> Any:
-        """Decode a raw register value via dedicated register-processing helpers."""
-        return self._device_client._process_register_value(register_name, value)
 
     async def _disconnect_locked(self) -> None:
         """Disconnect from Modbus device without acquiring locks — delegates to DeviceClient."""

@@ -138,17 +138,46 @@ Removed five more thin delegate methods from `coordinator.py`:
 
 Updated call sites: `coordinator/lifecycle.py:36`, `tests/test_coordinator_lifecycle.py`, `tests/test_coordinator_capabilities.py`, `tests/test_coordinator_package_api.py`, `tests/test_cleanup_audit.py`.
 
-## Remaining delegates (deferred)
+## 2026-05-26 slice-3 removal — IO ownership cleanup (this PR)
 
-The following delegates remain in `coordinator.py` and are deferred because their call sites span core IO modules (`read_batches.py`, `read_bits.py`) that use the `_ModbusIOMixin` protocol:
+All 5 deferred delegates have now been removed from `coordinator.py`:
 
-| Delegate | Risk to remove | Reason |
-|---|---|---|
-| `_get_client_method` | Medium | Called from `coordinator/schedule.py` (`self._get_client_method(...)`) which receives coordinator as `self` |
-| `_mark_registers_failed` | High | Called from `core/read_batches.py` and `core/read_bits.py` via `owner._mark_registers_failed(...)` where `owner` may be coordinator |
-| `_clear_register_failure` | High | Same — core IO mixin protocol |
-| `_find_register_name` | High | Same — core IO mixin protocol |
-| `_process_register_value` | High | Same — core IO mixin protocol |
+| Removed delegate | Replaced by |
+|---|---|
+| `_get_client_method` | `coordinator.device_client._get_client_method(...)` |
+| `_mark_registers_failed` | `coordinator.device_client._mark_registers_failed(...)` |
+| `_clear_register_failure` | `coordinator.device_client._clear_register_failure(...)` |
+| `_find_register_name` | `coordinator.device_client._find_register_name(...)` |
+| `_process_register_value` | `coordinator.device_client._process_register_value(...)` |
 
-These can only be removed safely after the read path is fully moved to `DeviceClient` and the coordinator is removed from `_ModbusIOMixin` inheritance. That requires removing `_ModbusIOMixin` from the coordinator's base class list and moving the update data path, which is a larger refactor gated on real-device validation completion.
+Additionally:
+- `_ModbusIOMixin` removed from `ThesslaGreenModbusCoordinator` inheritance.
+- `coordinator/update.py` changed from `coordinator._read_all_register_data()` to `coordinator.device_client._read_all_register_data()`, making `DeviceClient` the single IO owner for the entire read cycle.
+- `coordinator/schedule.py` write-path call sites updated to use `self._device_client._call_modbus(self._device_client._get_client_method(...))` and `self._device_client._clear_register_failure(...)`.
+
+### Why this was now safe
+
+The 5 delegates were previously blocked because `core/read_batches.py` and `core/read_bits.py` take an `owner` argument and call `owner._mark_registers_failed(...)` etc. Before, `owner` was the coordinator; after the `update.py` change, `owner` is always `device_client` (which already implements all 4 protocol methods via `_DeviceClientRegistersMixin`). Since `ThesslaGreenDeviceClient` has `device_client = self`, the `owner.device_client.*` accesses work uniformly.
+
+### _failed_registers fix (implicit improvement)
+
+Previously, `read_batches.py` used `getattr(owner, "_failed_registers", set())` where `owner = coordinator`. Coordinator forwarded the attribute via a property proxy (removed in slice-1). After this change, `owner = device_client` which holds the actual `_failed_registers` set, so the "skip already-failed registers" optimization now works correctly.
+
+### New tests added
+
+`tests/test_coordinator_io_ownership.py` — 15 tests verifying:
+1. Coordinator no longer exposes the 5 removed delegate methods
+2. DeviceClient is the IO owner for all 5 methods
+3. Update cycle routes calls through device_client (not coordinator)
+4. Failed-register tracking works via device_client
+5. Fan-percentage and dangerous-entity regressions guarded
+
+## Remaining delegates (none — cleanup complete)
+
+All coordinator delegates backed by `self._device_client.*` have been removed. Only the
+43 proxy **properties** documented above remain, which are retained until real-device
+validation confirms no consumer-visible behavior changes.
+
+The remaining future work is removing proxy properties following the incremental path
+documented in the "Future Removal Path" section above.
 

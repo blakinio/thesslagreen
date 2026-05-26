@@ -265,22 +265,23 @@ async def test_disconnected_client_no_warning_spam(caplog) -> None:
     }
     coordinator.device_client._failed_registers = set()
     coordinator.device_client.effective_batch = 10
-    coordinator._find_register_name = lambda rt, addr: "mode"
-    coordinator._process_register_value = lambda _name, value: value
-    coordinator._clear_register_failure = MagicMock()
-    coordinator._mark_registers_failed = MagicMock()
+    dc = coordinator.device_client
+    dc._find_register_name = lambda rt, addr: "mode"
+    dc._process_register_value = lambda _name, value: value
+    dc._clear_register_failure = MagicMock()
+    dc._mark_registers_failed = MagicMock()
 
     conn_exc = ConnectionException("Modbus client is not connected")
-    coordinator.device_client._transport = SimpleNamespace(
+    dc._transport = SimpleNamespace(
         is_connected=lambda: True,
         read_holding_registers=AsyncMock(),
     )
-    coordinator.device_client.client = None
-    coordinator._read_with_retry = AsyncMock(side_effect=conn_exc)
+    dc.client = None
+    dc._read_with_retry = AsyncMock(side_effect=conn_exc)
     coordinator._disconnect = AsyncMock()
 
     with caplog.at_level(logging.WARNING), pytest.raises(ConnectionException):
-        await coordinator._read_holding_registers_optimized()
+        await dc._read_holding_registers_optimized()
 
     warning_records = [r for r in caplog.records if r.levelno >= logging.WARNING]
     assert len(warning_records) == 0, (

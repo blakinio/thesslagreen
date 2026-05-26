@@ -73,10 +73,11 @@ def coordinator() -> ThesslaGreenModbusCoordinator:
     coord.device_client.effective_batch = 20
 
     addr_to_name = {SUMMER_BASE_ADDR + i: name for i, name in enumerate(SUMMER_NAMES)}
-    coord._find_register_name = lambda rt, addr: addr_to_name.get(addr)
-    coord._process_register_value = lambda _name, value: value
-    coord._clear_register_failure = MagicMock()
-    coord._mark_registers_failed = MagicMock(
+    dc = coord.device_client
+    dc._find_register_name = lambda rt, addr: addr_to_name.get(addr)
+    dc._process_register_value = lambda _name, value: value
+    dc._clear_register_failure = MagicMock()
+    dc._mark_registers_failed = MagicMock(
         side_effect=lambda regs: coord.device_client._failed_registers.update(r for r in regs if r)
     )
     return coord
@@ -108,17 +109,16 @@ async def test_schedule_summer_batch_bug_falls_back_to_individual_reads(
             return SimpleNamespace(registers=[])
         return SimpleNamespace(registers=[single_values[address]])
 
-    coordinator._read_with_retry = AsyncMock(side_effect=_fake_read_with_retry)
-    original_fallback = coordinator._read_holding_individually
-    coordinator._read_holding_individually = AsyncMock(wraps=original_fallback)
+    dc = coordinator.device_client
+    dc._read_with_retry = AsyncMock(side_effect=_fake_read_with_retry)
+    original_fallback = dc._read_holding_individually
+    dc._read_holding_individually = AsyncMock(wraps=original_fallback)
 
-    data = await coordinator._read_holding_registers_optimized()
+    data = await dc._read_holding_registers_optimized()
 
-    coordinator._read_holding_individually.assert_awaited_once()
+    dc._read_holding_individually.assert_awaited_once()
 
-    single_calls = [
-        call for call in coordinator._read_with_retry.await_args_list if call.args[2] == 1
-    ]
+    single_calls = [call for call in dc._read_with_retry.await_args_list if call.args[2] == 1]
     assert [call.args[1] for call in single_calls] == [SUMMER_BASE_ADDR + i for i in range(4)]
 
     assert data == dict(zip(SUMMER_NAMES, [101, 202, 303, 404], strict=True))
@@ -145,14 +145,15 @@ async def test_schedule_summer_partial_batch_falls_back_for_tail_only(
             return SimpleNamespace(registers=[101, 202])
         return SimpleNamespace(registers=[tail_singles[address]])
 
-    coordinator._read_with_retry = AsyncMock(side_effect=_fake_read_with_retry)
-    original_fallback = coordinator._read_holding_individually
-    coordinator._read_holding_individually = AsyncMock(wraps=original_fallback)
+    dc = coordinator.device_client
+    dc._read_with_retry = AsyncMock(side_effect=_fake_read_with_retry)
+    original_fallback = dc._read_holding_individually
+    dc._read_holding_individually = AsyncMock(wraps=original_fallback)
 
-    data = await coordinator._read_holding_registers_optimized()
+    data = await dc._read_holding_registers_optimized()
 
-    coordinator._read_holding_individually.assert_awaited_once()
-    fallback_call = coordinator._read_holding_individually.await_args
+    dc._read_holding_individually.assert_awaited_once()
+    fallback_call = dc._read_holding_individually.await_args
     assert fallback_call.args[1] == SUMMER_BASE_ADDR + 2  # tail_start
     assert len(fallback_call.args[2]) == 2  # tail_names
 

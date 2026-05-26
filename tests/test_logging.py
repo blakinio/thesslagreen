@@ -77,10 +77,10 @@ async def test_read_retries_logged(monkeypatch, caplog):
     coord.device_client._register_maps["input_registers"] = {"reg0": 0, "reg1": 1}
     coord.device_client._reverse_maps["input_registers"] = {0: "reg0", 1: "reg1"}
     coord.device_client._register_groups["input_registers"] = [(0, 2)]
-    coord._process_register_value = lambda name, value: value
+    coord.device_client._process_register_value = lambda name, value: value
 
     caplog.set_level(logging.DEBUG, logger="custom_components.thessla_green_modbus.modbus")
-    data = await coord._read_input_registers_optimized()
+    data = await coord.device_client._read_input_registers_optimized()
     assert data == {"reg0": 1, "reg1": 1}
     assert any(
         "Timeout reading input registers" in r.message

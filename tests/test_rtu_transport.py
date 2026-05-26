@@ -69,7 +69,7 @@ async def test_coordinator_uses_rtu_transport_for_read_write():
     coordinator.device_client._transport.read_input_registers = AsyncMock(return_value=response)
     coordinator.device_client._transport.write_registers = AsyncMock(return_value=response)
 
-    await coordinator._read_with_retry(
+    await coordinator.device_client._read_with_retry(
         coordinator.device_client._transport.read_input_registers,
         0,
         1,
