@@ -111,7 +111,7 @@ async def test_async_update_options_only_reloads() -> None:
 
 @pytest.mark.asyncio
 async def test_async_update_options_does_not_call_compute_register_groups() -> None:
-    """async_update_options must not call private _compute_register_groups on coordinator."""
+    """async_update_options must not call compute_register_groups on coordinator.device_client."""
     from custom_components.thessla_green_modbus import async_update_options
 
     hass = MagicMock()
@@ -126,7 +126,7 @@ async def test_async_update_options_does_not_call_compute_register_groups() -> N
 
     await async_update_options(hass, entry)
 
-    coordinator._compute_register_groups.assert_not_called()
+    coordinator.device_client.compute_register_groups.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

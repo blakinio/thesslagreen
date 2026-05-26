@@ -183,7 +183,7 @@ def test_build_tcp_transport_tcp_rtu_mode():
     from custom_components.thessla_green_modbus.transport.tcp_rtu import RawRtuOverTcpTransport
 
     coord = _make_coordinator()
-    result = coord._build_tcp_transport(CONNECTION_MODE_TCP_RTU)
+    result = coord.device_client._build_tcp_transport(CONNECTION_MODE_TCP_RTU)
     assert isinstance(result, RawRtuOverTcpTransport)
 
 
@@ -193,7 +193,7 @@ def test_build_tcp_transport_tcp_mode():
     from custom_components.thessla_green_modbus.transport.tcp import TcpModbusTransport
 
     coord = _make_coordinator()
-    result = coord._build_tcp_transport(CONNECTION_MODE_TCP)
+    result = coord.device_client._build_tcp_transport(CONNECTION_MODE_TCP)
     assert isinstance(result, TcpModbusTransport)
 
 

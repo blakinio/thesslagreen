@@ -537,3 +537,102 @@ def test_text_py_stores_definition_as_instance_attr() -> None:
     assert "self._definition" in source, (
         "text.py ThesslaGreenText does not store definition as self._definition"
     )
+
+
+# ---------------------------------------------------------------------------
+# entity_category: config for dangerous entities
+# ---------------------------------------------------------------------------
+
+
+def test_dangerous_switch_entities_have_category_config() -> None:
+    """hard_reset_settings, hard_reset_schedule, lock_flag must use 'category': 'config'."""
+    source = _read(MAPPINGS / "_static_discrete.py")
+    for key in ("hard_reset_settings", "hard_reset_schedule", "lock_flag"):
+        block = _get_entity_block(source, key)
+        assert block is not None, f"{key} entity block not found"
+        assert '"category": "config"' in block or "'category': 'config'" in block, (
+            f'{key} is missing "category": "config" in SWITCH_ENTITY_MAPPINGS'
+        )
+
+
+def test_dangerous_select_entities_have_entity_category_config() -> None:
+    """filter_change, configuration_mode, access_level must have entity_category: config."""
+    source = _read(MAPPINGS / "_static_discrete.py")
+    for key in ("filter_change", "configuration_mode", "access_level"):
+        assert _has_risk_field(source, key, "entity_category"), (
+            f"{key} is missing 'entity_category' in SELECT_ENTITY_MAPPINGS"
+        )
+
+
+def test_uart_selects_have_entity_category_config() -> None:
+    """All UART select entities must have entity_category: config via _UART_RISK spread."""
+    source = _read(MAPPINGS / "_static_discrete_uart.py")
+    assert '"entity_category"' in source, (
+        "_static_discrete_uart.py does not contain 'entity_category'"
+    )
+
+
+def test_dangerous_number_entities_have_entity_category_config() -> None:
+    """uart_0_id, uart_1_id, lock_pass must have entity_category: config."""
+    source = _read(MAPPINGS / "_static_numbers.py")
+    for key in ("uart_0_id", "uart_1_id", "lock_pass"):
+        assert _has_risk_field(source, key, "entity_category"), (
+            f"{key} is missing 'entity_category' in NUMBER_OVERRIDES"
+        )
+
+
+def test_device_name_has_entity_category_config() -> None:
+    """device_name must have entity_category: config in TEXT_ENTITY_MAPPINGS."""
+    source = _read(MAPPINGS / "__init__.py")
+    assert _has_risk_field(source, "device_name", "entity_category"), (
+        "device_name is missing 'entity_category' in TEXT_ENTITY_MAPPINGS"
+    )
+
+
+def test_normal_entities_do_not_have_entity_category() -> None:
+    """Normal entities must NOT have entity_category in their mapping."""
+    source = _read(MAPPINGS / "_static_discrete.py")
+    for key in (
+        "mode",
+        "season_mode",
+        "bypass_user_mode",
+        "on_off_panel_mode",
+        "bypass_off",
+        "gwc_off",
+    ):
+        block = _get_entity_block(source, key)
+        assert block is None or '"entity_category"' not in block, (
+            f"Normal entity {key!r} unexpectedly has entity_category"
+        )
+
+
+def test_hard_reset_entities_not_registry_disabled() -> None:
+    """hard_reset_settings and hard_reset_schedule must NOT have entity_registry_enabled_default."""
+    source = _read(MAPPINGS / "_static_discrete.py")
+    for key in ("hard_reset_settings", "hard_reset_schedule"):
+        block = _get_entity_block(source, key)
+        assert block is not None, f"{key} entity block not found"
+        assert "entity_registry_enabled_default" not in block, (
+            f"{key} unexpectedly has entity_registry_enabled_default"
+        )
+
+
+def test_select_py_propagates_entity_category() -> None:
+    """select.py ThesslaGreenSelect.__init__ must read entity_category from definition."""
+    source = _read(COMP / "select.py")
+    assert "entity_category" in source, "select.py does not reference 'entity_category'"
+    assert "EntityCategory" in source, "select.py does not import or use EntityCategory"
+
+
+def test_number_py_propagates_entity_category_from_config() -> None:
+    """number.py _setup_number_attributes must read entity_category from entity_config."""
+    source = _read(COMP / "number.py")
+    assert "entity_category" in source, "number.py does not reference 'entity_category'"
+    assert "EntityCategory" in source, "number.py does not import or use EntityCategory"
+
+
+def test_text_py_propagates_entity_category() -> None:
+    """text.py ThesslaGreenText.__init__ must read entity_category from definition."""
+    source = _read(COMP / "text.py")
+    assert "entity_category" in source, "text.py does not reference 'entity_category'"
+    assert "EntityCategory" in source, "text.py does not import or use EntityCategory"

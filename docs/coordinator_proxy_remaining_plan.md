@@ -123,3 +123,32 @@ Consumer code has been migrated to prefer `coordinator.device_client` for device
 ## 2026-05-18 slice-1 removal
 
 Removed first internal proxy slice from `coordinator.py`: `_last_power_timestamp`, `_total_energy`, `_consecutive_failures`, `_max_failures`, `_failed_registers` (40 -> 35). These were safe because all runtime/test callers now use `coordinator.device_client.*`.
+
+## 2026-05-26 slice-2 removal
+
+Removed five more thin delegate methods from `coordinator.py`:
+
+| Removed delegate | Replaced by |
+|---|---|
+| `_build_scanner_kwargs()` | Not needed on coordinator; `core/client_scanner.py` calls it on `DeviceClient` directly |
+| `_create_scanner()` | Not needed; `_run_device_scan` already uses `self._device_client.async_create_scanner` |
+| `_build_transport_selector_fn()` | Not needed; `client_connection.py` calls it on `DeviceClient` directly |
+| `_compute_register_groups()` | `coordinator/lifecycle.py` updated to call `coordinator.device_client.compute_register_groups()` |
+| `_build_tcp_transport()` | Test call sites updated to `coord.device_client._build_tcp_transport(...)` |
+
+Updated call sites: `coordinator/lifecycle.py:36`, `tests/test_coordinator_lifecycle.py`, `tests/test_coordinator_capabilities.py`, `tests/test_coordinator_package_api.py`, `tests/test_cleanup_audit.py`.
+
+## Remaining delegates (deferred)
+
+The following delegates remain in `coordinator.py` and are deferred because their call sites span core IO modules (`read_batches.py`, `read_bits.py`) that use the `_ModbusIOMixin` protocol:
+
+| Delegate | Risk to remove | Reason |
+|---|---|---|
+| `_get_client_method` | Medium | Called from `coordinator/schedule.py` (`self._get_client_method(...)`) which receives coordinator as `self` |
+| `_mark_registers_failed` | High | Called from `core/read_batches.py` and `core/read_bits.py` via `owner._mark_registers_failed(...)` where `owner` may be coordinator |
+| `_clear_register_failure` | High | Same — core IO mixin protocol |
+| `_find_register_name` | High | Same — core IO mixin protocol |
+| `_process_register_value` | High | Same — core IO mixin protocol |
+
+These can only be removed safely after the read path is fully moved to `DeviceClient` and the coordinator is removed from `_ModbusIOMixin` inheritance. That requires removing `_ModbusIOMixin` from the coordinator's base class list and moving the update data path, which is a larger refactor gated on real-device validation completion.
+

@@ -14,6 +14,7 @@ from typing import Any
 from homeassistant.components.text import TextEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pymodbus.exceptions import ConnectionException, ModbusException
 
@@ -88,6 +89,8 @@ class ThesslaGreenText(ThesslaGreenEntity, TextEntity):
         self._attr_icon = definition.get("icon", "mdi:rename")
         self._attr_has_entity_name = True
         self._attr_native_max = definition.get("max_length", 16)
+        if _ec := definition.get("entity_category"):
+            self._attr_entity_category = EntityCategory(_ec)
 
     @property
     def available(self) -> bool:

@@ -44,7 +44,7 @@ async def test_async_setup_orchestration_registers_stop_listener_once():
     coord = _make_coordinator()
     coord._prepare_registers_for_setup = AsyncMock()
     coord._warn_missing_device_info = MagicMock()
-    coord._compute_register_groups = MagicMock()
+    coord.device_client.compute_register_groups = MagicMock()
     coord._test_connection = AsyncMock()
     coord._async_handle_stop = AsyncMock()
 
@@ -57,7 +57,7 @@ async def test_async_setup_orchestration_registers_stop_listener_once():
     assert result is True
     coord._prepare_registers_for_setup.assert_called_once()
     coord._warn_missing_device_info.assert_called_once()
-    coord._compute_register_groups.assert_called_once()
+    coord.device_client.compute_register_groups.assert_called_once()
     coord._test_connection.assert_called_once()
     coord.hass.bus.async_listen_once.assert_called_once()
     assert coord._stop_listener is stop_remove
