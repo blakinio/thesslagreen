@@ -23,13 +23,19 @@ def test_fan_creation_and_state(mock_coordinator):
 
 
 def test_flow_rate_uses_supply_flow_rate(mock_coordinator):
-    """Ensure supply_flow_rate is used when other registers unavailable."""
+    """supply_flow_rate is m³/h and must not drive fan percentage.
+
+    It remains visible as extra_state_attributes['supply_flow'].
+    """
     mock_coordinator.data.pop("supply_percentage", None)
     mock_coordinator.data["supply_flow_rate"] = 80
     fan = ThesslaGreenFan(mock_coordinator)
-    assert fan._get_current_flow_rate() == 80.0
-    assert fan.percentage == 80
-    assert fan.is_on is True
+    # m³/h register must not be used for percentage calculation
+    assert fan._get_current_flow_rate() is None
+    assert fan.percentage is None
+    assert fan.is_on is None
+    # but it must still appear as the supply_flow attribute
+    assert fan.extra_state_attributes.get("supply_flow") == 80
 
 
 def test_fan_turn_on_modbus_failure(mock_coordinator):
@@ -260,3 +266,51 @@ def test_is_writable_holding_register_false_when_missing(mock_coordinator):
     )
     fan = ThesslaGreenFan(mock_coordinator)
     assert fan._is_writable_holding_register("air_flow_rate_manual") is False  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# Percentage register priority tests (regression for m³/h-as-percentage bug)
+# ---------------------------------------------------------------------------
+
+
+def test_fan_percentage_uses_supply_percentage_not_airflow(mock_coordinator):
+    """fan.percentage reads supply_percentage (80 %) even when supply_air_flow=268 m³/h."""
+    mock_coordinator.data["supply_air_flow"] = 268
+    mock_coordinator.data["exhaust_air_flow"] = 267
+    mock_coordinator.data["supply_percentage"] = 80
+    mock_coordinator.data["exhaust_percentage"] = 80
+    fan = ThesslaGreenFan(mock_coordinator)
+    assert fan.percentage == 80  # nosec B101
+
+
+def test_fan_percentage_uses_manual_setpoint_fallback(mock_coordinator):
+    """When supply_percentage absent, air_flow_rate_manual is used in manual mode."""
+    mock_coordinator.data.pop("supply_percentage", None)
+    mock_coordinator.data.pop("exhaust_percentage", None)
+    mock_coordinator.data["mode"] = 1  # manual
+    mock_coordinator.data["air_flow_rate_manual"] = 60
+    fan = ThesslaGreenFan(mock_coordinator)
+    assert fan.percentage == 60  # nosec B101
+
+
+def test_fan_percentage_clamps_device_over_100(mock_coordinator):
+    """Device reports supply_percentage=109; HA clamps to 100, raw value in attributes."""
+    mock_coordinator.data["max_percentage"] = 109
+    mock_coordinator.data["supply_percentage"] = 109
+    fan = ThesslaGreenFan(mock_coordinator)
+    assert fan.percentage == 100  # nosec B101
+    assert fan.extra_state_attributes.get("supply_percentage") == 109  # nosec B101
+
+
+def test_fan_extra_attributes_exposes_flow_and_percentage(mock_coordinator):
+    """extra_state_attributes exposes supply_flow, exhaust_flow, supply_percentage, exhaust_percentage."""
+    mock_coordinator.data["supply_air_flow"] = 268
+    mock_coordinator.data["exhaust_air_flow"] = 267
+    mock_coordinator.data["supply_percentage"] = 80
+    mock_coordinator.data["exhaust_percentage"] = 80
+    fan = ThesslaGreenFan(mock_coordinator)
+    attrs = fan.extra_state_attributes
+    assert attrs.get("supply_flow") == 268  # nosec B101
+    assert attrs.get("exhaust_flow") == 267  # nosec B101
+    assert attrs.get("supply_percentage") == 80  # nosec B101
+    assert attrs.get("exhaust_percentage") == 80  # nosec B101

@@ -75,13 +75,6 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     """
 
     _MODE_MAP: ClassVar[dict[int, str]] = {0: "auto", 1: "manual", 2: "temporary"}
-    _FLOW_REGISTERS: ClassVar[tuple[str, ...]] = (
-        "supply_air_flow",
-        "supply_flow_rate",
-        "supply_percentage",
-        "air_flow_rate_manual",
-        "air_flow_rate_temporary_2",
-    )
 
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the fan entity."""
@@ -138,13 +131,31 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         return min(100, raw_clamped)
 
     def _get_current_flow_rate(self) -> float | None:
-        """Get current flow rate from available registers."""
-        # Priority order for reading current flow rate
-        for register in self._FLOW_REGISTERS:
-            if register in self.coordinator.data:
-                value = self.coordinator.data[register]
-                if value is not None and isinstance(value, int | float):
-                    return float(value)
+        """Get current percentage-based flow rate from available registers.
+
+        Only percentage-like registers are used; m³/h airflow registers
+        (supply_air_flow, supply_flow_rate, etc.) are intentionally excluded
+        because treating them as a percentage would clamp 268 m³/h → 100 %.
+        """
+        data = self.coordinator.data
+
+        # Device-reported percentage sensors take priority.
+        for register in ("supply_percentage", "exhaust_percentage"):
+            value = data.get(register)
+            if value is not None and isinstance(value, int | float):
+                return float(value)
+
+        # Mode-aware setpoint fallback.
+        current_mode = self._get_current_mode()
+        if current_mode == "temporary":
+            candidates: tuple[str, ...] = ("air_flow_rate_temporary_2", "air_flow_rate_manual")
+        else:
+            candidates = ("air_flow_rate_manual",)
+
+        for register in candidates:
+            value = data.get(register)
+            if value is not None and isinstance(value, int | float):
+                return float(value)
 
         return None
 
@@ -288,12 +299,18 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         """Return additional state attributes."""
         attributes = {}
 
-        # Add flow information
-        if "supply_flow_rate" in self.coordinator.data:
-            attributes["supply_flow"] = self.coordinator.data["supply_flow_rate"]
+        # Add m³/h flow information (supply_air_flow preferred, supply_flow_rate as fallback).
+        supply_flow = self.coordinator.data.get("supply_air_flow")
+        if supply_flow is None:
+            supply_flow = self.coordinator.data.get("supply_flow_rate")
+        if supply_flow is not None:
+            attributes["supply_flow"] = supply_flow
 
-        if "exhaust_flow_rate" in self.coordinator.data:
-            attributes["exhaust_flow"] = self.coordinator.data["exhaust_flow_rate"]
+        exhaust_flow = self.coordinator.data.get("exhaust_air_flow")
+        if exhaust_flow is None:
+            exhaust_flow = self.coordinator.data.get("exhaust_flow_rate")
+        if exhaust_flow is not None:
+            attributes["exhaust_flow"] = exhaust_flow
 
         if "supply_percentage" in self.coordinator.data:
             attributes["supply_percentage"] = self.coordinator.data["supply_percentage"]
