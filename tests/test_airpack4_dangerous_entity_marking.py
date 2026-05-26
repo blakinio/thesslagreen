@@ -592,7 +592,14 @@ def test_device_name_has_entity_category_config() -> None:
 def test_normal_entities_do_not_have_entity_category() -> None:
     """Normal entities must NOT have entity_category in their mapping."""
     source = _read(MAPPINGS / "_static_discrete.py")
-    for key in ("mode", "season_mode", "bypass_user_mode", "on_off_panel_mode", "bypass_off", "gwc_off"):
+    for key in (
+        "mode",
+        "season_mode",
+        "bypass_user_mode",
+        "on_off_panel_mode",
+        "bypass_off",
+        "gwc_off",
+    ):
         block = _get_entity_block(source, key)
         assert block is None or '"entity_category"' not in block, (
             f"Normal entity {key!r} unexpectedly has entity_category"
