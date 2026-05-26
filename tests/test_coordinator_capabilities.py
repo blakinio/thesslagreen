@@ -16,7 +16,7 @@ def test_compute_register_groups_safe_scan():
         "coil_registers": set(),
         "discrete_inputs": set(),
     }
-    coord._compute_register_groups()
+    coord.device_client.compute_register_groups()
     groups = coord.device_client._register_groups.get("input_registers", [])
     assert isinstance(groups, list)
     assert len(groups) >= 1
@@ -34,7 +34,7 @@ def test_compute_register_groups_safe_scan_unknown_register():
         "coil_registers": set(),
         "discrete_inputs": set(),
     }
-    coord._compute_register_groups()
+    coord.device_client.compute_register_groups()
     # No exception should be raised; groups for input_registers is empty since reg not in map
     groups = coord.device_client._register_groups.get("input_registers", [])
     assert isinstance(groups, list)
@@ -86,7 +86,7 @@ def test_compute_register_groups_safe_scan_key_error():
         "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         side_effect=KeyError("mode"),
     ):
-        coord._compute_register_groups()
+        coord.device_client.compute_register_groups()
     assert "holding_registers" in coord.device_client._register_groups
 
 
@@ -95,7 +95,7 @@ def test_compute_register_groups_non_safe_addr_none():
     coord = _make_coordinator(safe_scan=False)
     coord.device_client.available_registers = {"holding_registers": {"unknown_reg"}}
     coord.device_client._register_maps = {"holding_registers": {}}  # addr will be None
-    coord._compute_register_groups()
+    coord.device_client.compute_register_groups()
     assert coord.device_client._register_groups.get("holding_registers", []) == []
 
 
@@ -108,7 +108,7 @@ def test_compute_register_groups_non_safe_key_error():
         "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
         side_effect=KeyError("mode"),
     ):
-        coord._compute_register_groups()
+        coord.device_client.compute_register_groups()
     assert "holding_registers" in coord.device_client._register_groups
 
 

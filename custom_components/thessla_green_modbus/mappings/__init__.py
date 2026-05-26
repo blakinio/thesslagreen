@@ -92,6 +92,7 @@ TEXT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
         "icon": "mdi:rename",
         "register_type": "holding_registers",
         "max_length": 16,
+        "entity_category": "config",
         "risk_level": "advanced",
         "risk_category": "advanced_configuration",
         "safety_warning": "Advanced multi-register device name field: write only with full understanding of encoding.",

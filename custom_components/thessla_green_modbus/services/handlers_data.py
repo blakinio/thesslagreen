@@ -14,8 +14,8 @@ from .schema import (
 )
 
 
-def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
-    """Register refresh/scan services."""
+def _register_refresh_device_data_service(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
+    """Register the refresh_device_data and get_unknown_registers services."""
 
     async def refresh_device_data(call: ServiceCall) -> None:
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
@@ -32,6 +32,17 @@ def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
                     "scanned_registers": coordinator.device_client.scanned_registers,
                 },
             )
+
+    hass.services.async_register(
+        deps.domain, "refresh_device_data", refresh_device_data, REFRESH_DEVICE_DATA_SCHEMA
+    )
+    hass.services.async_register(
+        deps.domain, "get_unknown_registers", get_unknown_registers, REFRESH_DEVICE_DATA_SCHEMA
+    )
+
+
+def _register_scan_all_registers_service(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
+    """Register the scan_all_registers service."""
 
     async def scan_all_registers(call: ServiceCall) -> dict[str, Any] | None:
         results: dict[str, Any] = {}
@@ -88,6 +99,16 @@ def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
             )
         return results or None
 
+    hass.services.async_register(
+        deps.domain, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA
+    )
+
+
+def _register_validate_known_registers_service(
+    hass: HomeAssistant, deps: ServiceHandlerDeps
+) -> None:
+    """Register the validate_known_registers service."""
+
     async def validate_known_registers(call: ServiceCall) -> dict[str, Any] | None:
         """Read only known registers from integration definitions."""
         results: dict[str, Any] = {}
@@ -136,17 +157,15 @@ def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
         return results or None
 
     hass.services.async_register(
-        deps.domain, "refresh_device_data", refresh_device_data, REFRESH_DEVICE_DATA_SCHEMA
-    )
-    hass.services.async_register(
-        deps.domain, "get_unknown_registers", get_unknown_registers, REFRESH_DEVICE_DATA_SCHEMA
-    )
-    hass.services.async_register(
-        deps.domain, "scan_all_registers", scan_all_registers, SCAN_ALL_REGISTERS_SCHEMA
-    )
-    hass.services.async_register(
         deps.domain,
         "validate_known_registers",
         validate_known_registers,
         VALIDATE_KNOWN_REGISTERS_SCHEMA,
     )
+
+
+def register_data_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
+    """Register refresh/scan services."""
+    _register_refresh_device_data_service(hass, deps)
+    _register_scan_all_registers_service(hass, deps)
+    _register_validate_known_registers_service(hass, deps)

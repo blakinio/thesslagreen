@@ -33,7 +33,7 @@ async def async_setup(coordinator: ThesslaGreenModbusCoordinator) -> bool:
 
     await coordinator._prepare_registers_for_setup()
     coordinator._warn_missing_device_info()
-    coordinator._compute_register_groups()
+    coordinator.device_client.compute_register_groups()
     await coordinator._test_connection()
 
     if coordinator._stop_listener is None and hasattr(coordinator.hass, "bus"):

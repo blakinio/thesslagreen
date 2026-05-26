@@ -14,6 +14,7 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pymodbus.exceptions import ConnectionException, ModbusException
 
@@ -95,6 +96,8 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         self._states = definition["states"]
         self._reverse_states = {v: k for k, v in self._states.items()}
         self._attr_options = list(self._states.keys())
+        if _ec := definition.get("entity_category"):
+            self._attr_entity_category = EntityCategory(_ec)
 
     @property
     def available(self) -> bool:

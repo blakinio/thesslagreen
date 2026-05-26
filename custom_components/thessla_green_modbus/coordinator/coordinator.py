@@ -52,7 +52,6 @@ from ..scanner import (
     ThesslaGreenDeviceScanner,  # noqa: F401 – patch target for tests
     is_request_cancelled_error,
 )
-from ..transport.base import BaseModbusTransport
 from ..utils import resolve_connection_settings
 from .config_normalization import normalize_scan_interval as _normalize_scan_interval_impl
 from .config_properties import _CoordinatorConfigPropertiesMixin
@@ -302,14 +301,6 @@ class ThesslaGreenModbusCoordinator(
         """Return a Modbus method from transport/client or a no-op placeholder."""
         return self._device_client._get_client_method(name)
 
-    def _build_scanner_kwargs(self) -> dict[str, Any]:
-        """Return constructor kwargs shared by all scanner creation paths."""
-        return self._device_client._build_scanner_kwargs()
-
-    async def _create_scanner(self) -> Any:
-        """Instantiate a ThesslaGreenDeviceScanner using its create() factory."""
-        return await self._device_client.async_create_scanner()
-
     def _apply_scan_result(self, scan_result: dict[str, Any]) -> None:
         """Store and process a completed device scan result."""
         _apply_scan_result_impl(
@@ -390,10 +381,6 @@ class ThesslaGreenModbusCoordinator(
         """Store scan results in config entry options."""
         _store_scan_cache_impl(self)
 
-    def _compute_register_groups(self) -> None:
-        """Pre-compute register groups — delegates to DeviceClient."""
-        self._device_client.compute_register_groups()
-
     def _mark_registers_failed(self, names: Iterable[str | None]) -> None:
         """Record registers that failed to read."""
         self._device_client._mark_registers_failed(names)
@@ -431,22 +418,11 @@ class ThesslaGreenModbusCoordinator(
         """Ensure Modbus connection is established (alias used by coordinator submodules)."""
         await self._ensure_connected()
 
-    def _build_tcp_transport(
-        self,
-        mode: str,
-    ) -> BaseModbusTransport:
-        """Delegate TCP transport building to DeviceClient."""
-        return self._device_client._build_tcp_transport(mode)
-
     async def _try_direct_client_connect(self, *, allow_parameterless_ctor: bool) -> bool:
         """Try connecting via AsyncModbusTcpClient — delegates to DeviceClient."""
         return await self._device_client._try_direct_client_connect(
             allow_parameterless_ctor=allow_parameterless_ctor
         )
-
-    def _build_transport_selector_fn(self) -> Any:
-        """Return the transport selector callable — delegates to DeviceClient."""
-        return self._device_client._build_transport_selector_fn()
 
     async def _ensure_connected(self) -> None:
         """Ensure Modbus connection is established — delegates to DeviceClient."""

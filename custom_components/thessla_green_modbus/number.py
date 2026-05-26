@@ -176,6 +176,11 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         ):
             self._attr_entity_category = EntityCategory.CONFIG
 
+        # Explicit mapping override always wins
+        if "entity_category" in self.entity_config:
+            ec_val = self.entity_config["entity_category"]
+            self._attr_entity_category = EntityCategory(ec_val) if isinstance(ec_val, str) else ec_val
+
     @property
     def native_value(self) -> float | None:
         """Return the current value."""

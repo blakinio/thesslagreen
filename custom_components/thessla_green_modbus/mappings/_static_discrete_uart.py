@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 _UART_RISK = {
+    "entity_category": "config",
     "risk_level": "advanced",
     "risk_category": "communication_lockout",
     "safety_warning": "Advanced communication setting: changing this may break Modbus communication or make the device unreachable.",
