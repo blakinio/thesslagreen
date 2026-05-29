@@ -16,10 +16,10 @@
 | Overall validation | PARTIAL — user-reported, formal evidence pending |
 | Quality scale gate | Bronze — no upgrade until formal evidence is committed |
 | Fan percentage fix (#1682) | FIXED in code; real-device re-test evidence pending |
-| IO ownership cleanup (#1684) | Coordinator no longer owns low-level IO; post-#1684 HA validation still required |
+| IO ownership cleanup (#1684) | Coordinator no longer owns low-level IO; post-#1684/#1685 HA validation still required |
 | Temperature sensors | User-reported working; no log evidence committed |
 | Vendor coverage | 353/353 registers — verified by tool (`compare_airpack4_vendor_coverage.py`) |
-| Dangerous entities | Present and enabled; `entity_category=config` added (this PR) |
+| Dangerous entities | Present and enabled; `entity_category=config` added in #1683 |
 
 ---
 
@@ -28,7 +28,7 @@
 | Item | Value |
 |------|-------|
 | Home Assistant Core | Pending user data |
-| Integration version | Current `main` — commit `bea0fdc` (post-PR #1682) |
+| Integration version | Current `main` — commit `6826be4` (post-PR #1685) |
 | Device model | ThesslaGreen AirPack 4 (user-reported) |
 | Firmware version | Pending — device registers may not expose firmware |
 | Connection type | Pending user data (TCP / RTU) |
