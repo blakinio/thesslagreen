@@ -292,9 +292,8 @@ async def run_full_scan(
     )
 
 
-async def scan(scanner: Any) -> dict[str, Any]:
-    """Perform the actual register scan using an established connection."""
-    scan_started = time.monotonic()
+def _check_scan_transport_ready(scanner: Any) -> None:
+    """Raise ConnectionException if no usable transport or client is available."""
     transport = scanner._transport
     if transport is None:
         if scanner._client is None:
@@ -302,11 +301,72 @@ async def scan(scanner: Any) -> dict[str, Any]:
     elif scanner._client is None and not transport.is_connected():
         raise ConnectionException("Transport not connected")
 
-    device = ScannerDeviceInfo()
 
+async def _collect_scan_device_info(scanner: Any, device: ScannerDeviceInfo) -> None:
+    """Read firmware and identity registers and populate device info."""
     info_regs = await scanner._read_input_block(0, 30) or []
     await scanner._scan_firmware_info(info_regs, device)
     await scanner._scan_device_identity(info_regs, device)
+
+
+async def _finalize_scan_output(
+    scanner: Any,
+    device: ScannerDeviceInfo,
+    caps: Any,
+    input_registers: Any,
+    holding_registers: Any,
+    coil_registers: Any,
+    discrete_registers: Any,
+    input_max: int,
+    holding_max: int,
+    coil_max: int,
+    discrete_max: int,
+    unknown_registers: dict[str, dict[int, Any]],
+    scanned_registers: dict[str, int],
+    scan_started: float,
+) -> dict[str, Any]:
+    """Compute scan blocks, collect missing registers, and build the result dict."""
+    scan_blocks = scanner._compute_scan_blocks(
+        input_registers,
+        holding_registers,
+        coil_registers,
+        discrete_registers,
+        input_max,
+        holding_max,
+        coil_max,
+        discrete_max,
+    )
+    scanner._log_skipped_ranges()
+
+    raw_registers = await _accumulate_raw_registers(scanner)
+
+    missing_registers = scanner._collect_missing_registers(
+        input_registers, holding_registers, coil_registers, discrete_registers
+    )
+    scan_runtime.log_missing_registers(missing_registers)
+
+    available_registers = {key: set(value) for key, value in scanner.available_registers.items()}
+    return scan_runtime.build_scan_result(
+        scanner,
+        device=device,
+        caps=caps,
+        available_registers=available_registers,
+        unknown_registers=unknown_registers,
+        scanned_registers=scanned_registers,
+        scan_blocks=scan_blocks,
+        missing_registers=missing_registers,
+        scan_started=scan_started,
+        raw_registers=raw_registers,
+    )
+
+
+async def scan(scanner: Any) -> dict[str, Any]:
+    """Perform the actual register scan using an established connection."""
+    scan_started = time.monotonic()
+    _check_scan_transport_ready(scanner)
+
+    device = ScannerDeviceInfo()
+    await _collect_scan_device_info(scanner, device)
 
     (
         input_registers,
@@ -342,7 +402,10 @@ async def scan(scanner: Any) -> dict[str, Any]:
     ]
     _LOGGER.info("Detected %d capabilities", len(device.capabilities))
 
-    scan_blocks = scanner._compute_scan_blocks(
+    return await _finalize_scan_output(
+        scanner,
+        device,
+        caps,
         input_registers,
         holding_registers,
         coil_registers,
@@ -351,29 +414,9 @@ async def scan(scanner: Any) -> dict[str, Any]:
         holding_max,
         coil_max,
         discrete_max,
-    )
-    scanner._log_skipped_ranges()
-
-    raw_registers = await _accumulate_raw_registers(scanner)
-
-    missing_registers = scanner._collect_missing_registers(
-        input_registers, holding_registers, coil_registers, discrete_registers
-    )
-
-    scan_runtime.log_missing_registers(missing_registers)
-
-    available_registers = {key: set(value) for key, value in scanner.available_registers.items()}
-    return scan_runtime.build_scan_result(
-        scanner,
-        device=device,
-        caps=caps,
-        available_registers=available_registers,
-        unknown_registers=unknown_registers,
-        scanned_registers=scanned_registers,
-        scan_blocks=scan_blocks,
-        missing_registers=missing_registers,
-        scan_started=scan_started,
-        raw_registers=raw_registers,
+        unknown_registers,
+        scanned_registers,
+        scan_started,
     )
 
 
