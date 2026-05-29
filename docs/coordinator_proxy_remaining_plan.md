@@ -178,6 +178,45 @@ Previously, `read_batches.py` used `getattr(owner, "_failed_registers", set())` 
 4. Failed-register tracking works via device_client
 5. Fan-percentage and dangerous-entity regressions guarded
 
+## 2026-05-29 slice-4 — lifecycle boundary cleanup (this PR)
+
+Inspected 8 HA lifecycle/connection adapter methods in coordinator:
+`_ensure_connection`, `_ensure_connected`, `_try_direct_client_connect`,
+`_disconnect_locked`, `_close_client_connection`, `_disconnect`, `_async_setup_client`,
+`_test_connection`.
+
+### Kept as intentional HA-boundary adapters (documented in docstrings)
+
+| Method | Why kept |
+|---|---|
+| `_ensure_connection` | Active duck-typing entry point called by schedule, update, retry, client_registers submodules |
+| `_disconnect_locked` | Passed as `disconnect_locked_fn` callback to `core/connection_lifecycle.py:29` |
+| `_disconnect` | Called by errors.py, schedule.py, update.py, write_path.py, and async_shutdown |
+| `_test_connection` | Called in production by `coordinator/lifecycle.py:37` during HA setup |
+| `_async_setup_client` | Intentional test-facing helper (documented); mirrors HA start-up path for unit tests |
+
+### Removed unused coordinator proxies
+
+| Removed | Why |
+|---|---|
+| `_ensure_connected` | One-line forwarder (`await self._device_client.async_ensure_connected()`); sole caller was `_ensure_connection` itself. Inlined. |
+| `_try_direct_client_connect` | Zero callers on coordinator; `DeviceClient._try_direct_client_connect` is called directly via `self` inside `client_connection.py`. |
+| `_close_client_connection` | Zero callers; `_disconnect_locked` in DeviceClient uses the `_close_client_connection_impl` function directly, never going through the coordinator proxy. |
+
+### Why these are not HA-boundary adapters
+
+Unlike `_ensure_connection` / `_disconnect_locked` / `_disconnect` (which satisfy a
+duck-typing protocol consumed by coordinator submodules), the three removed methods were
+never called from outside the class definition itself.  No production code, no tests, and
+no protocol stubs required them on the coordinator.
+
+### New tests
+
+Three assertions added to `tests/test_coordinator_lifecycle.py`:
+- `test_coordinator_no_ensure_connected`
+- `test_coordinator_no_try_direct_client_connect`
+- `test_coordinator_no_close_client_connection`
+
 ## Remaining delegates (none — cleanup complete)
 
 All coordinator delegates backed by `self._device_client.*` have been removed. The
