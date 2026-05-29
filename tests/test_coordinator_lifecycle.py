@@ -61,3 +61,46 @@ async def test_async_setup_orchestration_registers_stop_listener_once():
     coord._test_connection.assert_called_once()
     coord.hass.bus.async_listen_once.assert_called_once()
     assert coord._stop_listener is stop_remove
+
+
+# ---------------------------------------------------------------------------
+# Removed lifecycle proxies — slice-4 (2026-05-29)
+# _ensure_connected, _try_direct_client_connect, _close_client_connection
+# were unused coordinator proxies; confirmed absent after cleanup.
+# ---------------------------------------------------------------------------
+
+
+def test_coordinator_no_ensure_connected():
+    """_ensure_connected was a one-line forwarder with zero callers; must be gone."""
+    coord = _make_coordinator()
+    assert not any(
+        "_ensure_connected" in cls.__dict__
+        for cls in type(coord).__mro__
+        if cls.__name__ == "ThesslaGreenModbusCoordinator"
+    ), "_ensure_connected still defined on ThesslaGreenModbusCoordinator"
+    # DeviceClient uses async_ensure_connected (public name); _ensure_connection proxies it.
+    assert callable(coord.device_client.async_ensure_connected)
+
+
+def test_coordinator_no_try_direct_client_connect():
+    """_try_direct_client_connect had zero coordinator-level callers; must be gone."""
+    coord = _make_coordinator()
+    assert not any(
+        "_try_direct_client_connect" in cls.__dict__
+        for cls in type(coord).__mro__
+        if cls.__name__ == "ThesslaGreenModbusCoordinator"
+    ), "_try_direct_client_connect still defined on ThesslaGreenModbusCoordinator"
+    # DeviceClient still owns the implementation.
+    assert callable(coord.device_client._try_direct_client_connect)
+
+
+def test_coordinator_no_close_client_connection():
+    """_close_client_connection had zero coordinator-level callers; must be gone."""
+    coord = _make_coordinator()
+    assert not any(
+        "_close_client_connection" in cls.__dict__
+        for cls in type(coord).__mro__
+        if cls.__name__ == "ThesslaGreenModbusCoordinator"
+    ), "_close_client_connection still defined on ThesslaGreenModbusCoordinator"
+    # DeviceClient still owns the implementation.
+    assert callable(coord.device_client._close_client_connection)

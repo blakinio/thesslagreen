@@ -376,7 +376,7 @@ class ThesslaGreenModbusCoordinator(
         _store_scan_cache_impl(self)
 
     async def _test_connection(self) -> None:
-        """Test initial connection to the device."""
+        """HA-boundary adapter — called by coordinator/lifecycle.py during HA setup."""
         async with self._device_client._write_lock:
             await _run_connection_test_impl(
                 ensure_connection=self._ensure_connection,
@@ -389,11 +389,11 @@ class ThesslaGreenModbusCoordinator(
             )
 
     async def _async_setup_client(self) -> bool:
-        """Set up the Modbus client if needed.
+        """Intentional test-facing helper — exercises setup-client-with-retry logic.
 
-        Although only invoked in tests within this repository, this helper
-        mirrors the logic executed during Home Assistant start-up. It returns
-        ``True`` on success and ``False`` on failure.
+        Only invoked in tests; it mirrors the connection-establishment path that runs
+        during Home Assistant start-up so that path can be unit-tested without a full
+        HA lifecycle.  Returns ``True`` on success and ``False`` on failure.
         """
         return await _setup_client_with_retry_impl(
             ensure_connection=self._ensure_connection,
@@ -401,17 +401,12 @@ class ThesslaGreenModbusCoordinator(
         )
 
     async def _ensure_connection(self) -> None:
-        """Ensure Modbus connection is established (alias used by coordinator submodules)."""
-        await self._ensure_connected()
+        """HA-boundary adapter — called by coordinator submodules and duck-typed by core.
 
-    async def _try_direct_client_connect(self, *, allow_parameterless_ctor: bool) -> bool:
-        """Try connecting via AsyncModbusTcpClient — delegates to DeviceClient."""
-        return await self._device_client._try_direct_client_connect(
-            allow_parameterless_ctor=allow_parameterless_ctor
-        )
-
-    async def _ensure_connected(self) -> None:
-        """Ensure Modbus connection is established — delegates to DeviceClient."""
+        Submodules (schedule, update, retry, client_registers) receive ``coordinator``
+        and call ``_ensure_connection()`` to establish the Modbus connection.  This is
+        an intentional boundary method; it is *not* proxy debt.
+        """
         await self._device_client.async_ensure_connected()
 
     async def _async_update_data(self) -> dict[str, Any]:
@@ -423,15 +418,20 @@ class ThesslaGreenModbusCoordinator(
         return await _async_update_data_impl(self)
 
     async def _disconnect_locked(self) -> None:
-        """Disconnect from Modbus device without acquiring locks — delegates to DeviceClient."""
+        """HA-boundary adapter — passed as a callback to core.connection_lifecycle.
+
+        ``ensure_connected_lifecycle`` receives this as ``disconnect_locked_fn`` so it
+        can disconnect without re-acquiring the already-held client lock.  This is an
+        intentional boundary method; it is *not* proxy debt.
+        """
         await self._device_client._disconnect_locked()
 
-    async def _close_client_connection(self) -> None:
-        """Close client object safely — delegates to DeviceClient."""
-        await self._device_client._close_client_connection()
-
     async def _disconnect(self) -> None:
-        """Disconnect from Modbus device."""
+        """HA-boundary adapter — disconnect called by coordinator submodules.
+
+        Used by errors, schedule, update, write_path, and async_shutdown.  This is an
+        intentional boundary method; it is *not* proxy debt.
+        """
         async with self._device_client._client_lock:
             await self._disconnect_locked()
 
