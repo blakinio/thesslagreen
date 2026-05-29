@@ -180,7 +180,7 @@ class ThesslaGreenModbusCoordinator(
         _pre_backoff = _normalize_backoff_impl(normalized_cfg.backoff)
         _pre_jitter = _parse_backoff_jitter_impl(normalized_cfg.backoff_jitter)
 
-        # Create DeviceClient first — all device-state properties proxy to it.
+        # Create DeviceClient first — it owns all device-domain state and Modbus IO.
         self._device_client = ThesslaGreenDeviceClient(
             normalized_cfg,
             hass=hass,
@@ -202,7 +202,7 @@ class ThesslaGreenModbusCoordinator(
         )
         self.hass = hass
 
-        # Apply coordinator config — writes go through property proxies to DeviceClient.
+        # Apply coordinator config — property proxies forward writes to DeviceClient.
         _apply_coordinator_config_impl(
             self,
             normalized_cfg,
@@ -213,7 +213,7 @@ class ThesslaGreenModbusCoordinator(
             resolve_effective_batch_fn=_resolve_effective_batch_impl,
         )
 
-        # Initialize runtime state — writes go through property proxies to DeviceClient.
+        # Initialize runtime state — property proxies forward writes to DeviceClient.
         _initialize_runtime_state_impl(self, entry=entry)
 
     @classmethod

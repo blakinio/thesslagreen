@@ -16,10 +16,11 @@
 | Overall validation | PARTIAL — user-reported, formal evidence pending |
 | Quality scale gate | Bronze — no upgrade until formal evidence is committed |
 | Fan percentage fix (#1682) | FIXED in code; real-device re-test evidence pending |
-| IO ownership cleanup (#1684) | Coordinator no longer owns low-level IO; post-#1684/#1685 HA validation still required |
+| Dangerous entities config category (#1683) | Confirmed by code audit; entity_category=config, remain enabled |
+| IO ownership cleanup (#1684) | DeviceClient is sole IO owner; post-#1684 HA validation pending |
+| CI / Python 3.13 validation (#1686) | CI now requires Python 3.13, ruff checks blocking |
 | Temperature sensors | User-reported working; no log evidence committed |
 | Vendor coverage | 353/353 registers — verified by tool (`compare_airpack4_vendor_coverage.py`) |
-| Dangerous entities | Present and enabled; `entity_category=config` added in #1683 |
 
 ---
 
@@ -28,11 +29,15 @@
 | Item | Value |
 |------|-------|
 | Home Assistant Core | Pending user data |
-| Integration version | Current `main` — commit `6826be4` (post-PR #1685) |
+| Integration version | Current `main` — commit `6955171` (post-PR #1686) |
 | Device model | ThesslaGreen AirPack 4 (user-reported) |
 | Firmware version | Pending — device registers may not expose firmware |
 | Connection type | Pending user data (TCP / RTU) |
 | Host / Port / Slave ID | Pending user data |
+| Scan interval | Pending user data |
+| max_registers_per_request | Pending user data (default varies by scan mode) |
+| force_full_register_list | Pending user data |
+| connection_mode | Pending user data |
 | Python on HA host | ≥ 3.13 (required by pyproject.toml) |
 
 ---
@@ -42,19 +47,28 @@
 | Item | Status | Evidence |
 |------|--------|----------|
 | Integration setup completes without traceback | User-reported OK | No log committed |
-| Entity count after reload/restart | User-reported ~370 entities visible | No screenshot committed |
+| Reload / restart works | User-reported OK | No log committed |
+| Entities created after restart | User-reported ~370 entities visible | No screenshot committed |
+| Approximate entity count | ~367 (verified by tools; user-reported ~370) | No screenshot committed |
 | Temperature sensors available | User-reported working | No log committed |
-| Fan percentage displays correct % after #1682 | Pending re-test | Fix is in code (unit tests pass) |
+| Fan percentage displays correct % after #1682 | Pending re-test | Fix in code; unit tests pass |
+| Supply fan percentage sane (0–100) | Pending re-test | — |
+| Exhaust fan percentage sane (0–100) | Pending re-test | — |
+| Supply m³/h sensor visible separately | Not yet verified on device | — |
+| Exhaust m³/h sensor visible separately | Not yet verified on device | — |
 | Bypass / free cooling | User-reported working | No log committed |
 | Device clock entity visible | User-reported `clock` entity present | No screenshot committed |
 | Clock sync | Not yet tested on device | — |
-| Writable entities | Not yet verified on device | — |
+| Writable entities work | Not yet verified on device | — |
+| `refresh_device_data` service | Not yet tested on device | — |
 | `validate_known_registers` service | Not yet tested on device | — |
 | `scan_all_registers` service | Not yet tested on device | — |
 | Diagnostics download | Not yet tested on device | — |
-| No transaction_id mismatch | Not yet verified | — |
-| No blocking I/O warning | Not yet verified | — |
-| Dangerous entities present and enabled | Confirmed by code audit | entity_category=config added, not disabled |
+| No transaction_id mismatch observed | Not yet verified | — |
+| No blocking I/O warning in HA log | Not yet verified | — |
+| No false “Modbus transport disconnected” errors | Not yet verified | — |
+| Unsupported registers non-critical (no crash) | Confirmed by code design | entity marked unavailable, not crashing |
+| Dangerous entities present and enabled | Confirmed by code audit | entity_category=config added in #1683, not disabled |
 
 ---
 
@@ -69,12 +83,13 @@ The following data must be provided and committed before formal validation is co
 5. **Scan settings** (safe_scan, deep_scan, max_registers_per_request if non-default)
 6. **Screenshot or log** after integration reload showing entity count and no errors
 7. **Fan percentage result after #1682** — HA state of `fan.thesslagreen_ventilation` at various speeds
-8. **Clock sync result** if tested (`sync_device_clock` service call log)
-9. **Filtered log lines** from integration setup/first update cycle:
-   ```
-   grep "thessla_green" /config/home-assistant.log | head -50
-   ```
-10. **Any observed errors** during normal operation
+8. **Supply and exhaust m³/h sensor states** from HA developer tools
+9. **Clock sync result** if tested (`sync_device_clock` service call log)
+10. **Filtered log lines** from integration setup/first update cycle:
+    ```
+    grep "thessla_green" /config/home-assistant.log | head -50
+    ```
+11. **Any observed errors** during normal operation
 
 ---
 
@@ -84,13 +99,15 @@ The integration has comprehensive unit tests (pytest, no real device required):
 
 | Test area | Status |
 |-----------|--------|
-| Entity mapping validation | ✅ All pass |
+| Entity mapping validation | ✅ 367 entities pass |
 | Fan percentage calculation | ✅ `test_fan_percentage_109_clamped_to_100` passes |
 | Dangerous entity risk metadata | ✅ All risk_level/risk_category/safety_warning present |
-| Dangerous entity entity_category=config | ✅ Added in this PR, tests pass |
+| Dangerous entity entity_category=config | ✅ Added in #1683, tests pass |
+| DeviceClient IO ownership | ✅ `test_coordinator_io_ownership.py` — 15 tests pass |
 | AirPack4 vendor coverage | ✅ 0 missing registers |
 | Translation keys | ✅ All pass |
 | Coordinator update cycle | ✅ Mocked tests pass |
+| pymodbus pin consistency | ✅ manifest + pyproject consistent |
 
 ---
 
@@ -106,7 +123,7 @@ The following findings were identified from exported HA state data and addressed
 | `binary_sensor.dp_duct_filter_overflow` raw true / state on | CONFIRMED_CORRECT | Raw True = problem detected. `device_class=problem` is correct. | Test `test_dp_duct_filter_overflow_raw_true_is_problem` |
 | `sensor.serial_number` unavailable / device info Unknown | DEFERRED (partially improved) | `sw_version` now assembled from `version_major.version_minor CF<cf_version>`. Serial decode deferred. | Tests `test_sw_version_uses_version_registers_when_firmware_unknown` |
 | `sensor.rekuperator_active_errors` state unknown | FIXED | `native_value` returns `"none"` (not Python None) when no error codes are active. | Tests `test_active_errors_sensor_returns_none_string_when_no_errors` |
-| `switch.bypass_off` / `switch.gwc_off` misleading names | FIXED | Translation-only fix to "Bypass Locked" / "GWC Locked". Entity IDs unchanged. | Translation tests pass |
+| `switch.bypass_off` / `switch.gwc_off` misleading names | FIXED | Translation-only fix to “Bypass Locked” / “GWC Locked”. Entity IDs unchanged. | Translation tests pass |
 
 ---
 
