@@ -1,6 +1,6 @@
 # Refactor status (current)
 
-Last reviewed: 2026-05-08 (final cleanup release PR — phases A, B, E + docs, Python 3.13.12).
+Last reviewed: 2026-05-29 (post-PR #1686; CI/Python 3.13 validation update).
 
 Related document: `docs/maintainability_audit.md`
 
@@ -32,23 +32,24 @@ The following constraints remain active and must be preserved:
 - Canonical coordinator module: `custom_components/thessla_green_modbus/coordinator/coordinator.py`.
 - Coordinator package API invariant: `__all__ == ["CoordinatorConfig", "ThesslaGreenModbusCoordinator"]`.
 - HA imports in `core/transport/registers/scanner`: **none detected**.
-- Entity mapping invariant: **366 entities**.
+- Entity mapping invariant: **367 entities**.
 
 ## Latest PR snapshot
 
-Latest PR (this document): **final cleanup release — phases B, E + docs**.
+Latest merged PR: **#1686 — ci/docs: require Python 3.13 validation and finalize cleanup follow-up**.
 
-Changes in this PR:
+Previous PRs in this stabilization cycle:
+- **#1685** — docs/refactor: plan pymodbus 4 migration and reduce core complexity
+- **#1684** — refactor: finish coordinator device-client IO ownership cleanup
+- **#1683** — dangerous/advanced entities: entity_category=config (remain enabled)
+- **#1682** — fan percentage fix: clamp to 100 per HA spec
 
-- **Phase B** (`scanner/io_read.py`): extracted `_run_word_read_single_attempt` from
-  `_run_word_read_retry_loop` (87→56 lines); inlined 3 thin wrappers
-  (`_validate_register_response`, `_handle_terminal_read_failure`,
-  `_extend_or_abort_register_results`); updated `test_scanner_io.py`.
-- **Phase C** (scanner/core.py): SKIPPED — all functions within maintainability limits.
-- **Phase D** (coordinator/coordinator.py): SKIPPED — all functions within maintainability limits.
-- **Phase E** (`coordinator/schedule.py`): extracted `_locked_single_register_write` from
-  `async_write_register` (49→30 lines).
-- **Phase F** (config_flow.py): SKIPPED — all functions within maintainability limits.
+Changes in #1686:
+
+- Ruff import-order and format checks are now **blocking** in the lint CI job.
+- `compare_airpack4_vendor_coverage.py`, `check_translations.py` added to lint job.
+- `ruff-adoption-signal` job removed.
+- `docs/development_validation.md` added with Python 3.13 environment setup instructions.
 
 Current file-size snapshot:
 
@@ -62,15 +63,15 @@ Current file-size snapshot:
 
 ## Required gate status snapshot
 
-Last complete successful validation (Python 3.13.12):
+Last complete successful validation (Python 3.13, CI post-#1686):
 
 - `ruff check custom_components tests tools`: **pass**.
 - `ruff check --select I custom_components tests tools`: **pass**.
 - `ruff format --check custom_components tests tools`: **0 files drift**.
 - `python3.13 -m compileall -q custom_components/thessla_green_modbus tests tools`: **pass**.
 - `python3.13 tools/check_maintainability.py`: **Maintainability gate passed**.
-- `python3.13 tools/validate_entity_mappings.py`: **OK: 366 entities validated**.
-- `python3.13 -m pytest tests/ -q`: **1948 passed, 4 skipped**.
+- `python3.13 tools/validate_entity_mappings.py`: **OK: 367 entities validated**.
+- `python3.13 -m pytest tests/ -q`: **1948 passed, 4 skipped** (last known CI run).
 
 ## Remaining hotspots
 
@@ -96,4 +97,4 @@ Last complete successful validation (Python 3.13.12):
 ## Readiness caveats
 
 - **HACS/hassfest readiness:** CI validates these on every push; check the Actions tab for current status.
-- **Real-device readiness:** no on-device evidence was captured during this audit run. The `quality_scale: silver` in `manifest.json` is a self-assessed value.
+- **Real-device readiness:** no on-device evidence was captured during this audit run. The `quality_scale: bronze` in `manifest.json` reflects current validated state. A silver upgrade requires real-device evidence committed to `docs/real_device_validation.md`.

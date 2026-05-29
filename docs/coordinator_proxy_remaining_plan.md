@@ -2,11 +2,17 @@
 
 ## Audit Date
 
-2026-05-17 — audited against `refactor/final-cleanup-before-device-validation`.
+2026-05-17 — initial audit against `refactor/final-cleanup-before-device-validation`.
+2026-05-29 — proxy count and delegate status updated to reflect post-#1684 state.
 
-## Current Proxy Count
+## Proxy Count at Document Creation
 
-`coordinator/coordinator.py` contains **43 proxy properties** (lines 177–512), covering:
+`coordinator/coordinator.py` originally contained **43 proxy properties** at document creation.
+After slice-1 removed 5 property proxies, the current count is **35 proxy properties**.
+Slices 2 and 3 removed method delegates only — those do not count toward the proxy property total.
+See the dated update sections below for the full history.
+
+The original 43 proxy properties (lines 177–512) covered:
 
 - Configuration (12 properties): `config`, `_device_name`, `_resolved_connection_mode`, `timeout`,
   `retry`, `backoff`, `backoff_jitter`, `force_full_register_list`, `scan_uart_settings`,
@@ -161,7 +167,7 @@ The 5 delegates were previously blocked because `core/read_batches.py` and `core
 
 ### _failed_registers fix (implicit improvement)
 
-Previously, `read_batches.py` used `getattr(owner, "_failed_registers", set())` where `owner = coordinator`. Coordinator forwarded the attribute via a property proxy (removed in slice-1). After this change, `owner = device_client` which holds the actual `_failed_registers` set, so the "skip already-failed registers" optimization now works correctly.
+Previously, `read_batches.py` used `getattr(owner, "_failed_registers", set())` where `owner = coordinator`. Coordinator forwarded the attribute via a property proxy (removed in slice-1). After this change, `owner = device_client` which holds the actual `_failed_registers` set, so the “skip already-failed registers” optimization now works correctly.
 
 ### New tests added
 
@@ -174,10 +180,9 @@ Previously, `read_batches.py` used `getattr(owner, "_failed_registers", set())` 
 
 ## Remaining delegates (none — cleanup complete)
 
-All coordinator delegates backed by `self._device_client.*` have been removed. Only the
-43 proxy **properties** documented above remain, which are retained until real-device
+All coordinator delegates backed by `self._device_client.*` have been removed. The
+**35 proxy properties** listed above remain, retained until real-device
 validation confirms no consumer-visible behavior changes.
 
 The remaining future work is removing proxy properties following the incremental path
-documented in the "Future Removal Path" section above.
-
+documented in the “Future Removal Path” section above.
