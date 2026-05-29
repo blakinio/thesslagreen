@@ -16,6 +16,7 @@
 | Overall validation | PARTIAL — user-reported, formal evidence pending |
 | Quality scale gate | Bronze — no upgrade until formal evidence is committed |
 | Fan percentage fix (#1682) | FIXED in code; real-device re-test evidence pending |
+| IO ownership cleanup (#1684) | Coordinator no longer owns low-level IO; post-#1684 HA validation still required |
 | Temperature sensors | User-reported working; no log evidence committed |
 | Vendor coverage | 353/353 registers — verified by tool (`compare_airpack4_vendor_coverage.py`) |
 | Dangerous entities | Present and enabled; `entity_category=config` added (this PR) |

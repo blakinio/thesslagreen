@@ -44,6 +44,38 @@ class RegisterMapEntry:
     entity_domain: str | None = None
     enum_map: dict[int, Any] = field(default_factory=dict)
 
+    def _validate_bool_value(self, value: Any) -> bool:
+        """Coerce value to bool, resolving enum-decoded strings via enum_map reverse lookup."""
+        if isinstance(value, bool):
+            coerced: bool | int | float = value
+        elif isinstance(value, int | float):
+            coerced = bool(value)
+        elif isinstance(value, str) and self.enum_map:
+            # Value is an enum-decoded string (e.g. "brak"/"jest").
+            # Reverse-lookup the original integer key and coerce that to bool.
+            rev = {v: k for k, v in self.enum_map.items()}
+            raw_key = rev.get(value)
+            return bool(raw_key) if raw_key is not None else bool(value)
+        else:
+            raise ValueError(
+                f"Expected boolean-compatible value for {self.name}, got {type(value)}"
+            )
+        return bool(coerced)
+
+    def _validate_numeric_value(self, value: Any, expected: str) -> float | int:
+        """Validate numeric value against range constraints and return int or float."""
+        if not isinstance(value, int | float):
+            raise ValueError(f"Expected numeric value for {self.name}, got {type(value)}")
+        numeric: float | int = value
+        if self.min_value is not None and numeric < self.min_value:
+            raise ValueError(f"{numeric} below minimum {self.min_value} for {self.name}")
+        if self.max_value is not None and numeric > self.max_value:
+            raise ValueError(f"{numeric} above maximum {self.max_value} for {self.name}")
+        # Preserve integers when no scaling is defined
+        if expected == "int":
+            return int(numeric)
+        return float(numeric)
+
     def validate(self, value: Any) -> Any:
         """Validate and normalise a decoded value.
 
@@ -96,37 +128,9 @@ class RegisterMapEntry:
             return str(value)
 
         if expected == "bool":
-            if isinstance(value, bool):
-                coerced: bool | int | float = value
-            elif isinstance(value, int | float):
-                coerced = bool(value)
-            elif isinstance(value, str) and self.enum_map:
-                # Value is an enum-decoded string (e.g. "brak"/"jest").
-                # Reverse-lookup the original integer key and coerce that to bool.
-                rev = {v: k for k, v in self.enum_map.items()}
-                raw_key = rev.get(value)
-                return bool(raw_key) if raw_key is not None else bool(value)
-            else:
-                raise ValueError(
-                    f"Expected boolean-compatible value for {self.name}, got {type(value)}"
-                )
-            return bool(coerced)
+            return self._validate_bool_value(value)
 
-        numeric: float | int
-        if isinstance(value, int | float):
-            numeric = value
-        else:
-            raise ValueError(f"Expected numeric value for {self.name}, got {type(value)}")
-
-        if self.min_value is not None and numeric < self.min_value:
-            raise ValueError(f"{numeric} below minimum {self.min_value} for {self.name}")
-        if self.max_value is not None and numeric > self.max_value:
-            raise ValueError(f"{numeric} above maximum {self.max_value} for {self.name}")
-
-        # Preserve integers when no scaling is defined
-        if expected == "int":
-            return int(numeric)
-        return float(numeric)
+        return self._validate_numeric_value(value, expected)
 
 
 def _register_type_from_function(function: int) -> str:

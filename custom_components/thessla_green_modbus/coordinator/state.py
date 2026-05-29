@@ -71,26 +71,30 @@ def resolve_effective_batch(entry: ConfigEntry | None, max_registers_per_request
     return max(1, effective_batch)
 
 
-def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> None:
-    """Initialize mutable runtime state containers for a coordinator instance."""
+def _initialize_runtime_flags(coordinator: Any, *, entry: ConfigEntry | None) -> None:
+    """Set top-level coordinator flags and online/offline state."""
     coordinator.enable_device_scan = (
         bool(entry.options.get(CONF_ENABLE_DEVICE_SCAN, DEFAULT_ENABLE_DEVICE_SCAN))
         if entry is not None
         else DEFAULT_ENABLE_DEVICE_SCAN
     )
-
     coordinator._reauth_scheduled = False
     coordinator._shutting_down = False
+    coordinator._stop_listener = None
     coordinator.device_client.offline_state = False
 
+
+def _initialize_connection_state(coordinator: Any) -> None:
+    """Reset Modbus client handles and IO locks to initial state."""
     coordinator.device_client.client = None
     coordinator.device_client._transport = None
     coordinator.device_client._client_lock = asyncio.Lock()
     coordinator.device_client._write_lock = asyncio.Lock()
     coordinator.device_client._update_in_progress = False
 
-    coordinator._stop_listener = None
 
+def _initialize_device_state(coordinator: Any, *, entry: ConfigEntry | None) -> None:
+    """Initialize device info, capabilities, available registers, and register maps."""
     coordinator.device_client.device_info = {}
     coordinator.device_client.capabilities = DeviceCapabilities()
     if entry and isinstance(entry.data.get("capabilities"), dict):
@@ -129,11 +133,13 @@ def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> 
     coordinator.device_client._discrete_inputs_rev = coordinator.device_client._reverse_maps[
         "discrete_inputs"
     ]
-
     coordinator.device_client._register_groups = {}
     coordinator.device_client._consecutive_failures = 0
     coordinator.device_client._max_failures = 5
 
+
+def _initialize_scan_state(coordinator: Any) -> None:
+    """Reset scan result containers and update statistics to zero."""
     coordinator.device_client.device_scan_result = None
     coordinator.device_client.unknown_registers = {}
     coordinator.device_client.scanned_registers = {}
@@ -154,3 +160,11 @@ def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> 
 
     coordinator.device_client._last_power_timestamp = utcnow()
     coordinator.device_client._total_energy = 0.0
+
+
+def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> None:
+    """Initialize mutable runtime state containers for a coordinator instance."""
+    _initialize_runtime_flags(coordinator, entry=entry)
+    _initialize_connection_state(coordinator)
+    _initialize_device_state(coordinator, entry=entry)
+    _initialize_scan_state(coordinator)
