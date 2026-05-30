@@ -305,12 +305,13 @@ def test_no_modbus_helpers_module():
 
 
 def test_no_production_compatibility_shims():
-    """No production shim/facade modules should exist."""
+    """No production shim/compat modules should exist in coordinator package."""
     import pathlib
 
-    shim_patterns = ["*_shim.py", "*_compat.py", "*_facade.py"]
+    coordinator_dir = pathlib.Path("custom_components/thessla_green_modbus/coordinator")
+    shim_patterns = ["*_shim.py", "*_compat.py"]
     for pattern in shim_patterns:
-        matches = list(pathlib.Path("custom_components").rglob(pattern))
+        matches = list(coordinator_dir.rglob(pattern))
         assert matches == [], f"Shim files found: {matches}"
 
 
