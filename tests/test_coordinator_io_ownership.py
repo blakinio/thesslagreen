@@ -1,4 +1,4 @@
-"""TASK 3: Tests proving coordinator→DeviceClient IO ownership cleanup.
+"""Tests proving coordinator→DeviceClient IO ownership cleanup.
 
 Verifies:
 1. Coordinator no longer exposes the 5 removed delegate methods.
@@ -8,6 +8,9 @@ Verifies:
 4. Failed-register tracking semantics work via device_client._failed_registers.
 5. No fan-percentage regressions.
 6. No dangerous-entity regressions.
+7. Removed config proxy properties stay absent from coordinator MRO.
+8. Removed static method proxies stay absent.
+9. No modbus_helpers.py or production compatibility shims.
 """
 
 from __future__ import annotations
@@ -229,3 +232,124 @@ def test_no_dangerous_entity_enabled_default_false():
                     assert entry.get("entity_registry_enabled_default") is not False, (
                         f"{path}: found entity_registry_enabled_default: false in {entry}"
                     )
+
+
+# ---------------------------------------------------------------------------
+# 7. Removed config proxy properties stay absent from coordinator MRO
+# ---------------------------------------------------------------------------
+
+_REMOVED_CONFIG_PROXIES = (
+    "connection_type",
+    "connection_mode",
+    "serial_port",
+    "baud_rate",
+    "parity",
+    "stop_bits",
+)
+
+
+@pytest.mark.parametrize("prop_name", _REMOVED_CONFIG_PROXIES)
+def test_removed_config_proxy_absent_from_coordinator_mro(prop_name):
+    """Config property proxies with zero call sites must not exist on coordinator."""
+    coord = _make_coordinator()
+    found = any(prop_name in cls.__dict__ for cls in type(coord).__mro__ if cls is not object)
+    assert not found, f"{prop_name} still defined on coordinator MRO"
+
+
+@pytest.mark.parametrize("prop_name", _REMOVED_CONFIG_PROXIES)
+def test_removed_config_proxy_still_on_device_client_config(prop_name):
+    """Device client config still exposes removed proxy attributes directly."""
+    coord = _make_coordinator()
+    assert hasattr(coord.device_client.config, prop_name), (
+        f"device_client.config.{prop_name} missing — removal broke DeviceClient"
+    )
+
+
+def test_kept_config_proxies_still_present():
+    """host, port, slave_id must remain on coordinator as HA-boundary adapters."""
+    coord = _make_coordinator()
+    for prop in ("host", "port", "slave_id"):
+        assert hasattr(coord, prop), f"coordinator.{prop} was accidentally removed"
+        assert hasattr(coord.device_client.config, prop)
+
+
+# ---------------------------------------------------------------------------
+# 8. Removed static method proxies stay absent
+# ---------------------------------------------------------------------------
+
+_REMOVED_STATIC_METHODS = (
+    "_normalise_cached_register_name",
+    "_firmware_lacks_known_missing",
+)
+
+
+@pytest.mark.parametrize("method_name", _REMOVED_STATIC_METHODS)
+def test_removed_static_proxy_absent(method_name):
+    """Static method proxies with zero call sites must not exist on coordinator."""
+    coord = _make_coordinator()
+    found = any(method_name in cls.__dict__ for cls in type(coord).__mro__ if cls is not object)
+    assert not found, f"{method_name} still defined on coordinator MRO"
+
+
+# ---------------------------------------------------------------------------
+# 9. No modbus_helpers.py or production compatibility shims
+# ---------------------------------------------------------------------------
+
+
+def test_no_modbus_helpers_module():
+    """modbus_helpers.py must not exist."""
+    import pathlib
+
+    matches = list(pathlib.Path("custom_components").rglob("modbus_helpers.py"))
+    assert matches == [], f"modbus_helpers.py found: {matches}"
+
+
+def test_no_production_compatibility_shims():
+    """No production shim/facade modules should exist."""
+    import pathlib
+
+    shim_patterns = ["*_shim.py", "*_compat.py", "*_facade.py"]
+    for pattern in shim_patterns:
+        matches = list(pathlib.Path("custom_components").rglob(pattern))
+        assert matches == [], f"Shim files found: {matches}"
+
+
+# ---------------------------------------------------------------------------
+# 10. Kept HA-boundary adapters remain present
+# ---------------------------------------------------------------------------
+
+_KEPT_BOUNDARY_METHODS = (
+    "device_client",
+    "async_setup",
+    "async_shutdown",
+    "_ensure_connection",
+    "_disconnect",
+    "_disconnect_locked",
+    "_async_update_data",
+    "_test_connection",
+    "_trigger_reauth",
+    "get_register_map",
+    "get_diagnostic_data",
+    "get_device_info",
+    "status_overview",
+    "performance_stats",
+    "device_name",
+    "_normalise_available_registers",
+    "_apply_scan_cache",
+    "_load_full_register_list",
+    "_store_scan_cache",
+    "_run_device_scan",
+    "_prepare_registers_for_setup",
+    "_warn_missing_device_info",
+    "_consume_config_flow_scan_cache",
+    "_get_scan_cache_from_entry",
+    "_apply_scan_result",
+    "async_write_register",
+)
+
+
+@pytest.mark.parametrize("attr_name", _KEPT_BOUNDARY_METHODS)
+def test_kept_boundary_adapter_present(attr_name):
+    """Intentionally kept HA-boundary methods must not be accidentally removed."""
+    coord = _make_coordinator()
+    assert hasattr(coord, attr_name), f"coordinator.{attr_name} was accidentally removed"
