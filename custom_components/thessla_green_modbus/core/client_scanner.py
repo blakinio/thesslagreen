@@ -8,7 +8,35 @@ from ..scanner import ThesslaGreenDeviceScanner
 from .scan_helpers import (
     normalise_available_registers as _normalise_available_registers_impl,
 )
-from .scanner_kwargs import build_scanner_kwargs as _build_scanner_kwargs_impl
+
+
+def build_scanner_kwargs(
+    coordinator: Any,
+    *,
+    resolved_connection_mode: str | None,
+) -> dict[str, Any]:
+    """Return constructor kwargs shared by all scanner creation paths."""
+    return {
+        "host": coordinator.config.host,
+        "port": coordinator.config.port,
+        "slave_id": coordinator.config.slave_id,
+        "timeout": coordinator.timeout,
+        "retry": coordinator.retry,
+        "backoff": coordinator.backoff,
+        "backoff_jitter": coordinator.backoff_jitter,
+        "scan_uart_settings": coordinator.scan_uart_settings,
+        "skip_known_missing": coordinator.skip_missing_registers,
+        "deep_scan": coordinator.deep_scan,
+        "max_registers_per_request": coordinator.effective_batch,
+        "safe_scan": coordinator.safe_scan,
+        "connection_type": coordinator.config.connection_type,
+        "connection_mode": resolved_connection_mode or coordinator.config.connection_mode,
+        "serial_port": coordinator.config.serial_port,
+        "baud_rate": coordinator.config.baud_rate,
+        "parity": coordinator.config.parity,
+        "stop_bits": coordinator.config.stop_bits,
+        "hass": coordinator.hass,
+    }
 
 
 class _DeviceClientScannerMixin:
@@ -27,7 +55,7 @@ class _DeviceClientScannerMixin:
 
     def _build_scanner_kwargs(self) -> dict[str, Any]:
         """Return constructor kwargs for scanner creation."""
-        return _build_scanner_kwargs_impl(
+        return build_scanner_kwargs(
             self,
             resolved_connection_mode=self._resolved_connection_mode,
         )
