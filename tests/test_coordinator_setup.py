@@ -34,7 +34,7 @@ def test_coordinator_init_bad_baud_rate_falls_back():
     coord = _make_coordinator(baud_rate="not_an_int")
     from custom_components.thessla_green_modbus.const import DEFAULT_BAUD_RATE
 
-    assert coord.baud_rate == DEFAULT_BAUD_RATE
+    assert coord.device_client.config.baud_rate == DEFAULT_BAUD_RATE
 
 
 def test_coordinator_init_jitter_list_two_floats():
