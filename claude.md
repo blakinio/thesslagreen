@@ -24,8 +24,12 @@ Architecture is layered: `transport → core → coordinator → platforms`.
   `coordinator/` or platform modules. `tests/test_dependency_direction.py` enforces this —
   never weaken it; you may strengthen it.
 - **Keep `core/client.py` as the mixin assembler.** Do not merge it into a monolith.
+  Small helper modules may be consolidated into their sole caller only when the matching
+  plan document explicitly allows that slice.
 - **Do not touch** the batch boundaries `{16, 8192}` in `const.py` — these encode AirPack4
   firmware constraints, not magic numbers.
+- **Do not raise `quality_scale` above `bronze`** until `docs/real_device_validation.md`
+  is marked PASS with committed evidence from a real device.
 - **Zero behavior change** in refactor tasks — moves and delegation only, never logic edits.
 
 ---
@@ -55,7 +59,21 @@ Architecture is layered: `transport → core → coordinator → platforms`.
 
 ---
 
-## 4. Validation (run all that apply; if pytest is unavailable, run the rest and flag it)
+## 4. Real-device safety
+
+- Prefer `validate_known_registers` for real-device validation.
+- Do not use broad `scan_all_registers` as routine validation.
+- If touching `scan_all_registers`, preserve read-only behavior and warn that it opens a
+  separate Modbus connection.
+- Treat Modbus exception code 2 as an unsupported register/range, not as a fatal device
+  failure.
+- Never add unknown registers as entities automatically.
+- Do not change Modbus register addresses/names or entity/service IDs based on unknown scan
+  output.
+
+---
+
+## 5. Validation (run all that apply; if pytest is unavailable, run the rest and flag it)
 
 ```bash
 python -m compileall -q custom_components/thessla_green_modbus tests tools
@@ -75,7 +93,7 @@ All applicable commands must pass before a task is considered done.
 
 ---
 
-## 5. Report format (required for every task)
+## 6. Report format (required for every task)
 
 - **Files changed** — added / modified / deleted (use `git mv` for moves to preserve history).
 - **Root cause** per fix (1–2 sentences each).
@@ -88,7 +106,7 @@ All applicable commands must pass before a task is considered done.
 
 ---
 
-## 6. Refactor tasks — additional rules
+## 7. Refactor tasks — additional rules
 
 Apply these only when the task is explicitly a refactor/migration:
 
@@ -105,7 +123,7 @@ Apply these only when the task is explicitly a refactor/migration:
 
 ---
 
-## 7. Key reference docs
+## 8. Key reference docs
 
 - `docs/thesslagreen_architecture.md` — layer design and rationale.
 - `docs/thesslagreen_guidelines.md` — coding guidelines (incl. no-shim rule).
