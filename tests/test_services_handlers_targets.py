@@ -54,6 +54,11 @@ class _Coordinator:
             unknown_registers={},
             scanned_registers={},
             device_scan_result=None,
+            config=SimpleNamespace(
+                host="127.0.0.1",
+                port=502,
+                slave_id=1,
+            ),
         )
 
 

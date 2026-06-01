@@ -366,7 +366,7 @@ class ThesslaGreenModbusCoordinator(
                 ensure_connection=self._ensure_connection,
                 get_transport=lambda: self._device_client._transport,
                 get_client=lambda: self._device_client.client,
-                slave_id=self.slave_id,
+                slave_id=self._device_client.slave_id,
                 test_addresses=list(input_registers().values())[:3],
                 is_cancelled_error=is_request_cancelled_error,
                 logger=_LOGGER,

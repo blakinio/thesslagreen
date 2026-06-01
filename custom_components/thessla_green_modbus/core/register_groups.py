@@ -9,21 +9,21 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def compute_register_groups(
-    coordinator: Any,
+    device_client: Any,
     *,
     get_register_definition: Any,
     group_reads: Any,
     holding_batch_boundaries: frozenset[int],
 ) -> None:
     """Pre-compute register groups for optimized batch reading."""
-    coordinator._register_groups.clear()
+    device_client._register_groups.clear()
 
-    for key, names in coordinator.available_registers.items():
+    for key, names in device_client.available_registers.items():
         if not names:
             continue
 
-        mapping = coordinator._register_maps[key]
-        if coordinator.safe_scan:
+        mapping = device_client._register_maps[key]
+        if device_client.safe_scan:
             groups: list[tuple[int, int]] = []
             for reg in names:
                 addr = mapping.get(reg)
@@ -42,8 +42,8 @@ def compute_register_groups(
                         err,
                     )
                     length = 1
-                groups.append((addr, min(length, coordinator.effective_batch)))
-            coordinator._register_groups[key] = groups
+                groups.append((addr, min(length, device_client.effective_batch)))
+            device_client._register_groups[key] = groups
             continue
 
         addresses: list[int] = []
@@ -67,13 +67,13 @@ def compute_register_groups(
             addresses.extend(range(addr, addr + length))
 
         boundaries = holding_batch_boundaries if key == "holding_registers" else None
-        coordinator._register_groups[key] = group_reads(
+        device_client._register_groups[key] = group_reads(
             addresses,
-            max_block_size=coordinator.effective_batch,
+            max_block_size=device_client.effective_batch,
             boundaries=boundaries,
         )
 
     _LOGGER.debug(
         "Pre-computed register groups: %s",
-        {k: len(v) for k, v in coordinator._register_groups.items()},
+        {k: len(v) for k, v in device_client._register_groups.items()},
     )
