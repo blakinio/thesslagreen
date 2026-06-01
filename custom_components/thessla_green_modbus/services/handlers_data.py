@@ -61,9 +61,9 @@ def _register_scan_all_registers_service(hass: HomeAssistant, deps: ServiceHandl
             scanner = None
             try:
                 scanner = await deps.scanner_create(
-                    host=coordinator.host,
-                    port=coordinator.port,
-                    slave_id=coordinator.slave_id,
+                    host=coordinator.device_client.config.host,
+                    port=coordinator.device_client.config.port,
+                    slave_id=coordinator.device_client.config.slave_id,
                     timeout=int(coordinator.device_client.timeout),
                     retry=coordinator.device_client.retry,
                     scan_uart_settings=coordinator.device_client.scan_uart_settings,
@@ -125,9 +125,9 @@ def _register_validate_known_registers_service(
             scanner = None
             try:
                 scanner = await deps.scanner_create(
-                    host=coordinator.host,
-                    port=coordinator.port,
-                    slave_id=coordinator.slave_id,
+                    host=coordinator.device_client.config.host,
+                    port=coordinator.device_client.config.port,
+                    slave_id=coordinator.device_client.config.slave_id,
                     timeout=int(coordinator.device_client.timeout),
                     retry=coordinator.device_client.retry,
                     scan_uart_settings=False,
