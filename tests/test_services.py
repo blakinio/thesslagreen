@@ -93,7 +93,7 @@ async def test_set_device_name_uses_offsets(monkeypatch):
     monkeypatch.setattr(
         services_module,
         "async_extract_entity_ids",
-        lambda _h, call: call.data["entity_id"],
+        lambda call: call.data["entity_id"],
     )
     monkeypatch.setattr(services_module, "ServiceCall", SimpleNamespace)
 
