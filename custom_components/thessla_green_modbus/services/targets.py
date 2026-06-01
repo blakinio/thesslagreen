@@ -8,7 +8,6 @@ from typing import Any, cast
 
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.service import async_extract_entity_ids
 
 __all__ = [
     "extract_entity_ids",
@@ -20,6 +19,8 @@ __all__ = [
 
 def extract_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
     """Return entity IDs from a service call."""
+    from homeassistant.helpers.service import async_extract_entity_ids
+
     return extract_entity_ids_with_extractor(hass, call, extractor=async_extract_entity_ids)
 
 
@@ -27,13 +28,13 @@ def extract_entity_ids_with_extractor(
     hass: HomeAssistant,
     call: ServiceCall,
     *,
-    extractor: Callable[[HomeAssistant, Any], Any],
+    extractor: Callable[[Any], Any],
 ) -> set[str]:
     """Return entity IDs from a service call using injectable extraction backend."""
     if not call.data.get("entity_id"):
         return set()
 
-    extracted = extractor(hass, call)
+    extracted = extractor(call)
     if inspect.isawaitable(extracted):
         extracted.close()
         raw_ids = call.data.get("entity_id")
@@ -73,4 +74,5 @@ def get_coordinator_from_entity_id(hass: HomeAssistant, entity_id: str) -> Any |
     config_entry = hass.config_entries.async_get_entry(entry.config_entry_id)
     if config_entry is None:
         return None
-    return config_entry.runtime_data
+    runtime_data = getattr(config_entry, "runtime_data", None)
+    return runtime_data

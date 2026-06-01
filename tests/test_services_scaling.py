@@ -67,9 +67,7 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
     )
 
     monkeypatch.setattr(services, "_get_coordinator_from_entity_id", lambda _h, e: coordinator)
-    monkeypatch.setattr(
-        services, "async_extract_entity_ids", lambda _h, call: call.data["entity_id"]
-    )
+    monkeypatch.setattr(services, "async_extract_entity_ids", lambda call: call.data["entity_id"])
     monkeypatch.setattr(services, "ServiceCall", SimpleNamespace)
 
     await services.async_setup_services(hass)
@@ -111,9 +109,7 @@ async def test_set_device_name_passes_full_value(monkeypatch, batch):
     coordinator = DummyCoordinator(batch)
 
     monkeypatch.setattr(services, "_get_coordinator_from_entity_id", lambda _h, e: coordinator)
-    monkeypatch.setattr(
-        services, "async_extract_entity_ids", lambda _h, call: call.data["entity_id"]
-    )
+    monkeypatch.setattr(services, "async_extract_entity_ids", lambda call: call.data["entity_id"])
     monkeypatch.setattr(services, "ServiceCall", SimpleNamespace)
 
     await services.async_setup_services(hass)

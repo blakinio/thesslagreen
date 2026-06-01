@@ -1,4 +1,11 @@
-"""Config-backed property accessors mixin for coordinator."""
+"""Config-backed property accessors mixin for coordinator.
+
+Retained properties (host, port, slave_id) are used by entity platforms,
+services, core IO modules, and tests.  Removed properties
+(connection_type, connection_mode, serial_port, baud_rate, parity,
+stop_bits) had zero external call sites — callers already use
+``coordinator.device_client.config.X`` directly.
+"""
 
 from __future__ import annotations
 
@@ -32,57 +39,3 @@ class _CoordinatorConfigPropertiesMixin:
     @slave_id.setter
     def slave_id(self, value: int) -> None:
         self.device_client.config.slave_id = value
-
-    @property
-    def connection_type(self) -> str:
-        """Connection type accessor backed by CoordinatorConfig."""
-        return self.device_client.config.connection_type
-
-    @connection_type.setter
-    def connection_type(self, value: str) -> None:
-        self.device_client.config.connection_type = value
-
-    @property
-    def connection_mode(self) -> str | None:
-        """Connection mode accessor backed by CoordinatorConfig."""
-        return self.device_client.config.connection_mode
-
-    @connection_mode.setter
-    def connection_mode(self, value: str | None) -> None:
-        self.device_client.config.connection_mode = value
-
-    @property
-    def serial_port(self) -> str:
-        """Serial port accessor backed by CoordinatorConfig."""
-        return self.device_client.config.serial_port
-
-    @serial_port.setter
-    def serial_port(self, value: str) -> None:
-        self.device_client.config.serial_port = value
-
-    @property
-    def baud_rate(self) -> int:
-        """Baud rate accessor backed by CoordinatorConfig."""
-        return self.device_client.config.baud_rate
-
-    @baud_rate.setter
-    def baud_rate(self, value: int) -> None:
-        self.device_client.config.baud_rate = value
-
-    @property
-    def parity(self) -> str:
-        """Parity accessor backed by CoordinatorConfig."""
-        return self.device_client.config.parity
-
-    @parity.setter
-    def parity(self, value: str) -> None:
-        self.device_client.config.parity = value
-
-    @property
-    def stop_bits(self) -> int:
-        """Stop bits accessor backed by CoordinatorConfig."""
-        return self.device_client.config.stop_bits
-
-    @stop_bits.setter
-    def stop_bits(self, value: int) -> None:
-        self.device_client.config.stop_bits = value

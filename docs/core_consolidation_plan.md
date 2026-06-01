@@ -1,14 +1,16 @@
 # Core Package Consolidation Plan
 
-**Status: Planning only — no code merged in this document**
+**Status: Slice 2 merged — runtime_state inlined into client_registers**
 **Created: 2026-05-29**
-**Related PR: #1685 (docs/refactor: plan pymodbus 4 migration and reduce core complexity)**
+**Updated: 2026-06-01**
+**Related PRs: #1685 (planning), #1691 (slice 1 — scanner_kwargs inline), current branch (slice 2)**
 
 ---
 
 ## 1. Current Layout Inventory
 
-The `core/` package currently has 25 Python files. They are grouped by concern below.
+The `core/` package currently has 24 Python files (was 25; `scanner_kwargs.py` inlined into
+`client_scanner.py` in slice 1). They are grouped by concern below.
 
 ### 1.1 Main client entry point
 
@@ -146,32 +148,67 @@ These rules apply to every consolidation slice:
 - Identify the safest first move.
 - No code changed.
 
-### Slice 1 — Tiny internal-only helper (optional, this PR)
+### Slice 1 — Tiny internal-only helper ✅ DONE (PR #1691)
 
-If a module under `core/` is:
-- fewer than 40 lines,
-- imported only within `core/` itself (no external callers),
-- logically owned by a single larger module,
+**Chosen file:** `scanner_kwargs.py` (35 lines)
 
-it may be inlined into its owning module in this PR.
+**Why:** Grep confirmed only one import site (`core/client_scanner.py`), no external callers,
+no test direct-import, no test patch targets. Lowest-risk possible change.
 
-**Candidates assessed:**
+**What was done:**
+- `build_scanner_kwargs` function body moved into `core/client_scanner.py`
+- `scanner_kwargs.py` deleted (git rm)
+- `client_scanner.py` now calls `build_scanner_kwargs` directly (no alias, no shim)
+- `test_dependency_direction.py` extended with transport and scanner direction checks
+- `docs/core_consolidation_plan.md` updated to reflect completion
 
-| File | Lines | External imports? | Assessment |
-|---|---|---|---|
-| `scanner_kwargs.py` | ~35 | `core/client_scanner.py` only | Potentially safe — see Slice 1 notes |
-| `retry.py` | ~40 | `core/connection.py` only | Potentially safe |
-| `runtime_state.py` | ~30 | `core/client_registers.py` only | Potentially safe |
+**Files moved / deleted:**
+| Action | File |
+|---|---|
+| Deleted | `core/scanner_kwargs.py` |
+| Updated (inline target) | `core/client_scanner.py` |
 
-Assessment is preliminary. Before performing any move:
-- Run `grep -r "from.*core.*<module>" custom_components tests tools` to confirm no external callers.
-- If any external caller is found, defer.
+**Import-site changes:**
+| File | Old import | New situation |
+|---|---|---|
+| `core/client_scanner.py` | `from .scanner_kwargs import build_scanner_kwargs as _build_scanner_kwargs_impl` | function defined locally; no import needed |
 
-**Deferred from this PR:** No code consolidation was performed in this PR. All three candidates
-above require a grep audit and import-site update that should be done as a standalone slice
-with focused tests. See "Deferred work" in the PR body.
+**Rollback plan:** `git revert <PR #1691 merge commit>`. Re-creates `scanner_kwargs.py` and
+restores the import in `client_scanner.py`. Zero runtime effect either way.
 
-### Slice 2 — Connection helper consolidation
+**Deferred candidates from original assessment:**
+
+| File | Lines | Reason deferred |
+|---|---|---|
+| `retry.py` | 269 | Too many external callers (coordinator, core, tests); high blast radius |
+| `runtime_state.py` | 25 | One test directly imports it; safe but deferred to slice 2 |
+
+**No behavior changes:** function body of `build_scanner_kwargs` is byte-for-byte identical.
+
+### Slice 2 — Next tiny internal-only helper ✅ DONE (2026-06-01)
+
+**Target:** `runtime_state.py` (25 lines) → inlined into `core/client_registers.py`
+
+**What was done:**
+- `mark_registers_failed` and `clear_register_failure` moved into `client_registers.py`
+- `runtime_state.py` deleted (git rm)
+- `tests/test_coordinator_runtime_state.py` import updated from
+  `core.runtime_state` → `core.client_registers`
+- Full validation passed
+
+**Files moved / deleted:**
+| Action | File |
+|---|---|
+| Deleted | `core/runtime_state.py` |
+| Updated (inline target) | `core/client_registers.py` |
+| Updated (test import) | `tests/test_coordinator_runtime_state.py` |
+
+**Rollback plan:** `git revert <B2 commit>`. Re-creates `runtime_state.py`, removes the
+inlined functions from `client_registers.py`, and restores the test import. Zero runtime effect.
+
+**core/ file count:** 23 (was 24)
+
+### Slice 3 — Connection helper consolidation
 
 Target: merge `connection_state.py` and `disconnect.py` into `connection_lifecycle.py`
 (or into a `connection/` sub-package).
@@ -183,17 +220,17 @@ Prerequisites:
 
 Risk: Medium — touches the connection runtime path that was recently changed in #1684.
 
-### Slice 3 — Read helper consolidation
+### Slice 4 — Read helper consolidation
 
 Target: merge `read_common.py` into `read_batches.py` or create a `read/` sub-package.
 
 Prerequisites:
-- Slice 2 must be stable.
+- Slice 3 must be stable.
 - Read path tests must pass on a real device.
 
 Risk: High — touches the update read cycle. Defer until #1684 real-device validation is done.
 
-### Slice 4 — Mixin review
+### Slice 5 — Mixin review
 
 Target: review whether `capabilities_mixin.py` and `io_mixin.py` should be inlined into
 `client.py` or kept as separate concerns.

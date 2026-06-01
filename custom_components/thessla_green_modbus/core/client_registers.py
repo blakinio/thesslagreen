@@ -19,14 +19,27 @@ from .register_processing import (
 from .register_processing import (
     process_register_value as _process_register_value_impl,
 )
-from .runtime_state import (
-    clear_register_failure as _clear_register_failure_impl,
-)
-from .runtime_state import (
-    mark_registers_failed as _mark_registers_failed_impl,
-)
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def mark_registers_failed(
+    owner: Any,
+    names: Iterable[str | None],
+) -> None:
+    """Record registers that failed to read in current runtime state."""
+    failed: set[str] = getattr(owner, "_failed_registers", set())
+    failed.update(name for name in names if name)
+    owner._failed_registers = failed
+
+
+def clear_register_failure(
+    owner: Any,
+    name: str,
+) -> None:
+    """Remove register from failed list after successful read/write."""
+    if hasattr(owner, "_failed_registers"):
+        owner._failed_registers.discard(name)
 
 
 def _get_register_definition(name: str) -> RegisterDef:
@@ -75,11 +88,11 @@ class _DeviceClientRegistersMixin:
 
     def _mark_registers_failed(self, names: Iterable[str | None]) -> None:
         """Record registers that failed to read."""
-        _mark_registers_failed_impl(self, names)
+        mark_registers_failed(self, names)
 
     def _clear_register_failure(self, name: str) -> None:
         """Remove register from failed list on successful read."""
-        _clear_register_failure_impl(self, name)
+        clear_register_failure(self, name)
 
     def _get_client_method(self, name: str) -> Callable[..., Any]:
         """Return a Modbus method from transport/client or a no-op placeholder."""

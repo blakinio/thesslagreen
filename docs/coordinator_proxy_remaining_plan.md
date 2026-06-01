@@ -30,13 +30,13 @@ The original 43 proxy properties (lines 177–512) covered:
 
 Plus 3 additional `@property` definitions at lines 857–875 (not device-client proxies).
 
-## Removed Proxies (This PR)
+## Removed Proxies (Prior Slices)
 
-None. All proxies are in active use by runtime code or tests (see classification below).
+None in the initial PR. See dated update sections below for the full removal history.
 
 ## Retained Proxies and Why
 
-All proxy properties are retained. Classification:
+Classification:
 
 ### runtime-required
 
@@ -219,12 +219,159 @@ Three assertions added to `tests/test_coordinator_lifecycle.py`:
 
 ## Remaining delegates (none — cleanup complete)
 
-All coordinator delegates backed by `self._device_client.*` have been removed. The
-**35 proxy properties** listed above remain, retained until real-device
-validation confirms no consumer-visible behavior changes.
+All coordinator delegates backed by `self._device_client.*` have been removed.
 
 The remaining future work is removing proxy properties following the incremental path
 documented in the “Future Removal Path” section above.
+
+## 2026-05-30 slice-5 — config property proxy and static method cleanup
+
+### Baseline
+
+After slices 1–4, coordinator still had:
+- 9 config property proxies in `_CoordinatorConfigPropertiesMixin` (host, port, slave_id,
+  connection_type, connection_mode, serial_port, baud_rate, parity, stop_bits)
+- 2 unused static method proxies on `ThesslaGreenModbusCoordinator`
+  (`_normalise_cached_register_name`, `_firmware_lacks_known_missing`)
+- ~15 `_impl` delegate methods (all with active call sites in scan/lifecycle/internal modules)
+- 4 `@property` definitions in coordinator.py itself (device_client, status_overview,
+  performance_stats, device_name)
+
+### Removed (8 proxies)
+
+| Removed | Type | Why safe |
+|---|---|---|
+| `connection_type` (get/set) | Config property | Zero external call sites; callers use `device_client.config.connection_type` |
+| `connection_mode` (get/set) | Config property | Zero external call sites; callers use `device_client.config.connection_mode` |
+| `serial_port` (get/set) | Config property | Zero external call sites; callers use `device_client.config.serial_port` |
+| `baud_rate` (get/set) | Config property | Zero external call sites; callers use `device_client.config.baud_rate` |
+| `parity` (get/set) | Config property | Zero external call sites; callers use `device_client.config.parity` |
+| `stop_bits` (get/set) | Config property | Zero external call sites; callers use `device_client.config.stop_bits` |
+| `_normalise_cached_register_name` | Static method | Zero call sites; `core/scan_helpers.py` calls the function directly |
+| `_firmware_lacks_known_missing` | Static method | Zero call sites; `coordinator/scan.py` calls the function directly |
+
+### Kept as HA-boundary adapters (3 config proxies)
+
+| Kept | Call sites | Why kept |
+|---|---|---|
+| `host` (get/set) | services/handlers_data, clock_sync, tests | Used by HA service handlers and clock sync |
+| `port` (get/set) | services/handlers_data, tests | Used by HA service handlers |
+| `slave_id` (get/set) | entity.py, core/runtime_io, core/read_common, services, tests | Used in entity unique_id generation, all read/write paths |
+
+### Kept `_impl` delegates (deferred — C category)
+
+All remaining `_impl` delegates on coordinator have active call sites in
+`coordinator/scan.py`, `coordinator/lifecycle.py`, `coordinator/scan_result.py`,
+or tests that mock them via `coord._method_name = MagicMock(...)`.
+
+Removing these requires refactoring the coordinator submodule calling convention
+(pass `DeviceClient` instead of `coordinator` to each submodule). This is
+deferred until real-device validation.
+
+| Deferred | Call sites |
+|---|---|
+| `_apply_scan_cache` | scan.py ×2, 10+ tests |
+| `_load_full_register_list` | scan.py ×2, 6+ tests |
+| `_store_scan_cache` | scan_result.py ×1 |
+| `_get_scan_cache_from_entry` | scan.py ×1, 1 test |
+| `_consume_config_flow_scan_cache` | scan.py ×1, 7+ tests |
+| `_apply_scan_result` | coordinator.py ×1 (callback) |
+| `_prepare_registers_for_setup` | lifecycle.py ×1, 1 test |
+| `_warn_missing_device_info` | lifecycle.py ×1, 1 test |
+| `_run_device_scan` | scan.py ×1, 6+ tests |
+| `_normalise_available_registers` | scan_result.py ×1, scan.py ×1, 2 tests |
+
+### Kept `@property` definitions in coordinator.py
+
+| Property | Why kept |
+|---|---|
+| `device_client` | Core abstraction — 220+ usages across entire codebase |
+| `status_overview` | Used by `diagnostics.py` for HA diagnostics handler |
+| `performance_stats` | Used by `diagnostics.py` for HA diagnostics handler |
+| `device_name` | Used by entity platforms for device name |
+
+### Proxy count after slice-5
+
+- Config property proxies: **3** (host, port, slave_id) — down from 9
+- Static method proxies: **1** (_parse_backoff_jitter) — down from 3
+- `_impl` delegate methods: **~15** (unchanged — all deferred)
+- `@property` in coordinator.py: **4** (unchanged — all kept)
+- Total proxy surface reduction this slice: **8** removed
+
+### Dangerous entity category verification
+
+All three dangerous switch entities (`lock_flag`, `hard_reset_settings`,
+`hard_reset_schedule`) already have `”category”: “config”` in their mapping
+definitions. The switch platform applies `EntityCategory` correctly.
+Tests in `test_airpack4_dangerous_entity_marking.py` verify this.
+No code changes needed.
+
+### Explicit confirmations
+
+- No Modbus runtime behavior changes
+- No register address/name changes
+- No entity ID changes
+- No service ID changes
+- No translation key changes
+- No pymodbus update
+- No quality_scale update
+- No core consolidation performed
+- No core file moves
+- No modbus_helpers.py reintroduced
+
+### Next suggested slice
+
+Refactor coordinator submodules (`scan.py`, `lifecycle.py`, `scan_result.py`) to
+accept `DeviceClient` directly instead of `coordinator`. This would allow removing
+the `_impl` delegate methods. Requires real-device validation first.
+
+## 2026-06-01 slices A1–A4
+
+### A1 — core/ parameter rename (coordinator→device_client)
+
+Renamed the `coordinator` parameter to `device_client` in four core helper modules
+that were always called with `ThesslaGreenDeviceClient` as their argument:
+- `core/client_scanner.py:build_scanner_kwargs`
+- `core/register_groups.py:compute_register_groups`
+- `core/runtime_io.py:call_modbus` and `read_all_register_data` (also simplified
+  `device_client.device_client.X` → `device_client.X`)
+- `core/read_common.py:execute_read_call`, `log_read_retry`, `raise_for_error_response`
+
+No behavioral change. `test_dependency_direction.py` continues to pass.
+
+### A2 — Already complete
+
+After slices 1–5, `coordinator/scan.py`, `write_path.py`, `diagnostics.py`, and
+`lifecycle.py` all use `coordinator.device_client.X` for device-domain state.
+Remaining accesses are coordinator methods or HA attributes (entry, hass,
+scan_interval, data). No changes needed.
+
+### A3 — services/handlers_data.py
+
+Migrated `coordinator.host/port/slave_id` in `services/handlers_data.py` to
+`coordinator.device_client.config.host/port/slave_id` (6 usages across
+`scan_all_registers` and `validate_known_registers` handlers).
+
+### A4 — Remaining production callers migrated; proxy properties RETAINED
+
+Migrated remaining production callers:
+- `clock_sync.py`: `coordinator.host` → `coordinator.device_client.config.host`
+- `coordinator.py _test_connection`: `self.slave_id` → `self._device_client.slave_id`
+- `coordinator/schedule.py` (3 sites): `self.slave_id` → `self._device_client.slave_id`
+
+**Proxy properties host/port/slave_id in `_CoordinatorConfigPropertiesMixin` RETAINED.**
+
+Reason: `entity.py` `unique_id` property uses `getattr(coordinator, "host", "")`,
+`getattr(coordinator, "port", 0)`, and `coordinator.slave_id` for entity identity.
+These cannot be removed without changing entity unique IDs (violates the no-unique-id-change
+constraint). Tests that SET/ASSERT these properties remain valid callers.
+
+### Proxy counter after A1–A4
+
+- Config property proxies: **3** (host, port, slave_id) — unchanged from slice-5; RETAINED
+- Static method proxies: **1** (_parse_backoff_jitter) — unchanged
+- `_impl` delegate methods: **~10** (all deferred — active call sites in scan/lifecycle/tests)
+- `@property` in coordinator.py: **4** (device_client, status_overview, performance_stats, device_name)
 
 ---
 
@@ -263,7 +410,7 @@ accesses to direct `coordinator.device_client.*` accesses.
 
 | File | Old | New |
 |---|---|---|
-| `number.py` (×2) | `coordinator.get_register_map(“holding_registers”)` | `coordinator.device_client.get_register_map(“holding_registers”)` |
+| `number.py` (×2) | `coordinator.get_register_map("holding_registers")` | `coordinator.device_client.get_register_map("holding_registers")` |
 | `sensor.py` | `coordinator.get_register_map(register_type)` | `coordinator.device_client.get_register_map(register_type)` |
 | `binary_sensor.py` | `coordinator.get_register_map(register_type)` | `coordinator.device_client.get_register_map(register_type)` |
 | `binary_sensor.py` | `coordinator.device_name` | `coordinator.device_client.device_name` |
@@ -312,12 +459,12 @@ After A5 emptied the caller lists for two coordinator-level proxies, they were r
 
 ### Size change
 
-`coordinator/coordinator.py`: 477 lines → 466 lines (−11).
+`coordinator/coordinator.py`: 477 lines → 466 lines (−11), then further reduced by main's A4 changes.
 
 ### Proxy property count
 
-The 35 proxy **properties** listed in this document are unchanged — only method delegates
-were removed in this slice.
+The proxy **properties** listed in this document are unchanged by this slice — only method
+delegates were removed.
 
 ### Why safe
 

@@ -39,9 +39,6 @@ from ..core.retry import _PermanentModbusError
 from ..core.scan_helpers import (
     normalise_available_registers as _normalise_available_registers_impl,
 )
-from ..core.scan_helpers import (
-    normalise_cached_register_name as _normalise_cached_register_name_impl,
-)
 from ..errors import CannotConnect
 from ..register_defs_cache import get_register_definitions
 from ..registers.maps import input_registers
@@ -79,9 +76,6 @@ from .scan import (
 )
 from .scan import (
     consume_config_flow_scan_cache as _consume_config_flow_scan_cache_impl,
-)
-from .scan import (
-    firmware_lacks_known_missing as _firmware_lacks_known_missing_impl,
 )
 from .scan import (
     get_scan_cache_from_entry as _get_scan_cache_from_entry_impl,
@@ -344,11 +338,6 @@ class ThesslaGreenModbusCoordinator(
         """Load full register list when forced."""
         _load_full_register_list_impl(self)
 
-    @staticmethod
-    def _normalise_cached_register_name(name: str) -> str:
-        """Normalise cached register names to current canonical form."""
-        return _normalise_cached_register_name_impl(name)
-
     def _normalise_available_registers(
         self, available: dict[str, list[str] | set[str]]
     ) -> dict[str, set[str]]:
@@ -358,11 +347,6 @@ class ThesslaGreenModbusCoordinator(
     def _apply_scan_cache(self, cache: dict[str, Any]) -> bool:
         """Apply cached scan data if available."""
         return bool(_apply_scan_cache_impl(self, cache))
-
-    @staticmethod
-    def _firmware_lacks_known_missing(firmware: Any) -> bool:
-        """Return True for firmwares that do not expose KNOWN_MISSING_REGISTERS."""
-        return bool(_firmware_lacks_known_missing_impl(firmware))
 
     def _store_scan_cache(self) -> None:
         """Store scan results in config entry options."""
@@ -375,7 +359,7 @@ class ThesslaGreenModbusCoordinator(
                 ensure_connection=self._ensure_connection,
                 get_transport=lambda: self._device_client._transport,
                 get_client=lambda: self._device_client.client,
-                slave_id=self.slave_id,
+                slave_id=self._device_client.slave_id,
                 test_addresses=list(input_registers().values())[:3],
                 is_cancelled_error=is_request_cancelled_error,
                 logger=_LOGGER,
@@ -463,4 +447,3 @@ class ThesslaGreenModbusCoordinator(
     def get_device_info(self) -> dict[str, Any]:
         """Return device info mapping for the connected unit."""
         return _get_device_info_impl(self)
-

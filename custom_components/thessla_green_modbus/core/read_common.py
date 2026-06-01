@@ -27,7 +27,7 @@ def is_transient_error_response(response: Any) -> bool:
 
 
 async def execute_read_call(
-    coordinator: Any,
+    device_client: Any,
     read_method: Callable[..., Any],
     start_address: int,
     count: int,
@@ -35,13 +35,13 @@ async def execute_read_call(
 ) -> Any:
     """Execute one read attempt with method fallback through `_call_modbus`."""
     call_result = read_method(
-        coordinator.slave_id,
+        device_client.slave_id,
         start_address,
         count=count,
         attempt=attempt,
     )
     if call_result is None:
-        call_result = coordinator._call_modbus(
+        call_result = device_client._call_modbus(
             read_method,
             start_address,
             count=count,
@@ -51,7 +51,7 @@ async def execute_read_call(
 
 
 def log_read_retry(
-    coordinator: Any,
+    device_client: Any,
     *,
     register_type: str,
     start_address: int,
@@ -66,20 +66,20 @@ def log_read_retry(
             register_type,
             start_address,
             attempt,
-            coordinator.device_client.retry,
+            device_client.retry,
         )
     _LOGGER.debug(
         "Retrying %s registers at %s (attempt %s/%s): %s",
         register_type,
         start_address,
         attempt + 1,
-        coordinator.device_client.retry,
+        device_client.retry,
         exc,
     )
 
 
 def raise_for_error_response(
-    coordinator: Any,
+    device_client: Any,
     response: Any,
     *,
     register_type: str,
