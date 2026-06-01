@@ -64,7 +64,7 @@ async def _setup_and_get(hass, service_name, coordinator, monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coordinator)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     from custom_components.thessla_green_modbus.services import async_setup_services
 
     await async_setup_services(hass)
@@ -108,7 +108,7 @@ async def test_scan_all_registers_uses_slave_id(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
@@ -136,7 +136,7 @@ async def test_scan_all_registers_max_registers_passed(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
@@ -159,7 +159,7 @@ async def test_scan_all_registers_defaults_to_coordinator_batch(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
@@ -187,7 +187,7 @@ async def test_scan_all_registers_delay_passed(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
@@ -210,7 +210,7 @@ async def test_scan_all_registers_default_delay_zero(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
@@ -238,7 +238,7 @@ async def test_scan_all_registers_known_only_sets_full_scan_false(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
@@ -261,7 +261,7 @@ async def test_scan_all_registers_default_full_scan_enabled(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
@@ -289,7 +289,7 @@ async def test_scan_all_registers_no_writes(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
@@ -317,7 +317,7 @@ async def test_scan_all_registers_backward_compat(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
@@ -505,7 +505,7 @@ async def test_validate_known_registers_no_full_scan(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
@@ -530,7 +530,7 @@ async def test_validate_known_registers_slave_id(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
@@ -553,7 +553,7 @@ async def test_validate_known_registers_delay_passed(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
@@ -576,7 +576,7 @@ async def test_validate_known_registers_no_writes(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services

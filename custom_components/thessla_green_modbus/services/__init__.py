@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.event import async_call_later
-from homeassistant.helpers.service import async_extract_entity_ids
+from homeassistant.helpers.service import async_extract_entity_ids as _ha_async_extract_entity_ids
 from homeassistant.util import dt as dt_util
 
 from ..const import DOMAIN, SPECIAL_FUNCTION_MAP
@@ -163,6 +163,9 @@ SERVICE_REGISTRATION_GROUPS: tuple[ServiceRegistrationGroup, ...] = (
 REGISTERED_SERVICE_NAMES: tuple[str, ...] = tuple(
     service for group in SERVICE_REGISTRATION_GROUPS for service in group.service_names
 )
+
+
+async_extract_entity_ids = _ha_async_extract_entity_ids
 
 
 def _extract_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:

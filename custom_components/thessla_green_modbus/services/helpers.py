@@ -13,7 +13,7 @@ def extract_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
     """Return entity IDs from a service call."""
     if not call.data.get("entity_id"):
         return set()
-    return cast(set[str], async_extract_entity_ids(hass, call))
+    return cast(set[str], async_extract_entity_ids(call))
 
 
 def iter_target_coordinators(

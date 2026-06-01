@@ -129,8 +129,6 @@ class ThesslaGreenDeviceScanner(
             scanner_register_map_runtime.ensure_register_maps(
                 scanner_register_map_runtime.initial_register_hash()
             )
-        # Avoid sticky logger levels from previous tests/services.
-        _LOGGER.setLevel(logging.DEBUG)
         scanner_setup.apply_scanner_params(
             self,
             host=host,

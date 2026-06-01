@@ -51,6 +51,14 @@ def _register_scan_all_registers_service(hass: HomeAssistant, deps: ServiceHandl
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
             effective_batch = coordinator.device_client.effective_batch
             batch = call.data.get("max_registers_per_request", effective_batch)
+            deps.logger.warning(
+                "scan_all_registers opens a separate Modbus connection to %s:%s for %s; "
+                "this may conflict with the active coordinator refresh. "
+                "Use validate_known_registers for less intrusive register validation.",
+                coordinator.host,
+                coordinator.port,
+                entity_id,
+            )
             deps.logger.info(
                 "Scan all registers started for %s: batch=%d, delay=%dms, known_only=%s",
                 entity_id,
