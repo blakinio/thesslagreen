@@ -139,3 +139,34 @@ def test_normalize_effective_batch_boundary_one():
     """max_batch=1 always returns 1."""
     assert scanner_setup.normalize_effective_batch(5, max_batch=1) == 1
     assert scanner_setup.normalize_effective_batch(0, max_batch=1) == 1
+
+
+# ---------------------------------------------------------------------------
+# Scanner __init__ must not force logger to DEBUG
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_scanner_init_does_not_set_debug_level():
+    """ThesslaGreenDeviceScanner.__init__ must not call _LOGGER.setLevel(DEBUG).
+
+    Unconditionally forcing the scanner logger to DEBUG makes log level sticky
+    and overrides HA/logger configuration for all subsequent scanners created
+    in the same process.
+    """
+    import logging
+
+    import custom_components.thessla_green_modbus.scanner.core as core_mod
+
+    logger = logging.getLogger(core_mod.__name__)
+    original_level = logger.level
+    logger.setLevel(logging.WARNING)
+
+    try:
+        await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 1)
+        assert logger.level == logging.WARNING, (
+            "Scanner __init__ must not change the logger level; "
+            f"expected WARNING ({logging.WARNING}), got {logger.level}"
+        )
+    finally:
+        logger.setLevel(original_level)

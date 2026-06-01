@@ -76,7 +76,7 @@ async def _setup_and_get(hass, service_name, coordinator, monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coordinator)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     await async_setup_services(hass)
     return hass.services.handlers[service_name]
 

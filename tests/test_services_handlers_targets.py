@@ -54,6 +54,11 @@ class _Coordinator:
             unknown_registers={},
             scanned_registers={},
             device_scan_result=None,
+            config=SimpleNamespace(
+                host="127.0.0.1",
+                port=502,
+                slave_id=1,
+            ),
         )
 
 
@@ -79,7 +84,7 @@ async def _setup_and_get(hass, service_name, coordinator, monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coordinator)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     await async_setup_services(hass)
     return hass.services.handlers[service_name]
 
@@ -139,7 +144,7 @@ async def test_scan_all_registers(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
 
     scan_result = {"register_count": 10, "unknown_registers": {"input": [99]}}
 
@@ -169,7 +174,7 @@ async def test_scan_all_registers_no_coordinator(monkeypatch):
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: None)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda _h, c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
     await async_setup_services(hass)
     handler = hass.services.handlers["scan_all_registers"]
 
@@ -217,6 +222,55 @@ def test_get_coordinator_returns_none_no_registry():
 
     result = _get_coordinator_from_entity_id(hass, "sensor.unknown")
     assert result is None
+
+
+def test_get_coordinator_returns_none_when_runtime_data_missing():
+    """_get_coordinator_from_entity_id returns None when config entry has no runtime_data.
+
+    This covers the case where a config entry is disabled or in the process of
+    being unloaded so runtime_data has not been set yet.
+    """
+    hass = SimpleNamespace()
+    entry = SimpleNamespace(config_entry_id="entry1")
+    hass.entity_registry = SimpleNamespace(async_get=lambda _e: entry)
+    config_entry = SimpleNamespace()  # no runtime_data attribute
+    hass.config_entries = SimpleNamespace(async_get_entry=lambda _id: config_entry)
+
+    result = _get_coordinator_from_entity_id(hass, "sensor.device")
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# async_extract_entity_ids — called without hass (new HA API)
+# ---------------------------------------------------------------------------
+
+
+def test_extract_entity_ids_with_extractor_no_hass_arg():
+    """extract_entity_ids_with_extractor calls extractor with only the call object.
+
+    The HA helper async_extract_entity_ids no longer accepts hass; confirm the
+    extractor receives exactly one positional argument (the service call).
+    """
+    from types import SimpleNamespace as NS
+
+    from custom_components.thessla_green_modbus.services.targets import (
+        extract_entity_ids_with_extractor,
+    )
+
+    received_args: list = []
+
+    def recording_extractor(*args, **kwargs):
+        received_args.extend(args)
+        return {"sensor.one"}
+
+    call = NS(data={"entity_id": "sensor.one"})
+    hass = NS()
+
+    result = extract_entity_ids_with_extractor(hass, call, extractor=recording_extractor)
+
+    assert result == {"sensor.one"}
+    assert len(received_args) == 1, "extractor must be called with exactly one arg (call)"
+    assert received_args[0] is call
 
 
 # ---------------------------------------------------------------------------
