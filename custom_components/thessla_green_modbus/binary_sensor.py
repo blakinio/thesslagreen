@@ -63,7 +63,7 @@ async def async_setup_entry(
             _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
             continue
 
-        register_map = coordinator.get_register_map(register_type)
+        register_map = coordinator.device_client.get_register_map(register_type)
         available = coordinator.device_client.available_registers.get(register_type, set())
         force_create = (
             coordinator.device_client.force_full_register_list and register_name in register_map
@@ -96,7 +96,9 @@ async def async_setup_entry(
             async_add_entities(entities, False)
             return
         _LOGGER.debug(
-            "Created %d binary sensor entities for %s", len(entities), coordinator.device_name
+            "Created %d binary sensor entities for %s",
+            len(entities),
+            coordinator.device_client.device_name,
         )
         if skipped_stale_problem:
             _LOGGER.info(

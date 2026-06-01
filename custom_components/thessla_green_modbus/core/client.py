@@ -180,6 +180,11 @@ class ThesslaGreenDeviceClient(
         return cast(dict[str, int], self._register_maps.get(register_type, {}))
 
     @property
+    def device_name(self) -> str:
+        """Return the configured or detected device name."""
+        return str(self.device_info.get("device_name") or self._device_name)
+
+    @property
     def is_connected(self) -> bool:
         """Return True if the device connection is currently active."""
         transport = self._transport

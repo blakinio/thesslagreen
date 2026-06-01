@@ -58,7 +58,7 @@ class ThesslaGreenEntity(CoordinatorEntity):
             getattr(self.coordinator, "port", 0),
         )
         addr_part = "calc" if self._address is None else self._address
-        return f"{prefix}_{self.coordinator.slave_id}_{self._key}_{addr_part}{bit_suffix}"
+        return f"{prefix}_{self.coordinator.device_client.slave_id}_{self._key}_{addr_part}{bit_suffix}"
 
     @property
     def available(self) -> bool:

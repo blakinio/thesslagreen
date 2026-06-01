@@ -291,3 +291,41 @@ The following are explicitly out of scope until prerequisites are met:
   real-device validation after #1684 is complete.
 - Any consolidation that touches the Modbus read/write runtime.
 - Any consolidation that changes public import paths without a full import-site audit.
+
+---
+
+## 2026-06-01 B3 Precheck — connection/ sub-package consolidation
+
+**Slice: B3 — DEFERRED**
+
+Precheck rule: "if any connection file was touched in the last 3 PRs, defer."
+
+### Precheck result
+
+`git log --oneline -3` on `main` at time of this batch shows the A1-finish commit in this
+very branch modified `core/connection_lifecycle.py`. Additionally, PR #1688 in the merge
+history also touched connection files. The precheck fails — B3 is deferred.
+
+### What would have been done
+
+Merge `connection_lifecycle.py`, `disconnect.py`, and `connection_state.py` into a
+`core/connection/` sub-package (or into `connection_lifecycle.py`) per Slice 2 plan above.
+
+### Re-evaluation criteria
+
+Re-assess B3 after:
+1. This branch is merged and passes real-device validation.
+2. No connection-path file is touched in the 3 PRs immediately preceding the B3 attempt.
+
+---
+
+## 2026-06-01 B4 — Read cluster consolidation
+
+**Slice: B4 — BLOCKED**
+
+Blocked: real-device validation for the read path has not yet reached PASS status.
+
+`read_batches.py`, `read_bits.py`, `read_common.py`, `runtime_io.py` will not be moved
+or merged until a full real-device read cycle is confirmed correct.
+
+Re-evaluate after the device validation milestone is marked PASS in the project tracker.

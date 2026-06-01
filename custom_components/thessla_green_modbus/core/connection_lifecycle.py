@@ -1,4 +1,4 @@
-"""Connection lifecycle orchestration for coordinator runtime."""
+"""Connection lifecycle orchestration for device-client runtime."""
 
 from __future__ import annotations
 
@@ -9,8 +9,9 @@ from pymodbus.exceptions import ConnectionException, ModbusException
 
 
 async def ensure_connected_lifecycle(
-    coordinator: Any,
+    device_client: Any,
     *,
+    disconnect_locked_fn: Callable[..., Any],
     ensure_connected_runtime_fn: Callable[..., Any],
     reconnect_client_if_needed_fn: Callable[..., Any],
     ensure_transport_selected_fn_factory: Callable[[], Callable[..., Any]],
@@ -19,17 +20,17 @@ async def ensure_connected_lifecycle(
     mark_connection_failure_fn: Callable[[], None],
     logger: Any,
 ) -> None:
-    """Drive connection establishment and state updates for coordinator."""
-    async with coordinator.device_client._client_lock:
+    """Drive connection establishment and state updates for device client."""
+    async with device_client._client_lock:
         try:
             transport, client, selected_mode = await ensure_connected_runtime_fn(
-                current_transport=coordinator.device_client._transport,
-                current_client=coordinator.device_client.client,
+                current_transport=device_client._transport,
+                current_client=device_client.client,
                 reconnect_client_if_needed_fn=reconnect_client_if_needed_fn,
-                disconnect_locked_fn=coordinator._disconnect_locked,
+                disconnect_locked_fn=disconnect_locked_fn,
                 get_runtime_state_fn=lambda: (
-                    coordinator.device_client._transport,
-                    coordinator.device_client.client,
+                    device_client._transport,
+                    device_client.client,
                 ),
                 ensure_transport_selected_fn=ensure_transport_selected_fn_factory(),
                 connect_transport_or_client_fn=connect_transport_or_client_fn,
@@ -37,10 +38,10 @@ async def ensure_connected_lifecycle(
                 mark_connection_failure_fn=mark_connection_failure_fn,
                 logger=logger,
             )
-            coordinator.device_client._transport = transport
-            coordinator.device_client.client = client
+            device_client._transport = transport
+            device_client.client = client
             if selected_mode is not None:
-                coordinator.device_client._resolved_connection_mode = selected_mode
+                device_client._resolved_connection_mode = selected_mode
         except (ModbusException, ConnectionException) as exc:
             logger.exception("Failed to establish connection: %s", exc)
             raise
