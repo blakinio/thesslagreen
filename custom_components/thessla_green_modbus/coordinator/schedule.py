@@ -69,7 +69,7 @@ class _CoordinatorScheduleMixin:
         payload = [int(v) for v in values]
         if self._device_client._transport is not None:
             return await self._device_client._transport.write_registers(
-                self.slave_id,
+                self._device_client.slave_id,
                 address,
                 values=payload,
                 attempt=attempt,
@@ -112,7 +112,7 @@ class _CoordinatorScheduleMixin:
         """Write a single holding register via transport or call_modbus (injects slave_id)."""
         if self._device_client._transport is not None:
             return await self._device_client._transport.write_register(
-                self.slave_id, address, value=int(value)
+                self._device_client.slave_id, address, value=int(value)
             )
         return await self._device_client._call_modbus(
             self._device_client._get_client_method("write_register"),
@@ -393,7 +393,7 @@ class _CoordinatorScheduleMixin:
         try:
             if self._device_client._transport is not None:
                 response = await self._device_client._transport.read_holding_registers(
-                    self.slave_id,
+                    self._device_client.slave_id,
                     start_address,
                     count=count,
                     attempt=1,

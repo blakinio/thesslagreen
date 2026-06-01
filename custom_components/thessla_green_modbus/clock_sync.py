@@ -132,7 +132,9 @@ async def async_perform_clock_sync(
     if not write_ok:
         log.error(
             "Failed to write RTC clock registers for coordinator at %s",
-            coordinator.host if hasattr(coordinator, "host") else "unknown",
+            coordinator.device_client.config.host
+            if hasattr(coordinator, "device_client")
+            else "unknown",
         )
         return False
 
