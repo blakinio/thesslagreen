@@ -220,9 +220,9 @@ def _make_number(mock_coordinator, register_name):
     """Helper: inject a fake register and return a ThesslaGreenNumber instance."""
     current_map = dict(mock_coordinator.get_register_map("holding_registers"))
     current_map[register_name] = 9990
-    mock_coordinator.get_register_map = lambda register_type: (
-        current_map if register_type == "holding_registers" else {}
-    )
+    _map_fn = lambda register_type: current_map if register_type == "holding_registers" else {}  # noqa: E731
+    mock_coordinator.get_register_map = _map_fn
+    mock_coordinator.device_client.get_register_map = _map_fn
     return ThesslaGreenNumber(mock_coordinator, register_name, {})
 
 

@@ -102,7 +102,7 @@ async def async_setup_entry(
             _LOGGER.debug("Created calculated sensor: %s", sensor_def["translation_key"])
             continue
 
-        register_map = coordinator.get_register_map(register_type)
+        register_map = coordinator.device_client.get_register_map(register_type)
         available = coordinator.device_client.available_registers.get(register_type, set())
         # serial_number is always force-created: it reads from device_info (assembled
         # during scan from 6 registers) rather than via per-register polling, so it

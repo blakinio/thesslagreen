@@ -40,7 +40,7 @@ async def async_setup_entry(
     entities = []
     for register_name, time_def in ENTITY_MAPPINGS["time"].items():
         register_type = time_def["register_type"]
-        register_map = coordinator.get_register_map(register_type)
+        register_map = coordinator.device_client.get_register_map(register_type)
         available = coordinator.device_client.available_registers.get(register_type, set())
         force_create = (
             coordinator.device_client.force_full_register_list and register_name in register_map
