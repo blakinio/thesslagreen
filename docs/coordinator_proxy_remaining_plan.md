@@ -324,3 +324,51 @@ No code changes needed.
 Refactor coordinator submodules (`scan.py`, `lifecycle.py`, `scan_result.py`) to
 accept `DeviceClient` directly instead of `coordinator`. This would allow removing
 the `_impl` delegate methods. Requires real-device validation first.
+
+## 2026-06-01 slices A1–A4
+
+### A1 — core/ parameter rename (coordinator→device_client)
+
+Renamed the `coordinator` parameter to `device_client` in four core helper modules
+that were always called with `ThesslaGreenDeviceClient` as their argument:
+- `core/client_scanner.py:build_scanner_kwargs`
+- `core/register_groups.py:compute_register_groups`
+- `core/runtime_io.py:call_modbus` and `read_all_register_data` (also simplified
+  `device_client.device_client.X` → `device_client.X`)
+- `core/read_common.py:execute_read_call`, `log_read_retry`, `raise_for_error_response`
+
+No behavioral change. `test_dependency_direction.py` continues to pass.
+
+### A2 — Already complete
+
+After slices 1–5, `coordinator/scan.py`, `write_path.py`, `diagnostics.py`, and
+`lifecycle.py` all use `coordinator.device_client.X` for device-domain state.
+Remaining accesses are coordinator methods or HA attributes (entry, hass,
+scan_interval, data). No changes needed.
+
+### A3 — services/handlers_data.py
+
+Migrated `coordinator.host/port/slave_id` in `services/handlers_data.py` to
+`coordinator.device_client.config.host/port/slave_id` (6 usages across
+`scan_all_registers` and `validate_known_registers` handlers).
+
+### A4 — Remaining production callers migrated; proxy properties RETAINED
+
+Migrated remaining production callers:
+- `clock_sync.py`: `coordinator.host` → `coordinator.device_client.config.host`
+- `coordinator.py _test_connection`: `self.slave_id` → `self._device_client.slave_id`
+- `coordinator/schedule.py` (3 sites): `self.slave_id` → `self._device_client.slave_id`
+
+**Proxy properties host/port/slave_id in `_CoordinatorConfigPropertiesMixin` RETAINED.**
+
+Reason: `entity.py` `unique_id` property uses `getattr(coordinator, "host", "")`,
+`getattr(coordinator, "port", 0)`, and `coordinator.slave_id` for entity identity.
+These cannot be removed without changing entity unique IDs (violates the no-unique-id-change
+constraint). Tests that SET/ASSERT these properties remain valid callers.
+
+### Proxy counter after A1–A4
+
+- Config property proxies: **3** (host, port, slave_id) — unchanged from slice-5; RETAINED
+- Static method proxies: **1** (_parse_backoff_jitter) — unchanged
+- `_impl` delegate methods: **~10** (all deferred — active call sites in scan/lifecycle/tests)
+- `@property` in coordinator.py: **4** (device_client, status_overview, performance_stats, device_name)

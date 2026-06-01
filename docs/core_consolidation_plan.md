@@ -1,9 +1,9 @@
 # Core Package Consolidation Plan
 
-**Status: Slice 1 merged — scanner_kwargs inlined into client_scanner**
+**Status: Slice 2 merged — runtime_state inlined into client_registers**
 **Created: 2026-05-29**
-**Updated: 2026-05-31**
-**Related PRs: #1685 (planning), #1691 (slice 1 — scanner_kwargs inline)**
+**Updated: 2026-06-01**
+**Related PRs: #1685 (planning), #1691 (slice 1 — scanner_kwargs inline), current branch (slice 2)**
 
 ---
 
@@ -185,21 +185,28 @@ restores the import in `client_scanner.py`. Zero runtime effect either way.
 
 **No behavior changes:** function body of `build_scanner_kwargs` is byte-for-byte identical.
 
-### Slice 2 — Next tiny internal-only helper (recommended next)
+### Slice 2 — Next tiny internal-only helper ✅ DONE (2026-06-01)
 
-**Recommended target:** `runtime_state.py` (25 lines) → inline into `core/client_registers.py`
+**Target:** `runtime_state.py` (25 lines) → inlined into `core/client_registers.py`
 
-**Why safe:** Only imported by `core/client_registers.py`. One test (`test_coordinator_runtime_state.py`)
-directly imports symbols from `core.runtime_state`; that import path must be updated to
-`core.client_registers` when this slice lands.
+**What was done:**
+- `mark_registers_failed` and `clear_register_failure` moved into `client_registers.py`
+- `runtime_state.py` deleted (git rm)
+- `tests/test_coordinator_runtime_state.py` import updated from
+  `core.runtime_state` → `core.client_registers`
+- Full validation passed
 
-**Steps:**
-1. Move `mark_registers_failed` and `clear_register_failure` into `client_registers.py`.
-2. Delete `runtime_state.py` (git rm).
-3. Update `tests/test_coordinator_runtime_state.py` import to `from ...core.client_registers import ...`.
-4. Run full validation.
+**Files moved / deleted:**
+| Action | File |
+|---|---|
+| Deleted | `core/runtime_state.py` |
+| Updated (inline target) | `core/client_registers.py` |
+| Updated (test import) | `tests/test_coordinator_runtime_state.py` |
 
-Risk: Low — one external test import to update, no patch targets.
+**Rollback plan:** `git revert <B2 commit>`. Re-creates `runtime_state.py`, removes the
+inlined functions from `client_registers.py`, and restores the test import. Zero runtime effect.
+
+**core/ file count:** 23 (was 24)
 
 ### Slice 3 — Connection helper consolidation
 
