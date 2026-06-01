@@ -57,9 +57,6 @@ from .config_properties import _CoordinatorConfigPropertiesMixin
 from .device_info import run_device_scan as _run_device_scan_impl
 from .device_info import warn_missing_device_info as _warn_missing_device_info_impl
 from .diagnostics import (
-    device_name as _device_name_impl,
-)
-from .diagnostics import (
     get_device_info as _get_device_info_impl,
 )
 from .diagnostics import (
@@ -291,10 +288,6 @@ class ThesslaGreenModbusCoordinator(
         )
         self.hass.async_create_task(self.entry.async_start_reauth(self.hass))
 
-    def get_register_map(self, register_type: str) -> dict[str, int]:
-        """Return the register map for the given register type."""
-        return self._device_client.get_register_map(register_type)
-
     def _apply_scan_result(self, scan_result: dict[str, Any]) -> None:
         """Store and process a completed device scan result."""
         _apply_scan_result_impl(
@@ -471,7 +464,3 @@ class ThesslaGreenModbusCoordinator(
         """Return device info mapping for the connected unit."""
         return _get_device_info_impl(self)
 
-    @property
-    def device_name(self) -> str:
-        """Return the configured or detected device name."""
-        return _device_name_impl(self)
