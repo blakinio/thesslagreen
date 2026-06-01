@@ -98,6 +98,7 @@ class _DeviceClientConnectionMixin:
         """Ensure Modbus connection is established."""
         await _ensure_connected_lifecycle_impl(
             self,
+            disconnect_locked_fn=self._disconnect_locked,
             ensure_connected_runtime_fn=_ensure_connected_runtime_impl,
             reconnect_client_if_needed_fn=_reconnect_client_if_needed_impl,
             ensure_transport_selected_fn_factory=self._build_transport_selector_fn,
