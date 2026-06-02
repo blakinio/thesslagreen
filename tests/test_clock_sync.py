@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from custom_components.thessla_green_modbus.clock_sync import (
     ClockSyncManager,
+    _drift_seconds,
     async_perform_clock_sync,
     bcd_decode,
     bcd_encode,
@@ -968,3 +969,135 @@ async def test_sync_device_clock_service_calls_write(monkeypatch):
     coord.async_write_and_read_holding_registers.assert_awaited_once()
     values = coord.async_write_and_read_holding_registers.call_args.kwargs["values"]
     assert values == encode_rtc_registers(now)
+
+
+# ---------------------------------------------------------------------------
+# _drift_seconds — error handling
+# ---------------------------------------------------------------------------
+
+
+def test_drift_seconds_returns_none_for_invalid_string():
+    now = datetime.datetime(2025, 1, 1, 12, 0, 0)
+    assert _drift_seconds(now, "not-a-datetime") is None
+
+
+def test_drift_seconds_returns_none_for_none_input():
+    now = datetime.datetime(2025, 1, 1, 12, 0, 0)
+    assert _drift_seconds(now, None) is None  # type: ignore[arg-type]
+
+
+# ---------------------------------------------------------------------------
+# async_perform_clock_sync — exception from write_and_read
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_sync_returns_false_on_write_and_read_exception():
+    """async_write_and_read_holding_registers raising → returns False."""
+    now = datetime.datetime(2025, 5, 9, 14, 30, 45)
+    coord = _make_coordinator()
+    coord.async_write_and_read_holding_registers = AsyncMock(
+        side_effect=RuntimeError("transport error")
+    )
+    result = await async_perform_clock_sync(coord, force=True, dt_now_fn=_fixed_now(now))
+    assert result is False
+
+
+# ---------------------------------------------------------------------------
+# async_perform_clock_sync — decode failure on readback
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_sync_readback_invalid_bcd_raises():
+    """decode_rtc_registers returns None for invalid BCD → HomeAssistantError."""
+    from homeassistant.exceptions import HomeAssistantError
+
+    now = datetime.datetime(2025, 5, 9, 14, 30, 45)
+    # low byte of reg 0 = 0xFF → bcd_decode gives month=165 (invalid) → decode returns None
+    invalid_regs = [0x25FF, 0x0900, 0x0E1E, 0x2D00]
+    coord = _make_coordinator(data={}, readback_regs=invalid_regs)
+
+    with pytest.raises(HomeAssistantError, match="could not decode"):
+        await async_perform_clock_sync(coord, force=True, dt_now_fn=_fixed_now(now))
+
+
+# ---------------------------------------------------------------------------
+# ClockSyncManager — sync_in_progress guard
+# ---------------------------------------------------------------------------
+
+
+def test_clock_sync_manager_skips_when_sync_in_progress():
+    hass = MagicMock()
+    coord = _make_coordinator(data={"device_clock": "2025-05-09T14:00:00"})
+    entry = MagicMock()
+    entry.options = {"sync_device_clock_enabled": True}
+
+    mgr = ClockSyncManager(hass, coord, entry)
+    mgr._sync_in_progress = True
+    mgr._on_update()
+    hass.async_create_task.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# ClockSyncManager — periodic sync after interval elapsed
+# ---------------------------------------------------------------------------
+
+
+def test_clock_sync_manager_periodic_triggers_after_interval():
+    hass = MagicMock()
+    hass.async_create_task.side_effect = lambda coro: coro.close()
+    coord = _make_coordinator(data={"device_clock": "2025-05-09T14:00:00"})
+    entry = MagicMock()
+    entry.options = {
+        "sync_device_clock_enabled": True,
+        "sync_device_clock_on_start": False,
+        "sync_device_clock_interval_hours": 1,
+    }
+
+    mgr = ClockSyncManager(hass, coord, entry)
+    mgr._on_start_done = True
+    mgr._last_sync = datetime.datetime.now() - datetime.timedelta(hours=2)
+    mgr._on_update()
+    hass.async_create_task.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# ClockSyncManager._do_sync
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_do_sync_success_sets_last_sync():
+    now = datetime.datetime(2025, 5, 9, 14, 30, 45)
+    regs = encode_rtc_registers(now)
+    coord = _make_coordinator(readback_regs=regs)
+    hass = MagicMock()
+    entry = MagicMock()
+    entry.options = {}
+
+    mgr = ClockSyncManager(hass, coord, entry)
+    await mgr._do_sync(300)
+
+    assert mgr._sync_in_progress is False
+    assert mgr._last_sync is not None
+
+
+@pytest.mark.asyncio
+async def test_do_sync_skips_when_already_in_progress():
+    coord = _make_coordinator()
+    mgr = ClockSyncManager(MagicMock(), coord, MagicMock())
+    mgr._sync_in_progress = True
+
+    await mgr._do_sync(300)
+    coord.async_write_and_read_holding_registers.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_do_sync_handles_exception_gracefully():
+    coord = _make_coordinator()
+    coord.async_write_and_read_holding_registers = AsyncMock(side_effect=RuntimeError("fail"))
+    mgr = ClockSyncManager(MagicMock(), coord, MagicMock())
+
+    await mgr._do_sync(300)
+    assert mgr._sync_in_progress is False

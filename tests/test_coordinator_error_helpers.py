@@ -118,3 +118,22 @@ async def test_handle_applies_failure_state():
     await handle_update_error(coord, RuntimeError("x"), reauth_reason="r", message="m")
     assert coord.device_client.statistics["failed_reads"] == 1
     assert coord.device_client.offline_state is True
+
+
+@pytest.mark.asyncio
+async def test_handle_triggers_invalid_auth_reauth_when_check_auth():
+    from unittest.mock import patch
+
+    coord = _make_coord()
+    with patch(
+        "custom_components.thessla_green_modbus.coordinator.errors.is_invalid_auth_error",
+        return_value=True,
+    ):
+        await handle_update_error(
+            coord,
+            RuntimeError("auth error"),
+            reauth_reason="r",
+            message="m",
+            check_auth=True,
+        )
+    coord._trigger_reauth.assert_called_with("invalid_auth")

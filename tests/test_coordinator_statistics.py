@@ -55,3 +55,14 @@ def test_get_diagnostic_data_with_raw_registers():
         "total_addresses_scanned": 100,
     }
     assert "raw_registers" in coord.get_diagnostic_data()
+
+
+def test_get_diagnostic_data_raw_registers_without_total_addresses():
+    coord = _make_coordinator()
+    coord.device_client.device_scan_result = {
+        "raw_registers": {"0": 123},
+        # no total_addresses_scanned — covers the False branch of that inner check
+    }
+    data = coord.get_diagnostic_data()
+    assert "raw_registers" in data
+    assert "total_addresses_scanned" not in data.get("statistics", {})

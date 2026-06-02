@@ -147,6 +147,17 @@ def test_sw_version_partial_registers():
     assert _resolve_sw_version(coord) == "3.11"
 
 
+def test_sw_version_major_only_without_minor():
+    """Only major without minor produces just the major number."""
+    from custom_components.thessla_green_modbus.coordinator.diagnostics import _resolve_sw_version
+
+    coord = _make_coordinator()
+    coord.device_client.device_info = {}
+    coord.data = {"version_major": 3}
+
+    assert _resolve_sw_version(coord) == "3"
+
+
 def test_get_device_info_uses_version_registers_for_sw_version():
     """get_device_info exposes version-register-assembled sw_version."""
     coord = _make_coordinator()
