@@ -72,10 +72,9 @@ def _apply_log_level(log_level: str) -> None:
 async def async_create_coordinator(hass: HomeAssistant, entry: ConfigEntry) -> Any:
     """Read config entry options and instantiate the coordinator."""
     from .coordinator import ThesslaGreenModbusCoordinator
-    from .coordinator.config_normalization import coordinator_config_from_entry
     from .core.models import CoordinatorConfig
 
-    config = coordinator_config_from_entry(entry, CoordinatorConfig)
+    config = CoordinatorConfig.from_entry(entry)
     connection_type = config.connection_type
     if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
         connection_type = DEFAULT_CONNECTION_TYPE

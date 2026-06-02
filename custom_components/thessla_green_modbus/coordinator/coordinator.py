@@ -191,7 +191,7 @@ class ThesslaGreenModbusCoordinator(
         )
         self.hass = hass
 
-        # Apply coordinator config — property proxies forward writes to DeviceClient.
+        # Apply normalized config directly onto device_client attributes.
         _apply_coordinator_config_impl(
             self,
             normalized_cfg,
@@ -202,7 +202,7 @@ class ThesslaGreenModbusCoordinator(
             resolve_effective_batch_fn=_resolve_effective_batch_impl,
         )
 
-        # Initialize runtime state — property proxies forward writes to DeviceClient.
+        # Initialize runtime state on device_client directly.
         _initialize_runtime_state_impl(self, entry=entry)
 
     @classmethod
