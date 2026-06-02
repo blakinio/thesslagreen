@@ -106,7 +106,32 @@ All applicable commands must pass before a task is considered done.
 
 ---
 
-## 7. Refactor tasks — additional rules
+## 7. Changelog policy
+
+Update `CHANGELOG.md` (root) on **every PR** that touches runtime code, entity
+behavior, services, register mappings, entity/unique/service IDs, diagnostics, or
+any structural refactor.
+
+Place entries under the appropriate subsection of `[Unreleased]`:
+
+| Subsection | When to use |
+|---|---|
+| `Added` | New feature, entity, service, or capability |
+| `Changed` | Behavioral change, renamed display name, recategorised entity |
+| `Fixed` | Bug fix, incorrect state, wrong log message |
+| `Removed` | Deleted entity, service, register, or module |
+| `Docs` | Documentation or real-device evidence committed |
+| `Internal` | Refactor, test-only change, tooling, CI |
+
+PRs that are **test-only, docs-only, or internal-only** may omit a CHANGELOG entry
+provided the PR body contains: `No changelog: <reason>`.
+
+Do **not** claim release status (version tag, "shipped") unless a GitHub release
+already exists for that version.
+
+---
+
+## 8. Refactor tasks — additional rules
 
 Apply these only when the task is explicitly a refactor/migration:
 
@@ -123,7 +148,7 @@ Apply these only when the task is explicitly a refactor/migration:
 
 ---
 
-## 8. Key reference docs
+## 9. Key reference docs
 
 - `docs/thesslagreen_architecture.md` — layer design and rationale.
 - `docs/thesslagreen_guidelines.md` — coding guidelines (incl. no-shim rule).
