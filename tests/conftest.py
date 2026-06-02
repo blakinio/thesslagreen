@@ -162,7 +162,6 @@ def mock_coordinator():
         "coil_registers": coil_registers().copy(),
         "discrete_inputs": discrete_input_registers().copy(),
     }
-    coordinator.get_register_map = lambda rt: _register_maps.get(rt, {})
     coordinator.device_client.get_register_map = lambda rt: _register_maps.get(rt, {})
     coordinator.device_client.force_full_register_list = False
     coordinator.device_client.force_full_register_list = False

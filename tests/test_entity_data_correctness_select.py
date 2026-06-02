@@ -72,7 +72,9 @@ class TestSelectEntity:
 
     @pytest.mark.parametrize("select_name,defn", list(ENTITY_MAPPINGS["select"].items()))
     def test_options_are_list_of_strings(self, mock_coordinator, select_name, defn):
-        holding = mock_coordinator.get_register_map(defn.get("register_type", "holding_registers"))
+        holding = mock_coordinator.device_client.get_register_map(
+            defn.get("register_type", "holding_registers")
+        )
         address = holding.get(select_name, 100)
         entity = ThesslaGreenSelect(mock_coordinator, select_name, address, defn)
         assert isinstance(entity._attr_options, list)

@@ -11,7 +11,7 @@ class TestNumberEntity:
 
     def _first_number_register(self, mock_coordinator) -> str:
         """Return first number register that is in holding_registers map."""
-        holding = mock_coordinator.get_register_map("holding_registers")
+        holding = mock_coordinator.device_client.get_register_map("holding_registers")
         for name in ENTITY_MAPPINGS["number"]:
             if name in holding:
                 return name
@@ -47,7 +47,7 @@ class TestNumberEntity:
         assert entity._attr_native_min_value < entity._attr_native_max_value
 
     def test_default_min_is_zero_when_not_configured(self, mock_coordinator):
-        holding = mock_coordinator.get_register_map("holding_registers")
+        holding = mock_coordinator.device_client.get_register_map("holding_registers")
         for name, cfg in ENTITY_MAPPINGS["number"].items():
             if name in holding and "min" not in cfg:
                 entity = _make_number(mock_coordinator, name)
@@ -56,7 +56,7 @@ class TestNumberEntity:
         pytest.skip("All number registers have explicit 'min'")
 
     def test_default_max_is_100_when_not_configured(self, mock_coordinator):
-        holding = mock_coordinator.get_register_map("holding_registers")
+        holding = mock_coordinator.device_client.get_register_map("holding_registers")
         for name, cfg in ENTITY_MAPPINGS["number"].items():
             if name in holding and "max" not in cfg:
                 entity = _make_number(mock_coordinator, name)
@@ -65,7 +65,7 @@ class TestNumberEntity:
         pytest.skip("All number registers have explicit 'max'")
 
     def test_step_defaults_to_one(self, mock_coordinator):
-        holding = mock_coordinator.get_register_map("holding_registers")
+        holding = mock_coordinator.device_client.get_register_map("holding_registers")
         for name, cfg in ENTITY_MAPPINGS["number"].items():
             if name in holding and "step" not in cfg:
                 entity = _make_number(mock_coordinator, name)
@@ -74,7 +74,7 @@ class TestNumberEntity:
         pytest.skip("All number registers have explicit 'step'")
 
     def test_temperature_register_uses_thermometer_icon(self, mock_coordinator):
-        holding = mock_coordinator.get_register_map("holding_registers")
+        holding = mock_coordinator.device_client.get_register_map("holding_registers")
         for name in ENTITY_MAPPINGS["number"]:
             if name in holding and "temperature" in name:
                 entity = _make_number(mock_coordinator, name)
@@ -91,7 +91,7 @@ class TestNumberEntity:
         ][:10],
     )
     def test_explicit_min_max_applied(self, mock_coordinator, register_name, cfg):
-        holding = mock_coordinator.get_register_map("holding_registers")
+        holding = mock_coordinator.device_client.get_register_map("holding_registers")
         if register_name not in holding:
             pytest.skip(f"{register_name} not in holding_registers")
         entity = _make_number(mock_coordinator, register_name)

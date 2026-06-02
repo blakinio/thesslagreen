@@ -185,7 +185,6 @@ async def test_force_full_register_list_creates_schedule_time_entities() -> None
     coordinator.device_client.available_registers = {"holding_registers": set()}
     coordinator.device_client.force_full_register_list = True
     coordinator.device_client.capabilities = MagicMock()
-    coordinator.get_register_map.return_value = _REGISTER_MAP
     coordinator.device_client.get_register_map.return_value = _REGISTER_MAP
 
     config_entry = MagicMock()
@@ -221,7 +220,6 @@ async def test_available_registers_creates_schedule_time_entities() -> None:
     }
     coordinator.device_client.force_full_register_list = False
     coordinator.device_client.capabilities = MagicMock()
-    coordinator.get_register_map.return_value = _REGISTER_MAP
     coordinator.device_client.get_register_map.return_value = _REGISTER_MAP
 
     config_entry = MagicMock()
