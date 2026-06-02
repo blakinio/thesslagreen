@@ -239,7 +239,7 @@ def test_sensor_reports_unavailable_when_no_data():
     coord = MagicMock()
     coord.host = "1.2.3.4"
     coord.port = 502
-    coord.slave_id = 10
+    coord.device_client.slave_id = 10
     coord.get_device_info.return_value = {}
     coord.entry = MagicMock()
     coord.entry.options = {}
@@ -257,7 +257,7 @@ def test_percentage_sensor_unavailable_without_nominal():
     coord = MagicMock()
     coord.host = "1.2.3.4"
     coord.port = 502
-    coord.slave_id = 10
+    coord.device_client.slave_id = 10
     coord.get_device_info.return_value = {}
     coord.entry = MagicMock()
     coord.entry.options = {CONF_AIRFLOW_UNIT: AIRFLOW_UNIT_PERCENTAGE}

@@ -32,7 +32,6 @@ class _Coordinator:
         self.data = {}
         self.host = "192.168.1.10"
         self.port = 502
-        self.slave_id = slave_id
         self.device_client = SimpleNamespace(
             scan_uart_settings=False,
             effective_batch=effective_batch,
@@ -105,7 +104,7 @@ def _mock_scanner_create(scan_result: dict | None = None):
 
 @pytest.mark.asyncio
 async def test_scan_all_registers_uses_slave_id(monkeypatch):
-    """scan_all_registers passes coordinator.slave_id to the scanner factory."""
+    """scan_all_registers passes coordinator.device_client.config.slave_id to the scanner factory."""
     coord = _Coordinator(slave_id=10)
     hass = _make_hass()
     _mock_scanner, mock_create = _mock_scanner_create()
@@ -527,7 +526,7 @@ async def test_validate_known_registers_no_full_scan(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_validate_known_registers_slave_id(monkeypatch):
-    """validate_known_registers uses coordinator.slave_id."""
+    """validate_known_registers uses coordinator.device_client.config.slave_id."""
     coord = _Coordinator(slave_id=10)
     hass = _make_hass()
     _mock_scanner, mock_create = _mock_scanner_create()

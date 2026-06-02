@@ -1,10 +1,10 @@
 """Config-backed property accessors mixin for coordinator.
 
-Retained properties (host, port, slave_id) are used by entity platforms,
-services, core IO modules, and tests.  Removed properties
-(connection_type, connection_mode, serial_port, baud_rate, parity,
-stop_bits) had zero external call sites — callers already use
-``coordinator.device_client.config.X`` directly.
+Retained properties (host, port) are used by services/handlers_data.py.
+Removed properties (slave_id, connection_type, connection_mode, serial_port,
+baud_rate, parity, stop_bits) had zero external call sites — callers use
+``coordinator.device_client.config.X`` or ``coordinator.device_client.slave_id``
+directly.
 """
 
 from __future__ import annotations
@@ -30,12 +30,3 @@ class _CoordinatorConfigPropertiesMixin:
     @port.setter
     def port(self, value: int) -> None:
         self.device_client.config.port = value
-
-    @property
-    def slave_id(self) -> int:
-        """Slave ID accessor backed by CoordinatorConfig."""
-        return self.device_client.config.slave_id
-
-    @slave_id.setter
-    def slave_id(self, value: int) -> None:
-        self.device_client.config.slave_id = value

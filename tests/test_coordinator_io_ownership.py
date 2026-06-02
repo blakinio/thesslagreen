@@ -245,6 +245,7 @@ _REMOVED_CONFIG_PROXIES = (
     "baud_rate",
     "parity",
     "stop_bits",
+    "slave_id",
 )
 
 
@@ -266,9 +267,9 @@ def test_removed_config_proxy_still_on_device_client_config(prop_name):
 
 
 def test_kept_config_proxies_still_present():
-    """host, port, slave_id must remain on coordinator as HA-boundary adapters."""
+    """host and port must remain on coordinator as HA-boundary adapters (used by services)."""
     coord = _make_coordinator()
-    for prop in ("host", "port", "slave_id"):
+    for prop in ("host", "port"):
         assert hasattr(coord, prop), f"coordinator.{prop} was accidentally removed"
         assert hasattr(coord.device_client.config, prop)
 
