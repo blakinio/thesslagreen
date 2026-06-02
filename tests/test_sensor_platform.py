@@ -237,8 +237,8 @@ def test_time_sensor_with_empty_slot_is_available(mock_coordinator):
 def test_sensor_reports_unavailable_when_no_data():
     """Sensors return None and are marked unavailable when data missing."""
     coord = MagicMock()
-    coord.host = "1.2.3.4"
-    coord.port = 502
+    coord.device_client.config.host = "1.2.3.4"
+    coord.device_client.config.port = 502
     coord.device_client.slave_id = 10
     coord.get_device_info.return_value = {}
     coord.entry = MagicMock()
@@ -255,8 +255,8 @@ def test_sensor_reports_unavailable_when_no_data():
 def test_percentage_sensor_unavailable_without_nominal():
     """Percentage sensors become unavailable when nominal flow is missing."""
     coord = MagicMock()
-    coord.host = "1.2.3.4"
-    coord.port = 502
+    coord.device_client.config.host = "1.2.3.4"
+    coord.device_client.config.port = 502
     coord.device_client.slave_id = 10
     coord.get_device_info.return_value = {}
     coord.entry = MagicMock()

@@ -50,7 +50,6 @@ from ..scanner import (
 )
 from ..utils import resolve_connection_settings
 from .config_normalization import normalize_scan_interval as _normalize_scan_interval_impl
-from .config_properties import _CoordinatorConfigPropertiesMixin
 from .device_info import run_device_scan as _run_device_scan_impl
 from .device_info import warn_missing_device_info as _warn_missing_device_info_impl
 from .diagnostics import (
@@ -124,7 +123,6 @@ _LOGGER = logging.getLogger(__name__)
 
 class ThesslaGreenModbusCoordinator(
     _CoordinatorCapabilitiesMixin,
-    _CoordinatorConfigPropertiesMixin,
     _CoordinatorScheduleMixin,
     DataUpdateCoordinator[dict[str, Any]],
 ):

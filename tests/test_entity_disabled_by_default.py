@@ -23,8 +23,8 @@ from homeassistant.helpers.entity import EntityCategory
 
 def _make_coordinator() -> MagicMock:
     coordinator = MagicMock()
-    coordinator.host = "192.168.1.1"
-    coordinator.port = 502
+    coordinator.device_client.config.host = "192.168.1.1"
+    coordinator.device_client.config.port = 502
     coordinator.device_client.slave_id = 10
     coordinator.last_update_success = True
     coordinator.data = {}

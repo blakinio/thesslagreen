@@ -55,8 +55,8 @@ def _register_scan_all_registers_service(hass: HomeAssistant, deps: ServiceHandl
                 "scan_all_registers opens a separate Modbus connection to %s:%s for %s; "
                 "this may conflict with the active coordinator refresh. "
                 "Use validate_known_registers for less intrusive register validation.",
-                coordinator.host,
-                coordinator.port,
+                coordinator.device_client.config.host,
+                coordinator.device_client.config.port,
                 entity_id,
             )
             deps.logger.info(

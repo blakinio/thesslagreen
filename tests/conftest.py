@@ -109,8 +109,8 @@ def mock_coordinator():
     )
 
     coordinator = MagicMock()
-    coordinator.host = "192.168.1.100"
-    coordinator.port = 502
+    coordinator.device_client.config.host = "192.168.1.100"
+    coordinator.device_client.config.port = 502
     coordinator.device_client.slave_id = 10
     coordinator.last_update_success = True
     coordinator.data = {

@@ -339,8 +339,8 @@ def test_coordinator_initialization():
     )
     coordinator.device_client.available_registers = available_registers
 
-    assert coordinator.host == "192.168.1.100"
-    assert coordinator.port == 502
+    assert coordinator.device_client.config.host == "192.168.1.100"
+    assert coordinator.device_client.config.port == 502
     assert coordinator.device_client.slave_id == 10
     assert coordinator.device_client.timeout == 10
 

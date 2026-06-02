@@ -32,8 +32,8 @@ async def test_services_registration():
     entry.async_on_unload = MagicMock()
 
     mock_coordinator = MagicMock()
-    mock_coordinator.host = "192.168.1.100"
-    mock_coordinator.port = 502
+    mock_coordinator.device_client.config.host = "192.168.1.100"
+    mock_coordinator.device_client.config.port = 502
     mock_coordinator.device_client.slave_id = 10
     mock_coordinator.last_update_success = True
     mock_coordinator.async_config_entry_first_refresh = AsyncMock()
