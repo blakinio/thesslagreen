@@ -111,7 +111,7 @@ def mock_coordinator():
     coordinator = MagicMock()
     coordinator.host = "192.168.1.100"
     coordinator.port = 502
-    coordinator.slave_id = 10
+    coordinator.device_client.slave_id = 10
     coordinator.last_update_success = True
     coordinator.data = {
         "outside_temperature": 15.5,

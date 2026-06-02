@@ -25,7 +25,7 @@ def _make_coordinator() -> MagicMock:
     coordinator = MagicMock()
     coordinator.host = "192.168.1.1"
     coordinator.port = 502
-    coordinator.slave_id = 10
+    coordinator.device_client.slave_id = 10
     coordinator.last_update_success = True
     coordinator.data = {}
     coordinator.device_client.device_info = {}

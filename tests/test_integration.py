@@ -403,4 +403,4 @@ def test_coordinator_ctor_from_config() -> None:
     coordinator = ThesslaGreenModbusCoordinator(hass, config)
     assert coordinator.host == "192.168.1.10"
     assert coordinator.port == 502
-    assert coordinator.slave_id == 10
+    assert coordinator.device_client.slave_id == 10

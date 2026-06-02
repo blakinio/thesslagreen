@@ -47,7 +47,7 @@ def _make_coordinator(data: dict | None = None) -> MagicMock:
     coord.data = data or {}
     coord.last_update_success = True
     coord.device_client.offline_state = False
-    coord.slave_id = 1
+    coord.device_client.slave_id = 1
     coord.device_client.force_full_register_list = False
     coord.device_client.available_registers = {"holding_registers": set()}
     coord.async_write_register = AsyncMock(return_value=True)

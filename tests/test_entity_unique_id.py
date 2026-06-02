@@ -23,7 +23,6 @@ def _create_coordinator(
     slave_id: int = 10,
 ):
     coordinator = MagicMock()
-    coordinator.slave_id = slave_id
     coordinator.device_client.slave_id = slave_id
     coordinator.host = host
     coordinator.port = port
@@ -186,7 +185,6 @@ async def test_migrate_entity_unique_ids(hass):
         coordinator.async_setup = AsyncMock(return_value=True)
         coordinator.host = host
         coordinator.port = port
-        coordinator.slave_id = slave_id
         coordinator.device_client.slave_id = slave_id
         coordinator.device_client.device_info = {"serial_number": "ABC123"}
         coordinator.get_device_info.return_value = coordinator.device_client.device_info

@@ -171,7 +171,7 @@ async def test_holding_falls_back_to_client_read_method(
     dc._call_modbus = AsyncMock(return_value=SimpleNamespace(registers=[7, 8]))
 
     async def _fake_read_with_retry(read_method, address, count, **_kwargs):
-        return await read_method(coordinator.slave_id, address, count=count, attempt=1)
+        return await read_method(dc.slave_id, address, count=count, attempt=1)
 
     dc._read_with_retry = _fake_read_with_retry
 

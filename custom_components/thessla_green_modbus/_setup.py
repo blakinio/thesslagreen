@@ -197,7 +197,7 @@ async def async_migrate_entity_unique_ids(
     port = getattr(coordinator, "port", None) or getattr(
         coordinator.device_client.config, "port", 0
     )
-    slave_id = getattr(coordinator, "slave_id", None) or getattr(
+    slave_id = getattr(coordinator.device_client, "slave_id", None) or getattr(
         coordinator.device_client.config, "slave_id", 0
     )
 
