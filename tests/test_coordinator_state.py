@@ -27,10 +27,10 @@ from custom_components.thessla_green_modbus.coordinator.state import (
 
 
 def test_normalize_serial_normal_values():
-    port, baud, parity, stop = normalize_serial_settings("/dev/ttyUSB0", 9600, "n", 1)
+    port, baud, parity, stop = normalize_serial_settings("/dev/ttyUSB0", 9600, "none", 1)
     assert port == "/dev/ttyUSB0"
     assert baud == 9600
-    assert parity == "n"
+    assert parity == "none"
     assert stop == 1
 
 
@@ -60,8 +60,8 @@ def test_normalize_serial_stop_bits_two():
 
 
 def test_resolve_effective_batch_no_entry_uses_param():
-    result = resolve_effective_batch(None, 50)
-    assert result == 50
+    result = resolve_effective_batch(None, 10)
+    assert result == 10
 
 
 def test_resolve_effective_batch_clamped_to_max():
@@ -76,9 +76,9 @@ def test_resolve_effective_batch_minimum_is_one():
 
 def test_resolve_effective_batch_from_entry_options():
     entry = MagicMock()
-    entry.options = {"max_registers_per_request": 30}
+    entry.options = {"max_registers_per_request": 10}
     result = resolve_effective_batch(entry, 125)
-    assert result == 30
+    assert result == 10
 
 
 def test_resolve_effective_batch_bad_entry_option_uses_max():
@@ -199,7 +199,7 @@ def test_initialize_device_state_bad_capabilities_falls_back():
 
 def test_initialize_scan_state_zeroes_statistics():
     coord = _make_coord()
-    with patch("custom_components.thessla_green_modbus.coordinator.state.utcnow"):
+    with patch("custom_components.thessla_green_modbus.utils.utcnow"):
         _initialize_scan_state(coord)
     stats = coord.device_client.statistics
     assert stats["successful_reads"] == 0
@@ -211,14 +211,14 @@ def test_initialize_scan_state_zeroes_statistics():
 def test_initialize_scan_state_resets_scan_result():
     coord = _make_coord()
     coord.device_client.device_scan_result = {"something": True}
-    with patch("custom_components.thessla_green_modbus.coordinator.state.utcnow"):
+    with patch("custom_components.thessla_green_modbus.utils.utcnow"):
         _initialize_scan_state(coord)
     assert coord.device_client.device_scan_result is None
 
 
 def test_initialize_scan_state_resets_energy():
     coord = _make_coord()
-    with patch("custom_components.thessla_green_modbus.coordinator.state.utcnow"):
+    with patch("custom_components.thessla_green_modbus.utils.utcnow"):
         _initialize_scan_state(coord)
     assert coord.device_client._total_energy == 0.0
 
@@ -230,7 +230,7 @@ def test_initialize_scan_state_resets_energy():
 
 def test_initialize_runtime_state_calls_all_sub_functions():
     coord = _make_coord()
-    with patch("custom_components.thessla_green_modbus.coordinator.state.utcnow"):
+    with patch("custom_components.thessla_green_modbus.utils.utcnow"):
         initialize_runtime_state(coord, entry=None)
     assert coord._reauth_scheduled is False
     assert coord.device_client.client is None
