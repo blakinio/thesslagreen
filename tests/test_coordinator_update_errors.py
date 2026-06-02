@@ -129,6 +129,26 @@ async def test_call_modbus_no_client_raises():
         await c.device_client._call_modbus(dummy, 100, count=1)
 
 
+def test_process_register_value_sensor_unavailable_temperature():
+    from unittest.mock import patch
+
+    from custom_components.thessla_green_modbus.const import SENSOR_UNAVAILABLE
+
+    coord = _make_coordinator()
+    mock_def = MagicMock()
+    mock_def.is_temperature.return_value = True
+    mock_def.enum = None
+    mock_def.decode.return_value = 0
+    with patch(
+        "custom_components.thessla_green_modbus.coordinator.coordinator.get_register_definition",
+        return_value=mock_def,
+    ):
+        result = coord.device_client._process_register_value(
+            "outside_temperature", SENSOR_UNAVAILABLE
+        )
+    assert result is None
+
+
 async def test_read_with_retry_response_none_via_call_modbus():
     c = _make_coordinator()
     c.device_client.retry = 1

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from .test_scanner_coverage import _make_scanner, _sized_read_mock
+from .helpers_scanner import _make_scanner, _sized_read_mock
 
 
 @pytest.mark.asyncio

@@ -146,7 +146,6 @@ def mock_coordinator():
         sensor_heating_temperature=True,
     )
     coordinator.device_client.capabilities = _capabilities
-    coordinator.device_client.capabilities = _capabilities
     _available_registers = {
         "input_registers": {"outside_temperature", "supply_temperature", "exhaust_temperature"},
         "holding_registers": {"mode", "on_off_panel_mode", "air_flow_rate_manual"},
@@ -155,7 +154,6 @@ def mock_coordinator():
         "calculated": {"estimated_power", "total_energy"},
     }
     coordinator.device_client.available_registers = _available_registers
-    coordinator.device_client.available_registers = _available_registers
     _register_maps = {
         "input_registers": input_registers().copy(),
         "holding_registers": holding_registers().copy(),
@@ -163,7 +161,6 @@ def mock_coordinator():
         "discrete_inputs": discrete_input_registers().copy(),
     }
     coordinator.device_client.get_register_map = lambda rt: _register_maps.get(rt, {})
-    coordinator.device_client.force_full_register_list = False
     coordinator.device_client.force_full_register_list = False
     coordinator.device_client.device_scan_result = None
     coordinator.device_client.statistics = {

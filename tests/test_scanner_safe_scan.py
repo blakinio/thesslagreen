@@ -8,7 +8,7 @@ from custom_components.thessla_green_modbus.scanner.selection import (
     _split_groups_around_missing,
 )
 
-from .test_scanner_coverage import _make_scanner, _run_minimal_scan
+from .helpers_scanner import _make_scanner, _run_minimal_scan
 
 
 @pytest.mark.asyncio
