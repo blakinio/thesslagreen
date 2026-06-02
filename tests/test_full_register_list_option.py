@@ -56,6 +56,7 @@ class FakeCoordinator:
                 return True
 
         self.hass = hass
+        self.config = config
         self.host = config.host
         self.port = config.port
         self.slave_id = config.slave_id

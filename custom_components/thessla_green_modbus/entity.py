@@ -54,8 +54,8 @@ class ThesslaGreenEntity(CoordinatorEntity):
         serial_number = device_info.get("serial_number")
         prefix = device_unique_id_prefix(
             serial_number,
-            getattr(self.coordinator, "host", ""),
-            getattr(self.coordinator, "port", 0),
+            getattr(self.coordinator.device_client.config, "host", ""),
+            getattr(self.coordinator.device_client.config, "port", 0),
         )
         addr_part = "calc" if self._address is None else self._address
         return f"{prefix}_{self.coordinator.device_client.slave_id}_{self._key}_{addr_part}{bit_suffix}"

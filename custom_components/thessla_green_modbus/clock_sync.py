@@ -53,7 +53,7 @@ def decode_rtc_registers(
 ) -> str | None:
     """Decode 4 RTC register values to ISO-8601 string or None if invalid.
 
-    Mirrors the decoder in coordinator/capabilities.py for round-trip testing.
+    Mirrors the decoder in core/capabilities_mixin.py for round-trip testing.
     """
     yy = bcd_decode((raw_yymm >> 8) & 0xFF)
     mm = bcd_decode(raw_yymm & 0xFF)

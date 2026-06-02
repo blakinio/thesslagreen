@@ -72,10 +72,9 @@ def _apply_log_level(log_level: str) -> None:
 async def async_create_coordinator(hass: HomeAssistant, entry: ConfigEntry) -> Any:
     """Read config entry options and instantiate the coordinator."""
     from .coordinator import ThesslaGreenModbusCoordinator
-    from .coordinator.config_normalization import coordinator_config_from_entry
     from .core.models import CoordinatorConfig
 
-    config = coordinator_config_from_entry(entry, CoordinatorConfig)
+    config = CoordinatorConfig.from_entry(entry)
     connection_type = config.connection_type
     if connection_type not in (CONNECTION_TYPE_TCP, CONNECTION_TYPE_RTU, CONNECTION_TYPE_TCP_RTU):
         connection_type = DEFAULT_CONNECTION_TYPE
@@ -191,12 +190,8 @@ async def async_migrate_entity_unique_ids(
     except (AttributeError, TypeError, ValueError):
         serial_number = None
 
-    host = getattr(coordinator, "host", None) or getattr(
-        coordinator.device_client.config, "host", ""
-    )
-    port = getattr(coordinator, "port", None) or getattr(
-        coordinator.device_client.config, "port", 0
-    )
+    host = getattr(coordinator.device_client.config, "host", "")
+    port = getattr(coordinator.device_client.config, "port", 0)
     slave_id = getattr(coordinator.device_client, "slave_id", None) or getattr(
         coordinator.device_client.config, "slave_id", 0
     )

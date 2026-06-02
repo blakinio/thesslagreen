@@ -16,7 +16,7 @@ class TestThesslaGreenClimate:
     @pytest.fixture
     def mock_climate_coordinator(self):
         coordinator = MagicMock()
-        coordinator.host = "192.168.1.100"
+        coordinator.device_client.config.host = "192.168.1.100"
         coordinator.device_client.slave_id = 10
         coordinator.device_client.device_scan_result = {
             "device_info": {"device_name": "Test AirPack", "firmware": "4.85.0"}

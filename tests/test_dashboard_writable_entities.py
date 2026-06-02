@@ -474,7 +474,7 @@ async def test_clock_sync_uses_atomic_write_and_read_holding_registers():
     coord.async_write_and_read_holding_registers = AsyncMock(return_value=(True, regs))
     coord.async_request_refresh = AsyncMock()
     coord.data = {}
-    coord.host = "192.168.1.1"
+    coord.device_client.config.host = "192.168.1.1"
 
     result = await async_perform_clock_sync(coord, force=True, dt_now_fn=lambda: now)
 
@@ -509,7 +509,7 @@ async def test_clock_sync_readback_does_not_use_coordinator_data_device_clock():
     coord.data = {"device_clock": "2000-01-01T00:00:00"}
     coord.async_write_and_read_holding_registers = AsyncMock(return_value=(True, regs))
     coord.async_request_refresh = AsyncMock()
-    coord.host = "192.168.1.1"
+    coord.device_client.config.host = "192.168.1.1"
 
     # force=True bypasses the drift check, so device_clock in data is not consulted for sync logic
     result = await async_perform_clock_sync(coord, force=True, dt_now_fn=lambda: now)

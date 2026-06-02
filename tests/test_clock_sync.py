@@ -143,7 +143,7 @@ def _make_coordinator(*, write_ok=True, data=None, readback_regs=None):
     coord.async_write_and_read_holding_registers = AsyncMock(return_value=(write_ok, now_regs))
     coord.async_request_refresh = AsyncMock()
     coord.data = data if data is not None else {}
-    coord.host = "192.168.1.100"
+    coord.device_client.config.host = "192.168.1.100"
     return coord
 
 
