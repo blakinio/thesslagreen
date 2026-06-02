@@ -171,6 +171,74 @@ The following findings were identified from exported HA state data and addressed
 
 ---
 
+## 8. Smoke Test After Coordinator Proxy Cleanup (PRs #1697–#1702)
+
+### Background
+
+PRs #1697–#1702 completed a series of coordinator internal refactors with no Modbus runtime
+behavior changes, no register address/name changes, and no entity/service/unique-ID changes:
+
+| PR | Summary |
+|----|---------|
+| #1697 | Fixed stale `coordinator.get_register_map` test mocks and guards |
+| #1698 | Removed stale `coordinator.get_register_map` mock calls from tests |
+| #1699 | Removed `coordinator.slave_id` proxy; callers migrated to `coordinator.device_client.slave_id` |
+| #1700 | Removed `coordinator.host`/`coordinator.port` proxies; deleted `coordinator/config_properties.py`; callers migrated to `coordinator.device_client.config.host`/`port` |
+| #1701 | Aligned pydantic dev pin in `requirements-dev.txt` and `pyproject.toml` |
+| #1702 | Updated `CHANGELOG.md`; added changelog policy to `claude.md` |
+
+CI for the #1702 head commit was green. The changes affect code paths that run on every
+coordinator refresh cycle. This checklist must be run against a real device before
+real-device validation can be marked PASS for the post-#1702 codebase.
+
+### 8.1 Checklist
+
+> **Instructions:** Work through each item in order. Record the result (PASS / FAIL / N/A)
+> and the evidence (log excerpt, HA screenshot filename, or "not tested") in the table.
+> **Do not mark any item PASS without attaching HA log evidence or a screenshot.**
+
+| # | Check | Expected result | Result | Evidence |
+|---|-------|----------------|--------|----------|
+| 1 | Restart or reload integration | Setup completes; `ThesslaGreen Modbus integration setup completed successfully` appears in HA log | — | — |
+| 2 | No traceback during setup | No `Traceback`, `AttributeError`, or `ThesslaGreenModbusCoordinator` exception in HA log after reload | — | — |
+| 3 | Entity count stable | Entity count in HA Developer Tools → Entities matches pre-cleanup baseline (≈367–370) | — | — |
+| 4 | No duplicated entity IDs | No `Platform thessla_green_modbus does not generate unique IDs` warning in HA log | — | — |
+| 5 | Device info still appears | HA → Devices → ThesslaGreen shows manufacturer, model (may be `Unknown` on legacy firmware), and connection info | — | — |
+| 6 | `refresh_device_data` service works | Call `thessla_green_modbus.refresh_device_data` from HA Developer Tools → Services; no error, coordinator updates | — | — |
+| 7 | `validate_known_registers` service works | Call `thessla_green_modbus.validate_known_registers`; result summary logged; no traceback | — | — |
+| 8 | Diagnostics download works | HA → Devices → ThesslaGreen → Download Diagnostics; JSON file downloads without error; `config.host` and `config.port` fields present in JSON | — | — |
+| 9 | Clock sync (if option enabled) | If clock-sync option is enabled in integration options, no `AttributeError` or crash for `coordinator.host`; clock sync log line present | — | N/A if option disabled |
+| 10 | No `transaction_id` mismatch during refresh | No `transaction_id mismatch` line from `custom_components.thessla_green_modbus` in HA log during normal 30-second refresh cycle | — | — |
+| 11 | No false "Modbus transport is not connected" during normal refresh | No `Modbus transport is not connected` error from integration during a clean refresh cycle (transport disconnect errors only during actual device-offline events are acceptable) | — | — |
+
+### 8.2 Expected Notes (Not Failures)
+
+- **Model Unknown** — `sensor.model` may read `Unknown` on AirPack4 devices running legacy
+  firmware that does not expose model-version registers. This is not a regression introduced
+  by PRs #1697–#1702.
+- **Firmware Unknown** — `sensor.firmware` / `sw_version` in device info may read `Unknown`
+  until the legacy-firmware fallback is implemented. This is a pre-existing known limitation.
+- **`scan_all_registers` is not routine validation** — Do not use `scan_all_registers` as
+  part of this checklist. Use `validate_known_registers` (item 7 above) instead.
+  `scan_all_registers` opens a separate Modbus connection and is intended for development
+  investigation only; see `claude.md §4`.
+
+### 8.3 Validation Sign-off
+
+This subsection must not be marked PASS until:
+
+1. All checklist items in §8.1 that are applicable to the installed device have been
+   completed with real HA log evidence or screenshot evidence attached or committed.
+2. The HA Core version, integration commit SHA, and device host/port/slave_id used during
+   validation are recorded in §2 (Environment).
+3. A named tester has signed off below with the date and commit SHA tested.
+
+**Tester sign-off:** _(pending)_
+**HA Core version tested:** _(pending)_
+**Integration commit SHA tested:** _(pending)_
+
+---
+
 ## 7. Release Gate
 
 Real-device validation is **not** complete until:
