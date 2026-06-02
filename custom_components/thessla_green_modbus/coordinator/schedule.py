@@ -25,9 +25,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _get_register_definition(register_name: str) -> Any:
-    from ..register_defs_cache import get_register_definitions
+    """Resolve register definitions via coordinator module (allows test monkeypatching)."""
+    from custom_components.thessla_green_modbus.coordinator import coordinator as coordinator_module
 
-    return get_register_definitions()[register_name]
+    return coordinator_module.get_register_definition(register_name)
 
 
 async def _safe_request_refresh(coordinator: Any) -> None:
