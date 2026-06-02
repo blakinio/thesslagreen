@@ -32,5 +32,7 @@ def _make_number(coordinator, register_name: str) -> ThesslaGreenNumber:
 
 def _make_select(coordinator, register_name: str) -> ThesslaGreenSelect:
     defn = ENTITY_MAPPINGS["select"][register_name]
-    address = coordinator.device_client.get_register_map(defn["register_type"]).get(register_name, 100)
+    address = coordinator.device_client.get_register_map(defn["register_type"]).get(
+        register_name, 100
+    )
     return ThesslaGreenSelect(coordinator, register_name, address, defn)
