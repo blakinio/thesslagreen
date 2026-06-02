@@ -5,36 +5,84 @@ All notable changes to the ThesslaGreen Modbus Integration will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased — Real-device findings cleanup
+## [Unreleased]
+
+> Detailed v2.8.x release notes: [docs/releases/v2.8.x.md](docs/releases/v2.8.x.md).
 
 ### Fixed
-- **Fan percentage clamped to 0–100**: `fan.thesslagreen_ventilation` no longer
-  reports `percentage` > 100 to Home Assistant (device can report up to 109 %).
-  Raw value is preserved in `extra_state_attributes.supply_percentage`.
+- **Fan percentage clamped to 0–100**
+  ([#1682](https://github.com/blakinio/thesslagreen/pull/1682)):
+  `fan.thesslagreen_ventilation` no longer reports `percentage` > 100 to Home Assistant
+  (device can report up to 109 %). Raw value preserved in
+  `extra_state_attributes.supply_percentage`.
+- **RTC clock sync: atomic write with read-back**
+  ([#1662](https://github.com/blakinio/thesslagreen/pull/1662)):
+  clock registers now written atomically and verified with a read-back check to prevent
+  stale or partial time writes.
+- **Real HA log fixes**
+  ([#1660](https://github.com/blakinio/thesslagreen/pull/1660)):
+  corrected misleading log messages and entity state reporting identified from real
+  Home Assistant log analysis.
+- **Stale coordinator IO ownership test guard removed**
+  ([#1697](https://github.com/blakinio/thesslagreen/pull/1697)):
+  removed stale guard condition that caused the IO ownership test to pass incorrectly
+  on certain code paths.
 - **Active errors sensor no longer shows «unknown»**: `sensor.rekuperator_active_errors`
   now shows `none` when the coordinator is connected and no error codes are active,
   instead of the misleading «unknown» state.
-- **`switch.bypass_off` / `switch.gwc_off` display names corrected**:
-  These switches were named "Bypass Active" / "GWC Active" but the underlying
-  register uses inverse semantics (value 1 = deactivated). Renamed to
-  "Bypass Locked" / "GWC Locked" (PL: "Bypass zablokowany" / "GWC zablokowany").
-  Entity IDs and unique IDs are unchanged.
-- **Device `sw_version` populated from version registers**: When the firmware
-  string is unavailable, `sw_version` is now assembled from `version_major`,
-  `version_minor`, and `cf_version` registers (e.g. `3.11 CF13`).
+- **`switch.bypass_off` / `switch.gwc_off` display names corrected**: underlying
+  register uses inverse semantics (value 1 = deactivated); renamed to "Bypass Locked" /
+  "GWC Locked" (PL: "Bypass zablokowany" / "GWC zablokowany"). Entity IDs and unique
+  IDs are unchanged.
+- **Device `sw_version` populated from version registers**: when the firmware string is
+  unavailable, `sw_version` is assembled from `version_major`, `version_minor`, and
+  `cf_version` (e.g. `3.11 CF13`).
+
+### Changed
+- **Cleanup and stabilisation**
+  ([#1661](https://github.com/blakinio/thesslagreen/pull/1661)):
+  dead code removed and minor consistency fixes across coordinator and entity modules;
+  no runtime behavior change.
+- **Dangerous entity category/config cleanup**
+  ([#1683](https://github.com/blakinio/thesslagreen/pull/1683)):
+  advanced/diagnostic entities moved to `entity_category=config`; remain enabled by
+  default. No entity IDs or unique IDs changed.
+- **AirPack4 register map and vendor alignment**
+  ([#1678](https://github.com/blakinio/thesslagreen/pull/1678)/[#1679](https://github.com/blakinio/thesslagreen/pull/1679)):
+  register map aligned with AirPack4 vendor reference documentation. No register
+  addresses, register names, or entity IDs changed.
+
+### Internal
+- **Coordinator proxy cleanup and DeviceClient IO ownership**
+  ([#1664](https://github.com/blakinio/thesslagreen/pull/1664)/[#1669](https://github.com/blakinio/thesslagreen/pull/1669)/[#1690](https://github.com/blakinio/thesslagreen/pull/1690)/[#1694](https://github.com/blakinio/thesslagreen/pull/1694)/[#1696](https://github.com/blakinio/thesslagreen/pull/1696)):
+  removed coordinator delegate methods and `_ModbusIOMixin`; `DeviceClient` is now the
+  true single IO owner. 15 new tests added in `test_coordinator_io_ownership.py`.
+- **Schedule register discovery regression tests**
+  ([#1681](https://github.com/blakinio/thesslagreen/pull/1681)):
+  new regression tests to prevent future regressions in schedule register discovery.
+- **Tightened Claude agent guidelines**
+  ([#1695](https://github.com/blakinio/thesslagreen/pull/1695)):
+  `claude.md` hardened with stricter rules for branch management, public contract
+  preservation, and changelog update policy.
+
+### Docs
+- **Real-device HA log evidence**
+  ([#1689](https://github.com/blakinio/thesslagreen/pull/1689)):
+  committed real-device Home Assistant log evidence supporting entity state and
+  behavior validation in `docs/real_device_validation.md`.
 
 ### Confirmed correct (no code change)
 - `binary_sensor.fire_alarm`: raw True = NC contact closed = no alarm = `off` state.
-  This is correct and intentional. Documented with tests.
+  Correct and intentional; documented with tests.
 - `binary_sensor.dp_duct_filter_overflow`: raw True = problem detected = `on` state.
-  Correct for a filter pressure-differential overflow. Documented with tests.
+  Correct for a filter pressure-differential overflow; documented with tests.
 - Polish state wording "nie działa" appears only in S30/S31 error-code sensor names,
   not in normal inactive state labels. No change needed.
 
 ### Needs vendor confirmation
-- `number.airing_coef` / `number.airing_switch_coef`: device reports values
-  (50, 0) outside the declared range 100–150. No write-range change until vendor
-  docs confirm whether these are valid set-points or factory defaults.
+- `number.airing_coef` / `number.airing_switch_coef`: device reports values (50, 0)
+  outside the declared range 100–150. No write-range change until vendor docs confirm
+  whether these are valid set-points or factory defaults.
 
 ---
 
