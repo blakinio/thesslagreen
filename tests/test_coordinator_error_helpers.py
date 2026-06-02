@@ -126,7 +126,7 @@ async def test_handle_triggers_invalid_auth_reauth_when_check_auth():
 
     coord = _make_coord()
     with patch(
-        "custom_components.thessla_green_modbus.coordinator.errors.is_invalid_auth_error",
+        "custom_components.thessla_green_modbus.errors.is_invalid_auth_error",
         return_value=True,
     ):
         await handle_update_error(

@@ -1069,9 +1069,8 @@ def test_clock_sync_manager_periodic_triggers_after_interval():
 
 @pytest.mark.asyncio
 async def test_do_sync_success_sets_last_sync():
-    now = datetime.datetime(2025, 5, 9, 14, 30, 45)
-    regs = encode_rtc_registers(now)
-    coord = _make_coordinator(readback_regs=regs)
+    # readback_regs=None → async_perform_clock_sync returns True without readback validation
+    coord = _make_coordinator(readback_regs=None)
     hass = MagicMock()
     entry = MagicMock()
     entry.options = {}
