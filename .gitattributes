@@ -20,7 +20,6 @@
 *.jpeg binary
 *.gif binary
 *.ico binary
-*.pdf binary
 
 # Windows specific files use CRLF
 *.bat text eol=crlf
