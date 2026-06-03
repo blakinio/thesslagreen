@@ -43,9 +43,6 @@ class _Coordinator:
             "holding_registers": {r.name for r in get_registers_by_function("03")}
         }
         self.data = {}
-        self.host = "127.0.0.1"
-        self.port = 502
-        self.slave_id = 1
         self.timeout = 5
         self.retry = 3
         self.scan_uart_settings = False

@@ -41,9 +41,6 @@ class _Coordinator:
         self.async_write_register = AsyncMock(return_value=write_result)
         self.async_request_refresh = AsyncMock()
         self.data = {}
-        self.host = "127.0.0.1"
-        self.port = 502
-        self.slave_id = 1
         _available = {"holding_registers": {r.name for r in get_registers_by_function("03")}}
         self.device_client = SimpleNamespace(
             effective_batch=2,
