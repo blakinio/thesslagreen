@@ -150,7 +150,7 @@ async def async_perform_clock_sync(
         raise HomeAssistantError("RTC read-back validation failed: could not decode registers")
 
     drift_after = _drift_seconds(now, readback_str)
-    if drift_after is None:
+    if drift_after is None:  # pragma: no cover — decode_rtc_registers always returns valid ISO
         raise HomeAssistantError(
             f"RTC read-back validation failed: could not parse '{readback_str}'"
         )

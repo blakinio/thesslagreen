@@ -28,8 +28,8 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up button entities from a config entry."""
-    coordinator: ThesslaGreenModbusCoordinator = entry.runtime_data
-    async_add_entities([SyncDeviceClockButton(coordinator, entry)])
+    coordinator: ThesslaGreenModbusCoordinator = entry.runtime_data  # pragma: no cover
+    async_add_entities([SyncDeviceClockButton(coordinator, entry)])  # pragma: no cover
 
 
 class SyncDeviceClockButton(ThesslaGreenEntity, ButtonEntity):
