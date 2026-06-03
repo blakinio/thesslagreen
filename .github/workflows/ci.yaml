@@ -103,9 +103,13 @@ jobs:
         run: pytest tests/ -q --tb=long --cov --cov-report=xml --cov-report=term
 
       - name: Upload coverage
+        # CODECOV_TOKEN secret is optional; upload failure does not block CI.
+        # Add CODECOV_TOKEN to repository secrets to enable authenticated uploads.
         uses: codecov/codecov-action@v6
         with:
-          file: ./coverage.xml
+          files: ./coverage.xml
+          disable_search: true
+          fail_ci_if_error: false
 
   entity-mappings:
     name: Entity mappings validation

@@ -53,6 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   addresses, register names, or entity IDs changed.
 
 ### Internal
+- **Fixed Codecov upload configuration** (CI only): corrected `file:` → `files:` input
+  (the old key was silently ignored by `codecov/codecov-action@v6`); added
+  `disable_search: true` so only `coverage.xml` is uploaded and
+  `docs/airpack4_vendor_reference_coverage.json` is no longer auto-discovered;
+  set `fail_ci_if_error: false` — upload is **optional** (no `CODECOV_TOKEN` secret
+  is configured; add one to enable authenticated uploads).
 - **Coordinator proxy cleanup and DeviceClient IO ownership**
   ([#1664](https://github.com/blakinio/thesslagreen/pull/1664)/[#1669](https://github.com/blakinio/thesslagreen/pull/1669)/[#1690](https://github.com/blakinio/thesslagreen/pull/1690)/[#1694](https://github.com/blakinio/thesslagreen/pull/1694)/[#1696](https://github.com/blakinio/thesslagreen/pull/1696)):
   removed coordinator delegate methods and `_ModbusIOMixin`; `DeviceClient` is now the
