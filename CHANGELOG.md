@@ -53,6 +53,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   addresses, register names, or entity IDs changed.
 
 ### Internal
+- **Removed obsolete PDF-based register validation**: deleted
+  `tests/test_register_pdf_mapping.py` and the committed vendor PDF
+  `ProtokolModbusRTU_AirPack4.pdf`. The five non-PDF spot-check assertions
+  (addresses, function codes, units, access flags, enum values) were migrated
+  to `tests/test_register_json_contracts.py` using `thessla_green_registers_full.json`
+  only. The `pypdf`/PDF coverage test is superseded by `test_registers_vs_reference.py`
+  (vendor JSON). `*.pdf binary` removed from `.gitattributes`; P2-2 audit item retired.
 - **Fixed Codecov upload configuration** (CI only): corrected `file:` → `files:` input
   (the old key was silently ignored by `codecov/codecov-action@v6`); added
   `disable_search: true` so only `coverage.xml` is uploaded and

@@ -203,6 +203,5 @@ OK homeassistant: installed
 | # | Issue | Action |
 |---|---|---|
 | P2-1 | ruff format/import-order jobs are `continue-on-error: true` | Make these blocking once formatting is stable (all files currently pass) |
-| P2-2 | pypdf not installed in CI | Install `pypdf` in test environment to enable PDF register mapping test |
-| P2-3 | Coverage threshold | Verify `fail_under = 80` in `[tool.coverage.report]` is met; add coverage badge |
-| P2-4 | English-language troubleshooting docs | For HACS discoverability, add an English troubleshooting section to README |
+| P2-2 | Coverage threshold | Verify `fail_under = 80` in `[tool.coverage.report]` is met; add coverage badge |
+| P2-3 | English-language troubleshooting docs | For HACS discoverability, add an English troubleshooting section to README |

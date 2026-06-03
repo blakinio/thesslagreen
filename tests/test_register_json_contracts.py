@@ -1,12 +1,10 @@
-"""Validate key register mappings against the manufacturer PDF."""
+"""Spot-check key register contracts against thessla_green_registers_full.json."""
 
 from __future__ import annotations
 
 import json
 from importlib import resources
-from pathlib import Path
 
-import pytest
 from custom_components.thessla_green_modbus.utils import BCD_TIME_PREFIXES
 
 
@@ -19,13 +17,11 @@ def _load_register_json() -> dict[str, dict[str, object]]:
 
 
 def _normalise_function(value: object) -> int:
-    """Return the canonical Modbus function code."""
-
     return int(str(value))
 
 
-def test_pdf_register_addresses_and_functions() -> None:
-    """Ensure key registers match PDF addresses and Modbus functions."""
+def test_register_addresses_and_functions() -> None:
+    """Ensure key registers have correct Modbus function codes and decimal addresses."""
 
     registers = _load_register_json()
     expected = [
@@ -56,8 +52,8 @@ def test_pdf_register_addresses_and_functions() -> None:
         assert entry["address_dec"] == address
 
 
-def test_pdf_register_decoding_types() -> None:
-    """Ensure register decoding types align with PDF expectations."""
+def test_register_decoding_types() -> None:
+    """Ensure register decoding types are consistent for temperature and BCD registers."""
 
     registers = _load_register_json()
     temperature_names = [
@@ -79,8 +75,8 @@ def test_pdf_register_decoding_types() -> None:
     assert registers["setting_summer_mon_1"]["name"].startswith("setting_")
 
 
-def test_pdf_register_units() -> None:
-    """Ensure units match PDF specifications for key registers."""
+def test_register_units() -> None:
+    """Ensure units are correct for key registers."""
 
     registers = _load_register_json()
 
@@ -95,8 +91,8 @@ def test_pdf_register_units() -> None:
     assert registers["supply_air_temperature_manual"]["multiplier"] == 0.5
 
 
-def test_pdf_register_access() -> None:
-    """Ensure read/write access flags match PDF specifications."""
+def test_register_access() -> None:
+    """Ensure read/write access flags are correct for key registers."""
 
     registers = _load_register_json()
 
@@ -128,8 +124,8 @@ def test_pdf_register_access() -> None:
         assert registers[name]["access"] == "RW", f"{name} should be read-write"
 
 
-def test_pdf_register_enum_values() -> None:
-    """Ensure enum registers have correct value sets from PDF."""
+def test_register_enum_values() -> None:
+    """Ensure enum registers have correct value sets."""
 
     registers = _load_register_json()
 
@@ -146,49 +142,3 @@ def test_pdf_register_enum_values() -> None:
     special_reg = registers["special_mode"]
     assert special_reg.get("enum") is not None
     assert len(special_reg["enum"]) >= 10
-
-
-def test_local_airpack4_pdf_fn_addr_coverage() -> None:
-    """Ensure each function/address pair from local AirPack4 PDF exists in JSON."""
-
-    try:
-        pypdf = pytest.importorskip("pypdf")
-    except Exception as exc:
-        pytest.skip(f"pypdf not usable: {exc}")
-
-    pdf_path = Path(__file__).resolve().parents[1] / "ProtokolModbusRTU_AirPack4.pdf"
-    reader = pypdf.PdfReader(str(pdf_path))
-    text = "\n".join((page.extract_text() or "") for page in reader.pages)
-
-    import re
-
-    section = None
-    section_re = re.compile(r"^(0[1-4])\s*-")
-    row_re = re.compile(r"^(0x[0-9A-Fa-f]{4})\s+(\d+)\s+([RW-]\s*/\s*[RW-])\s+([A-Za-z0-9_]+)")
-
-    pdf_pairs: set[tuple[int, int]] = set()
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line:
-            continue
-        sec_match = section_re.match(line)
-        if sec_match:
-            section = int(sec_match.group(1))
-            continue
-        row_match = row_re.match(line)
-        if row_match and section is not None:
-            pdf_pairs.add((section, int(row_match.group(2))))
-
-    registers = _load_register_json()
-    json_pairs = {
-        (_normalise_function(entry["function"]), int(entry["address_dec"]))
-        for entry in registers.values()
-    }
-
-    # Known conflict between vendor PDFs: in the local AirPack4 RTU PDF
-    # duct_heater_protection is listed at DI address 0, while integration
-    # keeps the long-standing canonical mapping at address 2.
-    known_pdf_only_pairs = {(2, 0)}
-
-    missing = sorted((pdf_pairs - json_pairs) - known_pdf_only_pairs)
-    assert not missing, f"Missing PDF registers in JSON: {missing}"
