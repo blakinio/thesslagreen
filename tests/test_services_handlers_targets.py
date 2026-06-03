@@ -40,9 +40,6 @@ class _Coordinator:
         self.async_write_register = AsyncMock(return_value=write_result)
         self.async_request_refresh = AsyncMock()
         self.data = {}
-        self.host = "127.0.0.1"
-        self.port = 502
-        self.slave_id = 1
         self.device_client = SimpleNamespace(
             scan_uart_settings=False,
             effective_batch=2,

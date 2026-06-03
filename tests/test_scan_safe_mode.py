@@ -30,8 +30,6 @@ class _Coordinator:
         self.async_write_register = AsyncMock(return_value=True)
         self.async_request_refresh = AsyncMock()
         self.data = {}
-        self.host = "192.168.1.10"
-        self.port = 502
         self.device_client = SimpleNamespace(
             scan_uart_settings=False,
             effective_batch=effective_batch,
@@ -590,3 +588,74 @@ async def test_validate_known_registers_no_writes(monkeypatch):
     await handler(_make_call({"entity_id": ["climate.dev"]}))
 
     coord.async_write_register.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Negative guard tests: services must use device_client.config.*, not proxies
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_scan_all_registers_no_coordinator_host_proxy(monkeypatch):
+    """scan_all_registers must not access coordinator.host (proxy removed).
+
+    The coordinator stub intentionally has no .host/.port attributes.
+    If production code accidentally used coordinator.host, the test would
+    raise AttributeError and fail here.
+    """
+    coord = _Coordinator()
+    assert not hasattr(coord, "host"), "legacy coordinator.host proxy must not be set"
+    assert not hasattr(coord, "port"), "legacy coordinator.port proxy must not be set"
+
+    hass = _make_hass()
+    _mock_scanner, mock_create = _mock_scanner_create()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["scan_all_registers"]
+    # Must succeed without AttributeError
+    await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    _, kwargs = mock_create.call_args
+    assert kwargs["host"] == coord.device_client.config.host
+    assert kwargs["port"] == coord.device_client.config.port
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_no_coordinator_host_proxy(monkeypatch):
+    """validate_known_registers must not access coordinator.host (proxy removed).
+
+    The coordinator stub intentionally has no .host/.port attributes.
+    If production code accidentally used coordinator.host, the test would
+    raise AttributeError and fail here.
+    """
+    coord = _Coordinator()
+    assert not hasattr(coord, "host"), "legacy coordinator.host proxy must not be set"
+    assert not hasattr(coord, "port"), "legacy coordinator.port proxy must not be set"
+
+    hass = _make_hass()
+    _mock_scanner, mock_create = _mock_scanner_create()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+    monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    # Must succeed without AttributeError
+    await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    _, kwargs = mock_create.call_args
+    assert kwargs["host"] == coord.device_client.config.host
+    assert kwargs["port"] == coord.device_client.config.port
