@@ -31,7 +31,7 @@
     },
     "step": {
       "confirm": {
-        "description": "Detected ThesslaGreen device {device_name} (serial {serial_number}) via {transport_label} {endpoint}. Device ID: {slave_id}. Firmware version: {firmware_version}. Registers found: {register_count}. Scan success rate: {scan_success_rate}. Capabilities ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Continue with this configuration?",
+        "description": "Detected ThesslaGreen device.\n\n**Connection:** {transport_label} · {endpoint} · Device ID: {slave_id}\n**Device:** {device_name} · S/N: {serial_number} · FW: {firmware_version}\n\n*— = device did not return this data during the scan.*\n\n**Scan result:**\n- Registers: {register_count} · Reads: {successful_reads}/{total_attempts} · Duration: {scan_duration}\n- Missing: {missing_registers_summary}\n- Modbus errors: {modbus_failed_summary}\n- Invalid values: {invalid_values_summary}\n\n**Detected capabilities:**\n{detected_capabilities_list}\n\n**Not detected / not confirmed:**\n{not_detected_capabilities_list}\n\nEntities will be created after confirming the configuration, based on detected registers.\n\nContinue with this configuration?",
         "title": "Confirm Configuration"
       },
       "user": {

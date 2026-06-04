@@ -17,6 +17,8 @@ DEFAULT_USER_INPUT = {
     CONF_NAME: "My Device",
 }
 
+_N_A = "—"
+
 
 class AbortFlow(Exception):
     """Mock AbortFlow to simulate Home Assistant aborts."""
@@ -74,7 +76,7 @@ async def test_async_step_confirm_auto_detected_note(registers, expected_note):
 
 @pytest.mark.asyncio
 async def test_async_step_confirm_capabilities_only_bool():
-    """Ensure capabilities list includes only boolean fields."""
+    """Ensure detected_capabilities_list includes only boolean fields that are True."""
     flow = ConfigFlow()
     flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
 
@@ -102,9 +104,234 @@ async def test_async_step_confirm_capabilities_only_bool():
         result = await flow.async_step_confirm()
 
     placeholders = result["description_placeholders"]
-    assert "Expansion Module" in placeholders["capabilities_list"]
-    assert "Temperature Sensors" not in placeholders["capabilities_list"]
-    assert placeholders["capabilities_count"] == "1"
+    assert "Expansion Module" in placeholders["detected_capabilities_list"]
+    assert "Temperature Sensors" not in placeholders["detected_capabilities_list"]
+    assert "scan_success_rate" not in placeholders
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_no_scan_success_rate():
+    """Confirm placeholders must not include the fake scan_success_rate field."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {"register_count": 10}
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    assert "scan_success_rate" not in result["description_placeholders"]
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_scan_stats_present():
+    """Scan stats values are surfaced in the placeholders when provided."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {
+        "register_count": 5,
+        "scan_stats": {
+            "total_attempts": 20,
+            "successful_reads": 18,
+            "scan_duration": 3.456,
+        },
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    assert p["total_attempts"] == "20"
+    assert p["successful_reads"] == "18"
+    assert p["scan_duration"] == "3.5s"
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_missing_stats_show_dash():
+    """When scan_stats is absent the placeholders show the neutral N/A indicator."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {"register_count": 5}
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    assert p["total_attempts"] == _N_A
+    assert p["successful_reads"] == _N_A
+    assert p["scan_duration"] == _N_A
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_missing_registers_summary():
+    """missing_registers are summarised correctly."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {
+        "register_count": 5,
+        "missing_registers": {
+            "holding_registers": {"reg_a": 10, "reg_b": 20},
+            "input_registers": {},
+        },
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    summary = result["description_placeholders"]["missing_registers_summary"]
+    assert "holding_registers: 2" in summary
+    assert "input_registers" not in summary
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_modbus_exceptions_summary():
+    """failed_addresses.modbus_exceptions are summarised correctly."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {
+        "register_count": 5,
+        "failed_addresses": {
+            "modbus_exceptions": {"holding_registers": {100, 101, 102}},
+            "invalid_values": {},
+        },
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    assert "holding_registers: 3" in p["modbus_failed_summary"]
+    assert p["invalid_values_summary"] == _N_A
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_invalid_values_summary():
+    """failed_addresses.invalid_values are summarised correctly."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {
+        "register_count": 5,
+        "failed_addresses": {
+            "modbus_exceptions": {},
+            "invalid_values": {"input_registers": [200, 201]},
+        },
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    assert p["modbus_failed_summary"] == _N_A
+    assert "input_registers: 2" in p["invalid_values_summary"]
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_empty_failed_lists_show_dash():
+    """Empty missing/failed dicts display the neutral N/A indicator."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {
+        "register_count": 5,
+        "missing_registers": {},
+        "failed_addresses": {"modbus_exceptions": {}, "invalid_values": {}},
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    assert p["missing_registers_summary"] == _N_A
+    assert p["modbus_failed_summary"] == _N_A
+    assert p["invalid_values_summary"] == _N_A
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_detected_and_not_detected_capabilities():
+    """Both detected and not-detected capability lists are present."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {
+        "register_count": 5,
+        "capabilities": {
+            "expansion_module": True,
+            "gwc_system": False,
+        },
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    assert "Expansion Module" in p["detected_capabilities_list"]
+    assert "Gwc System" in p["not_detected_capabilities_list"]
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_no_entity_count():
+    """The placeholders must not include a final entity count field."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {"register_count": 10}
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    entity_count_keys = [k for k in p if "entity" in k.lower() and "count" in k.lower()]
+    assert not entity_count_keys, f"Unexpected entity count key(s): {entity_count_keys}"
 
 
 @pytest.mark.asyncio
