@@ -26,6 +26,7 @@ from ..const import (
 from ..utils import resolve_connection_settings
 
 _LOGGER = logging.getLogger(__name__)
+_N_A = "—"  # language-neutral "not available" indicator
 
 
 def _build_capabilities_lists(
@@ -61,24 +62,24 @@ def _build_capabilities_lists(
 def _summarize_address_dict(addr_dict: Any) -> str:
     """Return a compact summary for a dict of register-type -> address lists/sets."""
     if not isinstance(addr_dict, dict) or not addr_dict:
-        return "none"
+        return _N_A
     parts = []
     for reg_type, addresses in addr_dict.items():
         if addresses:
             parts.append(f"{reg_type}: {len(addresses)}")
-    return ", ".join(parts) if parts else "none"
+    return ", ".join(parts) if parts else _N_A
 
 
 def _summarize_missing_registers(missing: Any) -> str:
     """Return a summary of missing registers."""
     if not isinstance(missing, dict) or not missing:
-        return "none"
+        return _N_A
     parts = []
     for reg_type, regs in missing.items():
         if regs:
             count = len(regs) if isinstance(regs, (dict, list, set)) else 1
             parts.append(f"{reg_type}: {count}")
-    return ", ".join(parts) if parts else "none"
+    return ", ".join(parts) if parts else _N_A
 
 
 async def _get_translations(hass: HomeAssistant) -> dict[str, str]:
@@ -108,21 +109,21 @@ def _resolve_transport_labels(
     )
 
     if normalized_type == CONNECTION_TYPE_RTU:
-        endpoint = data.get(CONF_SERIAL_PORT, "Unknown") or "Unknown"
+        endpoint = data.get(CONF_SERIAL_PORT, _N_A) or _N_A
         host_value = data.get(CONF_HOST, "-")
         port_value = str(data.get(CONF_PORT, DEFAULT_PORT))
         transport_label = translations.get(
             f"component.{DOMAIN}.connection_type_rtu_label", "Modbus RTU"
         )
     elif resolved_mode == CONNECTION_MODE_TCP_RTU:
-        host_value = data.get(CONF_HOST, "Unknown")
+        host_value = data.get(CONF_HOST, _N_A)
         port_value = str(data.get(CONF_PORT, DEFAULT_PORT))
         endpoint = f"{host_value}:{port_value}"
         transport_label = translations.get(
             f"component.{DOMAIN}.connection_type_tcp_rtu_label", "Modbus TCP RTU"
         )
     else:
-        host_value = data.get(CONF_HOST, "Unknown")
+        host_value = data.get(CONF_HOST, _N_A)
         port_value = str(data.get(CONF_PORT, DEFAULT_PORT))
         endpoint = f"{host_value}:{port_value}"
         transport_label = translations.get(
@@ -147,9 +148,9 @@ async def build_confirmation_placeholders(
     caps_to_dict: Any,
 ) -> dict[str, str]:
     """Build description placeholders used in confirm and reauth-confirm steps."""
-    device_name = device_info.get("device_name", "Unknown")
-    firmware_version = device_info.get("firmware", "Unknown")
-    serial_number = device_info.get("serial_number", "Unknown")
+    device_name = device_info.get("device_name", _N_A)
+    firmware_version = device_info.get("firmware", _N_A)
+    serial_number = device_info.get("serial_number", _N_A)
 
     available_registers = scan_result.get("available_registers", {})
     register_count = scan_result.get(
@@ -158,18 +159,16 @@ async def build_confirmation_placeholders(
     )
 
     scan_stats = scan_result.get("scan_stats") or {}
-    total_attempts = scan_stats.get("total_attempts", "Unknown")
-    successful_reads = scan_stats.get("successful_reads", "Unknown")
+    total_attempts = scan_stats.get("total_attempts", _N_A)
+    successful_reads = scan_stats.get("successful_reads", _N_A)
     raw_duration = scan_stats.get("scan_duration")
-    scan_duration = f"{raw_duration:.1f}s" if raw_duration is not None else "Unknown"
+    scan_duration = f"{raw_duration:.1f}s" if raw_duration is not None else _N_A
 
     missing_registers_summary = _summarize_missing_registers(scan_result.get("missing_registers"))
 
     failed = scan_result.get("failed_addresses") or {}
     modbus_failed_summary = _summarize_address_dict(failed.get("modbus_exceptions"))
     invalid_values_summary = _summarize_address_dict(failed.get("invalid_values"))
-
-    resolved_connection_mode = scan_result.get("resolved_connection_mode") or "Unknown"
 
     detected_caps, not_detected_caps = _build_capabilities_lists(
         cap_cls,
@@ -191,10 +190,10 @@ async def build_confirmation_placeholders(
     )
 
     detected_capabilities_list = (
-        "\n".join(f"- {c}" for c in detected_caps) if detected_caps else "none"
+        "\n".join(f"- {c}" for c in detected_caps) if detected_caps else _N_A
     )
     not_detected_capabilities_list = (
-        "\n".join(f"- {c}" for c in not_detected_caps) if not_detected_caps else "none"
+        "\n".join(f"- {c}" for c in not_detected_caps) if not_detected_caps else _N_A
     )
 
     return {
@@ -214,7 +213,6 @@ async def build_confirmation_placeholders(
         "missing_registers_summary": missing_registers_summary,
         "modbus_failed_summary": modbus_failed_summary,
         "invalid_values_summary": invalid_values_summary,
-        "resolved_connection_mode": resolved_connection_mode,
         "detected_capabilities_list": detected_capabilities_list,
         "not_detected_capabilities_list": not_detected_capabilities_list,
         "auto_detected_note": auto_detected_note,

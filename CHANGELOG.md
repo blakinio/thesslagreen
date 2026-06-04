@@ -39,6 +39,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `cf_version` (e.g. `3.11 CF13`).
 
 ### Changed
+- **Config-flow confirmation: real scan diagnostics, removed fake `scan_success_rate`**
+  ([#1712](https://github.com/blakinio/thesslagreen/pull/1712)):
+  the confirmation popup now shows factual scan data (register count, read attempts,
+  successful reads, scan duration, missing registers, failed address counts) and splits
+  capabilities into detected vs. not-detected/not-confirmed, instead of the misleading
+  "Scan success rate: 100%" that was hardcoded whenever any register was detected.
+  Fallback indicator changed from English "Unknown" to language-neutral "—".
+  No runtime Modbus behavior changed.
 - **Cleanup and stabilisation**
   ([#1661](https://github.com/blakinio/thesslagreen/pull/1661)):
   dead code removed and minor consistency fixes across coordinator and entity modules;

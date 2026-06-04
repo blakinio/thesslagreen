@@ -17,6 +17,8 @@ DEFAULT_USER_INPUT = {
     CONF_NAME: "My Device",
 }
 
+_N_A = "—"
+
 
 class AbortFlow(Exception):
     """Mock AbortFlow to simulate Home Assistant aborts."""
@@ -156,8 +158,8 @@ async def test_confirm_placeholders_scan_stats_present():
 
 
 @pytest.mark.asyncio
-async def test_confirm_placeholders_missing_stats_show_unknown():
-    """When scan_stats is absent the placeholders show Unknown."""
+async def test_confirm_placeholders_missing_stats_show_dash():
+    """When scan_stats is absent the placeholders show the neutral N/A indicator."""
     flow = ConfigFlow()
     flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
 
@@ -172,9 +174,9 @@ async def test_confirm_placeholders_missing_stats_show_unknown():
         result = await flow.async_step_confirm()
 
     p = result["description_placeholders"]
-    assert p["total_attempts"] == "Unknown"
-    assert p["successful_reads"] == "Unknown"
-    assert p["scan_duration"] == "Unknown"
+    assert p["total_attempts"] == _N_A
+    assert p["successful_reads"] == _N_A
+    assert p["scan_duration"] == _N_A
 
 
 @pytest.mark.asyncio
@@ -228,7 +230,7 @@ async def test_confirm_placeholders_modbus_exceptions_summary():
 
     p = result["description_placeholders"]
     assert "holding_registers: 3" in p["modbus_failed_summary"]
-    assert p["invalid_values_summary"] == "none"
+    assert p["invalid_values_summary"] == _N_A
 
 
 @pytest.mark.asyncio
@@ -254,13 +256,13 @@ async def test_confirm_placeholders_invalid_values_summary():
         result = await flow.async_step_confirm()
 
     p = result["description_placeholders"]
-    assert p["modbus_failed_summary"] == "none"
+    assert p["modbus_failed_summary"] == _N_A
     assert "input_registers: 2" in p["invalid_values_summary"]
 
 
 @pytest.mark.asyncio
-async def test_confirm_placeholders_empty_failed_lists_show_none():
-    """Empty missing/failed lists display 'none'."""
+async def test_confirm_placeholders_empty_failed_lists_show_dash():
+    """Empty missing/failed dicts display the neutral N/A indicator."""
     flow = ConfigFlow()
     flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
 
@@ -279,9 +281,9 @@ async def test_confirm_placeholders_empty_failed_lists_show_none():
         result = await flow.async_step_confirm()
 
     p = result["description_placeholders"]
-    assert p["missing_registers_summary"] == "none"
-    assert p["modbus_failed_summary"] == "none"
-    assert p["invalid_values_summary"] == "none"
+    assert p["missing_registers_summary"] == _N_A
+    assert p["modbus_failed_summary"] == _N_A
+    assert p["invalid_values_summary"] == _N_A
 
 
 @pytest.mark.asyncio
