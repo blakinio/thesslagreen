@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Detailed v2.8.x release notes: [docs/releases/v2.8.x.md](docs/releases/v2.8.x.md).
 
 ### Fixed
+- **`validate_known_registers` individual-read fallback**: when a batch read fails
+  (e.g. device returns exception code 2 for one unsupported register in a batch),
+  the service now falls back to individual address reads through the same active
+  connection. Only truly unsupported registers are marked missing; valid registers
+  that shared the failed batch are correctly reported as available.
+- **`validate_known_registers` diagnostics**: output now includes
+  `missing_registers` (per register type), `failed_ranges` (batches that triggered
+  fallback), and `summary.missing_by_type` (per-type missing counts). Existing
+  `available_registers` and `summary.{supported,missing}_count` fields are unchanged.
 - **Fan percentage clamped to 0–100**
   ([#1682](https://github.com/blakinio/thesslagreen/pull/1682)):
   `fan.thesslagreen_ventilation` no longer reports `percentage` > 100 to Home Assistant
