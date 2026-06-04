@@ -70,7 +70,7 @@
 | Clock sync | Not yet tested on device | — |
 | Writable entities work | Not yet verified on device | — |
 | `refresh_device_data` service | Not yet tested on device | — |
-| `validate_known_registers` service | Not yet tested on device | — |
+| `validate_known_registers` service | PARTIAL PASS — stable across 3 runs (PRs #1709/#1711) | supported=338, missing=19 stable; no transaction_id mismatch; missing registers classified via DEBUG output |
 | `scan_all_registers` service | Not yet tested on device | — |
 | Diagnostics download | Not yet tested on device | — |
 | No transaction_id mismatch observed | PASS — log evidence | No `transaction_id` mismatch in exported ThesslaGreen log lines |
@@ -118,6 +118,37 @@ Interpretation:
 - One scanner read cancellation was observed for `input_registers 0-0`; scanner continued and setup completed.
 - Slow sensor platform setup is expected with a large entity set and completed successfully.
 - No ThesslaGreen traceback, `transaction_id` mismatch, blocking I/O warning, or false transport-disconnected error was observed in the exported log.
+
+### 4.3 validate_known_registers real-device evidence (PRs #1709 / #1711)
+
+Real-device HA log lines observed after PRs #1709 and #1711:
+
+```text
+validate_known_registers started for climate.rekuperator_climate_control: batch=16, delay=100ms
+validate_known_registers completed for climate.rekuperator_climate_control: supported=338, missing=19, by_type={'input_registers': 4, 'holding_registers': 15}
+```
+
+Result was stable across 3 consecutive runs (same supported/missing counts each time).
+No `transaction_id` mismatch was observed during or after the service call.
+
+**Classification note:** The 19 missing registers are stable and reproducible. They are likely
+capability-gated, optional, or legacy-unsupported registers for this firmware version.
+To classify them, enable DEBUG logging for `custom_components.thessla_green_modbus` and inspect
+the per-type DEBUG lines emitted after completion:
+
+```text
+validate_known_registers missing input_registers for climate.rekuperator_climate_control: [...]
+validate_known_registers missing holding_registers for climate.rekuperator_climate_control: [...]
+```
+
+Alternatively, call the service from HA Developer Tools → Services and inspect the response
+`missing_registers` field, which contains sorted lists grouped by register type.
+
+**Safety note:** `validate_known_registers` uses the coordinator's active Modbus connection
+under `_write_lock`. It does not open a second connection and is safe to call while the
+integration is actively polling. Use this service for real-device register classification
+instead of `scan_all_registers` (which opens a separate connection and causes
+`transaction_id` mismatch errors).
 
 ### 4.2 Evidence still needed from user
 
@@ -205,7 +236,7 @@ real-device validation can be marked PASS for the post-#1702 codebase.
 | 4 | No duplicated entity IDs | No `Platform thessla_green_modbus does not generate unique IDs` warning in HA log | — | — |
 | 5 | Device info still appears | HA → Devices → ThesslaGreen shows manufacturer, model (may be `Unknown` on legacy firmware), and connection info | — | — |
 | 6 | `refresh_device_data` service works | Call `thessla_green_modbus.refresh_device_data` from HA Developer Tools → Services; no error, coordinator updates | — | — |
-| 7 | `validate_known_registers` service works | Call `thessla_green_modbus.validate_known_registers`; result summary logged; no traceback | — | — |
+| 7 | `validate_known_registers` service works | Call `thessla_green_modbus.validate_known_registers`; result summary logged; no traceback | PARTIAL PASS | supported=338, missing=19 stable across 3 runs (PRs #1709/#1711); no transaction_id mismatch observed; missing registers classified via DEBUG output and service response |
 | 8 | Diagnostics download works | HA → Devices → ThesslaGreen → Download Diagnostics; JSON file downloads without error; `config.host` and `config.port` fields present in JSON | — | — |
 | 9 | Clock sync (if option enabled) | If clock-sync option is enabled in integration options, no `AttributeError` or crash for `coordinator.host`; clock sync log line present | — | N/A if option disabled |
 | 10 | No `transaction_id` mismatch during refresh | No `transaction_id mismatch` line from `custom_components.thessla_green_modbus` in HA log during normal 30-second refresh cycle | — | — |

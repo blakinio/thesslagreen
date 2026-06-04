@@ -70,6 +70,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   addresses, register names, or entity IDs changed.
 
 ### Internal
+- **Improved `validate_known_registers` missing-register diagnostics**: `missing_registers`
+  in the service response now contains sorted lists (deterministic, JSON-serializable) instead
+  of sets. `summary` gains `retried_individual_count` (individual fallback reads performed after
+  batch failures). DEBUG logging changed from a single combined message to per-register-type
+  lines (`missing input_registers: [...]`, `missing holding_registers: [...]`, etc.) so
+  individual types can be filtered in HA logs. No runtime Modbus behavior changed.
+  Real-device evidence committed: stable result (supported=338, missing=19) across 3 runs,
+  no `transaction_id` mismatch observed (PRs #1709/#1711).
 - **Removed obsolete PDF-based register validation**: deleted
   `tests/test_register_pdf_mapping.py` and the committed vendor PDF
   `ProtokolModbusRTU_AirPack4.pdf`. The five non-PDF spot-check assertions
