@@ -31,7 +31,7 @@
     },
     "step": {
       "confirm": {
-        "description": "Wykryto urządzenie ThesslaGreen {device_name} (numer seryjny {serial_number}) poprzez {transport_label} {endpoint}. ID urządzenia: {slave_id}. Wersja oprogramowania: {firmware_version}. Znalezione rejestry: {register_count}. Skuteczność skanowania: {scan_success_rate}. Możliwości ({capabilities_count}): {capabilities_list}. {auto_detected_note}. Kontynuować z tą konfiguracją?",
+        "description": "Wykryto urządzenie ThesslaGreen.\n\n**Połączenie:**\n- Transport: {transport_label}\n- Endpoint: {endpoint}\n- Wykryty tryb: {resolved_connection_mode}\n- ID urządzenia: {slave_id}\n\n**Identyfikacja urządzenia:**\n- Nazwa: {device_name}\n- Numer seryjny: {serial_number}\n- Firmware: {firmware_version}\n\nWartości Nieznane oznaczają, że urządzenie nie zwróciło tych danych podczas skanu.\n\n**Wynik skanu:**\n- Wykryte rejestry: {register_count}\n- Udane odczyty: {successful_reads}\n- Próby odczytu: {total_attempts}\n- Czas skanu: {scan_duration}\n- Brakujące rejestry: {missing_registers_summary}\n- Adresy z błędami Modbus: {modbus_failed_summary}\n- Adresy z nieprawidłowymi wartościami: {invalid_values_summary}\n\n**Wykryte funkcje:**\n{detected_capabilities_list}\n\n**Niewykryte / niepotwierdzone funkcje:**\n{not_detected_capabilities_list}\n\nEncje zostaną utworzone po zatwierdzeniu konfiguracji, na podstawie wykrytych rejestrów.\n\nKontynuować z tą konfiguracją?",
         "title": "Potwierdź konfigurację"
       },
       "user": {

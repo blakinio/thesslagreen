@@ -28,8 +28,10 @@ from ..utils import resolve_connection_settings
 _LOGGER = logging.getLogger(__name__)
 
 
-def _build_capabilities_list(cap_cls: Any, caps_obj: Any, *, caps_to_dict: Any) -> list[str]:
-    """Build a list of enabled boolean capabilities from scan data."""
+def _build_capabilities_lists(
+    cap_cls: Any, caps_obj: Any, *, caps_to_dict: Any
+) -> tuple[list[str], list[str]]:
+    """Return (detected, not_detected) boolean capability name lists."""
     if dataclasses.is_dataclass(caps_obj) or isinstance(caps_obj, cap_cls):
         try:
             caps_data = cap_cls(**caps_to_dict(caps_obj))
@@ -43,11 +45,40 @@ def _build_capabilities_list(cap_cls: Any, caps_obj: Any, *, caps_to_dict: Any) 
     else:
         caps_data = cap_cls()
 
-    return [
-        field.name.replace("_", " ").title()
-        for field in dataclasses.fields(cap_cls)
-        if field.type in (bool, "bool") and getattr(caps_data, field.name)
-    ]
+    detected: list[str] = []
+    not_detected: list[str] = []
+    for field in dataclasses.fields(cap_cls):
+        if field.type not in (bool, "bool"):
+            continue
+        name = field.name.replace("_", " ").title()
+        if getattr(caps_data, field.name):
+            detected.append(name)
+        else:
+            not_detected.append(name)
+    return detected, not_detected
+
+
+def _summarize_address_dict(addr_dict: Any) -> str:
+    """Return a compact summary for a dict of register-type -> address lists/sets."""
+    if not isinstance(addr_dict, dict) or not addr_dict:
+        return "none"
+    parts = []
+    for reg_type, addresses in addr_dict.items():
+        if addresses:
+            parts.append(f"{reg_type}: {len(addresses)}")
+    return ", ".join(parts) if parts else "none"
+
+
+def _summarize_missing_registers(missing: Any) -> str:
+    """Return a summary of missing registers."""
+    if not isinstance(missing, dict) or not missing:
+        return "none"
+    parts = []
+    for reg_type, regs in missing.items():
+        if regs:
+            count = len(regs) if isinstance(regs, (dict, list, set)) else 1
+            parts.append(f"{reg_type}: {count}")
+    return ", ".join(parts) if parts else "none"
 
 
 async def _get_translations(hass: HomeAssistant) -> dict[str, str]:
@@ -125,9 +156,24 @@ async def build_confirmation_placeholders(
         "register_count",
         sum(len(regs) for regs in available_registers.values()),
     )
-    scan_success_rate = "100%" if register_count > 0 else "0%"
 
-    capabilities_list = _build_capabilities_list(
+    scan_stats = scan_result.get("scan_stats") or {}
+    total_attempts = scan_stats.get("total_attempts", "Unknown")
+    successful_reads = scan_stats.get("successful_reads", "Unknown")
+    raw_duration = scan_stats.get("scan_duration")
+    scan_duration = f"{raw_duration:.1f}s" if raw_duration is not None else "Unknown"
+
+    missing_registers_summary = _summarize_missing_registers(
+        scan_result.get("missing_registers")
+    )
+
+    failed = scan_result.get("failed_addresses") or {}
+    modbus_failed_summary = _summarize_address_dict(failed.get("modbus_exceptions"))
+    invalid_values_summary = _summarize_address_dict(failed.get("invalid_values"))
+
+    resolved_connection_mode = scan_result.get("resolved_connection_mode") or "Unknown"
+
+    detected_caps, not_detected_caps = _build_capabilities_lists(
         cap_cls,
         scan_result.get("capabilities"),
         caps_to_dict=caps_to_dict,
@@ -146,6 +192,13 @@ async def build_confirmation_placeholders(
         data, translations
     )
 
+    detected_capabilities_list = (
+        "\n".join(f"- {c}" for c in detected_caps) if detected_caps else "none"
+    )
+    not_detected_capabilities_list = (
+        "\n".join(f"- {c}" for c in not_detected_caps) if not_detected_caps else "none"
+    )
+
     return {
         "host": host_value,
         "port": port_value,
@@ -157,8 +210,14 @@ async def build_confirmation_placeholders(
         "firmware_version": firmware_version,
         "serial_number": serial_number,
         "register_count": str(register_count),
-        "scan_success_rate": scan_success_rate,
-        "capabilities_count": str(len(capabilities_list)),
-        "capabilities_list": ", ".join(capabilities_list) if capabilities_list else "None",
+        "total_attempts": str(total_attempts),
+        "successful_reads": str(successful_reads),
+        "scan_duration": scan_duration,
+        "missing_registers_summary": missing_registers_summary,
+        "modbus_failed_summary": modbus_failed_summary,
+        "invalid_values_summary": invalid_values_summary,
+        "resolved_connection_mode": resolved_connection_mode,
+        "detected_capabilities_list": detected_capabilities_list,
+        "not_detected_capabilities_list": not_detected_capabilities_list,
         "auto_detected_note": auto_detected_note,
     }
