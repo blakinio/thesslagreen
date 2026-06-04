@@ -163,9 +163,7 @@ async def build_confirmation_placeholders(
     raw_duration = scan_stats.get("scan_duration")
     scan_duration = f"{raw_duration:.1f}s" if raw_duration is not None else "Unknown"
 
-    missing_registers_summary = _summarize_missing_registers(
-        scan_result.get("missing_registers")
-    )
+    missing_registers_summary = _summarize_missing_registers(scan_result.get("missing_registers"))
 
     failed = scan_result.get("failed_addresses") or {}
     modbus_failed_summary = _summarize_address_dict(failed.get("modbus_exceptions"))
