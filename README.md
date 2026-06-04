@@ -1,12 +1,11 @@
 # ThesslaGreen Modbus Integration for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-[![GitHub release](https://img.shields.io/github/release/blakinio/thesslagreen.svg)](https://github.com/blakinio/thesslagreen/releases)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.1.0%2B-blue.svg)](https://home-assistant.io/)
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue.svg)](https://python.org/)
 
 Lokalna integracja (hub) dla rekuperatorów ThesslaGreen AirPack przez Modbus.
-Repozytorium zawiera integrację Home Assistant z konfiguracją przez UI, automatycznym skanowaniem rejestrów oraz zestawem serwisów do sterowania urządzeniem.
+Repozytorium zawiera integrację Home Assistant z konfiguracją przez UI, automatyczną detekcją dostępnych funkcji urządzenia, walidacją znanych rejestrów oraz zestawem serwisów do sterowania urządzeniem.
 
 ## Wymagania
 
@@ -21,7 +20,8 @@ Repozytorium zawiera integrację Home Assistant z konfiguracją przez UI, automa
 - **Konfiguracja przez UI:** `config_flow` + opcje integracji.
 - **Auto-detekcja możliwości urządzenia:** tworzone są tylko encje dla dostępnych rejestrów/funkcji.
 - **Diagnostyka:** dane diagnostyczne urządzenia i serwis do podniesienia poziomu logowania.
-- **Tryb pełnej listy rejestrów (opcjonalny):** do diagnostyki i porównań po aktualizacji firmware.
+- **Walidacja znanych rejestrów:** `validate_known_registers` reużywa aktywnego połączenia Modbus — bezpieczne przy aktywnym pollingu.
+- **Skan diagnostyczny (offline/advanced):** `scan_all_registers` otwiera osobne połączenie Modbus — nie uruchamiać, gdy integracja aktywnie polluje urządzenie.
 
 > Integracja korzysta z definicji rejestrów z pliku JSON i mapowania encji. Nie każdy wykryty rejestr musi mieć osobną encję w Home Assistant.
 
@@ -52,7 +52,8 @@ Integracja udostępnia serwisy m.in. do:
 - progów jakości powietrza,
 - resetów,
 - odświeżenia danych,
-- pełnego skanu rejestrów,
+- bezpiecznej walidacji znanych rejestrów (`validate_known_registers`),
+- pełnego diagnostycznego skanu rejestrów — offline/advanced only (`scan_all_registers`),
 - czasowego podniesienia poziomu logów.
 
 Pełna lista: [`custom_components/thessla_green_modbus/services.yaml`](custom_components/thessla_green_modbus/services.yaml).
@@ -69,6 +70,13 @@ logger:
 
 - Sprawdź szczegóły błędów i statystyk przez „Pobierz diagnostykę” w Home Assistant.
 - Upewnij się, że tylko jedno narzędzie utrzymuje aktywne połączenie Modbus do urządzenia.
+
+> **⚠ scan_all_registers — tylko offline / advanced:**
+> `scan_all_registers` otwiera osobne połączenie Modbus i może konfliktować z aktywnym pollingiem.
+> Do normalnej walidacji używaj `validate_known_registers` — reużywa aktywnego połączenia i jest bezpieczny przy działającej integracji.
+> W danym momencie tylko jedno narzędzie Modbus powinno komunikować się z urządzeniem.
+
+> **Status jakości:** `quality_scale: bronze`. Walidacja na urządzeniu fizycznym jest w toku i dokumentowana w [`docs/real_device_validation.md`](docs/real_device_validation.md).
 
 ## Dokumentacja dodatkowa
 

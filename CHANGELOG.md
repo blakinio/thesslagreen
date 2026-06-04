@@ -79,6 +79,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   preservation, and changelog update policy.
 
 ### Docs
+- **README badge cleanup and register validation wording**:
+  removed broken GitHub Releases badge (no tag/release exists for shields.io to resolve);
+  replaced "automatyczne skanowanie rejestrów" with "automatyczna detekcja dostępnych funkcji
+  urządzenia oraz walidacja znanych rejestrów"; clarified that `validate_known_registers`
+  reuses the active Modbus connection (safe during polling) while `scan_all_registers` opens
+  a separate connection (offline/advanced only); added warning block and `quality_scale: bronze`
+  notice.
 - **Real-device HA log evidence**
   ([#1689](https://github.com/blakinio/thesslagreen/pull/1689)):
   committed real-device Home Assistant log evidence supporting entity state and
