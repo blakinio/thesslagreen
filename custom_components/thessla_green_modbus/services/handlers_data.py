@@ -56,7 +56,7 @@ async def _read_known_registers_safe(
     coordinator: Any,
     batch: int,
     delay_ms: int,
-) -> tuple[dict[str, set[str]], dict[str, set[str]], dict[str, list[dict[str, Any]]]]:
+) -> tuple[dict[str, set[str]], dict[str, set[str]], dict[str, list[dict[str, Any]]], int]:
     """Read all known register addresses under _write_lock using the active connection.
 
     Prevents concurrent coordinator polling during validation by holding
@@ -65,13 +65,15 @@ async def _read_known_registers_safe(
     On batch read failure, falls back to individual address reads within the same
     lock and connection, so only truly unsupported addresses are marked missing.
 
-    Returns (available, missing, failed_ranges) name sets per register type.
+    Returns (available, missing, failed_ranges, retried_individual_count).
     failed_ranges contains {start, count, error} for each batch that needed fallback.
+    retried_individual_count is the total number of individual reads performed as fallback.
     """
     dc = coordinator.device_client
     available: dict[str, set[str]] = {}
     missing: dict[str, set[str]] = {}
     failed_ranges: dict[str, list[dict[str, Any]]] = {}
+    retried_individual_count = 0
 
     async with dc._write_lock:
         await coordinator._ensure_connection()
@@ -118,6 +120,7 @@ async def _read_known_registers_safe(
                             if addr not in addr_to_name:
                                 continue
                             name = addr_to_name[addr]
+                            retried_individual_count += 1
                             if delay_ms > 0:
                                 await asyncio.sleep(delay_ms / 1000.0)
                             try:
@@ -135,7 +138,7 @@ async def _read_known_registers_safe(
             missing[reg_type] = miss
             failed_ranges[reg_type] = faults
 
-    return available, missing, failed_ranges
+    return available, missing, failed_ranges, retried_individual_count
 
 
 def _register_refresh_device_data_service(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
@@ -265,7 +268,7 @@ def _register_validate_known_registers_service(
                 delay_ms,
             )
 
-            available, missing, failed_ranges = await _read_known_registers_safe(
+            available, missing, failed_ranges, retried_count = await _read_known_registers_safe(
                 coordinator, batch, delay_ms
             )
 
@@ -274,10 +277,12 @@ def _register_validate_known_registers_service(
                 "supported_count": sum(len(v) for v in available.values()),
                 "missing_count": sum(len(v) for v in missing.values()),
                 "missing_by_type": missing_by_type,
+                "retried_individual_count": retried_count,
             }
+            missing_sorted: dict[str, list[str]] = {rt: sorted(v) for rt, v in missing.items()}
             results[entity_id] = {
                 "available_registers": available,
-                "missing_registers": missing,
+                "missing_registers": missing_sorted,
                 "failed_ranges": failed_ranges,
                 "summary": summary,
             }
@@ -288,11 +293,14 @@ def _register_validate_known_registers_service(
                 summary["missing_count"],
                 missing_by_type,
             )
-            _LOGGER.debug(
-                "validate_known_registers missing names for %s: %s",
-                entity_id,
-                {rt: sorted(v) for rt, v in missing.items() if v},
-            )
+            for rt, names in missing_sorted.items():
+                if names:
+                    _LOGGER.debug(
+                        "validate_known_registers missing %s for %s: %s",
+                        rt,
+                        entity_id,
+                        names,
+                    )
         return results or None
 
     hass.services.async_register(
