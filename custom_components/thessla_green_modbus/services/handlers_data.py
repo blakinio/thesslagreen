@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -15,6 +16,10 @@ from .schema import (
     SCAN_ALL_REGISTERS_SCHEMA,
     VALIDATE_KNOWN_REGISTERS_SCHEMA,
 )
+
+_LOGGER = logging.getLogger(__name__)
+
+_CATCH_ERRORS = (ModbusException, ConnectionException, TimeoutError, OSError)
 
 
 def _response_has_data(response: Any) -> bool:
@@ -51,16 +56,22 @@ async def _read_known_registers_safe(
     coordinator: Any,
     batch: int,
     delay_ms: int,
-) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+) -> tuple[dict[str, set[str]], dict[str, set[str]], dict[str, list[dict[str, Any]]]]:
     """Read all known register addresses under _write_lock using the active connection.
 
     Prevents concurrent coordinator polling during validation by holding
     _write_lock for the entire read loop. No new Modbus transport is opened.
-    Returns (available, missing) name sets per register type.
+
+    On batch read failure, falls back to individual address reads within the same
+    lock and connection, so only truly unsupported addresses are marked missing.
+
+    Returns (available, missing, failed_ranges) name sets per register type.
+    failed_ranges contains {start, count, error} for each batch that needed fallback.
     """
     dc = coordinator.device_client
     available: dict[str, set[str]] = {}
     missing: dict[str, set[str]] = {}
+    failed_ranges: dict[str, list[dict[str, Any]]] = {}
 
     async with dc._write_lock:
         await coordinator._ensure_connection()
@@ -68,6 +79,7 @@ async def _read_known_registers_safe(
         for reg_type, reg_map in dc._register_maps.items():
             avail: set[str] = set()
             miss: set[str] = set()
+            faults: list[dict[str, Any]] = []
 
             if reg_map:
                 addr_to_name: dict[int, str] = {addr: name for name, addr in reg_map.items()}
@@ -83,21 +95,47 @@ async def _read_known_registers_safe(
                         if (start + i) in addr_to_name
                     }
 
+                    batch_ok = False
+                    batch_error: str | None = None
                     try:
                         resp = await _read_batch_via_existing_client(
                             dc, reg_type, start, group_count
                         )
                         if _response_has_data(resp):
                             avail.update(valid_names)
+                            batch_ok = True
                         else:
-                            miss.update(valid_names)
-                    except (ModbusException, ConnectionException, TimeoutError, OSError):
-                        miss.update(valid_names)
+                            batch_error = "empty_response"
+                    except _CATCH_ERRORS as exc:
+                        batch_error = type(exc).__name__
+
+                    if not batch_ok:
+                        faults.append({"start": start, "count": group_count, "error": batch_error})
+                        # Fallback: retry each known address individually to isolate failures.
+                        # This ensures only truly unsupported addresses are marked missing.
+                        for i in range(group_count):
+                            addr = start + i
+                            if addr not in addr_to_name:
+                                continue
+                            name = addr_to_name[addr]
+                            if delay_ms > 0:
+                                await asyncio.sleep(delay_ms / 1000.0)
+                            try:
+                                single_resp = await _read_batch_via_existing_client(
+                                    dc, reg_type, addr, 1
+                                )
+                                if _response_has_data(single_resp):
+                                    avail.add(name)
+                                else:
+                                    miss.add(name)
+                            except _CATCH_ERRORS:
+                                miss.add(name)
 
             available[reg_type] = avail
             missing[reg_type] = miss
+            failed_ranges[reg_type] = faults
 
-    return available, missing
+    return available, missing, failed_ranges
 
 
 def _register_refresh_device_data_service(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
@@ -221,23 +259,39 @@ def _register_validate_known_registers_service(
             effective_batch = coordinator.device_client.effective_batch
             batch = call.data.get("max_registers_per_request", effective_batch)
             deps.logger.info(
-                "Validate known registers started for %s: batch=%d, delay=%dms",
+                "validate_known_registers started for %s: batch=%d, delay=%dms",
                 entity_id,
                 batch,
                 delay_ms,
             )
 
-            available, missing = await _read_known_registers_safe(coordinator, batch, delay_ms)
+            available, missing, failed_ranges = await _read_known_registers_safe(
+                coordinator, batch, delay_ms
+            )
 
+            missing_by_type = {rt: len(v) for rt, v in missing.items() if v}
             summary = {
                 "supported_count": sum(len(v) for v in available.values()),
                 "missing_count": sum(len(v) for v in missing.values()),
+                "missing_by_type": missing_by_type,
             }
-            results[entity_id] = {"available_registers": available, "summary": summary}
+            results[entity_id] = {
+                "available_registers": available,
+                "missing_registers": missing,
+                "failed_ranges": failed_ranges,
+                "summary": summary,
+            }
             deps.logger.info(
-                "Validate known registers completed for %s: %s",
+                "validate_known_registers completed for %s: supported=%d, missing=%d, by_type=%s",
                 entity_id,
-                summary,
+                summary["supported_count"],
+                summary["missing_count"],
+                missing_by_type,
+            )
+            _LOGGER.debug(
+                "validate_known_registers missing names for %s: %s",
+                entity_id,
+                {rt: sorted(v) for rt, v in missing.items() if v},
             )
         return results or None
 

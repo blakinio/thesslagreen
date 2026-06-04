@@ -894,3 +894,244 @@ async def test_validate_known_registers_no_coordinator_host_proxy(monkeypatch):
     # Must succeed without AttributeError — host/port are not accessed
     result = await handler(_make_call({"entity_id": ["climate.dev"]}))
     assert result is not None
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — batch success marks only known names available
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_batch_success_marks_known_names(monkeypatch):
+    """When all batch reads succeed, all known register names are marked available."""
+    resp = MagicMock()
+    resp.registers = [1]
+    resp.bits = None
+    coord = _make_validate_coordinator(call_modbus_resp=resp)
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    summary = result["climate.dev"]["summary"]
+    assert summary["supported_count"] == 3  # version_major, version_minor, fan_speed_setpoint
+    assert summary["missing_count"] == 0
+    # missing_by_type must be empty when nothing is missing
+    assert summary["missing_by_type"] == {}
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — batch failure falls back to individual reads
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_batch_failure_falls_back_to_individual(monkeypatch):
+    """On batch failure, validate_known_registers retries each address individually.
+
+    The stub register map has two input_registers (addr 0, 1) and one holding
+    register (addr 10). When the first batch read raises, individual reads
+    succeed → supported_count == 3 (not 0).
+    """
+    from pymodbus.exceptions import ModbusException
+
+    good_resp = MagicMock()
+    good_resp.registers = [42]
+    good_resp.bits = None
+
+    call_count = 0
+
+    async def side_effect(fn, addr, *, count):
+        nonlocal call_count
+        call_count += 1
+        # First call is the batch read for input_registers (count=2); make it fail.
+        if call_count == 1:
+            raise ModbusException("simulated batch failure")
+        return good_resp
+
+    coord = _make_validate_coordinator()
+    coord.device_client._call_modbus = side_effect
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    summary = result["climate.dev"]["summary"]
+    # Batch for input_registers failed, but both individual reads succeeded + holding batch ok.
+    assert summary["supported_count"] == 3
+    assert summary["missing_count"] == 0
+    # failed_ranges must record the batch that triggered fallback
+    failed_ranges = result["climate.dev"]["failed_ranges"]
+    assert any(
+        r["start"] == 0 and r["count"] == 2 for r in failed_ranges.get("input_registers", [])
+    ), "failed_ranges must record the failed input_registers batch"
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — individual fallback reduces missing_count
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_individual_fallback_reduces_missing_count(monkeypatch):
+    """Individual fallback recovers registers that share a batch with a failing one.
+
+    input_registers addr 0 (version_major) succeeds individually; addr 1
+    (version_minor) fails individually. Without fallback both would be missing;
+    with fallback only version_minor is missing.
+    """
+    from pymodbus.exceptions import ConnectionException, ModbusException
+
+    good_resp = MagicMock()
+    good_resp.registers = [99]
+    good_resp.bits = None
+
+    calls: list[tuple[int, int]] = []
+
+    async def side_effect(fn, addr, *, count):
+        calls.append((addr, count))
+        if count > 1:
+            # Batch read → fail to trigger fallback
+            raise ModbusException("batch fail")
+        if addr == 0:
+            return good_resp
+        if addr == 1:
+            raise ConnectionException("addr 1 unsupported")
+        return good_resp
+
+    coord = _make_validate_coordinator()
+    coord.device_client._call_modbus = side_effect
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    summary = result["climate.dev"]["summary"]
+    # version_major recovered individually; version_minor + holding both succeed
+    assert summary["supported_count"] == 2  # version_major + fan_speed_setpoint
+    assert summary["missing_count"] == 1  # version_minor
+    missing = result["climate.dev"]["missing_registers"]
+    assert "version_minor" in missing.get("input_registers", set())
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — unsupported registers remain missing after fallback
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_unsupported_remain_missing(monkeypatch):
+    """Registers that fail both batch and individual reads are marked missing."""
+    from pymodbus.exceptions import ModbusException
+
+    coord = _make_validate_coordinator()
+    coord.device_client._call_modbus = AsyncMock(
+        side_effect=ModbusException("device does not support this register")
+    )
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    summary = result["climate.dev"]["summary"]
+    assert summary["supported_count"] == 0
+    assert summary["missing_count"] == 3  # all three registers missing
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — output includes missing_registers by type
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_output_includes_missing_registers(monkeypatch):
+    """Result includes missing_registers and failed_ranges per register type."""
+    coord = _make_validate_coordinator()
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    entry = result["climate.dev"]
+    assert "missing_registers" in entry, "missing_registers must be present in output"
+    assert "failed_ranges" in entry, "failed_ranges must be present in output"
+    assert "missing_by_type" in entry["summary"], "missing_by_type must be in summary"
+    # Backward-compatible fields must still be present
+    assert "available_registers" in entry
+    assert "supported_count" in entry["summary"]
+    assert "missing_count" in entry["summary"]
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — missing_by_type counts per register type
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_missing_by_type_counts(monkeypatch):
+    """missing_by_type in summary reflects per-type missing counts."""
+    from pymodbus.exceptions import ModbusException
+
+    coord = _make_validate_coordinator()
+    coord.device_client._call_modbus = AsyncMock(side_effect=ModbusException("unsupported"))
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    by_type = result["climate.dev"]["summary"]["missing_by_type"]
+    # input_registers has version_major (0) and version_minor (1): 2 missing
+    assert by_type.get("input_registers", 0) == 2
+    # holding_registers has fan_speed_setpoint (10): 1 missing
+    assert by_type.get("holding_registers", 0) == 1
+    # empty types must not appear in missing_by_type
+    assert "coil_registers" not in by_type
+    assert "discrete_inputs" not in by_type
