@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -486,53 +487,70 @@ async def test_orchestration_exception_code2_not_fatal():
 
 
 # ---------------------------------------------------------------------------
-# validate_known_registers — uses full_register_scan=False
+# validate_known_registers — test coordinator factory
+# ---------------------------------------------------------------------------
+
+
+def _make_validate_coordinator(effective_batch=4, call_modbus_resp=None):
+    """Create a coordinator stub for validate_known_registers tests.
+
+    The stub includes device_client._write_lock, _register_maps, _call_modbus,
+    and coordinator._ensure_connection — all required by the safe read path.
+    """
+    resp = call_modbus_resp
+    if resp is None:
+        resp = MagicMock()
+        resp.registers = [42]
+        resp.bits = None
+
+    dc = SimpleNamespace(
+        effective_batch=effective_batch,
+        scan_uart_settings=False,
+        timeout=10,
+        retry=3,
+        unknown_registers={},
+        scanned_registers={},
+        device_scan_result=None,
+        slave_id=10,
+        _write_lock=asyncio.Lock(),
+        _transport=None,
+        client=MagicMock(),
+        _register_maps={
+            "input_registers": {"version_major": 0, "version_minor": 1},
+            "holding_registers": {"fan_speed_setpoint": 10},
+            "coil_registers": {},
+            "discrete_inputs": {},
+        },
+        _get_client_method=MagicMock(return_value=AsyncMock()),
+        _call_modbus=AsyncMock(return_value=resp),
+        config=SimpleNamespace(host="192.168.1.10", port=502, slave_id=10),
+    )
+
+    return SimpleNamespace(
+        async_write_register=AsyncMock(return_value=True),
+        async_request_refresh=AsyncMock(),
+        _ensure_connection=AsyncMock(),
+        data={},
+        device_client=dc,
+    )
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — must not call scanner_create (no second connection)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_validate_known_registers_no_full_scan(monkeypatch):
-    """validate_known_registers uses full_register_scan=False (named scan only)."""
-    coord = _Coordinator()
+async def test_validate_known_registers_does_not_call_scanner_create(monkeypatch):
+    """validate_known_registers must not call deps.scanner_create (no second connection)."""
+    coord = _make_validate_coordinator()
     hass = _make_hass()
-    scan_result = {
-        "register_count": 5,
-        "unknown_registers": {},
-        "available_registers": {"input_registers": {"version_major"}},
-        "missing_registers": {},
-        "failed_addresses": {"modbus_exceptions": {"input_registers": set()}},
-    }
-    _mock_scanner, mock_create = _mock_scanner_create(scan_result)
 
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
     monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
-    monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
-
-    from custom_components.thessla_green_modbus.services import async_setup_services
-
-    await async_setup_services(hass)
-    handler = hass.services.handlers["validate_known_registers"]
-    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
-
-    _, kwargs = mock_create.call_args
-    assert kwargs["full_register_scan"] is False
-    assert result is not None
-    assert "climate.dev" in result
-
-
-@pytest.mark.asyncio
-async def test_validate_known_registers_slave_id(monkeypatch):
-    """validate_known_registers uses coordinator.device_client.config.slave_id."""
-    coord = _Coordinator(slave_id=10)
-    hass = _make_hass()
-    _mock_scanner, mock_create = _mock_scanner_create()
-
-    from custom_components.thessla_green_modbus import services as svc_mod
-
-    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
-    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+    mock_create = AsyncMock()
     monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
@@ -541,45 +559,199 @@ async def test_validate_known_registers_slave_id(monkeypatch):
     handler = hass.services.handlers["validate_known_registers"]
     await handler(_make_call({"entity_id": ["climate.dev"]}))
 
-    _, kwargs = mock_create.call_args
-    assert kwargs["slave_id"] == 10
+    mock_create.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — calls _ensure_connection via coordinator (safe path)
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_validate_known_registers_delay_passed(monkeypatch):
-    """validate_known_registers passes delay_between_requests_ms."""
-    coord = _Coordinator()
+async def test_validate_known_registers_calls_ensure_connection(monkeypatch):
+    """validate_known_registers calls coordinator._ensure_connection (uses active connection)."""
+    coord = _make_validate_coordinator()
     hass = _make_hass()
-    _mock_scanner, mock_create = _mock_scanner_create()
 
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
     monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
-    monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
 
     await async_setup_services(hass)
     handler = hass.services.handlers["validate_known_registers"]
-    await handler(_make_call({"entity_id": ["climate.dev"], "delay_between_requests_ms": 150}))
+    await handler(_make_call({"entity_id": ["climate.dev"]}))
 
-    _, kwargs = mock_create.call_args
-    assert kwargs["delay_between_requests_ms"] == 150
+    coord._ensure_connection.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — reads via device_client._call_modbus (not a new client)
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_validate_known_registers_no_writes(monkeypatch):
-    """validate_known_registers never calls async_write_register."""
-    coord = _Coordinator()
+async def test_validate_known_registers_uses_existing_client(monkeypatch):
+    """validate_known_registers reads registers via device_client._call_modbus."""
+    coord = _make_validate_coordinator()
     hass = _make_hass()
-    _mock_scanner, mock_create = _mock_scanner_create()
 
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
     monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
-    monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    # _call_modbus is called once per non-empty register batch
+    coord.device_client._call_modbus.assert_awaited()
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — output shape: available_registers + summary
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_output_shape(monkeypatch):
+    """validate_known_registers returns available_registers and summary with correct keys."""
+    coord = _make_validate_coordinator()
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    assert result is not None
+    assert "climate.dev" in result
+    entry = result["climate.dev"]
+    assert "available_registers" in entry
+    assert "summary" in entry
+    assert "supported_count" in entry["summary"]
+    assert "missing_count" in entry["summary"]
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — registers marked available when read succeeds
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_marks_available_on_success(monkeypatch):
+    """Registers are marked available when _call_modbus returns a non-empty response."""
+    resp = MagicMock()
+    resp.registers = [42]
+    resp.bits = None
+    coord = _make_validate_coordinator(call_modbus_resp=resp)
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    summary = result["climate.dev"]["summary"]
+    assert summary["supported_count"] > 0
+    assert summary["missing_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — registers marked missing when read raises
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_marks_missing_on_failure(monkeypatch):
+    """Registers are marked missing when _call_modbus raises ConnectionException."""
+    from pymodbus.exceptions import ConnectionException
+
+    coord = _make_validate_coordinator()
+    coord.device_client._call_modbus = AsyncMock(side_effect=ConnectionException("no connection"))
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    summary = result["climate.dev"]["summary"]
+    assert summary["supported_count"] == 0
+    assert summary["missing_count"] > 0
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — respects delay_between_requests_ms via asyncio.sleep
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_respects_delay_ms(monkeypatch):
+    """validate_known_registers calls asyncio.sleep for each batch when delay > 0."""
+    coord = _make_validate_coordinator()
+    hass = _make_hass()
+
+    sleep_calls: list[float] = []
+
+    async def fake_sleep(seconds: float) -> None:
+        sleep_calls.append(seconds)
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+
+    with patch("asyncio.sleep", side_effect=fake_sleep):
+        await handler(_make_call({"entity_id": ["climate.dev"], "delay_between_requests_ms": 100}))
+
+    assert len(sleep_calls) > 0, "asyncio.sleep must be called when delay > 0"
+    assert all(abs(s - 0.1) < 1e-9 for s in sleep_calls), "sleep duration must be 100ms"
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — never calls async_write_register
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_no_writes(monkeypatch):
+    """validate_known_registers never calls async_write_register."""
+    coord = _make_validate_coordinator()
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
 
     from custom_components.thessla_green_modbus.services import async_setup_services
 
@@ -591,7 +763,70 @@ async def test_validate_known_registers_no_writes(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Negative guard tests: services must use device_client.config.*, not proxies
+# validate_known_registers — regression: no second transport while polling active
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_no_second_transport_while_polling(monkeypatch):
+    """Regression: validate_known_registers must not open a second Modbus connection.
+
+    When the coordinator is actively polling via an existing transport,
+    validate_known_registers must reuse the same connection under _write_lock
+    rather than opening a new TCP transport (which causes transaction_id mismatch).
+    """
+    coord = _make_validate_coordinator()
+    existing_transport = MagicMock()
+    existing_transport.is_connected.return_value = True
+    coord.device_client._transport = existing_transport
+    coord.device_client._call_modbus = AsyncMock(return_value=MagicMock(registers=[1]))
+
+    scanner_create_calls: list = []
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    async def tracking_scanner_create(**kwargs):
+        scanner_create_calls.append(kwargs)
+        mock_s = AsyncMock()
+        mock_s.scan_device = AsyncMock(return_value={})
+        mock_s.close = AsyncMock()
+        return mock_s
+
+    monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", tracking_scanner_create)
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+
+    # Simulate concurrent polling by briefly holding _write_lock, then call validate.
+    polling_started = asyncio.Event()
+
+    async def simulate_polling():
+        async with coord.device_client._write_lock:
+            polling_started.set()
+            await asyncio.sleep(0.01)
+
+    poll_task = asyncio.ensure_future(simulate_polling())
+    await polling_started.wait()
+
+    validate_task = asyncio.ensure_future(handler(_make_call({"entity_id": ["climate.dev"]})))
+    await asyncio.gather(poll_task, validate_task)
+
+    # validate_known_registers must not have opened a new scanner/connection
+    assert scanner_create_calls == [], (
+        "validate_known_registers called scanner_create — this opens a second connection"
+    )
+    # The existing transport must still be the same object (not replaced)
+    assert coord.device_client._transport is existing_transport
+
+
+# ---------------------------------------------------------------------------
+# Negative guard: scan_all_registers must use device_client.config.* not proxies
 # ---------------------------------------------------------------------------
 
 
@@ -628,34 +863,34 @@ async def test_scan_all_registers_no_coordinator_host_proxy(monkeypatch):
     assert kwargs["port"] == coord.device_client.config.port
 
 
+# ---------------------------------------------------------------------------
+# Negative guard: validate_known_registers must not access coordinator.host proxy
+# ---------------------------------------------------------------------------
+
+
 @pytest.mark.asyncio
 async def test_validate_known_registers_no_coordinator_host_proxy(monkeypatch):
     """validate_known_registers must not access coordinator.host (proxy removed).
 
-    The coordinator stub intentionally has no .host/.port attributes.
-    If production code accidentally used coordinator.host, the test would
-    raise AttributeError and fail here.
+    validate_known_registers no longer uses host/port — it reuses the active
+    connection. This test verifies no AttributeError is raised on a coordinator
+    stub that has no .host/.port attributes.
     """
-    coord = _Coordinator()
+    coord = _make_validate_coordinator()
     assert not hasattr(coord, "host"), "legacy coordinator.host proxy must not be set"
     assert not hasattr(coord, "port"), "legacy coordinator.port proxy must not be set"
 
     hass = _make_hass()
-    _mock_scanner, mock_create = _mock_scanner_create()
 
     from custom_components.thessla_green_modbus import services as svc_mod
 
     monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
     monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
-    monkeypatch.setattr(svc_mod.ThesslaGreenDeviceScanner, "create", mock_create)
 
     from custom_components.thessla_green_modbus.services import async_setup_services
 
     await async_setup_services(hass)
     handler = hass.services.handlers["validate_known_registers"]
-    # Must succeed without AttributeError
-    await handler(_make_call({"entity_id": ["climate.dev"]}))
-
-    _, kwargs = mock_create.call_args
-    assert kwargs["host"] == coord.device_client.config.host
-    assert kwargs["port"] == coord.device_client.config.port
+    # Must succeed without AttributeError — host/port are not accessed
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+    assert result is not None

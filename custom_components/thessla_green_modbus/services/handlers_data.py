@@ -2,16 +2,102 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
+from pymodbus.exceptions import ConnectionException, ModbusException
 
+from ..registers.read_planner import group_reads
 from .handler_deps import ServiceHandlerDeps
 from .schema import (
     REFRESH_DEVICE_DATA_SCHEMA,
     SCAN_ALL_REGISTERS_SCHEMA,
     VALIDATE_KNOWN_REGISTERS_SCHEMA,
 )
+
+
+def _response_has_data(response: Any) -> bool:
+    """Return True if a Modbus response contains register or coil data."""
+    if response is None:
+        return False
+    registers = getattr(response, "registers", None)
+    if registers:
+        return True
+    return bool(getattr(response, "bits", None))
+
+
+async def _read_batch_via_existing_client(
+    device_client: Any,
+    reg_type: str,
+    start: int,
+    count: int,
+) -> Any:
+    """Read a register batch via device_client's active connection without opening a new one."""
+    method_map = {
+        "input_registers": "read_input_registers",
+        "holding_registers": "read_holding_registers",
+        "coil_registers": "read_coils",
+        "discrete_inputs": "read_discrete_inputs",
+    }
+    fn_name = method_map.get(reg_type)
+    if fn_name is None:
+        raise ValueError(f"Unknown register type: {reg_type}")
+    fn = device_client._get_client_method(fn_name)
+    return await device_client._call_modbus(fn, start, count=count)
+
+
+async def _read_known_registers_safe(
+    coordinator: Any,
+    batch: int,
+    delay_ms: int,
+) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+    """Read all known register addresses under _write_lock using the active connection.
+
+    Prevents concurrent coordinator polling during validation by holding
+    _write_lock for the entire read loop. No new Modbus transport is opened.
+    Returns (available, missing) name sets per register type.
+    """
+    dc = coordinator.device_client
+    available: dict[str, set[str]] = {}
+    missing: dict[str, set[str]] = {}
+
+    async with dc._write_lock:
+        await coordinator._ensure_connection()
+
+        for reg_type, reg_map in dc._register_maps.items():
+            avail: set[str] = set()
+            miss: set[str] = set()
+
+            if reg_map:
+                addr_to_name: dict[int, str] = {addr: name for name, addr in reg_map.items()}
+                groups = group_reads(sorted(addr_to_name.keys()), max_block_size=batch)
+
+                for start, group_count in groups:
+                    if delay_ms > 0:
+                        await asyncio.sleep(delay_ms / 1000.0)
+
+                    valid_names = {
+                        addr_to_name[start + i]
+                        for i in range(group_count)
+                        if (start + i) in addr_to_name
+                    }
+
+                    try:
+                        resp = await _read_batch_via_existing_client(
+                            dc, reg_type, start, group_count
+                        )
+                        if _response_has_data(resp):
+                            avail.update(valid_names)
+                        else:
+                            miss.update(valid_names)
+                    except (ModbusException, ConnectionException, TimeoutError, OSError):
+                        miss.update(valid_names)
+
+            available[reg_type] = avail
+            missing[reg_type] = miss
+
+    return available, missing
 
 
 def _register_refresh_device_data_service(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
@@ -42,7 +128,12 @@ def _register_refresh_device_data_service(hass: HomeAssistant, deps: ServiceHand
 
 
 def _register_scan_all_registers_service(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
-    """Register the scan_all_registers service."""
+    """Register the scan_all_registers service.
+
+    WARNING: scan_all_registers opens a SEPARATE Modbus connection and will cause
+    transaction_id mismatch errors while the coordinator is actively polling.
+    For safe real-device validation, use validate_known_registers instead.
+    """
 
     async def scan_all_registers(call: ServiceCall) -> dict[str, Any] | None:
         results: dict[str, Any] = {}
@@ -52,9 +143,10 @@ def _register_scan_all_registers_service(hass: HomeAssistant, deps: ServiceHandl
             effective_batch = coordinator.device_client.effective_batch
             batch = call.data.get("max_registers_per_request", effective_batch)
             deps.logger.warning(
-                "scan_all_registers opens a separate Modbus connection to %s:%s for %s; "
-                "this may conflict with the active coordinator refresh. "
-                "Use validate_known_registers for less intrusive register validation.",
+                "scan_all_registers opens a SEPARATE Modbus TCP connection to %s:%s for %s. "
+                "This WILL cause transaction_id mismatch errors while the coordinator is "
+                "actively polling. Stop or disable the integration first, or use "
+                "validate_known_registers which reuses the active connection safely.",
                 coordinator.device_client.config.host,
                 coordinator.device_client.config.port,
                 entity_id,
@@ -115,10 +207,14 @@ def _register_scan_all_registers_service(hass: HomeAssistant, deps: ServiceHandl
 def _register_validate_known_registers_service(
     hass: HomeAssistant, deps: ServiceHandlerDeps
 ) -> None:
-    """Register the validate_known_registers service."""
+    """Register the validate_known_registers service.
+
+    Uses the coordinator's existing Modbus connection under _write_lock.
+    No second connection is opened — safe to call while the integration is active.
+    """
 
     async def validate_known_registers(call: ServiceCall) -> dict[str, Any] | None:
-        """Read only known registers from integration definitions."""
+        """Read only known registers via the active coordinator connection."""
         results: dict[str, Any] = {}
         delay_ms: int = call.data.get("delay_between_requests_ms", 0)
         for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
@@ -130,28 +226,9 @@ def _register_validate_known_registers_service(
                 batch,
                 delay_ms,
             )
-            scanner = None
-            try:
-                scanner = await deps.scanner_create(
-                    host=coordinator.device_client.config.host,
-                    port=coordinator.device_client.config.port,
-                    slave_id=coordinator.device_client.config.slave_id,
-                    timeout=int(coordinator.device_client.timeout),
-                    retry=coordinator.device_client.retry,
-                    scan_uart_settings=False,
-                    skip_known_missing=False,
-                    full_register_scan=False,
-                    max_registers_per_request=batch,
-                    delay_between_requests_ms=delay_ms,
-                    hass=hass,
-                )
-                scan_result = await scanner.scan_device()
-            finally:
-                if scanner is not None:
-                    await scanner.close()
 
-            available = scan_result.get("available_registers", {})
-            missing = scan_result.get("missing_registers", {})
+            available, missing = await _read_known_registers_safe(coordinator, batch, delay_ms)
+
             summary = {
                 "supported_count": sum(len(v) for v in available.values()),
                 "missing_count": sum(len(v) for v in missing.values()),
