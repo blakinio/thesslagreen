@@ -26,7 +26,7 @@ class _Services:
         self.handlers: dict = {}
         self.removed: list = []
 
-    def async_register(self, _domain, service, handler, _schema):
+    def async_register(self, _domain, service, handler, _schema=None, supports_response=None):
         self.handlers[service] = handler
 
     def async_remove(self, _domain, service):
