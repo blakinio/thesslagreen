@@ -20,7 +20,14 @@ class _Services:
     def __init__(self) -> None:
         self.calls: list[tuple[str, object, object]] = []
 
-    def async_register(self, _domain: str, service: str, handler: object, schema: object = None, supports_response: object = None) -> None:
+    def async_register(
+        self,
+        _domain: str,
+        service: str,
+        handler: object,
+        schema: object = None,
+        supports_response: object = None,
+    ) -> None:
         self.calls.append((service, handler, schema))
 
 
