@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Detailed v2.8.x release notes: [docs/releases/v2.8.x.md](docs/releases/v2.8.x.md).
 
 ### Fixed
+- **`validate_known_registers` response visible in Developer Tools**: service now registered
+  with `SupportsResponse.ONLY` so the full response (including `missing_registers`) is
+  visible in Home Assistant Developer Tools → Actions. `available_registers` values are now
+  sorted lists instead of sets, making the entire response JSON-safe.
 - **`validate_known_registers` individual-read fallback**: when a batch read fails
   (e.g. device returns exception code 2 for one unsupported register in a batch),
   the service now falls back to individual address reads through the same active

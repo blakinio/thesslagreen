@@ -943,7 +943,7 @@ async def test_sync_device_clock_service_calls_write(monkeypatch):
             self.handlers = {}
             self.removed = []
 
-        def async_register(self, _d, svc, h, _s):
+        def async_register(self, _d, svc, h, _s=None, supports_response=None):
             self.handlers[svc] = h
 
         def async_remove(self, _d, svc):

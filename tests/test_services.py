@@ -62,7 +62,9 @@ class Services:
     def __init__(self) -> None:
         self.handlers: dict[str, Any] = {}
 
-    def async_register(self, _domain, service, handler, _schema):  # pragma: no cover
+    def async_register(
+        self, _domain, service, handler, _schema=None, supports_response=None
+    ):  # pragma: no cover
         self.handlers[service] = handler
 
 

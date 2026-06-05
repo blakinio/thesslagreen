@@ -6,7 +6,7 @@ import asyncio
 import logging
 from typing import Any
 
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from pymodbus.exceptions import ConnectionException, ModbusException
 
 from ..registers.read_planner import group_reads
@@ -254,7 +254,7 @@ def _register_validate_known_registers_service(
     No second connection is opened — safe to call while the integration is active.
     """
 
-    async def validate_known_registers(call: ServiceCall) -> dict[str, Any] | None:
+    async def validate_known_registers(call: ServiceCall) -> dict[str, Any]:
         """Read only known registers via the active coordinator connection."""
         results: dict[str, Any] = {}
         delay_ms: int = call.data.get("delay_between_requests_ms", 0)
@@ -280,8 +280,9 @@ def _register_validate_known_registers_service(
                 "retried_individual_count": retried_count,
             }
             missing_sorted: dict[str, list[str]] = {rt: sorted(v) for rt, v in missing.items()}
+            available_sorted: dict[str, list[str]] = {rt: sorted(v) for rt, v in available.items()}
             results[entity_id] = {
-                "available_registers": available,
+                "available_registers": available_sorted,
                 "missing_registers": missing_sorted,
                 "failed_ranges": failed_ranges,
                 "summary": summary,
@@ -301,13 +302,14 @@ def _register_validate_known_registers_service(
                         entity_id,
                         names,
                     )
-        return results or None
+        return results
 
     hass.services.async_register(
         deps.domain,
         "validate_known_registers",
         validate_known_registers,
         VALIDATE_KNOWN_REGISTERS_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
     )
 
 
