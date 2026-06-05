@@ -18,9 +18,12 @@ class _Services:
     def __init__(self):
         self.handlers: dict = {}
         self.removed: list = []
+        self.response_support: dict = {}
 
-    def async_register(self, _domain, service, handler, _schema):
+    def async_register(self, _domain, service, handler, _schema=None, supports_response=None):
         self.handlers[service] = handler
+        if supports_response is not None:
+            self.response_support[service] = supports_response
 
     def async_remove(self, _domain, service):
         self.removed.append(service)
@@ -1281,3 +1284,151 @@ async def test_validate_known_registers_retried_individual_count(monkeypatch):
 
     # input_registers batch failed → 2 individual reads (version_major addr 0, version_minor addr 1)
     assert result["climate.dev"]["summary"]["retried_individual_count"] == 2
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — service registered with SupportsResponse.ONLY
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_registered_with_response_support(monkeypatch):
+    """validate_known_registers must be registered with supports_response=SupportsResponse.ONLY."""
+    from homeassistant.core import SupportsResponse
+
+    coord = _make_validate_coordinator()
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+
+    assert "validate_known_registers" in hass.services.response_support, (
+        "validate_known_registers must be registered with supports_response"
+    )
+    assert hass.services.response_support["validate_known_registers"] == SupportsResponse.ONLY, (
+        "validate_known_registers must use SupportsResponse.ONLY"
+    )
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — available_registers values are sorted lists
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_available_registers_are_lists(monkeypatch):
+    """available_registers values must be sorted lists, not sets (JSON-safe)."""
+    coord = _make_validate_coordinator()
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    available = result["climate.dev"]["available_registers"]
+    for reg_type, names in available.items():
+        assert isinstance(names, list), (
+            f"{reg_type} available_registers must be a list, not {type(names).__name__}"
+        )
+        assert names == sorted(names), f"{reg_type} available_registers must be sorted"
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — response is JSON-serializable
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_response_is_json_serializable(monkeypatch):
+    """Entire response must be JSON-serializable (no sets or non-primitive types)."""
+    import json
+
+    coord = _make_validate_coordinator()
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    # Must not raise TypeError
+    json_str = json.dumps(result)
+    assert json_str is not None
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — missing_registers grouped by register type
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_missing_registers_grouped_by_type(monkeypatch):
+    """missing_registers is grouped by register type with register names as list values."""
+    from pymodbus.exceptions import ModbusException
+
+    coord = _make_validate_coordinator()
+    coord.device_client._call_modbus = AsyncMock(side_effect=ModbusException("unsupported"))
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    missing = result["climate.dev"]["missing_registers"]
+    assert "input_registers" in missing
+    assert "holding_registers" in missing
+    assert isinstance(missing["input_registers"], list)
+    assert "version_major" in missing["input_registers"]
+    assert "version_minor" in missing["input_registers"]
+    assert "fan_speed_setpoint" in missing["holding_registers"]
+
+
+# ---------------------------------------------------------------------------
+# validate_known_registers — always returns a dict (never None with ONLY mode)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_known_registers_always_returns_dict(monkeypatch):
+    """validate_known_registers always returns a dict, never None (required for SupportsResponse.ONLY)."""
+    coord = _make_validate_coordinator()
+    hass = _make_hass()
+
+    from custom_components.thessla_green_modbus import services as svc_mod
+
+    monkeypatch.setattr(svc_mod, "_get_coordinator_from_entity_id", lambda _h, _e: coord)
+    monkeypatch.setattr(svc_mod, "async_extract_entity_ids", lambda c: c.data["entity_id"])
+
+    from custom_components.thessla_green_modbus.services import async_setup_services
+
+    await async_setup_services(hass)
+    handler = hass.services.handlers["validate_known_registers"]
+    result = await handler(_make_call({"entity_id": ["climate.dev"]}))
+
+    assert isinstance(result, dict), "validate_known_registers must return a dict, not None"
