@@ -9,6 +9,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from pymodbus.exceptions import ConnectionException, ModbusException
 
+from ..const import KNOWN_MISSING_CLASSIFICATION
 from ..registers.read_planner import group_reads
 from .handler_deps import ServiceHandlerDeps
 from .schema import (
@@ -281,11 +282,17 @@ def _register_validate_known_registers_service(
             }
             missing_sorted: dict[str, list[str]] = {rt: sorted(v) for rt, v in missing.items()}
             available_sorted: dict[str, list[str]] = {rt: sorted(v) for rt, v in available.items()}
+            classification: dict[str, str] = {}
+            for names in missing.values():
+                for name in names:
+                    if name in KNOWN_MISSING_CLASSIFICATION:
+                        classification[name] = KNOWN_MISSING_CLASSIFICATION[name]
             results[entity_id] = {
                 "available_registers": available_sorted,
                 "missing_registers": missing_sorted,
                 "failed_ranges": failed_ranges,
                 "summary": summary,
+                "register_classification": classification,
             }
             deps.logger.info(
                 "validate_known_registers completed for %s: supported=%d, missing=%d, by_type=%s",

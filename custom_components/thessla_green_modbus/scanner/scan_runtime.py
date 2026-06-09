@@ -24,6 +24,28 @@ def log_missing_registers(missing_registers: dict[str, dict[str, int]]) -> None:
     _LOGGER.warning("The following registers were not found during scan: %s", "; ".join(details))
 
 
+def _collect_expected_optional_addresses(scanner: Any) -> dict[str, list[int]]:
+    """Identify failed addresses that belong to expected-optional firmware ranges.
+
+    Input register addresses covered by unsupported ranges with exception code 2
+    and end <= 15 are firmware-version metadata registers (version_patch,
+    compilation timestamps) that are absent on some firmware versions.
+    """
+    result: dict[str, list[int]] = {}
+    input_failed = scanner.failed_addresses["modbus_exceptions"].get("input_registers", set())
+    if not input_failed:
+        return result
+    unsupported = getattr(scanner, "_unsupported_input_ranges", {})
+    firmware_addrs: set[int] = set()
+    for (start, end), code in unsupported.items():
+        if code == 2 and end <= 15:
+            firmware_addrs.update(range(start, end + 1))
+    optional_in_failed = sorted(input_failed & firmware_addrs)
+    if optional_in_failed:
+        result["input_registers"] = optional_in_failed
+    return result
+
+
 def build_scan_result(
     scanner: Any,
     *,
@@ -38,6 +60,7 @@ def build_scan_result(
     raw_registers: dict[int, int],
 ) -> dict[str, Any]:
     """Assemble canonical scan result payload from runtime state."""
+    expected_optional = _collect_expected_optional_addresses(scanner)
     result: dict[str, Any] = {
         "available_registers": available_registers,
         "device_info": device.as_dict(),
@@ -54,6 +77,7 @@ def build_scan_result(
             "invalid_values": {
                 k: sorted(v) for k, v in scanner.failed_addresses["invalid_values"].items() if v
             },
+            "expected_optional": expected_optional,
         },
         "resolved_connection_mode": scanner._resolved_connection_mode,
         "scan_stats": {
