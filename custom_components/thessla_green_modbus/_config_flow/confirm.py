@@ -59,14 +59,23 @@ def _build_capabilities_lists(
     return detected, not_detected
 
 
-def _summarize_address_dict(addr_dict: Any) -> str:
-    """Return a compact summary for a dict of register-type -> address lists/sets."""
+def _summarize_address_dict(addr_dict: Any, *, exclude: dict[str, list[int]] | None = None) -> str:
+    """Return a compact summary for a dict of register-type -> address lists/sets.
+
+    When *exclude* is provided, those addresses are subtracted from the counts
+    so that expected-optional failures do not inflate the user-visible error count.
+    """
     if not isinstance(addr_dict, dict) or not addr_dict:
         return _N_A
     parts = []
     for reg_type, addresses in addr_dict.items():
-        if addresses:
-            parts.append(f"{reg_type}: {len(addresses)}")
+        if not addresses:
+            continue
+        count = len(addresses)
+        if exclude and reg_type in exclude:
+            count -= len(exclude[reg_type])
+        if count > 0:
+            parts.append(f"{reg_type}: {count}")
     return ", ".join(parts) if parts else _N_A
 
 
@@ -167,7 +176,10 @@ async def build_confirmation_placeholders(
     missing_registers_summary = _summarize_missing_registers(scan_result.get("missing_registers"))
 
     failed = scan_result.get("failed_addresses") or {}
-    modbus_failed_summary = _summarize_address_dict(failed.get("modbus_exceptions"))
+    expected_optional = failed.get("expected_optional") or {}
+    modbus_failed_summary = _summarize_address_dict(
+        failed.get("modbus_exceptions"), exclude=expected_optional
+    )
     invalid_values_summary = _summarize_address_dict(failed.get("invalid_values"))
 
     detected_caps, not_detected_caps = _build_capabilities_lists(

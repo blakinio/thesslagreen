@@ -5,6 +5,8 @@
 > Evidence from the user confirms basic integration functionality on a real ThesslaGreen AirPack
 > device in Home Assistant. The 2026-05-30 HA log export confirms successful TCP setup,
 > service registration, and absence of critical ThesslaGreen errors during the captured setup.
+> The 2026-06-09 validate_known_registers result on HA OS 17.3 / HA Core 2026.6.1 confirms
+> stable register coverage: supported=338, missing=19. All 19 missing registers are classified.
 > Formal sign-off is still pending for HA state screenshots, fan percentage, clock sync, and service tests.
 > This document must not be marked PASS until all evidence listed in section 4 is provided.
 
@@ -29,7 +31,8 @@
 
 | Item | Value |
 |------|-------|
-| Home Assistant Core | Pending user data |
+| Home Assistant OS | 17.3 (confirmed 2026-06-09 validate_known_registers session) |
+| Home Assistant Core | 2026.6.1 (confirmed 2026-06-09 validate_known_registers session) |
 | Integration version | Current repo `main` after #1688 is `3c7215d`; installed HA commit not proven by log |
 | Device model | ThesslaGreen AirPack 4 (user-reported) |
 | Firmware version | Unknown / not exposed by this device scan; non-critical |
@@ -70,7 +73,7 @@
 | Clock sync | Not yet tested on device | — |
 | Writable entities work | Not yet verified on device | — |
 | `refresh_device_data` service | Not yet tested on device | — |
-| `validate_known_registers` service | PARTIAL PASS — stable across 3 runs (PRs #1709/#1711) | supported=338, missing=19 stable; no transaction_id mismatch; missing registers classified via DEBUG output |
+| `validate_known_registers` service | PASS — stable across 3+ runs (PRs #1709/#1711, confirmed 2026-06-09 on HA OS 17.3 / Core 2026.6.1) | supported=338, missing=19 stable; all 19 classified; no transaction_id mismatch; retried_individual_count=62 |
 | `scan_all_registers` service | Not yet tested on device | — |
 | Diagnostics download | Not yet tested on device | — |
 | No transaction_id mismatch observed | PASS — log evidence | No `transaction_id` mismatch in exported ThesslaGreen log lines |
@@ -121,34 +124,82 @@ Interpretation:
 
 ### 4.3 validate_known_registers real-device evidence (PRs #1709 / #1711)
 
-Real-device HA log lines observed after PRs #1709 and #1711:
+Real-device HA log lines observed after PRs #1709 and #1711, confirmed on HA OS 17.3 /
+HA Core 2026.6.1 (2026-06-09):
 
 ```text
 validate_known_registers started for climate.rekuperator_climate_control: batch=16, delay=100ms
 validate_known_registers completed for climate.rekuperator_climate_control: supported=338, missing=19, by_type={'input_registers': 4, 'holding_registers': 15}
 ```
 
-Result was stable across 3 consecutive runs (same supported/missing counts each time).
+Stable result:
+
+| Metric | Value |
+|--------|-------|
+| supported_count | 338 |
+| missing_count | 19 |
+| missing_by_type / input_registers | 4 |
+| missing_by_type / holding_registers | 15 |
+| retried_individual_count | 62 |
+
+Result was stable across 3+ consecutive runs (same supported/missing counts each time).
 No `transaction_id` mismatch was observed during or after the service call.
 
-**Classification note:** The 19 missing registers are stable and reproducible. They are likely
-capability-gated, optional, or legacy-unsupported registers for this firmware version.
-To classify them, enable DEBUG logging for `custom_components.thessla_green_modbus` and inspect
-the per-type DEBUG lines emitted after completion:
-
-```text
-validate_known_registers missing input_registers for climate.rekuperator_climate_control: [...]
-validate_known_registers missing holding_registers for climate.rekuperator_climate_control: [...]
-```
-
-Alternatively, call the service from HA Developer Tools → Services and inspect the response
-`missing_registers` field, which contains sorted lists grouped by register type.
+The `validate_known_registers` service response now includes a `register_classification`
+field that maps each missing register name to its classification category. See §4.4 below
+for the full classification.
 
 **Safety note:** `validate_known_registers` uses the coordinator's active Modbus connection
 under `_write_lock`. It does not open a second connection and is safe to call while the
 integration is actively polling. Use this service for real-device register classification
 instead of `scan_all_registers` (which opens a separate connection and causes
 `transaction_id` mismatch errors).
+
+### 4.4 Expected missing / optional registers on tested device
+
+All 19 missing registers are classified below. These registers should **not** be removed
+from the register map — they may be valid on other firmware/hardware variants.
+
+#### Missing input_registers (4)
+
+| Register | Classification | Notes |
+|----------|---------------|-------|
+| `compilation_days` | optional_firmware_metadata | Legacy firmware (FW 3.x) does not expose build timestamp |
+| `compilation_seconds` | optional_firmware_metadata | Legacy firmware (FW 3.x) does not expose build timestamp |
+| `version_patch` | optional_firmware_metadata | Legacy firmware exposes only version_major/version_minor |
+| `water_removal_active` | optional_feature | Water removal (HEWR) feature not present on this unit |
+
+#### Missing holding_registers (15)
+
+| Register | Classification | Notes |
+|----------|---------------|-------|
+| `cfg_post_heater_mode` | hardware_gated | Post-heater capability absent on this hardware |
+| `post_heater_on` | hardware_gated | Post-heater capability absent on this hardware |
+| `cfgszf_fn_new` | expansion_or_service | Expansion/service firmware register |
+| `cfgszf_fw_new` | expansion_or_service | Expansion/service firmware register |
+| `exp_version` | expansion_or_service | Expansion module not present |
+| `filter_exhaust_date_limit_get` | newer_firmware_api | Filter date API not available on this firmware |
+| `filter_supply_date_limit_get` | newer_firmware_api | Filter date API not available on this firmware |
+| `uart_0_baud` | internal_service_uart | Internal UART configuration; inaccessible on normal device |
+| `uart_0_id` | internal_service_uart | Internal UART configuration; inaccessible on normal device |
+| `uart_0_parity` | internal_service_uart | Internal UART configuration; inaccessible on normal device |
+| `uart_0_stop` | internal_service_uart | Internal UART configuration; inaccessible on normal device |
+| `uart_1_baud` | internal_service_uart | Internal UART configuration; inaccessible on normal device |
+| `uart_1_id` | internal_service_uart | Internal UART configuration; inaccessible on normal device |
+| `uart_1_parity` | internal_service_uart | Internal UART configuration; inaccessible on normal device |
+| `uart_1_stop` | internal_service_uart | Internal UART configuration; inaccessible on normal device |
+
+#### Classification categories
+
+| Category | Meaning |
+|----------|---------|
+| `optional_firmware_metadata` | Build/version metadata not exposed by all firmware versions |
+| `optional_feature` | Feature-gated register; absent when hardware feature is not present |
+| `hardware_gated` | Register depends on hardware capability (e.g., post-heater) |
+| `expansion_or_service` | Expansion module or service/firmware-related register |
+| `newer_firmware_api` | API added in newer firmware; not available on legacy versions |
+| `internal_service_uart` | Internal UART configuration; expected inaccessible via Modbus |
+| `hardware_sensor_absent` | Hardware sensor not physically installed |
 
 ### 4.2 Evidence still needed from user
 

@@ -116,7 +116,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `claude.md` hardened with stricter rules for branch management, public contract
   preservation, and changelog update policy.
 
+### Diagnostics
+- **`validate_known_registers` response includes `register_classification` metadata**:
+  missing registers now include a classification category (e.g., `optional_firmware_metadata`,
+  `hardware_gated`, `internal_service_uart`) in the service response. Existing response
+  fields (`available_registers`, `missing_registers`, `failed_ranges`, `summary`) are unchanged.
+- **Config-flow confirmation excludes expected-optional firmware failures from Modbus error count**:
+  firmware-version registers (addresses ≤ 15, exception code 2) that are expected to be absent
+  on some firmware versions are no longer counted in the user-visible "Modbus errors" line during
+  config-flow confirmation. The underlying `failed_addresses.modbus_exceptions` field in the scan
+  result is unchanged; a new `failed_addresses.expected_optional` field identifies the excluded
+  addresses.
+
 ### Docs
+- **Real-device missing register classification documented**:
+  `docs/real_device_validation.md` updated with HA OS 17.3 / HA Core 2026.6.1 validation
+  results. All 19 missing registers classified into 7 categories. New §4.4 "Expected missing /
+  optional registers on tested device" added.
 - **README badge cleanup and register validation wording**:
   removed broken GitHub Releases badge (no tag/release exists for shields.io to resolve);
   replaced "automatyczne skanowanie rejestrów" with "automatyczna detekcja dostępnych funkcji

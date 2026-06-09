@@ -209,6 +209,30 @@ KNOWN_MISSING_REGISTERS = {
     "discrete_inputs": set(),
 }
 
+KNOWN_MISSING_CLASSIFICATION: dict[str, str] = {
+    "version_patch": "optional_firmware_metadata",
+    "compilation_days": "optional_firmware_metadata",
+    "compilation_seconds": "optional_firmware_metadata",
+    "water_removal_active": "optional_feature",
+    "duct_supply_temperature": "hardware_sensor_absent",
+    "gwc_temperature": "hardware_sensor_absent",
+    "cfg_post_heater_mode": "hardware_gated",
+    "post_heater_on": "hardware_gated",
+    "cfgszf_fn_new": "expansion_or_service",
+    "cfgszf_fw_new": "expansion_or_service",
+    "exp_version": "expansion_or_service",
+    "filter_exhaust_date_limit_get": "newer_firmware_api",
+    "filter_supply_date_limit_get": "newer_firmware_api",
+    "uart_0_id": "internal_service_uart",
+    "uart_0_baud": "internal_service_uart",
+    "uart_0_parity": "internal_service_uart",
+    "uart_0_stop": "internal_service_uart",
+    "uart_1_id": "internal_service_uart",
+    "uart_1_baud": "internal_service_uart",
+    "uart_1_parity": "internal_service_uart",
+    "uart_1_stop": "internal_service_uart",
+}
+
 # Platforms supported by the integration
 # Diagnostics is handled separately and therefore not listed here
 PLATFORMS: list[Any] = [
