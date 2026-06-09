@@ -304,6 +304,17 @@ real-device validation can be marked PASS for the post-#1702 codebase.
   part of this checklist. Use `validate_known_registers` (item 7 above) instead.
   `scan_all_registers` opens a separate Modbus connection and is intended for development
   investigation only; see `claude.md §4`.
+- **Deep scan (full_register_scan) is noisy and offline-only** — When the config-flow scan
+  is run with `full_register_scan=True` (deep scan option), it sweeps all raw address ranges
+  (e.g. input registers 0–286) in batches. Many of these raw addresses are unsupported by
+  the device and return Modbus exception code 2. This is expected and produces hundreds of
+  batch failures in diagnostic data (`batch_failures` field). These raw batch failures are
+  NOT named-register Modbus errors: they are classified separately and shown only as a
+  diagnostic note ("deep scan: N unsupported raw ranges (named registers OK)") in the
+  config-flow confirmation, not as individual address error counts.
+  Deep scan also opens a separate Modbus connection and can interfere with the active
+  coordinator polling. It is intended for offline diagnostics / development investigation
+  only; normal real-device validation should use `validate_known_registers` instead.
 
 ### 8.3 Validation Sign-off
 

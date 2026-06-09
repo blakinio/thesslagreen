@@ -78,6 +78,11 @@ def build_scan_result(
                 k: sorted(v) for k, v in scanner.failed_addresses["invalid_values"].items() if v
             },
             "expected_optional": expected_optional,
+            "batch_failures": {
+                k: sorted(v)
+                for k, v in scanner.failed_addresses.get("batch_failures", {}).items()
+                if v
+            },
         },
         "resolved_connection_mode": scanner._resolved_connection_mode,
         "scan_stats": {

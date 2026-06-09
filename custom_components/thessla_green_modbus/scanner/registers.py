@@ -68,9 +68,8 @@ async def scan_register_batch(
 
         if data is None:
             await _reset_transport_before_fallback(scanner, reg_type, start, start + count - 1)
-            scanner.failed_addresses["modbus_exceptions"][reg_type].update(
-                range(start, start + count)
-            )
+            # Record the full batch range for diagnostics; individual probes determine modbus_exceptions
+            scanner.failed_addresses["batch_failures"][reg_type].update(range(start, start + count))
             _LOGGER.debug(
                 "%s batch read %d-%d failed; probing individually",
                 reg_type,
@@ -86,6 +85,8 @@ async def scan_register_batch(
                 except TypeError:
                     probe = None
                 if not probe:
+                    # Both batch and individual probe failed — truly unrecoverable
+                    scanner.failed_addresses["modbus_exceptions"][reg_type].add(addr)
                     _LOGGER.warning("Failed to read %s register %d", reg_type, addr)
                     continue
                 value = probe[0]
@@ -203,7 +204,7 @@ async def scan_named_coil(scanner: Any, coil_registers: dict[int, str]) -> None:
             else await scanner._read_coil(start, count)
         )
         if coil_data is None:
-            scanner.failed_addresses["modbus_exceptions"]["coil_registers"].update(
+            scanner.failed_addresses["batch_failures"]["coil_registers"].update(
                 range(start, start + count)
             )
             for addr in range(start, start + count):
@@ -216,6 +217,8 @@ async def scan_named_coil(scanner: Any, coil_registers: dict[int, str]) -> None:
                 )
                 if probe and probe[0] is not None:
                     scanner.available_registers["coil_registers"].update(addr_to_names[addr])
+                else:
+                    scanner.failed_addresses["modbus_exceptions"]["coil_registers"].add(addr)
             continue
         for offset, value in enumerate(coil_data):
             addr = start + offset
@@ -241,7 +244,7 @@ async def scan_named_discrete(scanner: Any, discrete_registers: dict[int, str]) 
             else await scanner._read_discrete(start, count)
         )
         if discrete_data is None:
-            scanner.failed_addresses["modbus_exceptions"]["discrete_inputs"].update(
+            scanner.failed_addresses["batch_failures"]["discrete_inputs"].update(
                 range(start, start + count)
             )
             for addr in range(start, start + count):
@@ -254,6 +257,8 @@ async def scan_named_discrete(scanner: Any, discrete_registers: dict[int, str]) 
                 )
                 if probe and probe[0] is not None:
                     scanner.available_registers["discrete_inputs"].update(addr_to_names[addr])
+                else:
+                    scanner.failed_addresses["modbus_exceptions"]["discrete_inputs"].add(addr)
             continue
         for offset, value in enumerate(discrete_data):
             addr = start + offset
@@ -425,19 +430,25 @@ def log_skipped_ranges(scanner: Any) -> None:
         filtered = scanner._filter_unsupported_addresses(reg_type, addrs)
         if not filtered:
             continue
-        reverse_map = addr_to_name.get(reg_type, {})
-        available = scanner.available_registers.get(reg_type, set())
-        truly_failed = {addr for addr in filtered if reverse_map.get(addr) not in available}
-        if truly_failed:
-            decimals = ", ".join(str(addr) for addr in sorted(truly_failed))
-            _LOGGER.warning("Failed to read %s at %s", reg_type, decimals)
-        elif filtered:
-            decimals = ", ".join(str(addr) for addr in sorted(filtered))
-            _LOGGER.debug(
-                "Batch read failed for %s at %s but individual probes succeeded",
-                reg_type,
-                decimals,
-            )
+        decimals = ", ".join(str(addr) for addr in sorted(filtered))
+        _LOGGER.warning("Failed to read %s at %s", reg_type, decimals)
+
+    # Log batch-failed addresses that were recovered by individual fallback probes
+    for reg_type, batch_addrs in scanner.failed_addresses.get("batch_failures", {}).items():
+        if not batch_addrs:
+            continue
+        truly_failed = scanner.failed_addresses["modbus_exceptions"].get(reg_type, set())
+        recovered = batch_addrs - truly_failed
+        if recovered:
+            reverse_map_rt = addr_to_name.get(reg_type, {})
+            named_recovered = {addr for addr in recovered if addr in reverse_map_rt}
+            if named_recovered:
+                decimals = ", ".join(str(addr) for addr in sorted(named_recovered))
+                _LOGGER.debug(
+                    "Batch read failed for %s at %s but individual probes succeeded",
+                    reg_type,
+                    decimals,
+                )
 
     for reg_type, addrs in scanner.failed_addresses["invalid_values"].items():
         if addrs:
