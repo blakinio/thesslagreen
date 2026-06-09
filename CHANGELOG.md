@@ -74,6 +74,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   addresses, register names, or entity IDs changed.
 
 ### Internal
+- **Removed dead RTU-over-TCP helper duplicate**:
+  deleted `custom_components/thessla_green_modbus/transport/rtu_over_tcp.py` (free
+  `validate_crc`/`build_read_frame` functions never imported by production code);
+  retargeted CRC/frame helper tests in
+  `tests/test_modbus_transport_rtu_over_tcp_helpers.py` to
+  `RawRtuOverTcpTransport._validate_crc` and `RawRtuOverTcpTransport._build_read_frame`
+  in the live transport; updated expected exception type from `ValueError` to
+  `ModbusIOException`; added negative guard test to prevent re-introduction of the
+  dead module. No runtime Modbus behavior changed.
 - **Improved `validate_known_registers` missing-register diagnostics**: `missing_registers`
   in the service response now contains sorted lists (deterministic, JSON-serializable) instead
   of sets. `summary` gains `retried_individual_count` (individual fallback reads performed after
