@@ -203,22 +203,24 @@ async def test_known_missing_input_excluded_from_scan():
     """Registers in KNOWN_MISSING_REGISTERS are skipped: they do not appear in
     modbus_exceptions even if the device would reject their addresses."""
     scanner = _make_scanner()
-    scanner._known_missing_registers = {}
 
     known_missing_name = "version_patch"  # addr 4 in KNOWN_MISSING_REGISTERS
+    # Set the instance-level attribute so scan_named_input's getattr picks it up
+    scanner._known_missing_registers = {"input_registers": {known_missing_name}}
     input_registers_map = {4: known_missing_name, 0: "version_major"}
 
     read_calls: list[tuple[int, int]] = []
 
-    async def read_fn(start, count, *, skip_cache=False):
+    async def _mock_read_input(start, count, *, skip_cache=False):
         read_calls.append((start, count))
         return [100] * count
 
-    with patch(
-        "custom_components.thessla_green_modbus.scanner.registers.KNOWN_MISSING_REGISTERS",
-        {"input_registers": {known_missing_name}},
-    ):
-        await scan_named_input(scanner, input_registers_map)
+    # scan_named_input builds its own _read closure around scanner._read_input;
+    # wire that up and ensure the client-less branch is taken.
+    scanner._read_input = _mock_read_input
+    scanner._client = None
+
+    await scan_named_input(scanner, input_registers_map)
 
     # version_patch (addr 4) must never have been probed
     all_addrs_probed = {s for s, _ in read_calls} | {s + i for s, c in read_calls for i in range(c)}
