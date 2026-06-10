@@ -69,7 +69,7 @@ async def test_full_register_scan_input_returns_none():
     ):
         result = await scanner.scan()
 
-    assert result["failed_addresses"]["modbus_exceptions"]["input_registers"]
+    assert result["failed_addresses"]["batch_failures"]["input_registers"]
 
 
 @pytest.mark.asyncio
@@ -118,7 +118,7 @@ async def test_full_register_scan_coil_returns_none():
     ):
         result = await scanner.scan()
 
-    assert result["failed_addresses"]["modbus_exceptions"]["coil_registers"]
+    assert result["failed_addresses"]["batch_failures"]["coil_registers"]
 
 
 @pytest.mark.asyncio
@@ -275,7 +275,7 @@ async def test_full_register_scan_discrete_none():
     ):
         result = await scanner.scan()
 
-    assert 0 in result["failed_addresses"]["modbus_exceptions"]["discrete_inputs"]
+    assert 0 in result["failed_addresses"]["batch_failures"]["discrete_inputs"]
 
 
 @pytest.mark.asyncio

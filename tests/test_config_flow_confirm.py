@@ -433,6 +433,7 @@ async def test_confirm_placeholders_deep_scan_batch_failures_not_normal_errors()
     flow._device_info = {}
     flow._scan_result = {
         "register_count": 10,
+        "scan_mode": "full",
         "failed_addresses": {
             # Full/deep scan produced 269 raw batch failures, but no named register failures
             "modbus_exceptions": {},

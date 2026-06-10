@@ -84,6 +84,7 @@ def build_scan_result(
                 if v
             },
         },
+        "scan_mode": "full" if getattr(scanner, "full_register_scan", False) else "named",
         "resolved_connection_mode": scanner._resolved_connection_mode,
         "scan_stats": {
             "total_attempts": sum(scanned_registers.values()),

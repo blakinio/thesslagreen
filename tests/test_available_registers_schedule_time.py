@@ -74,6 +74,12 @@ def _make_scanner_stub() -> MagicMock:
             "coil_registers": set(),
             "discrete_inputs": set(),
         },
+        "batch_failures": {
+            "holding_registers": set(),
+            "input_registers": set(),
+            "coil_registers": set(),
+            "discrete_inputs": set(),
+        },
     }
     scanner._transport = None
     scanner._is_valid_register_value = MagicMock(return_value=True)

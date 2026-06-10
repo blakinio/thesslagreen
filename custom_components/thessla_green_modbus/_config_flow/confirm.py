@@ -180,15 +180,14 @@ async def build_confirmation_placeholders(
     modbus_failed_summary = _summarize_address_dict(
         failed.get("modbus_exceptions"), exclude=expected_optional
     )
-    # If no named Modbus errors remain but batch failures exist (deep/full scan raw ranges),
+    # If no named Modbus errors remain but this was a full scan with raw batch failures,
     # show a brief diagnostic note so the user knows what the deep scan found.
-    if modbus_failed_summary == _N_A:
+    if modbus_failed_summary == _N_A and scan_result.get("scan_mode") == "full":
         batch_failures = failed.get("batch_failures") or {}
         total_batch = sum(len(v) for v in batch_failures.values() if v)
         if total_batch > 0:
-            parts = [f"{rt}: {len(addrs)}" for rt, addrs in batch_failures.items() if addrs]
             modbus_failed_summary = (
-                "deep scan: " + ", ".join(parts) + " unsupported raw ranges (named registers OK)"
+                f"deep scan: {total_batch} unsupported raw ranges (named registers OK)"
             )
     invalid_values_summary = _summarize_address_dict(failed.get("invalid_values"))
 
