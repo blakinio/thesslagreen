@@ -83,6 +83,11 @@ def build_scan_result(
                 for k, v in scanner.failed_addresses.get("batch_failures", {}).items()
                 if v
             },
+            "deep_scan_raw_failures": {
+                k: sorted(v)
+                for k, v in scanner.failed_addresses.get("deep_scan_raw_failures", {}).items()
+                if v
+            },
         },
         "scan_mode": "full" if getattr(scanner, "full_register_scan", False) else "named",
         "resolved_connection_mode": scanner._resolved_connection_mode,

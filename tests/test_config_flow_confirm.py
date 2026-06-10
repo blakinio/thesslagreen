@@ -534,6 +534,108 @@ async def test_confirm_placeholders_keys_stable():
 
 
 @pytest.mark.asyncio
+async def test_confirm_deep_scan_raw_failures_shown_as_diagnostic_note():
+    """Deep scan raw input failures appear as diagnostic note, not as normal Modbus error count."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    # Simulate: deep_scan=True with named scan mode.
+    # Named registers all succeeded (modbus_exceptions empty).
+    # Raw scan produced 269 unsupported ranges, isolated in deep_scan_raw_failures.
+    flow._scan_result = {
+        "register_count": 338,
+        "scan_mode": "named",
+        "raw_registers": {i: i for i in range(22)},  # raw_registers present → deep_scan was True
+        "failed_addresses": {
+            "modbus_exceptions": {},
+            "invalid_values": {},
+            "deep_scan_raw_failures": {
+                "input_registers": list(range(22, 291)),  # 269 raw addresses
+            },
+        },
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    summary = p["modbus_failed_summary"]
+    # Must NOT show raw addresses as normal Modbus errors
+    assert "input_registers: 269" not in summary
+    # Must show a diagnostic note labelled as deep scan
+    assert "deep scan" in summary
+    assert "unsupported raw ranges" in summary
+    assert "named registers OK" in summary
+
+
+@pytest.mark.asyncio
+async def test_confirm_deep_scan_raw_failures_absent_when_modbus_errors_present():
+    """When named registers genuinely fail during deep scan, the error is still shown."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    # Named register at address 50 genuinely failed (not from raw scan),
+    # so modbus_exceptions is non-empty even with deep_scan active.
+    flow._scan_result = {
+        "register_count": 5,
+        "scan_mode": "named",
+        "raw_registers": {},  # deep_scan=True
+        "failed_addresses": {
+            "modbus_exceptions": {"holding_registers": [50]},
+            "invalid_values": {},
+            "deep_scan_raw_failures": {
+                "input_registers": list(range(22, 291)),
+            },
+        },
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    summary = p["modbus_failed_summary"]
+    # The real named-register failure must still be shown
+    assert "holding_registers: 1" in summary
+
+
+@pytest.mark.asyncio
+async def test_confirm_normal_scan_no_errors_shows_dash():
+    """Normal scan with no failures shows '—' for modbus_failed_summary."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {
+        "register_count": 338,
+        "scan_mode": "named",
+        "failed_addresses": {
+            "modbus_exceptions": {},
+            "invalid_values": {},
+        },
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    assert p["modbus_failed_summary"] == _N_A
+
+
+@pytest.mark.asyncio
 async def test_confirm_step_aborts_on_existing_entry():
     """Ensure confirming a second flow aborts if unique ID already configured."""
 

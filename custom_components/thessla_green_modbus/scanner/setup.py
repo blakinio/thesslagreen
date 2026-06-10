@@ -187,6 +187,9 @@ def initialize_runtime_collections(scanner: Any, capabilities_cls: Any) -> None:
             "coil_registers": set(),
             "discrete_inputs": set(),
         },
+        "deep_scan_raw_failures": {
+            "input_registers": set(),
+        },
     }
     scanner._sensor_unavailable_checks = {}
 

@@ -53,10 +53,21 @@ def _should_run_full_scan(scanner: Any) -> bool:
 
 
 async def _accumulate_raw_registers(scanner: Any) -> dict[int, int]:
-    """Collect raw input registers for deep scan mode."""
+    """Collect raw input registers for deep scan mode.
+
+    Failures from unsupported raw ranges are stored in
+    failed_addresses["deep_scan_raw_failures"] so they do not pollute the
+    user-facing modbus_exceptions summary in the confirmation popup.
+    """
     raw_registers: dict[int, int] = {}
     if not scanner.deep_scan:
         return raw_registers
+
+    # Snapshot named-scan exceptions so raw-scan additions can be isolated.
+    pre_scan_exceptions: set[int] = set(
+        scanner.failed_addresses["modbus_exceptions"].get("input_registers", set())
+    )
+
     for start, count in scanner._group_registers_for_batch_read(list(range(287))):
         data = (
             await scanner._read_input(scanner._client, start, count)
@@ -67,6 +78,23 @@ async def _accumulate_raw_registers(scanner: Any) -> dict[int, int]:
             continue
         for offset, value in enumerate(data):
             raw_registers[start + offset] = value
+
+    # Move newly added failures to a dedicated diagnostic bucket and
+    # restore modbus_exceptions to the pre-raw-scan state so that
+    # unsupported raw ranges are not presented as named Modbus errors.
+    post_scan_exceptions: set[int] = set(
+        scanner.failed_addresses["modbus_exceptions"].get("input_registers", set())
+    )
+    raw_only_failures = post_scan_exceptions - pre_scan_exceptions
+    if raw_only_failures:
+        if "deep_scan_raw_failures" not in scanner.failed_addresses:
+            scanner.failed_addresses["deep_scan_raw_failures"] = {}
+        existing = scanner.failed_addresses["deep_scan_raw_failures"].get("input_registers", set())
+        scanner.failed_addresses["deep_scan_raw_failures"]["input_registers"] = (
+            existing | raw_only_failures
+        )
+        scanner.failed_addresses["modbus_exceptions"]["input_registers"] = pre_scan_exceptions
+
     return raw_registers
 
 
