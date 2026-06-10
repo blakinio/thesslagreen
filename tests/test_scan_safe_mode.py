@@ -451,6 +451,7 @@ async def test_orchestration_exception_code2_not_fatal():
         failed_addresses={
             "modbus_exceptions": {"input_registers": set()},
             "invalid_values": {"input_registers": set()},
+            "batch_failures": {"input_registers": set()},
         },
         available_registers={"input_registers": set()},
         _registers={4: {}},
@@ -483,8 +484,8 @@ async def test_orchestration_exception_code2_not_fatal():
         scanned_registers=scanned,
     )
 
-    # Addresses 0-3 are marked failed (exception code 2 → unsupported)
-    assert len(scanner.failed_addresses["modbus_exceptions"]["input_registers"]) == 4
+    # Addresses 0-3 are in batch_failures (full scan raw failures, not modbus_exceptions)
+    assert len(scanner.failed_addresses["batch_failures"]["input_registers"]) == 4
     # Scan continued after the failure — call_count > 1
     assert call_count > 1
 

@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Detailed v2.8.x release notes: [docs/releases/v2.8.x.md](docs/releases/v2.8.x.md).
 
 ### Fixed
+- **Config-flow no longer reports recovered batch failures as Modbus errors**: when a
+  batch register read fails and the fallback individual probes succeed, the recovered
+  addresses are no longer counted in the config-flow confirmation "Modbus errors" summary.
+  Only addresses where both the batch read AND the individual probe failed are counted.
+  Batch failure ranges are preserved in `failed_addresses.batch_failures` for diagnostic use.
+- **Deep scan raw unsupported ranges separated from named Modbus errors**: when a full /
+  deep register scan is run, the hundreds of expected Modbus exception code 2 responses for
+  raw unsupported address ranges are recorded in `batch_failures` (diagnostic) instead of
+  `modbus_exceptions`. The confirmation popup shows a brief note
+  ("deep scan: N unsupported raw ranges (named registers OK)") rather than inflated error
+  counts. Deep scan is documented as offline/diagnostic-only (not for real-device validation).
+
+
 - **`validate_known_registers` response visible in Developer Tools**: service now registered
   with `SupportsResponse.ONLY` so the full response (including `missing_registers`) is
   visible in Home Assistant Developer Tools → Actions. `available_registers` values are now

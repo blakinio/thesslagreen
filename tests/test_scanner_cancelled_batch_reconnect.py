@@ -41,6 +41,10 @@ def _make_scanner(*, transport=None, client=None, retry=3):
             "holding_registers": set(),
             "input_registers": set(),
         },
+        "batch_failures": {
+            "holding_registers": set(),
+            "input_registers": set(),
+        },
     }
     scanner.available_registers = {"holding_registers": set(), "input_registers": set()}
     scanner._group_registers_for_batch_read = MagicMock(return_value=[(4262, 3)])

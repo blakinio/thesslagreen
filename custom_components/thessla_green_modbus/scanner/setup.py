@@ -181,6 +181,12 @@ def initialize_runtime_collections(scanner: Any, capabilities_cls: Any) -> None:
             "input_registers": set(),
             "holding_registers": set(),
         },
+        "batch_failures": {
+            "input_registers": set(),
+            "holding_registers": set(),
+            "coil_registers": set(),
+            "discrete_inputs": set(),
+        },
     }
     scanner._sensor_unavailable_checks = {}
 

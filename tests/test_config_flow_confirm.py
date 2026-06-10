@@ -335,6 +335,205 @@ async def test_confirm_placeholders_no_entity_count():
 
 
 @pytest.mark.asyncio
+async def test_confirm_placeholders_batch_fallback_all_recovered():
+    """Batch read fails but all named registers recovered via fallback → modbus_failed_summary is '—'."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {
+        "register_count": 10,
+        "failed_addresses": {
+            # Batch covered 40-42 but individual probes recovered all three
+            "modbus_exceptions": {},
+            "invalid_values": {},
+            "batch_failures": {"holding_registers": [40, 41, 42]},
+        },
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    # No true Modbus errors → no error count in summary; batch_failures absent from named error list
+    assert "holding_registers: 3" not in p["modbus_failed_summary"]
+    assert "holding_registers: 2" not in p["modbus_failed_summary"]
+    assert "holding_registers: 1" not in p["modbus_failed_summary"]
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_batch_fallback_one_unrecovered():
+    """Batch fails and only one address remains unrecovered → popup shows count 1."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {
+        "register_count": 10,
+        "failed_addresses": {
+            # Batch covered 40-42; addr 42 could not be recovered by individual probe
+            "modbus_exceptions": {"holding_registers": [42]},
+            "invalid_values": {},
+            "batch_failures": {"holding_registers": [40, 41, 42]},
+        },
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    # Only the truly unrecovered address counts
+    assert "holding_registers: 1" in p["modbus_failed_summary"]
+    # The recovered addresses 40, 41 are NOT counted
+    assert "holding_registers: 3" not in p["modbus_failed_summary"]
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_expected_optional_still_excluded():
+    """expected_optional firmware failures remain excluded from modbus_failed_summary."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {
+        "register_count": 10,
+        "failed_addresses": {
+            "modbus_exceptions": {"input_registers": [3, 4, 5]},
+            "invalid_values": {},
+            "expected_optional": {"input_registers": [3, 4, 5]},
+        },
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    assert p["modbus_failed_summary"] == _N_A
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_deep_scan_batch_failures_not_normal_errors():
+    """Deep scan batch failures are shown as diagnostic note, not as normal Modbus error count."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {
+        "register_count": 10,
+        "scan_mode": "full",
+        "failed_addresses": {
+            # Full/deep scan produced 269 raw batch failures, but no named register failures
+            "modbus_exceptions": {},
+            "invalid_values": {},
+            "batch_failures": {
+                "input_registers": list(range(22, 291)),  # 269 raw addresses
+                "holding_registers": [500],
+            },
+        },
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    p = result["description_placeholders"]
+    summary = p["modbus_failed_summary"]
+    # Must NOT look like a normal Modbus error count
+    assert "input_registers: 269" not in summary
+    assert "holding_registers: 1" not in summary or "deep scan" in summary
+    # Must be clearly labelled as deep scan diagnostic, not a plain error count
+    assert "deep scan" in summary
+    assert "unsupported raw ranges" in summary
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_batch_failures_in_scan_result():
+    """batch_failures key is present in scan result failed_addresses for diagnostic access."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {
+        "register_count": 10,
+        "failed_addresses": {
+            "modbus_exceptions": {},
+            "invalid_values": {},
+            "batch_failures": {"input_registers": [10, 11, 12]},
+        },
+    }
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        await flow.async_step_confirm()
+
+    # batch_failures are in scan_result, accessible for diagnostics
+    assert "batch_failures" in flow._scan_result["failed_addresses"]
+    assert flow._scan_result["failed_addresses"]["batch_failures"]["input_registers"] == [
+        10,
+        11,
+        12,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_confirm_placeholders_keys_stable():
+    """All expected placeholder keys are present and no unexpected keys added."""
+    flow = ConfigFlow()
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+
+    flow._data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502, "slave_id": 1}
+    flow._device_info = {}
+    flow._scan_result = {"register_count": 5}
+
+    with patch(
+        "homeassistant.helpers.translation.async_get_translations",
+        new=AsyncMock(return_value={}),
+    ):
+        result = await flow.async_step_confirm()
+
+    expected_keys = {
+        "host",
+        "port",
+        "endpoint",
+        "transport_label",
+        "transport",
+        "slave_id",
+        "device_name",
+        "firmware_version",
+        "serial_number",
+        "register_count",
+        "total_attempts",
+        "successful_reads",
+        "scan_duration",
+        "missing_registers_summary",
+        "modbus_failed_summary",
+        "invalid_values_summary",
+        "detected_capabilities_list",
+        "not_detected_capabilities_list",
+        "auto_detected_note",
+    }
+    assert set(result["description_placeholders"].keys()) == expected_keys
+
+
+@pytest.mark.asyncio
 async def test_confirm_step_aborts_on_existing_entry():
     """Ensure confirming a second flow aborts if unique ID already configured."""
 

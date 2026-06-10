@@ -154,9 +154,8 @@ async def _run_word_phase(
         scanned_registers[scan_key] += count
         data = await read_fn(start, count)
         if data is None:
-            scanner.failed_addresses["modbus_exceptions"][scan_key].update(
-                range(start, start + count)
-            )
+            # Full scan: raw batch failures go to batch_failures (diagnostic), not modbus_exceptions
+            scanner.failed_addresses["batch_failures"][scan_key].update(range(start, start + count))
         else:
             apply_word_register_block(
                 scanner,
@@ -186,9 +185,8 @@ async def _run_bit_phase(
         scanned_registers[scan_key] += count
         data = await read_fn(start, count)
         if data is None:
-            scanner.failed_addresses["modbus_exceptions"][scan_key].update(
-                range(start, start + count)
-            )
+            # Full scan: raw batch failures go to batch_failures (diagnostic), not modbus_exceptions
+            scanner.failed_addresses["batch_failures"][scan_key].update(range(start, start + count))
         else:
             for offset, value in enumerate(data):
                 addr = start + offset
@@ -235,9 +233,9 @@ async def run_full_scan(
         scanned_registers,
     )
     _LOGGER.info(
-        "Full scan input registers done: scanned=%d, failed=%d",
+        "Full scan input registers done: scanned=%d, batch_failures=%d",
         scanned_registers.get("input_registers", 0),
-        len(scanner.failed_addresses["modbus_exceptions"]["input_registers"]),
+        len(scanner.failed_addresses["batch_failures"]["input_registers"]),
     )
     await _run_word_phase(
         scanner,
@@ -251,9 +249,9 @@ async def run_full_scan(
         scanned_registers,
     )
     _LOGGER.info(
-        "Full scan holding registers done: scanned=%d, failed=%d",
+        "Full scan holding registers done: scanned=%d, batch_failures=%d",
         scanned_registers.get("holding_registers", 0),
-        len(scanner.failed_addresses["modbus_exceptions"]["holding_registers"]),
+        len(scanner.failed_addresses["batch_failures"]["holding_registers"]),
     )
 
     await _run_bit_phase(
@@ -283,11 +281,11 @@ async def run_full_scan(
         scanned_registers,
     )
     total_scanned = sum(scanned_registers.values())
-    total_failed = sum(len(v) for v in scanner.failed_addresses["modbus_exceptions"].values())
+    total_batch_failures = sum(len(v) for v in scanner.failed_addresses["batch_failures"].values())
     _LOGGER.info(
-        "Full scan completed: scanned=%d, failed=%d, unknown=%d",
+        "Full scan completed: scanned=%d, batch_failures=%d, unknown=%d",
         total_scanned,
-        total_failed,
+        total_batch_failures,
         sum(len(v) for v in unknown_registers.values()),
     )
 
