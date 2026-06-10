@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-> Detailed v2.8.x release notes: [docs/releases/v2.8.x.md](docs/releases/v2.8.x.md).
+_No unreleased changes since v2.8.0._
+
+---
+
+## [2.8.0] - 2026-06-10
+
+> Detailed release notes: [docs/releases/v2.8.x.md](docs/releases/v2.8.x.md).
+
+### ⚠️ Breaking
+- Config entry v2/v3 (pre-2023) no longer migrate — remove and re-add the integration.
+- Legacy service call entity IDs (`rekuperator_*` old names) no longer mapped —
+  update automations to use current entity names.
 
 ### Fixed
 - **Config-flow no longer reports recovered batch failures as Modbus errors**: when a
@@ -21,8 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `modbus_exceptions`. The confirmation popup shows a brief note
   ("deep scan: N unsupported raw ranges (named registers OK)") rather than inflated error
   counts. Deep scan is documented as offline/diagnostic-only (not for real-device validation).
-
-
 - **`validate_known_registers` response visible in Developer Tools**: service now registered
   with `SupportsResponse.ONLY` so the full response (including `missing_registers`) is
   visible in Home Assistant Developer Tools → Actions. `available_registers` values are now
@@ -86,6 +95,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   register map aligned with AirPack4 vendor reference documentation. No register
   addresses, register names, or entity IDs changed.
 
+### Diagnostics
+- **`validate_known_registers` response includes `register_classification` metadata**:
+  missing registers now include a classification category (e.g., `optional_firmware_metadata`,
+  `hardware_gated`, `internal_service_uart`) in the service response. Existing response
+  fields (`available_registers`, `missing_registers`, `failed_ranges`, `summary`) are unchanged.
+- **Config-flow confirmation excludes expected-optional firmware failures from Modbus error count**:
+  firmware-version registers (addresses ≤ 15, exception code 2) that are expected to be absent
+  on some firmware versions are no longer counted in the user-visible "Modbus errors" line during
+  config-flow confirmation. The underlying `failed_addresses.modbus_exceptions` field in the scan
+  result is unchanged; a new `failed_addresses.expected_optional` field identifies the excluded
+  addresses.
+
+### Removed
+- Entity registry migrations (`async_migrate_entity_ids`, `async_migrate_unique_ids`)
+  no longer run on startup — idempotent since 2022, dead after 2+ years.
+- `_entity_registry_migrations.py`, `_legacy.py` (dead code after migration removal).
+- `mappings/legacy.py` `LEGACY_ENTITY_ID_OBJECT_ALIASES` (70 entries) and
+  `map_legacy_entity_id` function.
+- `scanner_io.py` shim (no importers). `tools/py_compile_all.py`.
+- `"unit"` key from new config entries. v2/v3 migration paths.
+
 ### Internal
 - **Removed dead RTU-over-TCP helper duplicate**:
   deleted `custom_components/thessla_green_modbus/transport/rtu_over_tcp.py` (free
@@ -129,18 +159,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `claude.md` hardened with stricter rules for branch management, public contract
   preservation, and changelog update policy.
 
-### Diagnostics
-- **`validate_known_registers` response includes `register_classification` metadata**:
-  missing registers now include a classification category (e.g., `optional_firmware_metadata`,
-  `hardware_gated`, `internal_service_uart`) in the service response. Existing response
-  fields (`available_registers`, `missing_registers`, `failed_ranges`, `summary`) are unchanged.
-- **Config-flow confirmation excludes expected-optional firmware failures from Modbus error count**:
-  firmware-version registers (addresses ≤ 15, exception code 2) that are expected to be absent
-  on some firmware versions are no longer counted in the user-visible "Modbus errors" line during
-  config-flow confirmation. The underlying `failed_addresses.modbus_exceptions` field in the scan
-  result is unchanged; a new `failed_addresses.expected_optional` field identifies the excluded
-  addresses.
-
 ### Docs
 - **Real-device missing register classification documented**:
   `docs/real_device_validation.md` updated with HA OS 17.3 / HA Core 2026.6.1 validation
@@ -157,37 +175,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#1689](https://github.com/blakinio/thesslagreen/pull/1689)):
   committed real-device Home Assistant log evidence supporting entity state and
   behavior validation in `docs/real_device_validation.md`.
-
-### Confirmed correct (no code change)
-- `binary_sensor.fire_alarm`: raw True = NC contact closed = no alarm = `off` state.
-  Correct and intentional; documented with tests.
-- `binary_sensor.dp_duct_filter_overflow`: raw True = problem detected = `on` state.
-  Correct for a filter pressure-differential overflow; documented with tests.
-- Polish state wording "nie działa" appears only in S30/S31 error-code sensor names,
-  not in normal inactive state labels. No change needed.
-
-### Needs vendor confirmation
-- `number.airing_coef` / `number.airing_switch_coef`: device reports values (50, 0)
-  outside the declared range 100–150. No write-range change until vendor docs confirm
-  whether these are valid set-points or factory defaults.
-
----
-
-## 2.8.0 — Legacy removal + test infrastructure overhaul (BREAKING)
-
-### ⚠️ Breaking
-- Config entry v2/v3 (pre-2023) no longer migrate — remove and re-add the integration.
-- Legacy service call entity IDs (`rekuperator_*` old names) no longer mapped —
-  update automations to use current entity names.
-
-### Removed
-- Entity registry migrations (`async_migrate_entity_ids`, `async_migrate_unique_ids`)
-  no longer run on startup — idempotent since 2022, dead after 2+ years.
-- `_entity_registry_migrations.py`, `_legacy.py` (dead code after migration removal).
-- `mappings/legacy.py` `LEGACY_ENTITY_ID_OBJECT_ALIASES` (70 entries) and
-  `map_legacy_entity_id` function.
-- `scanner_io.py` shim (no importers). `tools/py_compile_all.py`.
-- `"unit"` key from new config entries. v2/v3 migration paths.
 
 ### Tests
 - Removed: `test_legacy_entity_id_aliases.py`, `test_legacy_entity_migration.py`,
@@ -206,14 +193,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `manifest.json` and integration structure on every PR and push.
 - Added `hacs` CI job (`hacs/action@main`, `category: integration`) — validates
   `hacs.json` and HACS repository requirements on every PR and push.
-- Added `dev` to push trigger branches so CI runs on pushes to the development branch.
 - **Fixed hassfest/HACS CI failures**: removed non-HA `files` key from `manifest.json`
   (not in `homeassistant.loader.Manifest` TypedDict; caused both CI jobs to fail).
   HACS installs the entire `custom_components/thessla_green_modbus/` directory
   automatically when `files` is absent. `test_manifest_files.py` updated accordingly.
 - Added `docs/real_device_validation.md` — structured checklist and evidence template
-  for real-device validation against ThesslaGreen AirPack hardware (template only;
-  not yet filled with real evidence).
+  for real-device validation against ThesslaGreen AirPack hardware.
 - Implemented `repairs.py` — `async_create_fix_flow` returns `ConfirmRepairFlow` for
   `modbus_write_failed` and any future repair issues.
 - Applied `disabled_by_default` for entities with `EntityCategory.DIAGNOSTIC` —
@@ -221,21 +206,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for all diagnostic-category entities. User-facing control/status entities unchanged.
 - Updated `README_en.md` — Python version corrected to 3.13+, diagnostics privacy
   section added, quality/release status table added, links to audit docs added.
-- Validation suite: 1949 passed, 4 skipped — 0 failures on Python 3.13.12,
-  HA 2026.2.3, pydantic 2.12.2.
 - Entity mapping validation: 366 entities confirmed.
 - `pydantic` remains pinned at `2.12.2` — PR #1567 (Dependabot pydantic update)
   is separate and untouched.
 
-### Release caveats (pre-tag)
-- No GitHub release tag created in this PR — tag `v2.8.0` and release notes must
-  be created separately via GitHub UI or CLI before HACS will distribute this version.
-- Real-device validation is documented as a checklist template; evidence from
-  testing against physical ThesslaGreen AirPack hardware has not yet been collected.
+### Confirmed correct (no code change)
+- `binary_sensor.fire_alarm`: raw True = NC contact closed = no alarm = `off` state.
+  Correct and intentional; documented with tests.
+- `binary_sensor.dp_duct_filter_overflow`: raw True = problem detected = `on` state.
+  Correct for a filter pressure-differential overflow; documented with tests.
+- Polish state wording "nie działa" appears only in S30/S31 error-code sensor names,
+  not in normal inactive state labels. No change needed.
+
+### Needs vendor confirmation
+- `number.airing_coef` / `number.airing_switch_coef`: device reports values (50, 0)
+  outside the declared range 100–150. No write-range change until vendor docs confirm
+  whether these are valid set-points or factory defaults.
 
 ---
 
-## 2.7.0 — Dead fallback & pragma cleanup
+## [2.7.0] — Dead fallback & pragma cleanup
 
 ### Removed
 - `_get_platforms` try/except for missing `homeassistant.const.Platform`; now uses `Platform(d)` directly.
@@ -257,7 +247,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## 2.6.0 — Dead fallback cleanup
+## [2.6.0] — Dead fallback cleanup
 
 ### Removed
 - `OptionsFlow` defensive `getattr(super(), ...)` wrappers for `async_show_form`,
@@ -285,7 +275,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## 2.5.1 — Config flow cleanup
+## [2.5.1] — Config flow cleanup
 
 ### Removed
 - 5 defensive `getattr(super(), ...)` method wrappers in `ConfigFlow`
@@ -312,7 +302,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## 2.5.0 — Legacy cleanup (BREAKING)
+## [2.5.0] — Legacy cleanup (BREAKING)
 
 ### ⚠️ Breaking changes
 - Config entry version 1 (pre-2021) no longer migrates automatically — remove
@@ -339,7 +329,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## 2.4.4 — Python 3.13 environment enforcement
+## [2.4.4] — Python 3.13 environment enforcement
 
 ### Added
 - `.python-version` (pyenv) and `.tool-versions` (asdf) declare Python 3.13.
@@ -350,7 +340,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## 2.4.3 — Critical fix: ImportError at integration load
+## [2.4.3] — Critical fix: ImportError at integration load
 
 ### Fixed
 - `_coordinator_update.py` imported `utcnow` from `utils` but the function
@@ -363,7 +353,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## 2.4.2 — Detox regression fixes
+## [2.4.2] — Detox regression fixes
 
 Fixes several test-compat fallbacks that had crept back into production code
 after the 2.4.1 detox, and completes the `CoordinatorConfig` refactor started
@@ -387,7 +377,9 @@ in 2.4.1.
 - Tests that replaced `ThesslaGreenModbusCoordinator` with a plain `Mock()` for `async_create_coordinator` will fail because `from_config` is now called unconditionally. Use `MagicMock(spec=ThesslaGreenModbusCoordinator)` or patch `from_config` explicitly.
 - Tests that depended on import-time `get_all_registers` fallbacks should monkey-patch loader functions in test setup instead.
 
-## 2.4.1 — Detox completion
+---
+
+## [2.4.1] — Detox completion
 
 Completes the test-compat cleanup started in 2.4.0. Eight remaining spots where
 production code tested for or worked around test mocks have been removed.
@@ -406,7 +398,9 @@ production code tested for or worked around test mocks have been removed.
 - Tests that relied on production silently filtering kwargs or falling back to sync option setup may need to use `MagicMock(spec=...)` or `pytest-homeassistant-custom-component` fixtures.
 - `scanner_core.asdict` is no longer used internally, so patching it in tests has no effect.
 
-## 2.4.0 — Dead code cleanup and production detox
+---
+
+## [2.4.0] — Dead code cleanup and production detox
 
 - Removed orphan scanner mixin modules, legacy `register_addresses.py`, and root `validate.yaml`.
 - Simplified compatibility layer in `_compat.py` to direct Home Assistant re-exports.
@@ -414,37 +408,49 @@ production code tested for or worked around test mocks have been removed.
 - Removed `entity_mappings.py` shim and updated imports to `mappings`.
 - Cleaned coordinator and setup error paths (`UpdateFailed`, reauth flow, fallback wrappers).
 
-## 2.3.9
+---
+
+## [2.3.9]
 
 ### Changed
 - Continued Fix #6 by extracting additional scan-orchestration helpers into `scanner/registers.py`: named-scan runner, scan-block computation, and missing-register collection.
 - `scanner/core.py` now delegates `_run_named_scan`, `_compute_scan_blocks`, and `_collect_missing_registers` to the register module, further reducing scanner core complexity.
 
-## 2.3.8
+---
+
+## [2.3.8]
 
 ### Changed
 - Continued Fix #6 by extracting scanner I/O logic into `scanner/io.py` (input/holding/coil/discrete reads, retry/backoff wrappers, chunked block reads, and failure tracking helpers).
 - `scanner/core.py` now delegates read-path methods (`_read_input`, `_read_holding`, `_read_bit_registers`, `_read_coil`, `_read_discrete`, `_read_register_block`) to the dedicated I/O module.
 
-## 2.3.7
+---
+
+## [2.3.7]
 
 ### Changed
 - Continued Fix #6 with real method extraction from `scanner/core.py` into dedicated modules: `scanner/capabilities.py`, `scanner/firmware.py`, and `scanner/registers.py`.
 - `ThesslaGreenDeviceScanner` now delegates capability analysis, firmware parsing, and named-register scan routines to those modules, reducing core-class responsibility while keeping behavior unchanged.
 
-## 2.3.6
+---
+
+## [2.3.6]
 
 ### Changed
 - Completed the scanner refactor by moving the scanner runtime implementation from `scanner_core.py` into `scanner/core.py` and keeping `scanner_core.py` as a backwards-compatible shim alias.
 - Updated integration imports to use the new scanner package (`from .scanner import ...`) in coordinator and services modules.
 - Kept grouped scanner modules (`firmware.py`, `registers.py`, `io.py`, `capabilities.py`) aligned with the new package structure while preserving runtime behavior and test compatibility.
 
-## 2.3.5
+---
+
+## [2.3.5]
 
 ### Changed
 - Fully consolidated service entity/coordinator resolution in `services.py` by routing all handlers through `_iter_target_coordinators(...)`, removing repeated `_extract_legacy_entity_ids(...)` / `_get_coordinator_from_entity_id(...)` boilerplate across mode, schedule, parameter, maintenance, and data service groups.
 
-## 2.3.4
+---
+
+## [2.3.4]
 
 ### Changed
 - Added a new `scanner/` package structure (`core.py`, `firmware.py`, `registers.py`, `io.py`, `capabilities.py`) as compatibility facades to prepare the large scanner refactor while preserving existing `scanner_core` behavior.
@@ -453,7 +459,9 @@ production code tested for or worked around test mocks have been removed.
 ### Notes
 - `scanner_core.py` remains the runtime implementation in this release for backward compatibility and stable test behavior; new package modules expose grouped scanner concerns for incremental migration.
 
-## 2.3.3
+---
+
+## [2.3.3]
 
 ### Changed
 - Removed dead `StrEnum` Python<3.11 compatibility fallback in `registers/schema.py`. Manifest and `pyproject.toml` both require Python >=3.13, so the fallback was unreachable.
@@ -468,20 +476,24 @@ production code tested for or worked around test mocks have been removed.
 - Direct unit tests for `_parse_backoff_jitter` covering numeric, string, sequence, and fallback inputs.
 - Regression test ensuring cancellation handling in `_async_update_data` does not increment failed read counters and still disconnects cleanly.
 
-## 2.3.2
+---
+
+## [2.3.2]
 
 ### Changed
 - Replaced runtime `getattr(...)` dispatch in `climate.py` with direct imports from `homeassistant.components.climate`, removing dead fallback paths and restoring strict typing support.
 - Added explicit mixin attribute and stub-method declarations in coordinator/scanner mixins so mypy can validate cross-mixin contracts without runtime changes.
 - Added `assert self.client is not None` after transport reconnection in Modbus transport read/write methods to make `None` narrowing explicit for static typing.
-- Aligned conditional fallback shim signatures in register loader adapters (`scanner_register_maps.py`, `scanner_core.py`, `const.py`, `mappings/_helpers.py`, `mappings/_loaders.py`) with real loader APIs.
+- Aligned conditional fallback shim signatures in register loader adapters with real loader APIs.
 - Refactored BCD clock decode in `_coordinator_capabilities.py` from `all(...)` generator checks to explicit `is not None` guards for mypy narrowing.
 
 ### Fixed
 - Removed stale/incorrect `# type: ignore[...]` tags that no longer matched emitted mypy error codes.
 - Added stricter typing/guard fixes in scanner and register helpers to reduce strict-mode typing failures.
 
-## 2.3.1
+---
+
+## [2.3.1]
 
 ### Fixed
 - Fixed `set_airflow_schedule` / `set_intensity` writing to nonexistent register names. Services now write real `schedule_<season>_<dow>_<n>` and `setting_<season>_<dow>_<n>` register pairs, with `season` support and deprecated `end_time` handling.
@@ -494,45 +506,7 @@ production code tested for or worked around test mocks have been removed.
 - Replaced `pyflakes` with `ruff` as the primary linter; `# noqa: F401` directives on intentional side-effect imports are now respected.
 - Removed unused `_HAS_HA` dead code from `mappings/__init__.py`.
 
-## [Unreleased]
-
-### Added
-- Enhanced optimization validation tests
-- GitHub Actions CI/CD pipeline
-- Pre-commit hooks for code quality
-- Example configuration file
-- Contributing guidelines
-- Constant Flow register names (`cf_version`, `supply_air_flow`, `exhaust_air_flow`) for Series 4 units
-- Capability detection for Constant Flow and HEWR water removal
-- Airflow unit option allowing `%` or `m³/h` reporting
-- Migration script for clearing legacy airflow statistics
-
-### Changed
-- Enforced single-request temporary writes, widened airflow handling to 0–150%, and normalized temperature sentinel values to `unknown`.
-- Updated minimum Home Assistant version to 2026.1.0
-- Documentation aligned with current Modbus implementation
-- Clarified protocol limitations (16 registers, invalid temperature handling)
-- Moved config-flow-only exceptions/helpers into a shared errors module to keep runtime imports lightweight.
-- Aligned pymodbus requirements (>=3.6.0) and added voluptuous to dev dependencies for tests.
-- Updated user-facing text to show decimal register ranges instead of hex.
-- Hardening: retry/backoff, RTU support, DEC-only constants, strict 16-reg limit, temp invalid handling
-- Coordinator reads now retry transient Modbus failures with backoff and reconnects between attempts.
-- Temporary airflow/temperature writes now use the 3-register block without fallback single writes.
-- Climate OFF handling now relies only on the on/off register (no OFF→AUTO mapping).
-- Documented developer tooling (ruff/black/isort/mypy) and added pre-commit snippet.
-- CI matrix now publishes dedicated hassfest and HACS validation steps.
-- Linting, formatting, and typing tooling alignment for HA compliance
-- Regenerated Modbus register definitions from CSV and updated coverage test
-- Assigned new unique IDs for m³/h airflow sensors
-- Simplified runtime dependencies; only require `pymodbus>=3.6.0`
-- Deferred `homeassistant` imports in `custom_components/thessla_green_modbus` so
-  utility modules can be imported without Home Assistant installed
-- Removed non-existent hassfest/hacs PyPI packages from `requirements-dev.txt` in favor of
-  GitHub Actions validation.
-- Aligned linting configuration (ruff/black/isort) and reformatted the codebase
-  for consistent quality checks
-### Removed
-- Custom Modbus client in favor of native AsyncModbusTcpClient
+---
 
 ## [2.2.0] - 2025-02-15
 
@@ -543,198 +517,59 @@ production code tested for or worked around test mocks have been removed.
 ### Changed
 - Bumped integration version metadata and aligned minimum Home Assistant requirement to 2024.12.0.
 
-## [2.0.0] - 2025-01-XX - MAJOR OPTIMIZATION RELEASE ⚡
-
-### 🚀 Performance Improvements
-- **62% reduction in Modbus calls** - Optimized register grouping (47 → 18 calls per cycle)
-- **33% faster updates** - Improved coordinator efficiency (4.8s → 3.2s)
-- **67% fewer errors** - Enhanced error handling and retry logic (12% → 4% error rate)
-- **88% more entities** - Better device capability detection (8 → 15 entities)
-
-### ✨ New Features
-
-#### Enhanced Climate Entity (HA 2025.7.0+ Compatible)
-- **Preset Modes**: Eco, Comfort, Boost, Sleep, Away
-- **Custom ThesslaGreen Presets**: OKAP, KOMINEK, WIETRZENIE, GOTOWANIE, PRANIE, ŁAZIENKA
-- **Advanced Temperature Control**: Manual/temporary/comfort temperature settings
-- **Fan Mode Control**: 10%-100% intensity levels + Auto mode
-- **HVAC Mode Support**: Auto, Fan Only, Off modes
-
-#### Smart Device Detection & Configuration
-- **Auto-detection of Device ID** - Automatically tries common device IDs (1, 10, 247)
-- **Enhanced Config Flow** - Better user experience with device info display
-- **Comprehensive Device Scanner** - Intelligent capability detection with 60+ capabilities
-- **Enhanced Error Handling** - Smart retry logic and graceful error recovery
-
-#### Complete Entity Coverage (HA 2025.7.0+)
-- **Temperature Sensors** (11): All temperature measurement points
-- **Flow Sensors** (8): Complete air flow monitoring including Constant Flow
-- **Performance Sensors** (7): Efficiency and performance indicators
-- **System Status** (15+): Complete system health monitoring
-- **Control Entities**: Full climate, fan, select, number, switch controls
-- **Power Monitoring**: Real-time power consumption and energy tracking
-
-#### Advanced System Support
-- **GWC (Ground Heat Exchanger)**: Full control and monitoring
-- **Bypass System**: Complete FreeHeating/FreeCooling support
-- **Constant Flow**: Precise air flow control
-- **Special Functions**: All ThesslaGreen special modes (15 functions)
-- **Maintenance Mode**: Service and calibration support
-
-### 🔧 Technical Improvements
-
-#### Optimized Coordinator (HA 2025.7.0+)
-- **Pre-computed Register Groups** - Efficient batch reading with intelligent grouping
-- **Enhanced Error Handling** - Smart retry logic with exponential backoff
-- **Memory Optimization** - Reduced memory usage through efficient data structures
-- **Network Efficiency** - Batch Modbus operations reduce network overhead by 62%
-- **Better Validation** - Enhanced register value validation and processing
-
-#### Enhanced Platforms
-- **Binary Sensors**: Complete system status with troubleshooting hints
-- **Sensors**: Enhanced diagnostics with performance ratings
-- **Switches**: Advanced validation and context-aware controls
-- **Numbers**: Smart validation with range checking and recommendations
-- **Select**: Enhanced mode selection with context information
-
-#### Services Integration (HA 2025.7.0+)
-- **Basic Control**: Set mode, intensity, special functions
-- **Advanced Functions**: Boost mode, comfort temperature, quick ventilation
-- **System Management**: Emergency stop, alarm reset, device rescan
-- **Configuration**: GWC, bypass, constant flow configuration
-- **Maintenance**: Filter scheduling, sensor calibration
-
-### 📋 Complete Device Support
-
-#### Supported Models
-- **AirPack Home** (all variants: h/v/f, Energy/Energy+)
-- **AirPack Home 200f-850h** - Complete model range
-- **Firmware Support**: v3.x - v5.x with automatic detection
-- **Protocol Support**: Modbus RTU/TCP with auto-detection
-
-#### Register Coverage
-| Register Type | Count | Coverage |
-|---------------|-------|----------|
-| Input Registers | 30+ | Temperature, flow, status, diagnostics |
-| Holding Registers | 100+ | Control, configuration, setpoints |
-| Coil Registers | 25+ | Output controls and system switches |
-| Discrete Inputs | 35+ | Input status and sensor health |
-
-### 🏠 Home Assistant Compatibility (HA 2025.7.0+)
-- **HA 2025.7.0+** - Latest Home Assistant compatibility
-- **Modern Standards** - Follows latest HA development guidelines
-- **Device Registry** - Proper device registration with enhanced info
-- **Entity Categories** - Proper categorization for better UI organization
-- **Diagnostics Support** - Complete diagnostics data for troubleshooting
-
-### 🌍 Internationalization
-- **Polish Translation** - Complete Polish language support
-- **English Translation** - Complete English language support
-- **Extensible** - Easy to add more languages
-
-### 🛠️ Developer Experience
-- **Enhanced Logging** - Detailed debug information with performance metrics
-- **Code Quality** - Black, isort, flake8, mypy integration
-- **Testing** - Comprehensive test suite with optimization validation
-- **Documentation** - Complete API documentation and examples
-
-### 🔄 Migration from 1.x
-
-**⚠️ Breaking Changes:**
-- Enhanced entity names and IDs (may require automation updates)
-- Improved device info structure
-- Enhanced error handling may change some entity behaviors
-
-**🔄 Migration Steps:**
-1. Backup your Home Assistant configuration
-2. Update the integration through HACS
-3. Restart Home Assistant
-4. Reconfigure the integration if needed
-5. Update any automations that reference entity IDs
-6. Test all functionality
-
-**✅ Benefits After Migration:**
-- Much faster and more reliable operation
-- More detected entities and capabilities
-- Better error handling and recovery
-- Enhanced climate control with preset modes
-- Improved system status detection
-
 ---
 
-## [1.0.0] - 2023-XX-XX - Initial Release
+## [2.0.0] - 2025-01-XX — Major optimization release
 
 ### Added
-- Basic Modbus RTU/TCP communication
-- Core temperature sensors (Outside, Supply, Exhaust)
-- Basic climate control entity
-- Simple binary sensors for system status
-- Configuration through UI
-- HACS integration support
+- Constant Flow register names (`cf_version`, `supply_air_flow`, `exhaust_air_flow`) for Series 4 units.
+- Capability detection for Constant Flow and HEWR water removal.
+- Airflow unit option allowing `%` or `m³/h` reporting.
 
-### Supported Devices
-- ThesslaGreen AirPack Home series
-- Basic Modbus TCP communication
-- Essential HVAC controls
+### Changed
+- Optimized register grouping (47 → 18 Modbus calls per cycle).
+- Enforced single-request temporary writes, widened airflow handling to 0–150%, and normalized temperature sentinel values to `unknown`.
+- Updated minimum Home Assistant version to 2026.1.0.
+- Coordinator reads now retry transient Modbus failures with backoff and reconnects between attempts.
+- Climate OFF handling now relies only on the on/off register (no OFF→AUTO mapping).
 
----
-
-## Technical Details
-
-### Performance Metrics (v2.0.0)
-
-| Metric | v1.0 | v2.0 | Improvement |
-|--------|------|------|-------------|
-| Modbus calls per cycle | 47 | 18 | 62% reduction |
-| Update cycle time | 4.8s | 3.2s | 33% faster |
-| Error rate | 12% | 4% | 67% fewer errors |
-| Detected entities | 8 | 15+ | 88% more |
-| Memory usage | baseline | optimized | Pre-computed groups |
-| Network efficiency | baseline | optimized | Batch operations |
-
-### Register Coverage (v2.0.0)
-
-| Register Type | Count | Coverage |
-|---------------|-------|----------|
-| Input Registers | 30+ | Temperature, flow, status |
-| Holding Registers | 100+ | Control, configuration |
-| Coil Registers | 25+ | Output controls |
-| Discrete Inputs | 35+ | Input status |
-
-### Supported Features (v2.0.0)
-
-- ✅ **Basic Control**: On/Off, Mode selection, Intensity control
-- ✅ **Temperature Control**: Manual and automatic temperature control
-- ✅ **Special Functions**: OKAP, KOMINEK, WIETRZENIE, PUSTY DOM
-- ✅ **Advanced Systems**: GWC, Bypass, Constant Flow
-- ✅ **Diagnostics**: Full alarm and error reporting
-- ✅ **Automation**: Complete service integration
-- ✅ **Monitoring**: Comprehensive sensor coverage
-
-### Capabilities Detection (v2.0.0)
-
-The integration automatically detects and enables only available features:
-
-- **Temperature Sensors** - Detects all available temperature measurement points
-- **Flow Control** - Identifies flow measurement and control capabilities
-- **Advanced Systems** - Auto-detects GWC, Bypass, Constant Flow availability
-- **Special Functions** - Enables available special modes based on firmware
-- **Diagnostics** - Configures error reporting and system health monitoring
-- **Power Monitoring** - Enables energy consumption tracking if available
+### Removed
+- Custom Modbus client in favor of native `AsyncModbusTcpClient`.
 
 ---
 
-## Support
+## [1.0.0] - 2023-XX-XX — Initial release
 
-For issues, questions, or contributions:
-- 🐛 [Bug Reports](https://github.com/thesslagreen/thessla-green-modbus-ha/issues)
-- 💡 [Feature Requests](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)
-- 📖 [Documentation](https://github.com/thesslagreen/thessla-green-modbus-ha/wiki)
-- 🤝 [Contributing](CONTRIBUTING.md)
+### Added
+- Basic Modbus RTU/TCP communication.
+- Core temperature sensors (Outside, Supply, Exhaust).
+- Basic climate control entity.
+- Simple binary sensors for system status.
+- Configuration through UI.
+- HACS integration support.
 
-## Credits
+---
 
-Special thanks to:
-- ThesslaGreen for providing Modbus documentation
-- Home Assistant Community for testing and feedback
-- All contributors and testers who helped improve this integration
+[Unreleased]: https://github.com/blakinio/thesslagreen/compare/v2.8.0...HEAD
+[2.8.0]: https://github.com/blakinio/thesslagreen/releases/tag/v2.8.0
+[2.7.0]: https://github.com/blakinio/thesslagreen/releases/tag/v2.7.0
+[2.6.0]: https://github.com/blakinio/thesslagreen/releases/tag/v2.6.0
+[2.5.1]: https://github.com/blakinio/thesslagreen/releases/tag/v2.5.1
+[2.5.0]: https://github.com/blakinio/thesslagreen/releases/tag/v2.5.0
+[2.4.4]: https://github.com/blakinio/thesslagreen/releases/tag/v2.4.4
+[2.4.3]: https://github.com/blakinio/thesslagreen/releases/tag/v2.4.3
+[2.4.2]: https://github.com/blakinio/thesslagreen/releases/tag/v2.4.2
+[2.4.1]: https://github.com/blakinio/thesslagreen/releases/tag/v2.4.1
+[2.4.0]: https://github.com/blakinio/thesslagreen/releases/tag/v2.4.0
+[2.3.9]: https://github.com/blakinio/thesslagreen/releases/tag/v2.3.9
+[2.3.8]: https://github.com/blakinio/thesslagreen/releases/tag/v2.3.8
+[2.3.7]: https://github.com/blakinio/thesslagreen/releases/tag/v2.3.7
+[2.3.6]: https://github.com/blakinio/thesslagreen/releases/tag/v2.3.6
+[2.3.5]: https://github.com/blakinio/thesslagreen/releases/tag/v2.3.5
+[2.3.4]: https://github.com/blakinio/thesslagreen/releases/tag/v2.3.4
+[2.3.3]: https://github.com/blakinio/thesslagreen/releases/tag/v2.3.3
+[2.3.2]: https://github.com/blakinio/thesslagreen/releases/tag/v2.3.2
+[2.3.1]: https://github.com/blakinio/thesslagreen/releases/tag/v2.3.1
+[2.2.0]: https://github.com/blakinio/thesslagreen/releases/tag/v2.2.0
+[2.0.0]: https://github.com/blakinio/thesslagreen/releases/tag/v2.0.0
+[1.0.0]: https://github.com/blakinio/thesslagreen/releases/tag/v1.0.0

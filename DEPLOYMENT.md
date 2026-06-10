@@ -8,9 +8,9 @@
 - Połączenie sieciowe między HA a rekuperatorem
 
 ### Oprogramowanie
-- Home Assistant 2025.7.1 lub nowszy (minimalna wersja zadeklarowana w `manifest.json`, brak pakietu `homeassistant` w `requirements.txt`)
-- Python 3.12 lub nowszy
-- Biblioteka `pymodbus>=3.0.0`
+- Home Assistant **2026.1.0** lub nowszy (zadeklarowane w `manifest.json`)
+- Python **3.13** lub nowszy
+- Biblioteka `pymodbus>=3.6.0,<4.0` (instalowane automatycznie przez integrację)
 
 ## 🚀 Instalacja
 
@@ -19,7 +19,7 @@
 1. **Dodaj repozytorium custom w HACS:**
    - Otwórz HACS → Integrations
    - Kliknij ⋮ → Custom repositories
-   - URL: `https://github.com/thesslagreen/thessla-green-modbus-ha`
+   - URL: `https://github.com/blakinio/thesslagreen`
    - Category: Integration
    - Kliknij ADD
 
@@ -33,12 +33,12 @@
 1. **Pobierz pliki:**
    ```bash
    cd /config
-   git clone https://github.com/thesslagreen/thessla-green-modbus-ha.git
+   git clone https://github.com/blakinio/thesslagreen.git
    ```
 
 2. **Skopiuj do custom_components:**
    ```bash
-   cp -r thessla_green_modbus/custom_components/thessla_green_modbus custom_components/
+   cp -r thesslagreen/custom_components/thessla_green_modbus custom_components/
    ```
 
 3. **Zrestartuj Home Assistant**
@@ -331,9 +331,9 @@ title: Temperatury
 
 ## 📞 Wsparcie
 
-- **GitHub Issues**: https://github.com/thesslagreen/thessla-green-modbus-ha/issues
-- **Community Forum**: https://github.com/thesslagreen/thessla-green-modbus-ha/discussions
-- **Wiki**: https://github.com/thesslagreen/thessla-green-modbus-ha/wiki
+- **GitHub Issues**: https://github.com/blakinio/thesslagreen/issues
+- **Community Forum**: https://github.com/blakinio/thesslagreen/discussions
+- **Wiki**: https://github.com/blakinio/thesslagreen/wiki
 
 ## ⚠️ Uwagi Bezpieczeństwa
 
