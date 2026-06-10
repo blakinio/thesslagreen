@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No unreleased changes since v2.8.0._
+### Fixed
+
+- **Deep scan raw unsupported ranges no longer shown as Modbus errors in confirmation popup**:
+  when `deep_scan=True` (named scan mode), raw input register reads (addresses 0–286) produced
+  Modbus exception responses for unsupported ranges and those addresses were incorrectly stored in
+  `failed_addresses.modbus_exceptions`, causing the confirmation popup to show
+  "Błędy Modbus: input_registers: 269". The fix isolates raw-scan failures in a dedicated
+  `deep_scan_raw_failures` bucket (diagnostic-only) and restores `modbus_exceptions` to its
+  pre-raw-scan state. The popup now shows the same concise diagnostic note as full-scan mode:
+  "deep scan: N unsupported raw ranges (named registers OK)" when named registers are all OK.
+
+### Diagnostics
+
+- `failed_addresses.deep_scan_raw_failures` added to scan result: contains input-register
+  addresses that failed only during the deep-scan raw accumulation pass; excluded from
+  user-facing Modbus error summary.
+- Deep scan UI description updated to clarify offline/diagnostic-only purpose and that it is
+  not required for normal setup or real-device validation.
+
+---
 
 ---
 

@@ -18,6 +18,7 @@
 |------|--------|
 | Overall validation | PARTIAL — HA log evidence committed; HA state/service evidence still pending |
 | Quality scale gate | Bronze — no upgrade until formal evidence is complete |
+| Deep scan | Not required for validation — deep scan is offline/diagnostic-only; normal scan (deep_scan=False) is sufficient for all real-device validation steps |
 | Fan percentage fix (#1682) | FIXED in code; real-device state screenshot/re-test evidence pending |
 | Dangerous entities config category (#1683) | Confirmed by code audit; entity_category=config, remain enabled |
 | IO ownership cleanup (#1684/#1688) | DeviceClient is sole IO owner; HA setup log after cleanup is clean/partial evidence |

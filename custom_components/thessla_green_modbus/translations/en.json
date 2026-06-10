@@ -61,7 +61,7 @@
           "baud_rate": "Baud rate for Modbus RTU communication",
           "parity": "Parity setting for Modbus RTU communication",
           "stop_bits": "Stop bits for Modbus RTU communication",
-          "deep_scan": "Read all registers for diagnostics (may be slow)",
+          "deep_scan": "Advanced offline diagnostic: reads all raw registers 0–286. Not required for normal setup. Produces unsupported-range responses; may conflict with active coordinator polling.",
           "max_registers_per_request": "Maximum registers per Modbus request (1–16)"
         },
         "description": "Set up a connection to a ThesslaGreen AirPack over Modbus TCP or Modbus RTU. The integration automatically detects device functions and registers.",
@@ -1464,7 +1464,7 @@
           "airflow_unit": "Airflow Unit"
         },
         "data_description": {
-          "deep_scan": "Read raw registers 0-300 for diagnostics",
+          "deep_scan": "Advanced offline diagnostic: reads raw registers 0–286. Not required for normal validation. May produce unsupported-range responses and may conflict with active polling.",
           "enable_device_scan": "Enable automatic device scan during setup",
           "force_full_register_list": "Skip scanning and load all registers (may cause errors)",
           "log_level": "Set integration log verbosity",
