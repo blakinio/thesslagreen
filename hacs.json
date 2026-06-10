@@ -2,6 +2,5 @@
   "name": "ThesslaGreen Modbus",
   "content_in_root": false,
   "render_readme": true,
-  "homeassistant": "2026.1.0",
-  "short_description": "Home Assistant integration for ThesslaGreen AirPack HVAC units via Modbus TCP/RTU"
+  "homeassistant": "2026.1.0"
 }
