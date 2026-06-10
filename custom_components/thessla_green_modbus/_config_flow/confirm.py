@@ -62,8 +62,9 @@ def _build_capabilities_lists(
 def _summarize_address_dict(addr_dict: Any, *, exclude: dict[str, list[int]] | None = None) -> str:
     """Return a compact summary for a dict of register-type -> address lists/sets.
 
-    When *exclude* is provided, those addresses are subtracted from the counts
-    so that expected-optional failures do not inflate the user-visible error count.
+    When *exclude* is provided, those addresses are removed (set difference) from
+    each register type before counting, so that expected-optional failures and
+    already-tracked missing registers do not inflate the user-visible error count.
     """
     if not isinstance(addr_dict, dict) or not addr_dict:
         return _N_A
@@ -71,9 +72,10 @@ def _summarize_address_dict(addr_dict: Any, *, exclude: dict[str, list[int]] | N
     for reg_type, addresses in addr_dict.items():
         if not addresses:
             continue
-        count = len(addresses)
+        addr_set = set(addresses)
         if exclude and reg_type in exclude:
-            count -= len(exclude[reg_type])
+            addr_set -= set(exclude[reg_type])
+        count = len(addr_set)
         if count > 0:
             parts.append(f"{reg_type}: {count}")
     return ", ".join(parts) if parts else _N_A
@@ -177,8 +179,28 @@ async def build_confirmation_placeholders(
 
     failed = scan_result.get("failed_addresses") or {}
     expected_optional = failed.get("expected_optional") or {}
+
+    # Also exclude addresses already captured in missing_registers so that a
+    # truly-absent named register is shown only under "Brakujące", not double-
+    # counted as a generic Modbus error (task step 5).
+    missing_registers_raw = scan_result.get("missing_registers") or {}
+    missing_reg_addresses: dict[str, list[int]] = {
+        reg_type: list(regs.values())
+        for reg_type, regs in missing_registers_raw.items()
+        if isinstance(regs, dict) and regs
+    }
+
+    combined_modbus_exclude: dict[str, list[int]] = dict(expected_optional)
+    for reg_type, addrs in missing_reg_addresses.items():
+        if reg_type in combined_modbus_exclude:
+            combined_modbus_exclude[reg_type] = list(
+                set(combined_modbus_exclude[reg_type]) | set(addrs)
+            )
+        else:
+            combined_modbus_exclude[reg_type] = addrs
+
     modbus_failed_summary = _summarize_address_dict(
-        failed.get("modbus_exceptions"), exclude=expected_optional
+        failed.get("modbus_exceptions"), exclude=combined_modbus_exclude
     )
     # When no named Modbus errors remain, show a concise diagnostic note if a
     # deep or full scan found unsupported raw register ranges.
