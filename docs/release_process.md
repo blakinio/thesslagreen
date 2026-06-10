@@ -160,6 +160,37 @@ CI (GitHub Actions) must also be green on the release commit before tagging.
 
 ---
 
+## Automated release creation
+
+`.github/workflows/release.yaml` runs automatically on every `v*.*.*` tag push:
+
+1. Checks out the tagged commit.
+2. Extracts the `## [X.Y.Z]` section from `CHANGELOG.md` as release notes.
+3. Calls `gh release create` to publish the GitHub Release.
+
+No manual steps are needed beyond pushing the tag.
+
+---
+
+## Bootstrapping v2.8.0 (one-time, after PR merge)
+
+v2.8.0 code is merged to `main` but has no GitHub Release yet.
+Run these commands **after** this PR is merged:
+
+```bash
+git checkout main
+git pull origin main
+git tag v2.8.0
+git push origin v2.8.0
+```
+
+The `release.yaml` workflow will automatically create the GitHub Release from
+the `## [2.8.0]` section in `CHANGELOG.md`.
+
+HACS will detect the release within minutes of it being published.
+
+---
+
 ## Post-release
 
 - Verify the new release appears in **https://github.com/blakinio/thesslagreen/releases**.
