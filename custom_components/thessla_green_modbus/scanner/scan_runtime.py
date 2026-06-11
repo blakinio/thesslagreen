@@ -46,6 +46,50 @@ def _collect_expected_optional_addresses(scanner: Any) -> dict[str, list[int]]:
     return result
 
 
+def _collect_recovered_batch_failures(scanner: Any) -> dict[str, list[int]]:
+    """Identify batch-failed addresses recovered by individual fallback probes.
+
+    After Fix 1 (scan_register_batch discards successful probes from
+    modbus_exceptions), any address in batch_failures that is NOT in
+    modbus_exceptions was recovered.  These are diagnostic-only and are never
+    shown as user-facing Modbus errors.
+    """
+    batch_failures = scanner.failed_addresses.get("batch_failures", {})
+    modbus_exceptions = scanner.failed_addresses.get("modbus_exceptions", {})
+    result: dict[str, list[int]] = {}
+    for reg_type, batch_addrs in batch_failures.items():
+        if not batch_addrs:
+            continue
+        truly_failed = set(modbus_exceptions.get(reg_type, set()))
+        recovered = sorted(set(batch_addrs) - truly_failed)
+        if recovered:
+            result[reg_type] = recovered
+    return result
+
+
+def _collect_unrecovered_modbus_errors(scanner: Any) -> dict[str, list[dict[str, Any]]]:
+    """Build named diagnostic for truly unrecovered Modbus failures.
+
+    Returns {reg_type: [{addr, name}, ...]} where name is the register name
+    from the scanner's register map (None for unnamed/raw addresses).
+    """
+    registers = getattr(scanner, "_registers", {})
+    addr_to_name: dict[str, dict[int, str]] = {
+        "input_registers": registers.get(4, {}),
+        "holding_registers": registers.get(3, {}),
+        "coil_registers": registers.get(1, {}),
+        "discrete_inputs": registers.get(2, {}),
+    }
+    result: dict[str, list[dict[str, Any]]] = {}
+    for reg_type, addrs in scanner.failed_addresses.get("modbus_exceptions", {}).items():
+        if not addrs:
+            continue
+        name_map = addr_to_name.get(reg_type, {})
+        entries = [{"addr": a, "name": name_map.get(a)} for a in sorted(addrs)]
+        result[reg_type] = entries
+    return result
+
+
 def build_scan_result(
     scanner: Any,
     *,
@@ -88,6 +132,8 @@ def build_scan_result(
                 for k, v in scanner.failed_addresses.get("deep_scan_raw_failures", {}).items()
                 if v
             },
+            "recovered_batch_failures": _collect_recovered_batch_failures(scanner),
+            "unrecovered_modbus_errors": _collect_unrecovered_modbus_errors(scanner),
         },
         "scan_mode": "full" if getattr(scanner, "full_register_scan", False) else "named",
         "resolved_connection_mode": scanner._resolved_connection_mode,

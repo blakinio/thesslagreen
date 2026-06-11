@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Normal scan no longer shows recovered batch failures as Modbus errors in confirmation popup**:
+  in a normal config-flow scan on firmware where registers 4/14/15 (`version_patch`,
+  `compilation_days`, `compilation_seconds`) are absent, the device returns exception code 2 for
+  the 0–15 batch. This caused `mark_failed_addresses` to pre-add addresses 0–3
+  (`version_major`, `version_minor`, `day_of_week`, `period`) to `modbus_exceptions` before
+  `scan_register_batch` ran its individual fallback probes. The fallback probes succeeded, but
+  the addresses remained in `modbus_exceptions`, producing a spurious
+  "Błędy Modbus: input_registers: 4" in the confirmation popup.
+  Fix: `scan_register_batch` now discards an address from `modbus_exceptions` when its fallback
+  probe returns data (protocol-level success), ensuring only truly unrecovered failures count.
+- **Truly-absent named registers no longer double-counted as both "Brakujące" and Modbus errors**:
+  if a named register fails both batch and individual probe (it is absent on this device),
+  it was shown in both `missing_registers_summary` and `modbus_failed_summary`. The confirm
+  step now also excludes from the Modbus error count any address already captured in
+  `missing_registers`, so it appears only under "Brakujące".
+- **`_summarize_address_dict` uses set difference** instead of raw count subtraction when
+  computing the exclusion, preventing incorrect counts when the exclude list contains addresses
+  not present in the main set.
+
 - **Deep scan raw unsupported ranges no longer shown as Modbus errors in confirmation popup**:
   when `deep_scan=True` (named scan mode), raw input register reads (addresses 0–286) produced
   Modbus exception responses for unsupported ranges and those addresses were incorrectly stored in
@@ -20,6 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Diagnostics
 
+- `failed_addresses.recovered_batch_failures` added to scan result: per-register-type list of
+  addresses that had a batch read failure but were successfully recovered by individual fallback
+  probes. Diagnostic-only; never shown as Modbus errors.
+- `failed_addresses.unrecovered_modbus_errors` added to scan result: per-register-type list of
+  `{addr, name}` dicts for addresses that truly failed both batch and individual probe.
+  Enables identification of exactly which named registers caused a Modbus error.
 - `failed_addresses.deep_scan_raw_failures` added to scan result: contains input-register
   addresses that failed only during the deep-scan raw accumulation pass; excluded from
   user-facing Modbus error summary.

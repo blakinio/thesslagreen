@@ -89,6 +89,10 @@ async def scan_register_batch(
                     scanner.failed_addresses["modbus_exceptions"][reg_type].add(addr)
                     _LOGGER.warning("Failed to read %s register %d", reg_type, addr)
                     continue
+                # Probe succeeded at protocol level — clear any pre-added entry that
+                # came from read_input's internal cache-skip path (mark_failed_addresses
+                # is called there before the fallback probe runs).
+                scanner.failed_addresses["modbus_exceptions"][reg_type].discard(addr)
                 value = probe[0]
                 if any(scanner._is_valid_register_value(n, value) for n in reg_names):
                     scanner.available_registers[reg_type].update(reg_names)
