@@ -32,8 +32,8 @@ def test_select_option_change(mock_coordinator):
         mock_coordinator, "mode", address, ENTITY_MAPPINGS["select"]["mode"]
     )
     asyncio.run(select_entity.async_select_option("manual"))
-    mock_coordinator.async_write_register.assert_awaited_with("mode", 1, refresh=False)
-    mock_coordinator.async_request_refresh.assert_awaited_once()
+    mock_coordinator.async_write_register.assert_awaited_with("mode", 1, refresh=True)
+    mock_coordinator.async_request_refresh.assert_not_awaited()
 
 
 def test_select_invalid_option(mock_coordinator):
@@ -109,7 +109,7 @@ def test_schedule_time_select_write(mock_coordinator):
     entity = ThesslaGreenSelect(mock_coordinator, "schedule_summer_mon_1", 16, defn)
     asyncio.run(entity.async_select_option("06:30"))
     mock_coordinator.async_write_register.assert_awaited_with(
-        "schedule_summer_mon_1", "06:30", refresh=False
+        "schedule_summer_mon_1", "06:30", refresh=True
     )
 
 

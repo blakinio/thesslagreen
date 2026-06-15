@@ -19,6 +19,7 @@
 | Overall validation | PARTIAL — HA log evidence committed; HA state/service evidence still pending |
 | Quality scale gate | Bronze — no upgrade until formal evidence is complete |
 | Deep scan | Not required for validation — deep scan is offline/diagnostic-only; normal scan (deep_scan=False) is sufficient for all real-device validation steps |
+| Targeted read-back after writes | PENDING real-device validation — see §9 below |
 | Fan percentage fix (#1682) | FIXED in code; real-device state screenshot/re-test evidence pending |
 | Dangerous entities config category (#1683) | Confirmed by code audit; entity_category=config, remain enabled |
 | IO ownership cleanup (#1684/#1688) | DeviceClient is sole IO owner; HA setup log after cleanup is clean/partial evidence |
@@ -342,3 +343,52 @@ Real-device validation is **not** complete until:
 3. A named tester has signed off with the commit SHA actually installed in HA.
 
 Until that point, quality_scale remains **bronze** and this document is **not a release sign-off**.
+
+---
+
+## 9. Targeted Read-back After Writes — Pending Real-Device Validation
+
+This section tracks validation of the targeted read-back feature added in [Unreleased].
+
+**Do not mark any item PASS without attached HA log evidence or a screenshot.**
+
+### 9.1 How it works
+
+After a successful write to a safe single holding register (e.g. `mode`,
+`air_flow_rate_manual`, `special_mode`, `comfort_temperature`, `required_temperature`),
+the coordinator immediately reads back only the written register under the same
+`_write_lock`.  The decoded value is applied to `coordinator.data` and HA listeners
+are notified via `async_set_updated_data` — without triggering a full register scan.
+If the read-back fails, the coordinator falls back to a full refresh.
+
+### 9.2 Excluded registers (full_refresh_only / no_readback)
+
+- Reset/trigger: `hard_reset_settings`, `hard_reset_schedule`, `filter_change`,
+  `airflow_rate_change_flag`, `temperature_change_flag`, `cfg_mode_1`, `cfg_mode_2`,
+  `pres_check_day_2`, `pres_check_time_2`
+- Schedule BCD-time registers: all `schedule_*`
+- AATT schedule-setting registers: all `setting_*`
+- Coil registers (function=1): no holding-register read-back
+- Multi-word registers (e.g. `device_name`): full_refresh_only
+- Fan setpoint registers: full_refresh_only (fan display reads from `supply_percentage`)
+
+### 9.3 Real-device checklist
+
+| # | Check | Expected result | Result | Evidence |
+|---|-------|----------------|--------|----------|
+| 1 | Restart HA with updated integration | Setup completes without traceback; no `AttributeError` or `ThesslaGreenModbusCoordinator` error in HA log | — | — |
+| 2 | Change a safe switch entity (e.g. `switch.boost_mode`) | HA UI updates within one Modbus read-back round-trip (≪ 30 s); no full scan seen in logs immediately after | — | — |
+| 3 | Change a number entity (e.g. `number.comfort_temperature`) | HA UI reflects new value quickly; no full scan seen in logs immediately after | — | — |
+| 4 | Change a select entity (e.g. `select.mode`) | HA UI reflects new option quickly | — | — |
+| 5 | Confirm no transaction_id mismatch during or after writes | No `transaction_id mismatch` line in HA log after write operations | — | — |
+| 6 | Confirm no false "Modbus transport disconnected" errors | No false transport-disconnected error from integration after writes | — | — |
+| 7 | Periodic full refresh still works after writes | Coordinator continues normal 30-second scans; all sensor values update | — | — |
+| 8 | Call `reset_filters` or `reset_settings` service | Service succeeds; no targeted read-back attempted (confirm by no DEBUG read-back log line); full refresh follows if needed | — | — |
+| 9 | Confirm fan percentage still updates after fan speed change | Fan entity percentage updates correctly after a speed change (full refresh still happens for fan) | — | — |
+| 10 | Capture HA log lines showing targeted read-back and fallback | Confirm `Targeted read-back for <register> decoded to` and/or `Targeted read-back failed for <register>` lines appear at DEBUG level | — | — |
+
+### 9.4 Sign-off
+
+**Tester sign-off:** _(pending)_
+**HA Core version tested:** _(pending)_
+**Integration commit SHA tested:** _(pending)_

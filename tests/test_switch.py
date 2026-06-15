@@ -34,15 +34,15 @@ def test_switch_turn_on_off(mock_coordinator):
     address = 9
     switch_entity = ThesslaGreenSwitch(mock_coordinator, "bypass", address, _BYPASS_CFG)
     asyncio.run(switch_entity.async_turn_on())
-    mock_coordinator.async_write_register.assert_awaited_with("bypass", 1, refresh=False, offset=0)
-    mock_coordinator.async_request_refresh.assert_awaited_once()
+    mock_coordinator.async_write_register.assert_awaited_with("bypass", 1, refresh=True, offset=0)
+    mock_coordinator.async_request_refresh.assert_not_awaited()
     mock_coordinator.async_write_register.reset_mock()
     mock_coordinator.async_request_refresh.reset_mock()
 
     mock_coordinator.data["bypass"] = 1
     asyncio.run(switch_entity.async_turn_off())
-    mock_coordinator.async_write_register.assert_awaited_with("bypass", 0, refresh=False, offset=0)
-    mock_coordinator.async_request_refresh.assert_awaited_once()
+    mock_coordinator.async_write_register.assert_awaited_with("bypass", 0, refresh=True, offset=0)
+    mock_coordinator.async_request_refresh.assert_not_awaited()
 
 
 def test_switch_turn_on_modbus_failure(mock_coordinator):
@@ -126,7 +126,7 @@ def test_switch_turn_off_with_bit(mock_coordinator):
     asyncio.run(switch_entity.async_turn_off())
     # current=0b0110, ~bit=~4 → 0b0110 & ~0b0100 = 0b0010
     mock_coordinator.async_write_register.assert_awaited_with(
-        "bypass", 0b0010, refresh=False, offset=0
+        "bypass", 0b0010, refresh=True, offset=0
     )
 
 

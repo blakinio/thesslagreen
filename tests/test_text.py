@@ -104,9 +104,9 @@ def test_text_set_value(mock_coordinator):
     )
     asyncio.run(entity.async_set_value("NewName"))
     mock_coordinator.async_write_register.assert_awaited_with(
-        "device_name", "NewName", refresh=False
+        "device_name", "NewName", refresh=True
     )
-    mock_coordinator.async_request_refresh.assert_awaited_once()
+    mock_coordinator.async_request_refresh.assert_not_awaited()
 
 
 def test_text_set_value_write_failure(mock_coordinator):

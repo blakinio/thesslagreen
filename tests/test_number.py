@@ -52,9 +52,9 @@ def test_number_set_value(mock_coordinator):
 
     asyncio.run(number.async_set_native_value(22))
     mock_coordinator.async_write_register.assert_awaited_with(
-        "supply_air_temperature_manual", 22, refresh=False, offset=0
+        "supply_air_temperature_manual", 22, refresh=True, offset=0
     )
-    mock_coordinator.async_request_refresh.assert_awaited_once()
+    mock_coordinator.async_request_refresh.assert_not_awaited()
 
 
 def test_number_set_value_modbus_failure(mock_coordinator):

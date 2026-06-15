@@ -106,13 +106,17 @@ class ThesslaGreenEntity(CoordinatorEntity):
         refresh: bool = True,
         include_offset: bool = False,
     ) -> None:
-        """Write a register via the coordinator."""
-        kwargs: dict[str, Any] = {"refresh": False}
+        """Write a register via the coordinator.
+
+        When ``refresh=True`` the coordinator attempts a targeted read-back of
+        the written register.  On success it updates ``coordinator.data`` and
+        notifies listeners without a full scan.  On read-back failure it falls
+        back to a full coordinator refresh automatically.
+        """
+        kwargs: dict[str, Any] = {"refresh": refresh}
         if include_offset or offset != 0:
             kwargs["offset"] = offset
 
         success = await self.coordinator.async_write_register(register_name, value, **kwargs)
         if not success:
             raise RuntimeError(f"Failed to write register {register_name}")
-        if refresh:
-            await self.coordinator.async_request_refresh()
