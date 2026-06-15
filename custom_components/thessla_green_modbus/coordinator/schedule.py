@@ -487,7 +487,14 @@ class _CoordinatorScheduleMixin:
                 return None
             regs = getattr(response, "registers", None)
             return list(regs) if regs is not None else None
-        except (ModbusException, ConnectionException, TimeoutError, OSError, AttributeError):
+        except (
+            ModbusException,
+            ConnectionException,
+            TimeoutError,
+            OSError,
+            AttributeError,
+            TypeError,
+        ):
             _LOGGER.debug("Read-back at address %s failed", start_address)
             return None
 

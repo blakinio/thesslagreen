@@ -288,9 +288,10 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             _LOGGER.debug("Register %s unavailable, skipping write", register_name)
             return
 
-        success = await self.coordinator.async_write_register(
-            register_name, int(value), refresh=False, offset=offset
-        )
+        kwargs: dict[str, Any] = {"refresh": False}
+        if offset != 0:
+            kwargs["offset"] = offset
+        success = await self.coordinator.async_write_register(register_name, int(value), **kwargs)
         if not success:
             raise RuntimeError(f"Failed to write register {register_name}")
         if refresh:
