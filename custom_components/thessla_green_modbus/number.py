@@ -21,6 +21,8 @@ from .mappings import ENTITY_MAPPINGS
 
 _LOGGER = logging.getLogger(__name__)
 
+PARALLEL_UPDATES = 1
+
 
 # Unit mappings
 UNIT_MAPPINGS = {

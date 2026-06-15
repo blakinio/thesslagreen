@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Internal
+
+- **`PARALLEL_UPDATES = 1` declared on all platform modules**: all 10 HA platform
+  modules (`sensor`, `binary_sensor`, `number`, `switch`, `select`, `climate`, `fan`,
+  `time`, `text`, `button`) now set `PARALLEL_UPDATES = 1` at module level. This aligns
+  with HA quality-scale requirements and correctly reflects the serialised single-connection
+  Modbus I/O model used by the integration's DeviceClient.
+
 ### Fixed
 
 - **Normal scan no longer shows recovered batch failures as Modbus errors in confirmation popup**:

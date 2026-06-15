@@ -27,6 +27,8 @@ from .mappings import BINARY_SENSOR_ENTITY_MAPPINGS
 
 _LOGGER = logging.getLogger(__name__)
 
+PARALLEL_UPDATES = 1
+
 BINARY_SENSOR_DEFINITIONS: dict[str, dict[str, Any]] = BINARY_SENSOR_ENTITY_MAPPINGS
 LEGACY_PROBLEM_KEY_PATTERN = re.compile(r"^problem(?:_\d+)?$")
 
