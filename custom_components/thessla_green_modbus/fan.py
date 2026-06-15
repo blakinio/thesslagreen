@@ -269,7 +269,15 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         refresh: bool = True,
         include_offset: bool = False,
     ) -> None:
-        """Write value to holding register when present on the device."""
+        """Write value to holding register when present on the device.
+
+        Fan keeps full_refresh_only: the displayed state (fan.percentage) reads
+        from supply_percentage / exhaust_percentage, which are status registers
+        that differ from the written setpoint registers (air_flow_rate_manual,
+        mode, on_off_panel_mode).  Targeted read-back of a setpoint register
+        would not update the displayed percentage, so we preserve the full-refresh
+        path here instead of delegating to the base-class targeted read-back.
+        """
         if register_name not in holding_registers():
             raise ValueError(f"Register {register_name} is not writable")
 
@@ -280,13 +288,13 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             _LOGGER.debug("Register %s unavailable, skipping write", register_name)
             return
 
-        await super()._write_register(
-            register_name,
-            int(value),
-            offset=offset,
-            refresh=refresh,
-            include_offset=include_offset,
+        success = await self.coordinator.async_write_register(
+            register_name, int(value), refresh=False, offset=offset
         )
+        if not success:
+            raise RuntimeError(f"Failed to write register {register_name}")
+        if refresh:
+            await self.coordinator.async_request_refresh()
 
     def _is_writable_holding_register(self, register_name: str) -> bool:
         """Return True if a register is writable and available on this device."""

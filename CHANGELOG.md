@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **Targeted read-back after successful single holding-register writes**: after a
+  successful write to a safe single holding register, the coordinator now immediately
+  reads back only the written register under the same `_write_lock` (no second
+  Modbus connection; no second lock; no `scan_all_registers`).  The returned raw
+  value is decoded via the existing `RegisterDef.decode` path and applied to
+  `coordinator.data`, then HA listeners are notified directly via
+  `async_set_updated_data`.  This eliminates the full coordinator scan that
+  previously followed every safe single-register write from `switch`, `number`,
+  `select`, `time`, and `text` entities, reducing post-write UI latency from the
+  full-scan duration (many seconds) to one short Modbus round-trip.
+  When read-back fails the coordinator falls back to a full refresh automatically.
+  HA state is updated only from confirmed device data — no optimistic state is used.
+  **Registers excluded from targeted read-back** (full_refresh_only or no_readback):
+  `hard_reset_settings`, `hard_reset_schedule`, `filter_change`,
+  `airflow_rate_change_flag`, `temperature_change_flag`, `cfg_mode_1`, `cfg_mode_2`,
+  `pres_check_day_2`, `pres_check_time_2`, all `schedule_*` BCD-time registers,
+  all `setting_*` AATT schedule-setting registers, coil registers (function=1),
+  and multi-word registers.  Fan writes remain on full_refresh_only because the fan
+  entity's displayed percentage reads from `supply_percentage` / `exhaust_percentage`
+  (status registers) rather than from the written setpoint registers.  Climate
+  writes already use `refresh=False` with manual coordinator refresh calls and are
+  unaffected by this change.  Real-device validation is still pending (see
+  `docs/real_device_validation.md`).
+
 - **`PARALLEL_UPDATES = 1` declared on all platform modules**: all 10 HA platform
   modules (`sensor`, `binary_sensor`, `number`, `switch`, `select`, `climate`, `fan`,
   `time`, `text`, `button`) now set `PARALLEL_UPDATES = 1` at module level. This aligns

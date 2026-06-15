@@ -23,6 +23,40 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+# Registers that must never use targeted read-back after a write.
+# Includes reset/trigger registers (values return to 0 after device processes them),
+# block-write helpers (only written as part of multi-register sequences), and
+# destructive/service-only registers where a read-back would be misleading.
+_NO_READBACK_REGISTERS: frozenset[str] = frozenset(
+    {
+        "hard_reset_settings",
+        "hard_reset_schedule",
+        "filter_change",
+        "airflow_rate_change_flag",
+        "temperature_change_flag",
+        "cfg_mode_1",
+        "cfg_mode_2",
+        "pres_check_day_2",
+        "pres_check_time_2",
+    }
+)
+
+
+def _targeted_readback_safe(register_name: str, definition: Any) -> bool:
+    """Return True when single-register targeted holding-register read-back is safe.
+
+    Only function-3 (holding register) single-word registers that are not in the
+    explicit exclusion list are eligible.  Schedule BCD-time and AATT setting
+    registers are deferred to full_refresh_only for v1 because schedule writes
+    involve pairs of registers and a single-register read-back gives a partial view.
+    """
+    return (
+        register_name not in _NO_READBACK_REGISTERS
+        and definition.function == 3
+        and definition.length == 1
+        and not register_name.startswith(("schedule_", "setting_"))
+    )
+
 
 def _get_register_definition(register_name: str) -> Any:
     """Resolve register definitions via coordinator module (allows test monkeypatching)."""
@@ -330,8 +364,18 @@ class _CoordinatorScheduleMixin:
         ``value`` should be supplied in user-friendly units. The register
         definition's :meth:`encode` method is used to convert it to the raw
         Modbus representation before sending to the device.
+
+        After a successful write to a safe single holding register a targeted
+        read-back is performed under the same lock.  When read-back succeeds
+        ``coordinator.data`` is updated with the decoded confirmed value and
+        Home Assistant listeners are notified without triggering a full scan.
+        If read-back fails the coordinator falls back to a full refresh when
+        ``refresh=True``.
         """
         refresh_after_write = False
+        _raw_readback: list[int] | None = None
+        _readback_definition: Any = None
+
         async with self._device_client._write_lock:
             try:
                 success, refresh_after_write = await self._locked_single_register_write(
@@ -342,9 +386,42 @@ class _CoordinatorScheduleMixin:
                 )
                 if not success:
                     return False
+
+                # Targeted read-back while still holding the write lock so no
+                # concurrent Modbus operation can interleave between write and
+                # read-back, preventing transaction-ID mismatches.
+                _definition = self._resolve_write_definition(register_name)
+                if _definition is not None and _targeted_readback_safe(register_name, _definition):
+                    _raw_readback = await self._locked_read_holding_registers(
+                        _definition.address + offset,
+                        count=_definition.length,
+                    )
+                    if _raw_readback is not None:
+                        _readback_definition = _definition
+                        refresh_after_write = False
+                    else:
+                        _LOGGER.debug(
+                            "Targeted read-back failed for %s; falling back to full refresh",
+                            register_name,
+                        )
+
             except (ModbusException, ConnectionException):  # pragma: no cover - safety
                 _LOGGER.exception("Failed to write register %s", register_name)
                 return False
+
+        # Apply read-back result outside the lock so listener notifications cannot
+        # re-enter the Modbus transport lock.
+        if _raw_readback is not None and _readback_definition is not None:
+            _decoded = _readback_definition.decode(_raw_readback)
+            _updated_data = dict(self.data) if self.data else {}
+            _updated_data[register_name] = _decoded
+            try:
+                self.async_set_updated_data(_updated_data)
+            except (TypeError, AttributeError):
+                _LOGGER.debug(
+                    "Skipping listener notification after read-back for %s", register_name
+                )
+            _LOGGER.debug("Targeted read-back for %s decoded to %r", register_name, _decoded)
 
         return await finalize_write_result(self, refresh_after_write)
 
