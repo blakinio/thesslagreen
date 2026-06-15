@@ -21,6 +21,8 @@ from .registers.maps import coil_registers, holding_registers
 
 _LOGGER = logging.getLogger(__name__)
 
+PARALLEL_UPDATES = 1
+
 
 async def async_setup_entry(
     hass: HomeAssistant,

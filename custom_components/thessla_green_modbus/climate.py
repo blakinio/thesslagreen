@@ -35,6 +35,8 @@ _FEATURE_TURN_OFF = ClimateEntityFeature.TURN_OFF
 
 _LOGGER = logging.getLogger(__name__)
 
+PARALLEL_UPDATES = 1
+
 HVAC_MODE_MAP = {0: HVACMode.AUTO, 1: HVACMode.FAN_ONLY, 2: HVACMode.FAN_ONLY}
 HVAC_MODE_REVERSE_MAP = {HVACMode.AUTO: 0, HVACMode.FAN_ONLY: 1}
 

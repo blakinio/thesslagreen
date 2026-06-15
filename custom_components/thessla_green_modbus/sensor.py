@@ -36,6 +36,9 @@ from .registers.loader import get_register_definition
 from .utils import TIME_REGISTER_PREFIXES
 
 _LOGGER = logging.getLogger(__name__)
+
+PARALLEL_UPDATES = 1
+
 SENSOR_DEFINITIONS: dict[str, dict[str, Any]] = ENTITY_MAPPINGS.get("sensor", {})
 
 

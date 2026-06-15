@@ -150,6 +150,7 @@ OK homeassistant: installed
 | Entities use appropriate state_class | PASS | `sensor.py` assigns `_attr_state_class` from mapping definitions | — |
 | Entities use appropriate entity_category | PASS | `sensor.py`, `binary_sensor.py` assign `EntityCategory.DIAGNOSTIC` for diagnostic/alarm entities | — |
 | `disabled_by_default` where appropriate | PASS | `sensor.py` and `binary_sensor.py` now set `_attr_entity_registry_enabled_default = False` for all entities with `entity_category == EntityCategory.DIAGNOSTIC`; normal status/control entities remain enabled by default | — |
+| `PARALLEL_UPDATES = 1` on all platform modules | PASS | All 10 platform modules (`sensor`, `binary_sensor`, `number`, `switch`, `select`, `climate`, `fan`, `time`, `text`, `button`) declare `PARALLEL_UPDATES = 1`; enforced by `tests/test_platform_parallel_updates.py` | — |
 | No HA imports in scanner/transport | PASS | Confirmed by `rg` check — zero HA imports in `scanner/`, `transport/`, `core/`, `registers/` | — |
 | CI gates meaningful | PASS | CI: `ruff check`, `compileall`, `compare_registers`, `check_maintainability`, `validate_entity_mappings`, `pytest --cov`, `hassfest`, `hacs/action` | — |
 | HACS validation | FAIL→FIX PENDING | First CI run (PR #1602): FAILED. Root cause: `files` key in `manifest.json` is not a valid HA manifest field; HACS action validates manifest structure. Fix applied: removed `files` from `manifest.json`; `test_manifest_files.py` updated. Awaiting re-run CI result. | Confirm CI passes after this fix |
