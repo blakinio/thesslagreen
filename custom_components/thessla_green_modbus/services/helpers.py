@@ -2,33 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any, cast
-
-from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers.service import async_extract_entity_ids
-
-
-def extract_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
-    """Return entity IDs from a service call."""
-    if not call.data.get("entity_id"):
-        return set()
-    return cast(set[str], async_extract_entity_ids(call))
-
-
-def iter_target_coordinators(
-    hass: HomeAssistant,
-    call: ServiceCall,
-    get_coordinator_from_entity_id: Callable[[HomeAssistant, str], Any],
-) -> list[tuple[str, Any]]:
-    """Resolve entity IDs to coordinator instances, skipping missing ones."""
-    targets: list[tuple[str, Any]] = []
-    for entity_id in extract_entity_ids(hass, call):
-        coordinator = get_coordinator_from_entity_id(hass, entity_id)
-        if coordinator is None:
-            continue
-        targets.append((entity_id, coordinator))
-    return targets
+from typing import Any
 
 
 def clamp_airflow_rate(coordinator: Any, airflow_rate: int) -> int:
