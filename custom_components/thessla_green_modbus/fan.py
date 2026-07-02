@@ -169,9 +169,12 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     ) -> None:
         """Turn on the fan."""
         try:
-            # First ensure system is on
+            # First ensure system is on. Skip the per-write refresh here:
+            # async_set_percentage() below performs its own single refresh
+            # once all of its writes complete, so refreshing now would just
+            # insert an extra full poll between this write and the next.
             if self._is_writable_holding_register("on_off_panel_mode"):
-                await self._write_register("on_off_panel_mode", 1)
+                await self._write_register("on_off_panel_mode", 1, refresh=False)
 
             # Set flow rate
             if percentage is not None:
@@ -190,7 +193,11 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         """Turn off the fan."""
         try:
             if self._is_writable_holding_register("on_off_panel_mode"):
-                # If system power control is available, use it to turn off
+                # If system power control is available, use it to turn off.
+                # _write_register() already triggers one full refresh below
+                # (refresh=True default); the direct assignment here is a
+                # same-tick optimistic update so is_on() reflects the change
+                # immediately without waiting for the refresh to land.
                 await self._write_register("on_off_panel_mode", 0)
                 self.coordinator.data["on_off_panel_mode"] = 0
             else:
@@ -230,11 +237,21 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             # Determine which register to write based on current mode
             current_mode = self._get_current_mode()
             if current_mode == "manual" or not current_mode:
-                # Set manual mode and flow rate
+                # Set manual mode and flow rate. Both writes skip the
+                # per-write refresh so they run back-to-back; a single
+                # refresh follows once both have completed instead of a
+                # full register poll being sandwiched between them.
+                wrote_manual = False
                 if self._is_writable_holding_register("mode"):
-                    await self._write_register("mode", 1)  # Manual mode
+                    await self._write_register("mode", 1, refresh=False)  # Manual mode
+                    wrote_manual = True
                 if self._is_writable_holding_register("air_flow_rate_manual"):
-                    await self._write_register("air_flow_rate_manual", actual_percentage)
+                    await self._write_register(
+                        "air_flow_rate_manual", actual_percentage, refresh=False
+                    )
+                    wrote_manual = True
+                if wrote_manual:
+                    await self.coordinator.async_request_refresh()
             else:
                 # Temporary mode - must use 3-register write block
                 if current_mode == "temporary":
@@ -275,8 +292,11 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         from supply_percentage / exhaust_percentage, which are status registers
         that differ from the written setpoint registers (air_flow_rate_manual,
         mode, on_off_panel_mode).  Targeted read-back of a setpoint register
-        would not update the displayed percentage, so we preserve the full-refresh
-        path here instead of delegating to the base-class targeted read-back.
+        would not update the displayed percentage and could publish a
+        misleading intermediate value, so it is disabled here; the coordinator
+        write itself never triggers its own full-refresh fallback either
+        (``refresh=False``) since this method's own ``refresh`` flag governs
+        the (single, caller-controlled) full refresh instead.
         """
         if register_name not in holding_registers():
             raise ValueError(f"Register {register_name} is not writable")
@@ -288,7 +308,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             _LOGGER.debug("Register %s unavailable, skipping write", register_name)
             return
 
-        kwargs: dict[str, Any] = {"refresh": False}
+        kwargs: dict[str, Any] = {"refresh": False, "targeted_readback": False}
         if offset != 0:
             kwargs["offset"] = offset
         success = await self.coordinator.async_write_register(register_name, int(value), **kwargs)

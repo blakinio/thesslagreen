@@ -41,6 +41,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Fan/climate/service writes no longer sandwich a full refresh between sequential
+  register writes, and fan/climate/service register writes no longer trigger targeted
+  read-back**: `async_write_register(..., refresh=False)` disables the *full-refresh
+  fallback* but, contrary to the note in the previous changelog entry, it never disabled
+  targeted read-back on its own — read-back ran whenever `_targeted_readback_safe()`
+  returned `True`, regardless of `refresh`. `ThesslaGreenFan._write_register()` combined
+  this with an unconditional caller-side `async_request_refresh()` after every write, so
+  `async_set_percentage()` in manual mode produced `write mode=1 → full refresh →
+  write air_flow_rate_manual=<value> → full refresh` instead of writing both registers
+  back-to-back and refreshing once. `async_write_register()` gains a keyword-only
+  `targeted_readback: bool = True` parameter (default preserves existing switch/number/
+  select/text behavior). Fan and climate now pass `targeted_readback=False` from their
+  `_write_register()` wrappers (and from the one direct `comfort_temperature` write in
+  climate), and `async_set_percentage()`'s manual-mode branch writes `mode` and
+  `air_flow_rate_manual` with `refresh=False` followed by a single
+  `async_request_refresh()`. `services/dispatch.py::write_register()` and
+  `write_device_name_chunks()` also pass `targeted_readback=False`, since service writes
+  perform their own refresh/logging and may target internal/dangerous registers.
+  Additionally, a read-back decode failure (as opposed to a failed read) no longer changes
+  `async_write_register()`'s return value — the write already succeeded, so a full refresh
+  fallback is used instead (when `refresh=True`) rather than surfacing an exception.
 - **Normal scan no longer shows recovered batch failures as Modbus errors in confirmation popup**:
   in a normal config-flow scan on firmware where registers 4/14/15 (`version_patch`,
   `compilation_days`, `compilation_seconds`) are absent, the device returns exception code 2 for

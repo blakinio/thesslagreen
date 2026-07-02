@@ -275,7 +275,7 @@ def _build_set_device_name_handler(hass: HomeAssistant, deps: ServiceHandlerDeps
             try:
                 if len(device_name) >= 16:
                     success = await coordinator.async_write_register(
-                        "device_name", device_name, refresh=False
+                        "device_name", device_name, refresh=False, targeted_readback=False
                     )
                 else:
                     success = await write_device_name_chunks(

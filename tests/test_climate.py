@@ -314,6 +314,42 @@ def test_preset_mode_unknown_bits_returns_none():
         assert climate_entity.preset_mode == "none"  # nosec B101
 
 
+# ---------------------------------------------------------------------------
+# Regression: climate write paths disable targeted read-back (hotfix for
+# #1722 side effects) since climate already performs its own full refresh.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_climate_write_paths_disable_targeted_readback():
+    """Every climate write path must pass targeted_readback=False and still
+    call async_request_refresh() exactly once per logical operation."""
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
+    coordinator.async_write_register = AsyncMock(return_value=True)
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator.device_client.capabilities.basic_control = True
+    coordinator.data = {"on_off_panel_mode": 1, "mode": 0}
+
+    climate = ThesslaGreenClimate(coordinator)
+
+    await climate.async_set_hvac_mode(climate_mod.HVACMode.AUTO)
+    await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 21.0})
+    await climate.async_set_fan_mode("30%")
+    await climate.async_set_preset_mode("eco")
+    await climate.async_turn_on()
+    await climate.async_turn_off()
+
+    assert coordinator.async_write_register.call_args_list  # nosec B101
+    for call in coordinator.async_write_register.call_args_list:
+        assert call.kwargs.get("targeted_readback") is False, call  # nosec B101
+
+    # One refresh per logical operation above (6 total).
+    assert coordinator.async_request_refresh.await_count == 6  # nosec B101
+
+
 def test_climate_imports_real_ha_symbols() -> None:
     """Ensure climate module uses direct Home Assistant symbols."""
     from custom_components.thessla_green_modbus import climate

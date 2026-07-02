@@ -95,7 +95,9 @@ async def test_set_special_mode_basic(monkeypatch):
     call = _make_call({"entity_id": ["climate.dev"], "mode": "boost", "duration": 0})
     await handler(call)
 
-    coord.async_write_register.assert_called_once_with("special_mode", 1, refresh=False)
+    coord.async_write_register.assert_called_once_with(
+        "special_mode", 1, refresh=False, targeted_readback=False
+    )
     coord.async_request_refresh.assert_awaited_once()
 
 

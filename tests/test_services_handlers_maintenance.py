@@ -104,7 +104,9 @@ async def test_reset_filters_basic(monkeypatch):
     call = _make_call({"entity_id": ["climate.dev"], "filter_type": "flat_filters"})
     await handler(call)
 
-    coord.async_write_register.assert_called_once_with("filter_change", 2, refresh=False)
+    coord.async_write_register.assert_called_once_with(
+        "filter_change", 2, refresh=False, targeted_readback=False
+    )
     coord.async_request_refresh.assert_awaited_once()
 
 

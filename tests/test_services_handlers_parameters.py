@@ -225,7 +225,7 @@ async def test_set_device_name_long(monkeypatch):
     await handler(call)
 
     coord.async_write_register.assert_awaited_once_with(
-        "device_name", "ABCDEFGHIJKLMNOP", refresh=False
+        "device_name", "ABCDEFGHIJKLMNOP", refresh=False, targeted_readback=False
     )
     coord.async_request_refresh.assert_awaited_once()
 

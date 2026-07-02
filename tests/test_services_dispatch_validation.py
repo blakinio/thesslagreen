@@ -189,10 +189,10 @@ async def test_write_device_name_chunks_writes_offsets():
     assert result is True
     assert coordinator.async_write_register.await_count == 2
     coordinator.async_write_register.assert_any_await(
-        "device_name", "ABCD", refresh=False, offset=0
+        "device_name", "ABCD", refresh=False, offset=0, targeted_readback=False
     )
     coordinator.async_write_register.assert_any_await(
-        "device_name", "EFGH", refresh=False, offset=2
+        "device_name", "EFGH", refresh=False, offset=2, targeted_readback=False
     )
 
 

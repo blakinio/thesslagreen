@@ -1,6 +1,7 @@
 """Tests for ThesslaGreenFan entity."""
 
 import asyncio
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -314,3 +315,77 @@ def test_fan_extra_attributes_exposes_flow_and_percentage(mock_coordinator):
     assert attrs.get("exhaust_flow") == 267  # nosec B101
     assert attrs.get("supply_percentage") == 80  # nosec B101
     assert attrs.get("exhaust_percentage") == 80  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# Regression: no refresh sandwiched between sequential manual-mode writes
+# (hotfix for #1722 targeted read-back side effects on fan)
+# ---------------------------------------------------------------------------
+
+
+def test_fan_set_percentage_manual_mode_no_refresh_between_writes(mock_coordinator):
+    """mode + air_flow_rate_manual are written back-to-back with no refresh in between,
+    and exactly one refresh follows once both writes complete."""
+    mock_coordinator.data["mode"] = 1  # manual
+    write_log: list[tuple[str, Any, dict]] = []
+    refresh_snapshots: list[int] = []
+
+    async def _fake_write(register_name, value, **kwargs):
+        write_log.append((register_name, value, kwargs))
+        return True
+
+    async def _fake_refresh():
+        refresh_snapshots.append(len(write_log))
+
+    mock_coordinator.async_write_register = AsyncMock(side_effect=_fake_write)
+    mock_coordinator.async_request_refresh = AsyncMock(side_effect=_fake_refresh)
+
+    fan = ThesslaGreenFan(mock_coordinator)
+    asyncio.run(fan.async_set_percentage(60))
+
+    assert [entry[0] for entry in write_log] == ["mode", "air_flow_rate_manual"]  # nosec B101
+    # Neither write triggers the coordinator's own refresh fallback, and
+    # targeted read-back is disabled for both.
+    assert all(entry[2].get("refresh") is False for entry in write_log)  # nosec B101
+    assert all(entry[2].get("targeted_readback") is False for entry in write_log)  # nosec B101
+    # Exactly one refresh, fired only after both writes were recorded.
+    mock_coordinator.async_request_refresh.assert_awaited_once()
+    assert refresh_snapshots == [2]  # nosec B101
+
+
+def test_fan_turn_on_no_double_refresh(mock_coordinator):
+    """turn_on(percentage=...) must not refresh between the power-on write and
+    the percentage writes; exactly one refresh happens overall."""
+    mock_coordinator.data["mode"] = 1  # manual
+    refresh_calls = 0
+
+    async def _fake_write(register_name, value, **kwargs):
+        return True
+
+    async def _fake_refresh():
+        nonlocal refresh_calls
+        refresh_calls += 1
+
+    mock_coordinator.async_write_register = AsyncMock(side_effect=_fake_write)
+    mock_coordinator.async_request_refresh = AsyncMock(side_effect=_fake_refresh)
+
+    fan = ThesslaGreenFan(mock_coordinator)
+    asyncio.run(fan.async_turn_on(percentage=40))
+
+    assert refresh_calls == 1  # nosec B101
+    # The initial on_off_panel_mode write must skip its own refresh.
+    on_off_call = next(
+        c
+        for c in mock_coordinator.async_write_register.call_args_list
+        if c.args[0] == "on_off_panel_mode"
+    )
+    assert on_off_call.kwargs.get("refresh") is False  # nosec B101
+
+
+def test_fan_turn_off_single_refresh(mock_coordinator):
+    """turn_off() performs exactly one refresh."""
+    mock_coordinator.async_write_register = AsyncMock(return_value=True)
+    mock_coordinator.async_request_refresh = AsyncMock()
+    fan = ThesslaGreenFan(mock_coordinator)
+    asyncio.run(fan.async_turn_off())
+    mock_coordinator.async_request_refresh.assert_awaited_once()
