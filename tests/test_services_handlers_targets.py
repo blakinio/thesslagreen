@@ -271,6 +271,75 @@ def test_extract_entity_ids_with_extractor_no_hass_arg():
 
 
 # ---------------------------------------------------------------------------
+# extract_entity_ids_with_extractor — HA version compatibility (both
+# pre-2025.10 two-arg and current one-arg async_extract_entity_ids signatures)
+# ---------------------------------------------------------------------------
+
+
+def test_extract_entity_ids_with_extractor_two_arg_signature():
+    """A legacy two-arg extractor (older HA) is called as extractor(hass, call)."""
+    from types import SimpleNamespace as NS
+
+    from custom_components.thessla_green_modbus.services.targets import (
+        extract_entity_ids_with_extractor,
+    )
+
+    received_args: list = []
+    hass = NS()
+
+    def legacy_extractor(hass_arg, service_call):
+        received_args.extend((hass_arg, service_call))
+        return set(service_call.data["entity_id"])
+
+    call = NS(data={"entity_id": ["sensor.one", "sensor.two"]})
+
+    result = extract_entity_ids_with_extractor(hass, call, extractor=legacy_extractor)
+
+    assert result == {"sensor.one", "sensor.two"}
+    assert received_args == [hass, call]
+
+
+def test_extract_entity_ids_with_extractor_one_arg_signature():
+    """A modern one-arg extractor (current HA) is called as extractor(call)."""
+    from types import SimpleNamespace as NS
+
+    from custom_components.thessla_green_modbus.services.targets import (
+        extract_entity_ids_with_extractor,
+    )
+
+    received_args: list = []
+
+    def modern_extractor(service_call):
+        received_args.append(service_call)
+        return set(service_call.data["entity_id"])
+
+    call = NS(data={"entity_id": ["sensor.three"]})
+
+    result = extract_entity_ids_with_extractor(NS(), call, extractor=modern_extractor)
+
+    assert result == {"sensor.three"}
+    assert received_args == [call]
+
+
+def test_extract_entity_ids_with_extractor_short_circuits_without_entity_id():
+    """Neither signature's extractor is invoked when entity_id is absent."""
+    from types import SimpleNamespace as NS
+
+    from custom_components.thessla_green_modbus.services.targets import (
+        extract_entity_ids_with_extractor,
+    )
+
+    def unreachable_extractor(*args, **kwargs):
+        raise AssertionError("extractor must not be called without entity_id")
+
+    call = NS(data={})
+
+    result = extract_entity_ids_with_extractor(NS(), call, extractor=unreachable_extractor)
+
+    assert result == set()
+
+
+# ---------------------------------------------------------------------------
 # _extract_entity_ids — line 121 (no entity_id key)
 # ---------------------------------------------------------------------------
 

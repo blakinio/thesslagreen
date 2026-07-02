@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable
+from functools import lru_cache
 from typing import Any, cast
 
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -17,6 +18,28 @@ __all__ = [
 ]
 
 
+@lru_cache(maxsize=32)
+def _extractor_needs_hass(extractor: Callable[..., Any]) -> bool:
+    """Detect whether `extractor` needs `hass` as its first argument.
+
+    HA's async_extract_entity_ids dropped the `hass` parameter in HA
+    2025.10; older cores still require `(hass, service_call)`. Inspected
+    once per extractor and cached, since the extractor is typically the
+    same function on every service call.
+    """
+    try:
+        parameters = inspect.signature(extractor).parameters.values()
+    except (TypeError, ValueError):
+        return False
+    required_positional = [
+        p
+        for p in parameters
+        if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        and p.default is inspect.Parameter.empty
+    ]
+    return len(required_positional) >= 2
+
+
 def extract_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
     """Return entity IDs from a service call."""
     from homeassistant.helpers.service import async_extract_entity_ids
@@ -28,13 +51,18 @@ def extract_entity_ids_with_extractor(
     hass: HomeAssistant,
     call: ServiceCall,
     *,
-    extractor: Callable[[Any], Any],
+    extractor: Callable[..., Any],
 ) -> set[str]:
-    """Return entity IDs from a service call using injectable extraction backend."""
+    """Return entity IDs from a service call using injectable extraction backend.
+
+    Compatible with both the pre-2025.10 HA signature
+    ``async_extract_entity_ids(hass, service_call)`` and the current
+    ``async_extract_entity_ids(service_call)`` signature.
+    """
     if not call.data.get("entity_id"):
         return set()
 
-    extracted = extractor(call)
+    extracted = extractor(hass, call) if _extractor_needs_hass(extractor) else extractor(call)
     if inspect.isawaitable(extracted):
         extracted.close()
         raw_ids = call.data.get("entity_id")
