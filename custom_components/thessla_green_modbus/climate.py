@@ -199,12 +199,22 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         return _extra_state_attributes(self.coordinator.data)
 
     async def _write_register(self, register: str, value: Any, *, refresh: bool = False) -> Any:  # type: ignore[override]
+        """Write a register for climate.
+
+        Climate's write flows always call ``async_request_refresh()``
+        themselves once their logical operation (which may involve more than
+        one register write) completes, so targeted read-back is disabled here
+        to avoid a redundant/misleading intermediate update ahead of that
+        refresh.
+        """
         try:
             return await self.coordinator.async_write_register(
-                register, value, refresh=refresh, offset=0
+                register, value, refresh=refresh, offset=0, targeted_readback=False
             )
         except TypeError:
-            return await self.coordinator.async_write_register(register, value, refresh=refresh)
+            return await self.coordinator.async_write_register(
+                register, value, refresh=refresh, targeted_readback=False
+            )
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         if hvac_mode == HVACMode.OFF:
@@ -242,7 +252,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         success = True
         if "comfort_temperature" in holding_registers():
             success = await self.coordinator.async_write_register(
-                "comfort_temperature", temperature, refresh=False, offset=0
+                "comfort_temperature", temperature, refresh=False, offset=0, targeted_readback=False
             )
         if success:
             success = await self._write_register("required_temperature", temperature, refresh=False)

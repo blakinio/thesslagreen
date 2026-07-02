@@ -57,7 +57,9 @@ async def test_set_gwc_parameters_basic(monkeypatch):
     coord = _Coordinator()
     handler = await _setup_and_get(_make_hass(), "set_gwc_parameters", coord, monkeypatch)
     await handler(_make_call({"entity_id": ["climate.dev"], "mode": "auto"}))
-    coord.async_write_register.assert_called_once_with("gwc_mode", 1, refresh=False)
+    coord.async_write_register.assert_called_once_with(
+        "gwc_mode", 1, refresh=False, targeted_readback=False
+    )
     coord.async_request_refresh.assert_awaited_once()
 
 

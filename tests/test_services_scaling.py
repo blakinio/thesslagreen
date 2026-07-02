@@ -30,7 +30,9 @@ class DummyCoordinator:
             effective_batch=min(max_registers_per_request, MAX_BATCH_REGISTERS),
         )
 
-    async def async_write_register(self, register_name, value, refresh=True, *, offset=0) -> bool:
+    async def async_write_register(
+        self, register_name, value, refresh=True, *, offset=0, targeted_readback=True
+    ) -> bool:
         address = HOLDING_REGISTERS.get(register_name, 0) + offset
         self.writes.append((address, value, self.slave_id))
         try:

@@ -52,4 +52,6 @@ async def test_fan_set_percentage_clamps_to_limits():
 
     await fan.async_set_percentage(10)
 
-    coordinator.async_write_register.assert_any_call("air_flow_rate_manual", 30, refresh=False)
+    coordinator.async_write_register.assert_any_call(
+        "air_flow_rate_manual", 30, refresh=False, targeted_readback=False
+    )

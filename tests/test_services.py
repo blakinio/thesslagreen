@@ -108,7 +108,7 @@ async def test_set_device_name_uses_offsets(monkeypatch):
 
     coordinator.async_write_register.assert_has_calls(
         [
-            call_obj("device_name", ANY, refresh=False, offset=0),
-            call_obj("device_name", ANY, refresh=False, offset=2),
+            call_obj("device_name", ANY, refresh=False, offset=0, targeted_readback=False),
+            call_obj("device_name", ANY, refresh=False, offset=2, targeted_readback=False),
         ]
     )

@@ -67,8 +67,8 @@ class TestThesslaGreenClimate:
         await climate.async_set_hvac_mode(HVACMode.FAN_ONLY)
         mock_climate_coordinator.async_write_register.assert_has_calls(
             [
-                call("on_off_panel_mode", 1, refresh=False, offset=0),
-                call("mode", 1, refresh=False, offset=0),
+                call("on_off_panel_mode", 1, refresh=False, offset=0, targeted_readback=False),
+                call("mode", 1, refresh=False, offset=0, targeted_readback=False),
             ]
         )
         assert mock_climate_coordinator.async_write_register.call_count == 2
@@ -87,8 +87,8 @@ class TestThesslaGreenClimate:
 
         mock_climate_coordinator.async_write_register.assert_has_calls(
             [
-                call("on_off_panel_mode", 1, refresh=False, offset=0),
-                call("on_off_panel_mode", 1, refresh=False, offset=0),
+                call("on_off_panel_mode", 1, refresh=False, offset=0, targeted_readback=False),
+                call("on_off_panel_mode", 1, refresh=False, offset=0, targeted_readback=False),
             ]
         )
         assert mock_climate_coordinator.async_write_register.call_count == 2

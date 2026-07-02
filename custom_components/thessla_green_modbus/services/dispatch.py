@@ -15,9 +15,18 @@ async def write_register(
     action: str,
     logger: Any,
 ) -> bool:
-    """Write to a register with consistent error handling."""
+    """Write to a register with consistent error handling.
+
+    Service writes may target dangerous/internal/service-only registers and
+    always perform their own refresh/logging afterwards, so targeted
+    read-back is disabled here.
+    """
     try:
-        return bool(await coordinator.async_write_register(register, value, refresh=False))
+        return bool(
+            await coordinator.async_write_register(
+                register, value, refresh=False, targeted_readback=False
+            )
+        )
     except (ModbusException, ConnectionException) as err:
         logger.error("Failed to %s for %s: %s", action, entity_id, err)
         return False
@@ -156,13 +165,18 @@ async def _perform_step_write(
 
 
 async def write_device_name_chunks(coordinator: Any, device_name: str, batch: int) -> bool:
-    """Write a short device name in chunked register writes with offsets."""
+    """Write a short device name in chunked register writes with offsets.
+
+    device_name is multi-register/string-like; targeted read-back is disabled
+    per chunk since it only applies to single holding-word registers anyway,
+    and the caller performs its own refresh once all chunks are written.
+    """
     chars_per_batch = batch * 2
     for i in range(0, len(device_name), chars_per_batch):
         chunk = device_name[i : i + chars_per_batch]
         reg_offset = i // 2
         if not await coordinator.async_write_register(
-            "device_name", chunk, refresh=False, offset=reg_offset
+            "device_name", chunk, refresh=False, offset=reg_offset, targeted_readback=False
         ):
             return False
     return True

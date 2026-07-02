@@ -312,6 +312,154 @@ async def test_no_second_connection_write_lock_held_during_readback(coordinator)
 
 
 # ---------------------------------------------------------------------------
+# targeted_readback caller-level override (hotfix for #1722 side effects)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_targeted_readback_default_true_still_reads_back(coordinator) -> None:
+    """Default targeted_readback=True still performs read-back for a safe register."""
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    client.write_register = AsyncMock(return_value=_write_response(error=False))
+    client.read_holding_registers = AsyncMock(return_value=_read_response([1]))
+    coordinator.device_client.client = client
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator.data = {"mode": 0}
+
+    result = await coordinator.async_write_register("mode", 1, refresh=True)
+
+    assert result is True
+    client.read_holding_registers.assert_called_once()
+    coordinator.async_request_refresh.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_targeted_readback_false_skips_locked_read(coordinator) -> None:
+    """targeted_readback=False must skip the holding-register read-back entirely."""
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    client.write_register = AsyncMock(return_value=_write_response(error=False))
+    client.read_holding_registers = AsyncMock(return_value=_read_response([1]))
+    coordinator.device_client.client = client
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator.data = {"mode": 0}
+
+    result = await coordinator.async_write_register(
+        "mode", 1, refresh=True, targeted_readback=False
+    )
+
+    assert result is True
+    client.read_holding_registers.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_targeted_readback_false_refresh_true_triggers_full_refresh(coordinator) -> None:
+    """targeted_readback=False with refresh=True falls back to a full refresh."""
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    client.write_register = AsyncMock(return_value=_write_response(error=False))
+    client.read_holding_registers = AsyncMock(return_value=_read_response([1]))
+    coordinator.device_client.client = client
+    coordinator.async_request_refresh = AsyncMock()
+
+    result = await coordinator.async_write_register(
+        "mode", 1, refresh=True, targeted_readback=False
+    )
+
+    assert result is True
+    coordinator.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_targeted_readback_false_refresh_false_no_full_refresh(coordinator) -> None:
+    """targeted_readback=False with refresh=False performs no refresh at all."""
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    client.write_register = AsyncMock(return_value=_write_response(error=False))
+    client.read_holding_registers = AsyncMock(return_value=_read_response([1]))
+    coordinator.device_client.client = client
+    coordinator.async_request_refresh = AsyncMock()
+
+    result = await coordinator.async_write_register(
+        "mode", 1, refresh=False, targeted_readback=False
+    )
+
+    assert result is True
+    coordinator.async_request_refresh.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_targeted_readback_decode_failure_does_not_fail_write(
+    coordinator, monkeypatch
+) -> None:
+    """A decode error on read-back must not turn an already-successful write into a failure."""
+    import custom_components.thessla_green_modbus.coordinator.coordinator as coord_mod
+
+    class _BadDecodeDef:
+        function = 3
+        length = 1
+        address = 100
+
+        def encode(self, value):
+            return int(value)
+
+        def decode(self, raw):
+            raise ValueError("boom")
+
+    monkeypatch.setattr(coord_mod, "get_register_definition", lambda _n: _BadDecodeDef())
+
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    client.write_register = AsyncMock(return_value=_write_response(error=False))
+    client.read_holding_registers = AsyncMock(return_value=_read_response([1]))
+    coordinator.device_client.client = client
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator.data = {"mode": 0}
+
+    result = await coordinator.async_write_register("mode", 1, refresh=True)
+
+    # Write already succeeded; decode failure must not flip the result to False.
+    assert result is True
+    # refresh=True + decode failure falls back to a full refresh.
+    coordinator.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_targeted_readback_decode_failure_refresh_false_no_full_refresh(
+    coordinator, monkeypatch
+) -> None:
+    """Decode failure with refresh=False must not force a full refresh."""
+    import custom_components.thessla_green_modbus.coordinator.coordinator as coord_mod
+
+    class _BadDecodeDef:
+        function = 3
+        length = 1
+        address = 100
+
+        def encode(self, value):
+            return int(value)
+
+        def decode(self, raw):
+            raise ValueError("boom")
+
+    monkeypatch.setattr(coord_mod, "get_register_definition", lambda _n: _BadDecodeDef())
+
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    client.write_register = AsyncMock(return_value=_write_response(error=False))
+    client.read_holding_registers = AsyncMock(return_value=_read_response([1]))
+    coordinator.device_client.client = client
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator.data = {"mode": 0}
+
+    result = await coordinator.async_write_register("mode", 1, refresh=False)
+
+    assert result is True
+    coordinator.async_request_refresh.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
 # Entity base class: _write_register delegates post-write policy to coordinator
 # ---------------------------------------------------------------------------
 
@@ -412,6 +560,10 @@ async def test_fan_write_register_full_refresh_only() -> None:
 
     # Fan must request a full refresh after the write, ignoring any targeted read-back
     coord.async_request_refresh.assert_called_once()
+    # Fan disables targeted read-back entirely: the setpoint register isn't
+    # what fan.percentage displays, so a targeted read-back would be a
+    # redundant/misleading extra round-trip.
+    client.read_holding_registers.assert_not_called()
 
 
 @pytest.mark.asyncio
