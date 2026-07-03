@@ -19,7 +19,7 @@
 | Overall validation | PARTIAL — HA log evidence committed; HA state/service evidence still pending |
 | Quality scale gate | Bronze — no upgrade until formal evidence is complete |
 | Deep scan | Not required for validation — deep scan is offline/diagnostic-only; normal scan (deep_scan=False) is sufficient for all real-device validation steps |
-| Targeted read-back after writes | PENDING real-device validation — see §9 below |
+| Targeted read-back after writes | PENDING real-device validation — see §9 and §10 below |
 | Fan percentage fix (#1682) | FIXED in code; real-device state screenshot/re-test evidence pending |
 | Dangerous entities config category (#1683) | Confirmed by code audit; entity_category=config, remain enabled |
 | IO ownership cleanup (#1684/#1688) | DeviceClient is sole IO owner; HA setup log after cleanup is clean/partial evidence |
@@ -392,3 +392,115 @@ If the read-back fails, the coordinator falls back to a full refresh.
 **Tester sign-off:** _(pending)_
 **HA Core version tested:** _(pending)_
 **Integration commit SHA tested:** _(pending)_
+
+---
+
+## 10. Targeted Read-back Write-path Validation After #1726/#1727
+
+**Status: Pending real-device execution**
+
+### 10.1 Background
+
+PR #1722 introduced targeted read-back after single holding-register writes.
+A real-device issue was observed before the hotfixes:
+
+```text
+2026-07-02 23:06:37 Successfully wrote 1 to register mode
+2026-07-02 23:06:52 Successfully wrote 10 to register air_flow_rate_manual
+```
+
+The ~15-second gap between `mode=1` and `air_flow_rate_manual=10` was caused
+by a full register refresh being sandwiched between sequential fan writes.
+
+PRs #1726 and #1727 (merged 2026-07-02 ~23:41 UTC) fixed this:
+
+- `fan._write_register` passes `targeted_readback=False` (`fan.py:311`)
+- `fan.async_set_percentage` writes both registers with `refresh=False`,
+  issues one `async_request_refresh()` after both (`fan.py:244-254`)
+- `climate._write_register` passes `targeted_readback=False` (`climate.py:212`)
+- `services/dispatch.write_register` passes `targeted_readback=False` (`dispatch.py:27`)
+- `services/handlers_maintenance.py` passes `targeted_readback=False` (`handlers_maintenance.py:277-279`)
+- Decode/read-back failure no longer fails a successful write (`schedule.py:425-443`)
+
+### 10.2 Test steps
+
+1. **Update the integration.** Copy the latest `main` tree into
+   `config/custom_components/thessla_green_modbus/` on the Home Assistant host.
+2. **Full Home Assistant restart.** Settings → System → Restart.
+3. **Enable DEBUG logging.** Add to `configuration.yaml`:
+   ```yaml
+   logger:
+     default: warning
+     logs:
+       custom_components.thessla_green_modbus: debug
+   ```
+   Reload the logger (Developer Tools → YAML → Logger) or restart again.
+4. **Change fan percentage from the HA UI.** Open the fan card
+   (`fan.thesslagreen_ventilation`) and drag the speed slider or type a
+   new percentage value.
+5. **Observe the log sequence** in Settings → System → Logs or via
+   `ha core logs --follow`.
+
+### 10.3 Log patterns to search
+
+After performing each test action, search the HA log for these patterns:
+
+```text
+Successfully wrote 1 to register mode
+Successfully wrote .* to register air_flow_rate_manual
+Targeted read-back
+transaction_id
+traceback
+Failed to write
+async_request_refresh
+```
+
+Use the HA log search bar or `grep -iE '<pattern>' home-assistant.log`.
+
+### 10.4 PASS criteria
+
+A test PASSES when **all** of the following hold:
+
+1. No ~15-second delay between `Successfully wrote 1 to register mode` and
+   `Successfully wrote <value> to register air_flow_rate_manual`.
+2. Fan operation performs sequential writes without a full refresh between them.
+3. Exactly one full refresh after the logical fan operation completes.
+4. No `transaction_id mismatch` in the log.
+5. No traceback from `custom_components.thessla_green_modbus`.
+6. Fan card updates after the full refresh.
+7. Targeted read-back is **not** performed for fan setpoint writes
+   (no `Targeted read-back for mode decoded to` or
+   `Targeted read-back for air_flow_rate_manual decoded to` lines).
+8. Normal number/switch/select entity writes still work.
+
+### 10.5 Manual validation table
+
+> **Instructions:** Perform each test in order. Record the actual result,
+> mark PASS or FAIL, and add notes (e.g. log excerpt filename, timestamps).
+> **Do not mark any row PASS without HA log evidence.**
+
+| # | Test | Action | Expected result | Actual result | PASS/FAIL | Notes |
+|---|------|--------|----------------|---------------|-----------|-------|
+| 1 | Fan percentage — manual mode | Set fan percentage via HA UI slider | `mode=1` and `air_flow_rate_manual=<value>` written back-to-back (< 2 s apart); one full refresh after both; no targeted read-back for either register | — | — | — |
+| 2 | Fan turn on | Press fan power-on button | `on_off_panel_mode=1` written; fan starts; no targeted read-back | — | — | — |
+| 3 | Fan turn off | Press fan power-off button | `on_off_panel_mode=0` written; fan stops; no targeted read-back | — | — | — |
+| 4 | Climate HVAC mode change | Change HVAC mode in climate card | `on_off_panel_mode` and/or `mode` written with `targeted_readback=False`; one refresh after the operation | — | — | — |
+| 5 | Climate target temperature | Change target temperature in climate card | `comfort_temperature` and/or `required_temperature` written with `targeted_readback=False`; one refresh after | — | — | — |
+| 6 | Number entity write | Change a number entity (e.g. `number.comfort_temperature`) | Value written; targeted read-back **does** fire (this is a simple-entity path with `targeted_readback=True`); UI updates quickly | — | — | — |
+| 7 | Switch entity write | Toggle a switch entity (e.g. `switch.boost_mode`) | Value written; targeted read-back fires for eligible holding-register switches; UI updates quickly | — | — | — |
+| 8 | Select entity write | Change a select entity (e.g. `select.mode`) | Value written; targeted read-back fires for eligible selects; UI updates quickly | — | — | — |
+| 9 | `validate_known_registers` | Call via Developer Tools → Services | Service completes; result summary logged; supported/missing counts stable; no `transaction_id` mismatch | — | — | — |
+
+### 10.6 Sign-off
+
+This section must not be marked PASS until:
+
+1. All rows in §10.5 are completed with real HA log evidence.
+2. The PASS criteria in §10.4 are met.
+3. The environment details in §2 are updated with the tested commit SHA.
+
+**Validation status:** Pending real-device execution
+**Tester sign-off:** _(pending)_
+**HA Core version tested:** _(pending)_
+**Integration commit SHA tested:** _(pending)_
+**Date tested:** _(pending)_
