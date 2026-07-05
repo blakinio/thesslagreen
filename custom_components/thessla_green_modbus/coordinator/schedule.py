@@ -425,6 +425,16 @@ class _CoordinatorScheduleMixin:
         if _raw_readback is not None and _readback_definition is not None:
             try:
                 _decoded = _readback_definition.decode(_raw_readback)
+                if (
+                    getattr(_readback_definition, "enum", None) is not None
+                    and isinstance(_decoded, str)
+                    and isinstance(_raw_readback[0], int)
+                ):
+                    # The polling pipeline (process_register_value) stores raw
+                    # ints for enum registers, not labels; keep the same
+                    # representation so switch.is_on / select.current_option
+                    # don't break until the next full poll.
+                    _decoded = _raw_readback[0]
             except (ValueError, TypeError, KeyError, IndexError, ArithmeticError) as exc:
                 # The write itself already succeeded; a bad read-back decode
                 # must not turn a successful write into a failure.

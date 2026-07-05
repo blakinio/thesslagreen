@@ -171,6 +171,56 @@ async def test_targeted_readback_uses_decoded_value_not_raw_request(coordinator)
 
 
 @pytest.mark.asyncio
+async def test_targeted_readback_enum_register_matches_poll_representation(coordinator) -> None:
+    """Read-back of an enum register stores the raw int, exactly like the poll cycle.
+
+    ``mode`` decodes to an enum label via RegisterDef.decode ('manualny'), but the
+    polling pipeline (process_register_value) reverts enum labels to the raw int.
+    Targeted read-back must store the same representation, otherwise switch.is_on /
+    select.current_option break until the next full poll.
+    """
+    from custom_components.thessla_green_modbus.core.register_processing import (
+        process_register_value,
+    )
+
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    client.write_register = AsyncMock(return_value=_write_response(error=False))
+    client.read_holding_registers = AsyncMock(return_value=_read_response([1]))
+    coordinator.device_client.client = client
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator.data = {"mode": 0}
+
+    result = await coordinator.async_write_register("mode", 1, refresh=True)
+
+    assert result is True
+    coordinator.async_request_refresh.assert_not_called()
+    assert coordinator.data["mode"] == process_register_value("mode", 1)
+    assert coordinator.data["mode"] == 1
+    assert not isinstance(coordinator.data["mode"], str)
+
+
+@pytest.mark.asyncio
+async def test_targeted_readback_special_mode_bitwise_compatible(coordinator) -> None:
+    """Read-back of special_mode stores an int usable in bit comparisons."""
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    client.write_register = AsyncMock(return_value=_write_response(error=False))
+    client.read_holding_registers = AsyncMock(return_value=_read_response([2]))
+    coordinator.device_client.client = client
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator.data = {"special_mode": 0}
+
+    result = await coordinator.async_write_register("special_mode", 2, refresh=True)
+
+    assert result is True
+    value = coordinator.data["special_mode"]
+    assert value == 2
+    # switch.is_on for special-mode bit switches compares value == bit
+    assert (value == 2) is True
+
+
+@pytest.mark.asyncio
 async def test_write_failure_returns_false_no_readback(coordinator) -> None:
     """Failed write must return False without attempting read-back."""
     coordinator._ensure_connection = AsyncMock()

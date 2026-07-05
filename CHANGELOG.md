@@ -7,7 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Targeted read-back now stores enum registers as raw ints, matching the polling
+  pipeline**: after a successful write to an enum-labelled holding register (e.g.
+  `mode`, `season_mode`, `special_mode`, `bypass_off`, `gwc_off`), the targeted
+  read-back applied `RegisterDef.decode()` directly, which stores the enum *label*
+  (e.g. `'manualny'`, `'ZIMA'`) into `coordinator.data`, while the regular polling
+  pipeline (`process_register_value`) stores the raw int for enum registers.  The
+  mismatched representation broke `switch.is_on` (a non-empty label string is truthy,
+  so a switch turned OFF displayed ON) and `select.current_option` (label not found
+  in the reverse option map → "unknown") until the next full poll.  The read-back
+  path now reverts enum-label decodes to the raw register value, exactly like the
+  polling pipeline.
+
 ### Internal
+
+- **Restored `pydantic==2.12.2` dev pin to match
+  `pytest-homeassistant-custom-component 0.13.309–0.13.316`** (all of which pin
+  `pydantic==2.12.2`).  The Dependabot bump to `pydantic==2.13.4` (#1708) made
+  `pip install -r requirements-dev.txt` fail with `ResolutionImpossible`, breaking
+  the CI install step on `main`.  Also corrected the stale comment in
+  `pyproject.toml` that claimed the plugin pins 2.13.4.
 
 - **Targeted read-back after successful single holding-register writes**: after a
   successful write to a safe single holding register, the coordinator now immediately
