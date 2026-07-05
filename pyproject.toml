@@ -38,9 +38,9 @@ dev = [
     "isort>=5.13.0",
     "ruff>=0.6.0",
     "mypy>=1.10.0",
-    # pytest-homeassistant-custom-component 0.13.309-0.13.316 pins pydantic==2.13.4;
+    # pytest-homeassistant-custom-component 0.13.309-0.13.316 pins pydantic==2.12.2;
     # keep in sync with requirements-dev.txt to avoid pip conflicts in CI.
-    "pydantic==2.13.4",
+    "pydantic==2.12.2",
     "pre-commit>=3.7.0",
     "types-PyYAML>=6.0.12",
 ]
