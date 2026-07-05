@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Fan percentage now updates in the GUI immediately after a successful airflow
+  write**: `fan.percentage` is derived from the status registers `supply_percentage` /
+  `exhaust_percentage`, but fan writes target the setpoint registers `mode`,
+  `air_flow_rate_manual`, and `air_flow_rate_temporary_2` and deliberately keep
+  `targeted_readback=False` (the setpoints are not 1:1 with the displayed status
+  registers).  The GUI therefore lagged one full poll interval behind the physical
+  device even though the write itself succeeded instantly.  The fan entity now keeps a
+  short-lived optimistic `_pending_percentage` (default 10 s TTL) that is set only
+  after a confirmed-successful airflow write and returned by `percentage`/`is_on` until
+  the status registers catch up.  The optimistic value is dropped as soon as a poll
+  reports `supply_percentage` / `exhaust_percentage` within 2 pp of the request, on
+  timeout, or on `turn_off`; it is never set when the write fails.  Targeted read-back
+  stays disabled for the fan write path and no second Modbus client/connection is
+  introduced.
+
 - **Targeted read-back now stores enum registers as raw ints, matching the polling
   pipeline**: after a successful write to an enum-labelled holding register (e.g.
   `mode`, `season_mode`, `special_mode`, `bypass_off`, `gwc_off`), the targeted
