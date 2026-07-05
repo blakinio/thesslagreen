@@ -105,7 +105,7 @@ jobs:
       - name: Upload coverage
         # CODECOV_TOKEN secret is optional; upload failure does not block CI.
         # Add CODECOV_TOKEN to repository secrets to enable authenticated uploads.
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: ./coverage.xml
           disable_search: true
