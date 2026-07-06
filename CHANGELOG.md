@@ -7,10 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.1] - 2026-07-06
+
+> Enum targeted read-back representation fix and fan percentage GUI responsiveness.
+> No Modbus register addresses, register/entity/unique/service IDs, or translation
+> keys changed. Real-device validation for the fan GUI path is still required.
+
 ### Fixed
 
 - **Fan optimistic percentage is now published before the post-write refresh, not
-  after**: `async_set_percentage` set `_pending_percentage` (which writes the HA state)
+  after** ([#1732](https://github.com/blakinio/thesslagreen/pull/1732)):
+  `async_set_percentage` set `_pending_percentage` (which writes the HA state)
   only *after* awaiting `coordinator.async_request_refresh()`, so the optimistic GUI
   update from the previous fix was delayed until the full refresh completed. The
   ordering is now inverted for both the manual and temporary write paths — the pending
@@ -20,7 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no pending value and fire no refresh; targeted read-back stays disabled for fan writes.
 
 - **Fan percentage now updates in the GUI immediately after a successful airflow
-  write**: `fan.percentage` is derived from the status registers `supply_percentage` /
+  write** ([#1731](https://github.com/blakinio/thesslagreen/pull/1731)):
+  `fan.percentage` is derived from the status registers `supply_percentage` /
   `exhaust_percentage`, but fan writes target the setpoint registers `mode`,
   `air_flow_rate_manual`, and `air_flow_rate_temporary_2` and deliberately keep
   `targeted_readback=False` (the setpoints are not 1:1 with the displayed status
@@ -35,7 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   introduced.
 
 - **Targeted read-back now stores enum registers as raw ints, matching the polling
-  pipeline**: after a successful write to an enum-labelled holding register (e.g.
+  pipeline** ([#1730](https://github.com/blakinio/thesslagreen/pull/1730)):
+  after a successful write to an enum-labelled holding register (e.g.
   `mode`, `season_mode`, `special_mode`, `bypass_off`, `gwc_off`), the targeted
   read-back applied `RegisterDef.decode()` directly, which stores the enum *label*
   (e.g. `'manualny'`, `'ZIMA'`) into `coordinator.data`, while the regular polling
@@ -45,6 +54,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in the reverse option map → "unknown") until the next full poll.  The read-back
   path now reverts enum-label decodes to the raw register value, exactly like the
   polling pipeline.
+
+### Known limitations
+
+- **Fan pending percentage ordering — real-device validation still required**: the
+  optimistic `_pending_percentage` publish/refresh ordering
+  ([#1730](https://github.com/blakinio/thesslagreen/pull/1730),
+  [#1731](https://github.com/blakinio/thesslagreen/pull/1731),
+  [#1732](https://github.com/blakinio/thesslagreen/pull/1732)) has so far only been
+  validated against unit tests and mocked coordinators. On real AirPack4 hardware the
+  post-write `supply_percentage` / `exhaust_percentage` status registers may settle on a
+  different cadence than the mocks assume; if the fan slider still snaps back or lags after
+  a write on a physical device, the pending-value TTL and the ±2 pp reconciliation threshold
+  in `fan.py` may need further tuning. Tracked as a follow-up in
+  `docs/real_device_validation.md`.
 
 ### Internal
 
