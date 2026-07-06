@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from time import monotonic
 from typing import Any, ClassVar
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pymodbus.exceptions import ConnectionException, ModbusException
 
@@ -24,6 +25,18 @@ from .registers.maps import holding_registers
 _LOGGER = logging.getLogger(__name__)
 
 PARALLEL_UPDATES = 1
+
+# Transient optimistic display window: after a successful fan airflow write the
+# GUI shows the requested percentage for at most this many seconds, until the
+# supply_percentage / exhaust_percentage status registers catch up on the next
+# full poll.  Fan writes keep targeted_readback=False (the setpoint registers
+# are not 1:1 with the displayed status registers), so without this the GUI
+# would lag one poll interval behind the physical device.
+_PENDING_PERCENTAGE_TTL = 10.0
+# Once the confirmed supply/exhaust status registers land within this many
+# percentage points of the requested value, the optimistic value is dropped in
+# favour of the real device reading.
+_PENDING_PERCENTAGE_MATCH_TOLERANCE = 2
 
 
 async def async_setup_entry(
@@ -91,7 +104,26 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         # Speed range (0-150% as per ThesslaGreen specs)
         self._attr_speed_count = FAN_SPEED_LEVELS
 
+        # Transient optimistic percentage shown immediately after a successful
+        # airflow write, before the supply_percentage / exhaust_percentage
+        # status registers are refreshed by the next full poll.
+        self._pending_percentage: int | None = None
+        self._pending_percentage_ts: float = 0.0
+
         _LOGGER.debug("Initialized fan entity")
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Drop the optimistic pending percentage once real status catches up.
+
+        The coordinator notifies this entity on every poll (and on targeted
+        read-backs of other registers).  As soon as the confirmed
+        supply/exhaust status registers reflect the requested speed the
+        optimistic override is no longer needed, so it is cleared before the
+        normal state write.
+        """
+        self._clear_pending_if_confirmed()
+        super()._handle_coordinator_update()
 
     @property
     def available(self) -> bool:
@@ -109,7 +141,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             return False
 
         # Check current flow rate
-        flow_rate = self._get_current_flow_rate()
+        flow_rate = self._effective_flow_rate()
         if flow_rate is None:
             return None
 
@@ -123,14 +155,87 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         when max_percentage = 109).  HA FanEntity.percentage must stay in
         0–100; the raw device value is preserved in extra_state_attributes
         as ``supply_percentage``.
+
+        Immediately after a successful airflow write a short-lived optimistic
+        value is used (see ``_effective_flow_rate``) so the GUI reflects the
+        requested speed without waiting a full poll for the status registers.
         """
-        flow_rate = self._get_current_flow_rate()
+        flow_rate = self._effective_flow_rate()
         if flow_rate is None:
             return None
 
         _min_pct, max_pct = self._percentage_limits()
         raw_clamped = max(0, min(max_pct, int(flow_rate)))
         return min(100, raw_clamped)
+
+    def _effective_flow_rate(self) -> float | None:
+        """Return the optimistic pending percentage if fresh, else real status.
+
+        The pending value is only honoured while it is still within its TTL and
+        has not been superseded by a confirmed status reading; otherwise the
+        normal status/setpoint logic in ``_get_current_flow_rate`` applies.
+        """
+        pending = self._pending_percentage_value()
+        if pending is not None:
+            return float(pending)
+        return self._get_current_flow_rate()
+
+    def _pending_percentage_value(self) -> int | None:
+        """Return the transient pending percentage while it is still fresh.
+
+        The value is set optimistically right after a successful airflow write
+        so the GUI reflects the requested speed immediately.  It self-expires
+        after ``_PENDING_PERCENTAGE_TTL`` seconds; reading it after expiry also
+        clears it so later polls fall back to confirmed device state.
+        """
+        if self._pending_percentage is None:
+            return None
+        if monotonic() - self._pending_percentage_ts > _PENDING_PERCENTAGE_TTL:
+            self._pending_percentage = None
+            return None
+        return self._pending_percentage
+
+    def _confirmed_status_flow_rate(self) -> float | None:
+        """Return the device-reported percentage from status registers only.
+
+        Unlike ``_get_current_flow_rate`` this never falls back to setpoint
+        registers, so the optimistic pending value is only cleared once the
+        actual supply/exhaust status registers reflect the requested speed
+        (setpoint registers update on the very next poll and would otherwise
+        clear the override prematurely, defeating its purpose).
+        """
+        data = self.coordinator.data
+        for register in ("supply_percentage", "exhaust_percentage"):
+            value = data.get(register)
+            if value is not None and isinstance(value, int | float):
+                return float(value)
+        return None
+
+    def _clear_pending_if_confirmed(self) -> None:
+        """Clear the optimistic pending percentage once real status matches it."""
+        if self._pending_percentage is None:
+            return
+        confirmed = self._confirmed_status_flow_rate()
+        if (
+            confirmed is not None
+            and abs(confirmed - self._pending_percentage) <= _PENDING_PERCENTAGE_MATCH_TOLERANCE
+        ):
+            self._pending_percentage = None
+
+    def _set_pending_percentage(self, percentage: int) -> None:
+        """Record an optimistic percentage and push it to the GUI immediately.
+
+        Only called after a confirmed-successful airflow write.  ``percentage``
+        is the raw device value that was written (before the HA 0–100 clamp),
+        matching the units of supply_percentage / exhaust_percentage so the
+        confirmation comparison in ``_clear_pending_if_confirmed`` is valid.
+        """
+        self._pending_percentage = percentage
+        self._pending_percentage_ts = monotonic()
+        # ``hass`` is None in unit tests (entity not added to a platform); the
+        # optimistic state is still stored and returned by ``percentage``.
+        if self.hass is not None:
+            self.async_write_ha_state()
 
     def _get_current_flow_rate(self) -> float | None:
         """Get current percentage-based flow rate from available registers.
@@ -191,6 +296,10 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the fan."""
+        # Drop any optimistic speed override: turning off must never leave the
+        # GUI showing a stale non-zero percentage.  is_on already reflects the
+        # off state via on_off_panel_mode below.
+        self._pending_percentage = None
         try:
             if self._is_writable_holding_register("on_off_panel_mode"):
                 # If system power control is available, use it to turn off.
@@ -252,6 +361,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                     wrote_manual = True
                 if wrote_manual:
                     await self.coordinator.async_request_refresh()
+                    self._set_pending_percentage(actual_percentage)
             else:
                 # Temporary mode - must use 3-register write block
                 if current_mode == "temporary":
@@ -261,9 +371,11 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                     if not success:
                         raise RuntimeError("Failed to write temporary airflow block")
                     await self.coordinator.async_request_refresh()
+                    self._set_pending_percentage(actual_percentage)
                     return
                 if self._is_writable_holding_register("air_flow_rate_temporary_2"):
                     await self._write_register("air_flow_rate_temporary_2", actual_percentage)
+                    self._set_pending_percentage(actual_percentage)
 
             _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
 

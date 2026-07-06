@@ -389,3 +389,209 @@ def test_fan_turn_off_single_refresh(mock_coordinator):
     fan = ThesslaGreenFan(mock_coordinator)
     asyncio.run(fan.async_turn_off())
     mock_coordinator.async_request_refresh.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# Optimistic pending-percentage tests (GUI latency fix)
+#
+# fan.percentage reads status registers (supply_percentage / exhaust_percentage)
+# while writes target setpoint registers (mode / air_flow_rate_manual /
+# air_flow_rate_temporary_2) with targeted_readback=False.  After a successful
+# write the GUI would otherwise lag one full poll interval, so the entity keeps a
+# short-lived optimistic value.  See fan.ThesslaGreenFan._set_pending_percentage.
+# ---------------------------------------------------------------------------
+
+
+def _manual_mode_coordinator(mock_coordinator, *, supply_percentage=50):
+    """Configure the mock coordinator for a manual-mode airflow write."""
+    mock_coordinator.data["mode"] = 1  # manual
+    mock_coordinator.data["supply_percentage"] = supply_percentage
+    mock_coordinator.data["on_off_panel_mode"] = 1
+    mock_coordinator.async_request_refresh = AsyncMock()
+    return mock_coordinator
+
+
+def test_fan_write_success_sets_pending_percentage(mock_coordinator):
+    """A successful airflow write records the requested percentage optimistically."""
+    _manual_mode_coordinator(mock_coordinator, supply_percentage=50)
+    mock_coordinator.async_write_register = AsyncMock(return_value=True)
+    fan = ThesslaGreenFan(mock_coordinator)
+
+    asyncio.run(fan.async_set_percentage(80))
+
+    assert fan._pending_percentage == 80  # nosec B101
+
+
+def test_fan_percentage_returns_pending_before_refresh(mock_coordinator):
+    """percentage returns the optimistic value even while status still reads stale."""
+    _manual_mode_coordinator(mock_coordinator, supply_percentage=50)
+    mock_coordinator.async_write_register = AsyncMock(return_value=True)
+    fan = ThesslaGreenFan(mock_coordinator)
+
+    # Before the write the GUI reflects the stale status register.
+    assert fan.percentage == 50  # nosec B101
+
+    asyncio.run(fan.async_set_percentage(80))
+
+    # supply_percentage is still 50 (no poll yet), but the GUI shows 80.
+    assert mock_coordinator.data["supply_percentage"] == 50  # nosec B101
+    assert fan.percentage == 80  # nosec B101
+    assert fan.is_on is True  # nosec B101
+
+
+def test_fan_pending_percentage_expires_after_timeout(mock_coordinator, monkeypatch):
+    """Once the TTL elapses the optimistic value is dropped for confirmed status."""
+    from custom_components.thessla_green_modbus import fan as fan_module
+
+    _manual_mode_coordinator(mock_coordinator, supply_percentage=50)
+    mock_coordinator.async_write_register = AsyncMock(return_value=True)
+
+    clock = {"now": 1000.0}
+    monkeypatch.setattr(fan_module, "monotonic", lambda: clock["now"])
+
+    fan = ThesslaGreenFan(mock_coordinator)
+    asyncio.run(fan.async_set_percentage(80))
+    assert fan.percentage == 80  # nosec B101
+
+    # Advance the monotonic clock beyond the TTL window.
+    clock["now"] += fan_module._PENDING_PERCENTAGE_TTL + 1
+    assert fan.percentage == 50  # falls back to confirmed status  # nosec B101
+    assert fan._pending_percentage is None  # expiry also clears the value  # nosec B101
+
+
+def test_fan_pending_percentage_not_set_on_write_failure(mock_coordinator):
+    """A failed write must not leave an optimistic value behind."""
+    _manual_mode_coordinator(mock_coordinator, supply_percentage=50)
+    mock_coordinator.async_write_register = AsyncMock(return_value=False)
+    fan = ThesslaGreenFan(mock_coordinator)
+
+    with pytest.raises(RuntimeError):
+        asyncio.run(fan.async_set_percentage(80))
+
+    assert fan._pending_percentage is None  # nosec B101
+    # GUI keeps showing the real device state, never the un-written value.
+    assert fan.percentage == 50  # nosec B101
+
+
+def test_fan_pending_cleared_when_status_confirms(mock_coordinator):
+    """A poll whose status registers reflect the request drops the optimistic value."""
+    _manual_mode_coordinator(mock_coordinator, supply_percentage=50)
+    mock_coordinator.async_write_register = AsyncMock(return_value=True)
+    fan = ThesslaGreenFan(mock_coordinator)
+
+    asyncio.run(fan.async_set_percentage(80))
+    assert fan.percentage == 80  # nosec B101
+
+    # Next poll lands with status registers reflecting the new speed.
+    mock_coordinator.data["supply_percentage"] = 80
+    fan._clear_pending_if_confirmed()
+    assert fan._pending_percentage is None  # nosec B101
+
+    # From now on the GUI follows confirmed device status again.
+    mock_coordinator.data["supply_percentage"] = 60
+    assert fan.percentage == 60  # nosec B101
+
+
+def test_fan_pending_not_cleared_while_status_still_ramping(mock_coordinator):
+    """A poll whose status has not yet reached the request keeps the optimistic value."""
+    _manual_mode_coordinator(mock_coordinator, supply_percentage=50)
+    mock_coordinator.async_write_register = AsyncMock(return_value=True)
+    fan = ThesslaGreenFan(mock_coordinator)
+
+    asyncio.run(fan.async_set_percentage(80))
+
+    # Device is still ramping (55 %); the optimistic 80 % must stand.
+    mock_coordinator.data["supply_percentage"] = 55
+    fan._clear_pending_if_confirmed()
+    assert fan._pending_percentage == 80  # nosec B101
+    assert fan.percentage == 80  # nosec B101
+
+
+def test_fan_turn_off_clears_pending_percentage(mock_coordinator):
+    """Turning the fan off drops any optimistic speed override."""
+    _manual_mode_coordinator(mock_coordinator, supply_percentage=50)
+    mock_coordinator.async_write_register = AsyncMock(return_value=True)
+    fan = ThesslaGreenFan(mock_coordinator)
+
+    asyncio.run(fan.async_set_percentage(80))
+    assert fan._pending_percentage == 80  # nosec B101
+
+    asyncio.run(fan.async_turn_off())
+    assert fan._pending_percentage is None  # nosec B101
+    assert fan.is_on is False  # nosec B101
+
+
+def test_fan_manual_write_keeps_targeted_readback_disabled(mock_coordinator):
+    """mode + air_flow_rate_manual writes must pass targeted_readback=False."""
+    _manual_mode_coordinator(mock_coordinator, supply_percentage=50)
+    write_kwargs: list[tuple[str, dict]] = []
+
+    async def _fake_write(register_name, value, **kwargs):
+        write_kwargs.append((register_name, kwargs))
+        return True
+
+    mock_coordinator.async_write_register = AsyncMock(side_effect=_fake_write)
+    fan = ThesslaGreenFan(mock_coordinator)
+
+    asyncio.run(fan.async_set_percentage(80))
+
+    assert [name for name, _ in write_kwargs] == ["mode", "air_flow_rate_manual"]  # nosec B101
+    for _name, kwargs in write_kwargs:
+        assert kwargs.get("targeted_readback") is False  # nosec B101
+        assert kwargs.get("refresh") is False  # nosec B101
+
+
+def test_fan_no_setpoint_write_enables_targeted_readback(mock_coordinator, monkeypatch):
+    """No fan setpoint write path may enable generic targeted read-back.
+
+    Covers the auto-mode air_flow_rate_temporary_2 branch in addition to the
+    manual mode + air_flow_rate_manual writes.
+    """
+    from custom_components.thessla_green_modbus import fan as fan_module
+
+    mock_coordinator.data["mode"] = 0  # auto -> temporary_2 branch
+    mock_coordinator.data["supply_percentage"] = 50
+    mock_coordinator.device_client.available_registers["holding_registers"].add(
+        "air_flow_rate_temporary_2"
+    )
+    mock_coordinator.async_request_refresh = AsyncMock()
+
+    write_kwargs: list[dict] = []
+
+    async def _fake_write(register_name, value, **kwargs):
+        write_kwargs.append(kwargs)
+        return True
+
+    mock_coordinator.async_write_register = AsyncMock(side_effect=_fake_write)
+
+    original = fan_module.holding_registers()
+    patched = {**original, "air_flow_rate_temporary_2": 999}
+    monkeypatch.setattr(fan_module, "holding_registers", lambda: patched)
+
+    fan = ThesslaGreenFan(mock_coordinator)
+    asyncio.run(fan.async_set_percentage(70))
+
+    assert write_kwargs, "expected at least one setpoint write"  # nosec B101
+    for kwargs in write_kwargs:
+        assert kwargs.get("targeted_readback") is False  # nosec B101
+
+
+def test_fan_mode_enum_write_does_not_engage_readback(mock_coordinator):
+    """Regression guard for #1730: fan writes to the enum 'mode' register never
+    trigger the coordinator's raw-int targeted read-back path (targeted_readback
+    stays False), so enum raw-int handling remains solely a coordinator concern.
+    """
+    _manual_mode_coordinator(mock_coordinator, supply_percentage=50)
+    captured: dict[str, dict] = {}
+
+    async def _fake_write(register_name, value, **kwargs):
+        captured[register_name] = kwargs
+        return True
+
+    mock_coordinator.async_write_register = AsyncMock(side_effect=_fake_write)
+    fan = ThesslaGreenFan(mock_coordinator)
+
+    asyncio.run(fan.async_set_percentage(80))
+
+    assert "mode" in captured  # nosec B101
+    assert captured["mode"].get("targeted_readback") is False  # nosec B101
