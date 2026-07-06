@@ -360,8 +360,12 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                     )
                     wrote_manual = True
                 if wrote_manual:
-                    await self.coordinator.async_request_refresh()
+                    # Push the optimistic percentage to the GUI *before* the
+                    # full refresh so the displayed speed updates immediately;
+                    # the refresh then reconciles it against the confirmed
+                    # supply/exhaust status registers.
                     self._set_pending_percentage(actual_percentage)
+                    await self.coordinator.async_request_refresh()
             else:
                 # Temporary mode - must use 3-register write block
                 if current_mode == "temporary":
@@ -370,12 +374,18 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
                     )
                     if not success:
                         raise RuntimeError("Failed to write temporary airflow block")
-                    await self.coordinator.async_request_refresh()
+                    # Optimistic GUI update before the refresh (see manual branch).
                     self._set_pending_percentage(actual_percentage)
+                    await self.coordinator.async_request_refresh()
                     return
                 if self._is_writable_holding_register("air_flow_rate_temporary_2"):
-                    await self._write_register("air_flow_rate_temporary_2", actual_percentage)
+                    # Skip the per-write refresh so the optimistic percentage is
+                    # published before the (single, caller-controlled) refresh.
+                    await self._write_register(
+                        "air_flow_rate_temporary_2", actual_percentage, refresh=False
+                    )
                     self._set_pending_percentage(actual_percentage)
+                    await self.coordinator.async_request_refresh()
 
             _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
 

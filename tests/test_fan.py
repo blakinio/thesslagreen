@@ -595,3 +595,150 @@ def test_fan_mode_enum_write_does_not_engage_readback(mock_coordinator):
 
     assert "mode" in captured  # nosec B101
     assert captured["mode"].get("targeted_readback") is False  # nosec B101
+
+
+# ---------------------------------------------------------------------------
+# Ordering: optimistic percentage must be published *before* the full refresh
+# (regression for the #1731 follow-up GUI-latency fix).  fan.percentage must
+# reflect the requested speed the instant the airflow write confirms, without
+# waiting for coordinator.async_request_refresh() to complete.
+# ---------------------------------------------------------------------------
+
+
+async def test_fan_manual_pending_set_before_refresh(mock_coordinator):
+    """Manual mode records the optimistic value before awaiting the refresh."""
+    _manual_mode_coordinator(mock_coordinator, supply_percentage=50)
+    events: list[str] = []
+
+    async def _fake_write(register_name, value, **kwargs):
+        return True
+
+    async def _fake_refresh():
+        # By the time the refresh runs the optimistic value must already be live.
+        events.append(f"refresh:pending={fan._pending_percentage}")
+
+    mock_coordinator.async_write_register = AsyncMock(side_effect=_fake_write)
+    mock_coordinator.async_request_refresh = AsyncMock(side_effect=_fake_refresh)
+
+    fan = ThesslaGreenFan(mock_coordinator)
+    await fan.async_set_percentage(80)
+
+    # The refresh observed the pending value already set: ordering is correct.
+    assert events == ["refresh:pending=80"]  # nosec B101
+
+
+async def test_fan_temporary_pending_set_before_refresh(mock_coordinator):
+    """Temporary mode uses the same set-pending-before-refresh ordering."""
+    mock_coordinator.data["mode"] = 2  # temporary
+    mock_coordinator.data["supply_percentage"] = 50
+    mock_coordinator.data["on_off_panel_mode"] = 1
+    events: list[str] = []
+
+    async def _fake_temp(airflow, **kwargs):
+        events.append("write")
+        return True
+
+    async def _fake_refresh():
+        events.append(f"refresh:pending={fan._pending_percentage}")
+
+    mock_coordinator.async_write_temporary_airflow = AsyncMock(side_effect=_fake_temp)
+    mock_coordinator.async_request_refresh = AsyncMock(side_effect=_fake_refresh)
+
+    fan = ThesslaGreenFan(mock_coordinator)
+    await fan.async_set_percentage(70)
+
+    assert events == ["write", "refresh:pending=70"]  # nosec B101
+
+
+async def test_fan_percentage_is_pending_before_refresh_completes(mock_coordinator):
+    """fan.percentage returns 80 while the refresh is still blocked mid-flight.
+
+    A real ``async_request_refresh`` can take a full poll interval; the GUI must
+    not wait for it.  Here the refresh parks on an ``asyncio.Event`` and we assert
+    the optimistic value is already live before the event is released.
+    """
+    _manual_mode_coordinator(mock_coordinator, supply_percentage=50)
+    release = asyncio.Event()
+    refresh_started = asyncio.Event()
+
+    async def _blocking_refresh():
+        refresh_started.set()
+        await release.wait()
+
+    mock_coordinator.async_write_register = AsyncMock(return_value=True)
+    mock_coordinator.async_request_refresh = AsyncMock(side_effect=_blocking_refresh)
+
+    fan = ThesslaGreenFan(mock_coordinator)
+    task = asyncio.create_task(fan.async_set_percentage(80))
+
+    # Wait until async_set_percentage is parked inside the (blocked) refresh.
+    await asyncio.wait_for(refresh_started.wait(), timeout=1)
+
+    # The write has completed but the refresh has NOT: the GUI already shows 80
+    # even though the confirmed status register is still the stale 50.
+    assert mock_coordinator.data["supply_percentage"] == 50  # nosec B101
+    assert fan.percentage == 80  # nosec B101
+    assert fan.is_on is True  # nosec B101
+
+    # Releasing the refresh lets async_set_percentage finish cleanly.
+    release.set()
+    await asyncio.wait_for(task, timeout=1)
+    assert fan.percentage == 80  # nosec B101
+
+
+async def test_fan_temporary_percentage_is_pending_before_refresh_completes(mock_coordinator):
+    """Temporary mode also shows the optimistic value before the refresh returns."""
+    mock_coordinator.data["mode"] = 2  # temporary
+    mock_coordinator.data["supply_percentage"] = 50
+    mock_coordinator.data["on_off_panel_mode"] = 1
+    release = asyncio.Event()
+    refresh_started = asyncio.Event()
+
+    async def _blocking_refresh():
+        refresh_started.set()
+        await release.wait()
+
+    mock_coordinator.async_write_temporary_airflow = AsyncMock(return_value=True)
+    mock_coordinator.async_request_refresh = AsyncMock(side_effect=_blocking_refresh)
+
+    fan = ThesslaGreenFan(mock_coordinator)
+    task = asyncio.create_task(fan.async_set_percentage(70))
+
+    await asyncio.wait_for(refresh_started.wait(), timeout=1)
+
+    assert mock_coordinator.data["supply_percentage"] == 50  # nosec B101
+    assert fan.percentage == 70  # nosec B101
+
+    release.set()
+    await asyncio.wait_for(task, timeout=1)
+    assert fan.percentage == 70  # nosec B101
+
+
+async def test_fan_manual_write_failure_skips_refresh_and_pending(mock_coordinator):
+    """A failed airflow write sets no optimistic value and never fires a refresh."""
+    _manual_mode_coordinator(mock_coordinator, supply_percentage=50)
+    mock_coordinator.async_write_register = AsyncMock(return_value=False)
+    fan = ThesslaGreenFan(mock_coordinator)
+
+    with pytest.raises(RuntimeError):
+        await fan.async_set_percentage(80)
+
+    assert fan._pending_percentage is None  # nosec B101
+    assert fan.percentage == 50  # stays on confirmed device status  # nosec B101
+    mock_coordinator.async_request_refresh.assert_not_awaited()
+
+
+async def test_fan_temporary_write_failure_skips_refresh_and_pending(mock_coordinator):
+    """A failed temporary-block write sets no optimistic value and skips refresh."""
+    mock_coordinator.data["mode"] = 2  # temporary
+    mock_coordinator.data["supply_percentage"] = 50
+    mock_coordinator.data["on_off_panel_mode"] = 1
+    mock_coordinator.async_write_temporary_airflow = AsyncMock(return_value=False)
+    mock_coordinator.async_request_refresh = AsyncMock()
+    fan = ThesslaGreenFan(mock_coordinator)
+
+    with pytest.raises(RuntimeError):
+        await fan.async_set_percentage(70)
+
+    assert fan._pending_percentage is None  # nosec B101
+    mock_coordinator.async_request_refresh.assert_not_awaited()

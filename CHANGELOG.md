@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Fan optimistic percentage is now published before the post-write refresh, not
+  after**: `async_set_percentage` set `_pending_percentage` (which writes the HA state)
+  only *after* awaiting `coordinator.async_request_refresh()`, so the optimistic GUI
+  update from the previous fix was delayed until the full refresh completed. The
+  ordering is now inverted for both the manual and temporary write paths — the pending
+  value is recorded and pushed to the GUI immediately after the confirmed-successful
+  airflow write, then the refresh is awaited to reconcile against the real
+  `supply_percentage` / `exhaust_percentage` status registers. Write failures still set
+  no pending value and fire no refresh; targeted read-back stays disabled for fan writes.
+
 - **Fan percentage now updates in the GUI immediately after a successful airflow
   write**: `fan.percentage` is derived from the status registers `supply_percentage` /
   `exhaust_percentage`, but fan writes target the setpoint registers `mode`,
