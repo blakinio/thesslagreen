@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import call, patch
 
 import pytest
-from tools.cleanup_old_entities import cleanup_entity_registry
+from tools.manual.cleanup_old_entities import cleanup_entity_registry
 
 
 def _setup_registry(tmp_path: Path, content: str) -> Path:
