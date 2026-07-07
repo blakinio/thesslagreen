@@ -1,40 +1,102 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+    branches:
+      - main
+    paths:
+      - "custom_components/thessla_green_modbus/manifest.json"
+      - "CHANGELOG.md"
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
-    name: Create GitHub Release
+    name: Create GitHub release from manifest version
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-      - name: Extract release notes from CHANGELOG
-        env:
-          TAG: ${{ github.ref_name }}
+      - name: Read integration version
+        id: version
+        shell: bash
         run: |
-          python3 << 'PYEOF'
-          import re, os
-          tag = os.environ['TAG']
-          version = tag.lstrip('v')
-          text = open('CHANGELOG.md').read()
-          pat = r'(?m)^## \[' + re.escape(version) + r'\][^\n]*\n(.*?)(?=^## \[|\Z)'
-          m = re.search(pat, text, re.DOTALL)
-          body = m.group(1).strip() if m else 'See CHANGELOG.md for full release notes.'
-          open('release_notes.md', 'w').write(body)
-          PYEOF
+          VERSION=$(python - <<'PY'
+          import json
+          from pathlib import Path
 
-      - name: Publish release
-        run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
-            --notes-file release_notes.md
+          manifest = Path("custom_components/thessla_green_modbus/manifest.json")
+          version = json.loads(manifest.read_text(encoding="utf-8"))["version"]
+          print(version)
+          PY
+          )
+
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid manifest version: $VERSION" >&2
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build release notes from CHANGELOG
+        shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+          pattern = re.compile(
+              rf"^## \[{re.escape(version)}\].*?(?=^## \[|\Z)",
+              re.MULTILINE | re.DOTALL,
+          )
+          match = pattern.search(changelog)
+
+          if match:
+              notes = match.group(0).strip()
+          else:
+              notes = (
+                  f"## v{version}\n\n"
+                  "Release created from manifest.json version."
+              )
+
+          Path("release_notes.md").write_text(notes + "\n", encoding="utf-8")
+          PY
+
+      - name: Check if release tag already exists
+        id: tag
+        shell: bash
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag ${TAG} already exists; skipping."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Tag ${TAG} does not exist; creating release."
+          fi
+
+      - name: Create GitHub release
+        if: steps.tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body_path: release_notes.md
+          target_commitish: ${{ github.sha }}
