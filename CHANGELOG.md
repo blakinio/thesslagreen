@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Comprehensive, safe optimistic UI state for controllable/setpoint entities.**
+  A new shared helper `custom_components/thessla_green_modbus/optimistic.py`
+  (`OptimisticState`) lets control entities reflect a *requested* value in the GUI
+  immediately after a confirmed-successful write, instead of lagging one full
+  coordinator poll behind the physical device. The helper supports
+  `set_pending`/`get_pending`/`clear_pending`/`clear_if_confirmed`, a TTL (default
+  10 s), and an optional float tolerance. It is wired into:
+  - **Number** (`native_value`) — shows the pending setpoint after a successful write.
+  - **Switch** (`is_on`) — stores the pending raw register value so simple, bit, and
+    mutually-exclusive `special_mode` switches evaluate consistently.
+  - **Select** (`current_option`) — shows the pending option; schedule/setting/BCD-time
+    selects are deliberately excluded.
+  - **Climate** — `target_temperature`, `hvac_mode`, `fan_mode`, `preset_mode`, and the
+    visible mode after turn on/off. `current_temperature` and `hvac_action` stay
+    confirmed-only; airflow/temperature extra attributes are never made optimistic.
+
+  Optimistic state is stored only after a confirmed-successful write, never mutates
+  `coordinator.data`, self-expires after the TTL, and is cleared as soon as the
+  coordinator confirms the real value. Failed writes never update the GUI
+  optimistically. The full post-write refresh is preserved everywhere; for the climate
+  multi-register flows the pending value is set before awaiting the refresh so the GUI
+  updates immediately. The fan keeps its existing dedicated optimistic-percentage
+  implementation (unchanged; targeted read-back stays disabled for fan writes). No
+  Modbus register addresses, register/entity/unique/service IDs, or translation keys
+  changed.
+
+### Docs
+
+- Added §11 "Optimistic UI validation for controllable entities" to
+  `docs/real_device_validation.md` with a real-device checklist and PASS criteria.
+
 ## [2.8.1] - 2026-07-06
 
 > Enum targeted read-back representation fix and fan percentage GUI responsiveness.

@@ -9,7 +9,7 @@ from typing import Any
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfTime, UnitOfVolumeFlowRate
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pymodbus.exceptions import ConnectionException, ModbusException
@@ -18,6 +18,7 @@ from .capability_rules import capability_block_reason
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .mappings import ENTITY_MAPPINGS
+from .optimistic import OptimisticState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -128,6 +129,10 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         # Number configuration
         self._setup_number_attributes()
 
+        # Transient optimistic setpoint shown immediately after a confirmed
+        # write, until the coordinator reports the confirmed device value.
+        self._optimistic = OptimisticState()
+
         _LOGGER.debug("Initialized number entity for register: %s", register_name)
 
     def _setup_number_attributes(self) -> None:
@@ -185,9 +190,39 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
                 EntityCategory(ec_val) if isinstance(ec_val, str) else ec_val
             )
 
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Drop the optimistic setpoint once the confirmed value matches."""
+        self._clear_optimistic_if_confirmed()
+        super()._handle_coordinator_update()
+
+    def _clear_optimistic_if_confirmed(self) -> None:
+        """Clear the pending setpoint once coordinator data confirms it."""
+        confirmed = self.coordinator.data.get(self.register_name)
+        if isinstance(confirmed, int | float):
+            self._optimistic.clear_if_confirmed(
+                self.register_name, confirmed, tolerance=self._optimistic_tolerance()
+            )
+
+    def _optimistic_tolerance(self) -> float:
+        """Return the float tolerance used to confirm a pending setpoint."""
+        try:
+            return float(self._attr_native_step) / 2
+        except (TypeError, ValueError):
+            return 0.5
+
     @property
     def native_value(self) -> float | None:
-        """Return the current value."""
+        """Return the current value.
+
+        Immediately after a confirmed write the optimistic pending value is
+        returned so the GUI reflects the requested setpoint without waiting for
+        the coordinator to catch up.
+        """
+        pending = self._optimistic.get_pending(self.register_name)
+        if pending is not None:
+            return float(pending)
+
         if self.register_name not in self.coordinator.data:
             return None
 
@@ -203,6 +238,10 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         """Set new value."""
         try:
             await self._write_register(self.register_name, value, include_offset=True)
+            # Only reached when the write confirmed success (a failure raises).
+            self._optimistic.set_pending(self.register_name, float(value))
+            if self.hass is not None:
+                self.async_write_ha_state()
             _LOGGER.debug("Set %s to %.2f", self.register_name, value)
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:

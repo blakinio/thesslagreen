@@ -504,3 +504,76 @@ This section must not be marked PASS until:
 **HA Core version tested:** _(pending)_
 **Integration commit SHA tested:** _(pending)_
 **Date tested:** _(pending)_
+
+---
+
+## 11. Optimistic UI validation for controllable entities
+
+This section validates the optimistic UI mechanism added for control/setpoint
+entities (`custom_components/thessla_green_modbus/optimistic.py`).  A pending
+value is stored **only after a confirmed-successful write**, shown in the GUI
+immediately, and dropped as soon as the coordinator confirms the real device
+value or a short TTL (default 10 s) elapses — whichever comes first.
+
+**Scope — only control/setpoint fields are optimistic:**
+
+- Fan percentage (existing behaviour, unchanged).
+- Number setpoints (`native_value`).
+- Switch on/off (`is_on`, including bit and mutually-exclusive `special_mode`).
+- Select options (`current_option`, excluding schedule/setting/BCD-time selects).
+- Climate command fields: `target_temperature`, `hvac_mode`, `fan_mode`,
+  `preset_mode`, and the visible mode after turn on/off.
+
+**Never optimistic (must stay confirmed-only):** `current_temperature`,
+`hvac_action`, airflow/temperature extra attributes, supply/exhaust flow and
+percentages as status, efficiency, power, heat recovery, bypass/heating/cooling
+real status, alarms/errors, `device_clock`, firmware/model/serial, diagnostics,
+and any destructive service.
+
+### 11.1 Real-device validation checklist
+
+> **Instructions:** Perform each test, then confirm the GUI updated *before* the
+> next coordinator poll and that the confirmed state later matches. **Do not
+> mark any row PASS without HA log evidence.**
+
+| # | Test | Action | Expected result | Actual result | PASS/FAIL | Notes |
+|---|------|--------|----------------|---------------|-----------|-------|
+| 1 | Fan percentage | Set 20 → 40 → 70 → 90 % via the fan card | GUI updates immediately at each step; physical device reacts; no rollback after the next full refresh | — | — | — |
+| 2 | Number setpoint | Change a safe low-risk number entity (e.g. `number.comfort_temperature`) | GUI shows the new value immediately; confirmed state later matches | — | — | — |
+| 3 | Switch | Toggle a safe switch (e.g. `switch.boost_mode`) | GUI flips immediately; confirmed state later matches | — | — | — |
+| 4 | Select | Change a safe select mode (e.g. `select.mode`) | GUI shows the new option immediately; confirmed state later matches | — | — | — |
+| 5a | Climate target temperature | Change target temperature | GUI target updates immediately; `current_temperature` unchanged | — | — | — |
+| 5b | Climate hvac_mode | Change HVAC mode | GUI mode updates immediately for the command field only | — | — | — |
+| 5c | Climate fan_mode | Change fan mode | GUI fan mode updates immediately | — | — | — |
+| 5d | Climate preset_mode | Change preset | GUI preset updates immediately | — | — | — |
+| 5e | Climate measured fields | Observe during 5a–5d | `current_temperature` and `hvac_action` remain confirmed-only (never jump optimistically) | — | — | — |
+
+### 11.2 Log checks (all rows)
+
+For each action, confirm in the HA log:
+
+1. No `transaction_id mismatch`.
+2. No traceback from `custom_components.thessla_green_modbus`.
+3. No `Failed to write` for the tested register.
+4. No second/extra Modbus client is opened (one client per entry).
+
+### 11.3 PASS criteria
+
+An optimistic-UI test PASSES when **all** hold:
+
+1. The controllable entity's GUI state changes immediately after a successful
+   write, without waiting a full poll interval.
+2. Measured/status entities do **not** change optimistically.
+3. After the next coordinator refresh, the confirmed device value matches the
+   optimistic value (no visible rollback for a successful write).
+4. A failed write leaves the GUI on the confirmed device state (no optimistic
+   change).
+5. The log checks in §11.2 all hold.
+
+### 11.4 Sign-off
+
+**Validation status:** Pending real-device execution
+**Tester sign-off:** _(pending)_
+**HA Core version tested:** _(pending)_
+**Integration commit SHA tested:** _(pending)_
+**Date tested:** _(pending)_
