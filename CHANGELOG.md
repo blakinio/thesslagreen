@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Internal
+
+- **Repository structure cleanup (tooling/docs reorganization; no runtime change).**
+  Moved one-shot / manual utilities out of `tools/` into a new `tools/manual/`
+  (`migrate_register_names.py`, `translate_register_descriptions.py`,
+  `clear_airflow_stats.py`, and the root `delete_stale_branches.sh`) so that `tools/`
+  holds only the recurring CI/pre-commit validators and generators; archived the
+  dated one-shot `docs/release_tooling_audit.md` into `docs/archive/`; removed a dead
+  `docs/register_scanning.md` link from `README_en.md`; updated `pyproject.toml`
+  (ruff per-file-ignore path) and `docs/architecture/file_inventory.md`. All moves use
+  `git mv` (history preserved). No Modbus register addresses/names, entity/unique/service
+  IDs, translation keys, or config/options-flow behavior changed; no runtime module moved.
+
 ### Docs
 
 - **Added architecture / file-inventory documentation** under `docs/architecture/`:
