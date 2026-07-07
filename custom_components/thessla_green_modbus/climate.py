@@ -14,7 +14,7 @@ from homeassistant.components.climate import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
@@ -25,6 +25,7 @@ from .const import (
 )
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
+from .optimistic import OptimisticState
 from .registers.maps import holding_registers
 
 _FEATURE_TARGET_TEMPERATURE = ClimateEntityFeature.TARGET_TEMPERATURE
@@ -143,21 +144,67 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         self._attr_hvac_modes = [HVACMode.OFF, HVACMode.AUTO, HVACMode.FAN_ONLY]
         self._attr_preset_modes = PRESET_MODES
 
-    @property
-    def current_temperature(self) -> float | None:
-        return _first_numeric(self.coordinator.data, ("supply_temperature", "ambient_temperature"))
+        # Optimistic command fields only.  Measured state (current_temperature,
+        # hvac_action, airflow/temperature extra attrs) is never made optimistic.
+        self._optimistic = OptimisticState()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Drop optimistic command fields once the confirmed state matches."""
+        self._clear_optimistic_if_confirmed()
+        super()._handle_coordinator_update()
+
+    def _clear_optimistic_if_confirmed(self) -> None:
+        """Clear pending command fields once coordinator data confirms them."""
+        self._optimistic.clear_if_confirmed(
+            "target_temperature",
+            self._confirmed_target_temperature(),
+            tolerance=TEMPERATURE_STEP_C / 2,
+        )
+        self._optimistic.clear_if_confirmed("hvac_mode", self._confirmed_hvac_mode())
+        self._optimistic.clear_if_confirmed("fan_mode", self._confirmed_fan_mode())
+        self._optimistic.clear_if_confirmed("preset_mode", self._confirmed_preset_mode())
+
+    def _set_optimistic(self, key: str, value: Any) -> None:
+        """Record an optimistic command value and push it to the GUI.
+
+        Only called after a confirmed-successful write; the value is set before
+        the caller awaits the post-write refresh so the GUI updates immediately.
+        """
+        self._optimistic.set_pending(key, value)
+        if self.hass is not None:
+            self.async_write_ha_state()
 
     @property
-    def target_temperature(self) -> float | None:
+    def current_temperature(self) -> float | None:
+        # Measured value — never optimistic.
+        return _first_numeric(self.coordinator.data, ("supply_temperature", "ambient_temperature"))
+
+    def _confirmed_target_temperature(self) -> float | None:
         return _first_numeric(self.coordinator.data, TEMPERATURE_KEYS)
 
     @property
-    def hvac_mode(self) -> HVACMode:
+    def target_temperature(self) -> float | None:
+        pending = self._optimistic.get_pending("target_temperature")
+        if pending is not None:
+            return float(pending)
+        return self._confirmed_target_temperature()
+
+    def _confirmed_hvac_mode(self) -> HVACMode:
         return _hvac_mode_from_data(self.coordinator.data)
 
     @property
+    def hvac_mode(self) -> HVACMode:
+        pending = self._optimistic.get_pending("hvac_mode")
+        if pending is not None:
+            return pending
+        return self._confirmed_hvac_mode()
+
+    @property
     def hvac_action(self) -> HVACAction:
-        if self.hvac_mode == HVACMode.OFF:
+        # Derived from confirmed status only — never from optimistic command
+        # fields, so it uses the confirmed hvac_mode rather than the property.
+        if self._confirmed_hvac_mode() == HVACMode.OFF:
             return HVACAction.OFF
         if self.coordinator.data.get("heating_cable", False):
             return HVACAction.HEATING
@@ -167,8 +214,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             return HVACAction.FAN
         return HVACAction.IDLE
 
-    @property
-    def fan_mode(self) -> str | None:
+    def _confirmed_fan_mode(self) -> str | None:
         airflow = self.coordinator.data.get("air_flow_rate_manual") or self.coordinator.data.get(
             "air_flow_rate_temporary_2"
         )
@@ -177,6 +223,13 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         min_pct, max_pct = self._percentage_limits()
         rounded = int((airflow + 5) / 10) * 10
         return f"{max(min_pct, min(max_pct, rounded))}%"
+
+    @property
+    def fan_mode(self) -> str | None:
+        pending = self._optimistic.get_pending("fan_mode")
+        if pending is not None:
+            return pending
+        return self._confirmed_fan_mode()
 
     @property
     def fan_modes(self) -> list[str] | None:
@@ -190,9 +243,15 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             modes.append(f"{max_pct}%")
         return modes
 
+    def _confirmed_preset_mode(self) -> str | None:
+        return _preset_from_special_mode(self.coordinator.data.get("special_mode", 0))
+
     @property
     def preset_mode(self) -> str | None:
-        return _preset_from_special_mode(self.coordinator.data.get("special_mode", 0))
+        pending = self._optimistic.get_pending("preset_mode")
+        if pending is not None:
+            return pending
+        return self._confirmed_preset_mode()
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -231,6 +290,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
                 "mode", HVAC_MODE_REVERSE_MAP.get(hvac_mode, 0), refresh=False
             )
         if success:
+            self._set_optimistic("hvac_mode", hvac_mode)
             await self.coordinator.async_request_refresh()
         else:
             _LOGGER.error("Failed to set HVAC mode to %s", hvac_mode)
@@ -245,6 +305,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
                 float(temperature), refresh=False
             )
             if success:
+                self._set_optimistic("target_temperature", float(temperature))
                 await self.coordinator.async_request_refresh()
             else:
                 _LOGGER.error("Failed to set temporary target temperature to %s°C", temperature)
@@ -257,6 +318,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         if success:
             success = await self._write_register("required_temperature", temperature, refresh=False)
         if success:
+            self._set_optimistic("target_temperature", float(temperature))
             await self.coordinator.async_request_refresh()
         else:
             _LOGGER.error("Failed to set target temperature to %s°C", temperature)
@@ -268,6 +330,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             airflow = max(min_pct, min(max_pct, airflow))
             success = await self._write_register("air_flow_rate_manual", airflow, refresh=False)
             if success:
+                self._set_optimistic("fan_mode", f"{airflow}%")
                 await self.coordinator.async_request_refresh()
             else:
                 _LOGGER.error("Failed to set fan mode to %s", fan_mode)
@@ -281,6 +344,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
                 "special_mode", _special_mode_from_preset(preset_mode), refresh=False
             )
         if success:
+            self._set_optimistic("preset_mode", preset_mode)
             await self.coordinator.async_request_refresh()
         else:
             _LOGGER.error("Failed to set preset mode to %s", preset_mode)
@@ -288,11 +352,17 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     async def async_turn_on(self) -> None:
         success = await self._write_register("on_off_panel_mode", 1, refresh=False)
         if success:
+            # Turning on reveals the mode implied by the confirmed ``mode``
+            # register; show that immediately instead of the OFF state.
+            self._set_optimistic(
+                "hvac_mode", HVAC_MODE_MAP.get(self.coordinator.data.get("mode", 0), HVACMode.AUTO)
+            )
             await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self) -> None:
         success = await self._write_register("on_off_panel_mode", 0, refresh=False)
         if success:
+            self._set_optimistic("hvac_mode", HVACMode.OFF)
             await self.coordinator.async_request_refresh()
 
     @property

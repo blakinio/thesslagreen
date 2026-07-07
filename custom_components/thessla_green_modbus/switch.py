@@ -8,7 +8,7 @@ from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pymodbus.exceptions import ConnectionException, ModbusException
@@ -17,6 +17,7 @@ from .capability_rules import capability_block_reason
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .mappings import ENTITY_MAPPINGS
+from .optimistic import OptimisticState
 from .registers.maps import coil_registers, holding_registers
 
 _LOGGER = logging.getLogger(__name__)
@@ -128,17 +129,32 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         if _ec := entity_config.get("category"):
             self._attr_entity_category = EntityCategory(_ec)
 
+        # Transient optimistic raw register value shown immediately after a
+        # confirmed write, until the coordinator reports the confirmed value.
+        self._optimistic = OptimisticState()
+
         _LOGGER.debug("Initialized switch entity: %s", key)
 
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if switch is on."""
-        if self.register_name not in self.coordinator.data:
-            return None
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Drop the optimistic value once the confirmed on/off state matches."""
+        self._clear_optimistic_if_confirmed()
+        super()._handle_coordinator_update()
 
-        raw_value = self.coordinator.data[self.register_name]
+    def _clear_optimistic_if_confirmed(self) -> None:
+        """Clear the pending value once the confirmed on/off state matches."""
+        confirmed = self.coordinator.data.get(self.register_name)
+        if confirmed is not None:
+            self._optimistic.clear_if_confirmed(
+                self.register_name,
+                confirmed,
+                comparator=lambda pending, conf: (
+                    self._evaluate_raw(pending) == self._evaluate_raw(conf)
+                ),
+            )
 
-        # Handle None values
+    def _evaluate_raw(self, raw_value: Any) -> bool | None:
+        """Return the on/off state implied by a raw register value."""
         if raw_value is None:
             return None
 
@@ -149,6 +165,24 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
 
         # Convert to boolean
         return bool(raw_value)
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if switch is on.
+
+        A fresh optimistic raw value (recorded after a confirmed write) takes
+        precedence so the GUI reflects the requested state immediately.  The
+        pending value is the raw register value so bit and special_mode
+        switches evaluate consistently.
+        """
+        pending = self._optimistic.get_pending(self.register_name)
+        if pending is not None:
+            return self._evaluate_raw(pending)
+
+        if self.register_name not in self.coordinator.data:
+            return None
+
+        return self._evaluate_raw(self.coordinator.data[self.register_name])
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
@@ -162,6 +196,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             else:
                 value = 1
             await self._write_register(self.register_name, value)
+            self._set_optimistic(value)
             _LOGGER.debug("Turned on %s", self.register_name)
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:
@@ -180,11 +215,22 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             else:
                 value = 0
             await self._write_register(self.register_name, value)
+            self._set_optimistic(value)
             _LOGGER.debug("Turned off %s", self.register_name)
 
         except (ModbusException, ConnectionException, RuntimeError) as exc:
             _LOGGER.error("Failed to turn off %s: %s", self.register_name, exc)
             raise
+
+    def _set_optimistic(self, value: int) -> None:
+        """Record the optimistic raw value and push it to the GUI immediately.
+
+        Only called after a confirmed-successful write (a failure raises before
+        reaching here), so a failed write never updates the GUI optimistically.
+        """
+        self._optimistic.set_pending(self.register_name, value)
+        if self.hass is not None:
+            self.async_write_ha_state()
 
     async def _write_register(
         self,
