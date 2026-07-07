@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **Restored `pydantic==2.12.2` dev pin (revert of Dependabot #1741; no runtime
+  change).** `pytest-homeassistant-custom-component 0.13.309–0.13.316` (the range
+  pinned in `requirements-dev.txt` / `pyproject.toml`) all depend on
+  `pydantic==2.12.2`, so the Dependabot minor bump to `pydantic==2.13.4`
+  ([#1741](https://github.com/blakinio/thesslagreen/pull/1741)) made
+  `pip install -r requirements-dev.txt` fail with `ResolutionImpossible`, breaking
+  the CI dependency-install step on `main` (commit `0c46629`: the Lint job failed and
+  Tests / Entity-mappings were skipped). Reverted the pin to `2.12.2` in both
+  `requirements-dev.txt` and `pyproject.toml` and restored the accurate
+  `pyproject.toml` comment (Dependabot had rewritten it to claim the plugin pins
+  2.13.4). This is a repeat of the #1708 regression fixed in 2.8.1. No runtime code,
+  Modbus register addresses/names, entity/unique/service IDs, translation keys, or
+  config/options-flow behavior changed.
 - **Repository cleanup follow-up (tooling/docs; no runtime change).** Removed the
   stale `info.md` (its counts/capabilities were outdated and `hacs.json:
   render_readme:true` makes `README.md` canonical) and the unused `.yamllint.yaml`
