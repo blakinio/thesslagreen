@@ -12,7 +12,7 @@ from typing import Any
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -22,6 +22,7 @@ from .capability_rules import capability_block_reason
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .mappings import ENTITY_MAPPINGS
+from .optimistic import OptimisticState
 from .schedule_helpers import SETTING_SCHEDULE_PREFIXES
 from .utils import BCD_TIME_PREFIXES
 
@@ -101,6 +102,28 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         if _ec := definition.get("entity_category"):
             self._attr_entity_category = EntityCategory(_ec)
 
+        # Optimistic UI is only safe for plain enumerated control selects.
+        # Schedule/setting/BCD-time registers decode to strings or AATT dicts
+        # and are intentionally excluded until proven safe.
+        self._optimistic_enabled = not register_name.startswith(
+            BCD_TIME_PREFIXES + SETTING_SCHEDULE_PREFIXES
+        )
+        self._optimistic = OptimisticState()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Drop the optimistic option once the confirmed raw value matches."""
+        self._clear_optimistic_if_confirmed()
+        super()._handle_coordinator_update()
+
+    def _clear_optimistic_if_confirmed(self) -> None:
+        """Clear the pending option once coordinator data confirms it."""
+        if not self._optimistic_enabled:
+            return
+        confirmed = self.coordinator.data.get(self._register_name)
+        if confirmed is not None and not isinstance(confirmed, dict):
+            self._optimistic.clear_if_confirmed(self._register_name, confirmed)
+
     @property
     def available(self) -> bool:
         """Return if entity is available.
@@ -127,7 +150,19 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        """Return current option."""
+        """Return current option.
+
+        A fresh optimistic raw value (recorded after a confirmed write) is
+        mapped back to its option so the GUI reflects the requested selection
+        immediately.  Only enabled for plain enumerated selects.
+        """
+        if self._optimistic_enabled:
+            pending = self._optimistic.get_pending(self._register_name)
+            if pending is not None:
+                option = self._reverse_states.get(pending)
+                if option is not None:
+                    return option
+
         value = self.coordinator.data.get(self._register_name)
         if value is None:
             return None
@@ -153,6 +188,8 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         try:
             await self._write_register(self._register_name, value)
         except RuntimeError as err:
+            # Invalid option raised above; a failed write raises here — in
+            # neither case is an optimistic value recorded.
             msg = f"Failed to set {self._register_name} to {option}: {err}"
             _LOGGER.error(msg)
             raise HomeAssistantError(msg) from err
@@ -165,3 +202,9 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
             msg = f"Error setting {self._register_name} to {option}: {err_txt}"
             _LOGGER.error(msg)
             raise HomeAssistantError(msg) from err
+
+        # Only reached when the write confirmed success.
+        if self._optimistic_enabled:
+            self._optimistic.set_pending(self._register_name, value)
+            if self.hass is not None:
+                self.async_write_ha_state()
