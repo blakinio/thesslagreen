@@ -5,10 +5,20 @@
 **Scope:** Full per-file audit of every tracked file. Classify each as needed /
 legacy / duplicate / one-shot / safe-to-remove, with evidence.
 
-> This is an **audit-only** pass. Per the task rules, **no runtime code, register
-> addresses/names, entity/unique/service IDs, translation keys, or config/options
-> flow behaviour were changed**, and **no files were deleted** — the evidence did
-> not meet the deletion bar for any file (see §7).
+> The original audit (§1–§11 below) was an **audit-only** pass: **no runtime
+> code, register addresses/names, entity/unique/service IDs, translation keys, or
+> config/options-flow behaviour were changed**, and no files were touched — the
+> conservative deletion bar in §5 was not met by any single file on its own.
+>
+> **Follow-up cleanup applied (see §12).** A subsequent cleanup PR on `main`
+> acted on the reclassified/stale items surfaced here: it removed the stale
+> `info.md` and the unused `.yamllint.yaml`, relocated the three manual/one-shot
+> `tools/` scripts (`cleanup_old_entities.py`, `generate_strings.py`,
+> `sort_registers_json.py`) into `tools/manual/`, and fixed the
+> `validate_registers.py` CLI/pre-commit bug from §10. That follow-up still
+> changed **no** register addresses/names, entity/unique/service IDs, translation
+> keys, config/options-flow behaviour, or runtime code. Sections §1–§11 are
+> preserved as the original audit-time snapshot; §12 records the deltas.
 
 ---
 
@@ -16,13 +26,13 @@ legacy / duplicate / one-shot / safe-to-remove, with evidence.
 
 | Metric | Count |
 |---|---:|
-| **Total tracked files** (`git ls-files`) | **564** |
+| **Total tracked files** (`git ls-files`) | **564** — after §12: **562** (2 root files removed) |
 | `tests/` | 270 |
 | `custom_components/thessla_green_modbus/` | 193 (174 `.py` + 19 package data) |
 | `docs/` | 51 (of which `docs/archive/` = 29, `docs/architecture/` = 3, `docs/releases/` = 1, `docs/audits/` = 1→2 after this file) |
-| `tools/` | 17 (of which `tools/manual/` = 5) |
+| `tools/` | 17 (of which `tools/manual/` = 5) — after §12: still 17, but `tools/manual/` = 8 (3 scripts relocated) |
 | `.github/` | 6 |
-| root files | 27 |
+| root files | 27 — after §12: **25** (`info.md` and `.yamllint.yaml` removed) |
 
 **Orphan analysis:** a strict import-graph scan of all 174 runtime `.py` modules
 found **0 orphans** — every runtime module is imported by at least one other
@@ -75,7 +85,7 @@ import current modules and are valid:
 | `CONTRIBUTING.md` | docs | yes | refs tools, `.bandit`, `DEPLOYMENT.md` | keep | none |
 | `DEPLOYMENT.md` | docs | yes | ref by `CONTRIBUTING`, `QUICK_START`, `README_en` | keep | none |
 | `QUICK_START.md` | docs | yes | ref by `README_en.md` | keep | none |
-| `info.md` | asset/metadata | yes* | HACS "Information" pane convention file | keep | low — possibly redundant vs `render_readme:true` (maintainer decision) |
+| `info.md` | asset/metadata | ~~yes*~~ no | stale content (outdated counts/capabilities); `hacs.json: render_readme:true` makes `README.md` canonical | **removed in §12** | low — restore as a minimal pointer only if HACS validation requires it |
 | `LICENSE` | metadata | yes | legal | keep | none |
 | `hacs.json` | metadata | yes | HACS required manifest | keep (public contract) | none |
 | `pyproject.toml` | metadata | yes | build/tooling config (ruff, mypy) | keep | none |
@@ -87,7 +97,7 @@ import current modules and are valid:
 | `requirements-test-min.txt` | metadata | yes | lightweight validator deps (`CLAUDE.md` §2) | keep | none |
 | `.pre-commit-config.yaml` | CI/release | yes | pre-commit hooks | keep | none |
 | `.bandit` | metadata | yes | ref by `CONTRIBUTING.md` (documented dev step) | keep | low — bandit not wired into CI/pre-commit (manual only) |
-| `.yamllint.yaml` | metadata | yes | yaml lint config | keep | none |
+| `.yamllint.yaml` | metadata | ~~yes~~ no | unused lint config — not run by CI or pre-commit (pre-commit uses `check-yaml`, not `yamllint`) | **removed in §12** | none |
 | `.gitignore` / `.gitattributes` | metadata | yes | git config | keep | none |
 | `.python-version` / `.tool-versions` | metadata | yes | pins Python 3.13 (`CLAUDE.md` §2) | keep | none |
 | `example_configuration.yaml` | asset | yes | ref by `tests/test_example_configuration.py` | keep | none |
@@ -117,10 +127,10 @@ import current modules and are valid:
 | `tools/compare_registers_with_reference.py` | validator/tool | yes | CI + `CLAUDE.md` §5 + `CHANGELOG` | keep | none |
 | `tools/validate_entity_mappings.py` | validator/tool | yes | CI + `CLAUDE.md` §5 + `CONTRIBUTING` | keep | none |
 | `tools/validate_dashboard_entities.py` | validator/tool | yes | ref by `tests/test_validate_dashboard_entities_tool.py` | keep | none |
-| `tools/validate_registers.py` | validator/tool | yes | pre-commit hook + `README` + `tests/test_validate_registers.py` | keep — **but CLI/pre-commit path is broken**, see §8 | **med** — latent bug |
-| `tools/generate_strings.py` | manual/one-shot | yes | `strings.json` generator; ref by `file_inventory.md` | keep-but-manual | low |
-| `tools/sort_registers_json.py` | manual/one-shot | yes | ref by `tools/README.md`, `file_inventory.md` | keep-but-manual | low |
-| `tools/cleanup_old_entities.py` | manual/one-shot | yes | ref by `tests/test_cleanup_old_entities.py`, `file_inventory.md` | keep-but-manual (tested) | low |
+| `tools/validate_registers.py` | validator/tool | yes | pre-commit hook + `README` + `tests/test_validate_registers.py` | keep — CLI/pre-commit path **fixed in §12** (was broken, see §10) | resolved |
+| `tools/generate_strings.py` | manual/one-shot | yes | `strings.json` generator; ref by `file_inventory.md` | **moved → `tools/manual/generate_strings.py` in §12** | low |
+| `tools/sort_registers_json.py` | manual/one-shot | yes | ref by `tools/README.md`, `file_inventory.md` | **moved → `tools/manual/sort_registers_json.py` in §12** | low |
+| `tools/cleanup_old_entities.py` | manual/one-shot | yes | ref by `tests/test_cleanup_old_entities.py`, `file_inventory.md` | **moved → `tools/manual/cleanup_old_entities.py` in §12** (tested) | low |
 | `tools/manual/README.md` | docs | yes | documents the one-shot tools | keep | none |
 | `tools/manual/migrate_register_names.py` | manual/one-shot | yes | documented one-shot; ref `CHANGELOG`, `file_inventory` | keep-but-manual | low |
 | `tools/manual/translate_register_descriptions.py` | manual/one-shot | yes | documented one-shot; ref `CHANGELOG`, `pyproject` | keep-but-manual | low |
@@ -202,22 +212,38 @@ isolation (`CLAUDE.md` §1 — never weaken). The four legacy-named tests are va
 
 ## 5. Safe-delete candidates
 
-**None.** No tracked file satisfies the deletion bar from task step 7 (proven
-duplicate **AND** unreferenced **AND** not runtime/test/docs/CI **AND** zero
-behaviour impact):
+**No mechanical safe-delete candidates under the strict bar, but not "nothing to
+clean."** The distinction matters, so this is deliberately qualified:
 
-- 0 byte-identical duplicate files.
-- 0 orphaned runtime modules.
+- **No runtime orphan modules** — a strict import-graph scan of all 174 runtime
+  `.py` modules found 0 orphans; nothing under `custom_components/` is
+  removable.
+- **No duplicate files** — a byte-level content-hash scan across all tracked
+  files found 0 byte-identical duplicates.
+- **No file met the strict mechanical bar** (proven duplicate **AND**
+  unreferenced **AND** not runtime/test/docs/CI **AND** zero behaviour impact) —
+  so no file was flagged for blind deletion.
+- **But stale / redundant / misclassified tooling did exist** and was cleaned or
+  reclassified in the follow-up (see §12): the stale `info.md` and unused
+  `.yamllint.yaml` were removed, and the three manual/one-shot `tools/` scripts
+  were relocated into `tools/manual/` so the top-level `tools/` directory holds
+  only recurring pipeline validators/generators.
 - All docs are either referenced or intentional archive/reference docs.
 - All step-5 legacy artifacts are already absent (prior PRs removed them).
 
+In other words: **0 mechanically-provable orphans/duplicates**, not **0 things
+worth cleaning** — the cleanup was qualitative (stale/redundant/manual), applied
+in §12, not a blind mass-delete.
+
 ## 6. Keep-but-manual files
 
-`tools/generate_strings.py`, `tools/sort_registers_json.py`,
-`tools/cleanup_old_entities.py`, and all of `tools/manual/`
-(`migrate_register_names.py`, `translate_register_descriptions.py`,
-`clear_airflow_stats.py`, `delete_stale_branches.sh`, `README.md`). One-shot /
-generator utilities, not in the automated pipeline; documented and referenced.
+All of `tools/manual/` — `migrate_register_names.py`,
+`translate_register_descriptions.py`, `clear_airflow_stats.py`,
+`delete_stale_branches.sh`, `README.md`, and (relocated here in §12)
+`generate_strings.py`, `sort_registers_json.py`, `cleanup_old_entities.py`.
+One-shot / generator utilities, not in the automated pipeline; documented and
+referenced. After §12 the top-level `tools/` directory holds only recurring
+pipeline validators/generators.
 
 ## 7. Keep-because-runtime files
 
@@ -228,7 +254,8 @@ package data files. See §4.5 for the layered grouping.
 
 Files whose change would break existing installations or HACS/HA integration:
 
-- `custom_components/.../manifest.json`, `hacs.json`, `info.md`, `brand/*`
+- `custom_components/.../manifest.json`, `hacs.json`, `brand/*` (root `info.md`
+  removed in §12 — `hacs.json: render_readme:true` makes `README.md` canonical)
 - `custom_components/.../strings.json`, `translations/en.json`, `translations/pl.json` (translation keys)
 - `custom_components/.../services.yaml` + `services/` (service IDs)
 - `custom_components/.../registers/thessla_green_registers_full.json` + `airpack4_modbus.json` (register addresses/names)
@@ -241,8 +268,8 @@ Files whose change would break existing installations or HACS/HA integration:
 | Item | Why uncertain | Suggested decision |
 |---|---|---|
 | `.github/workflows/auto-merge-codex.yml` | Active workflow that auto-squash-merges PRs from `codex/*` branches. If the OpenAI Codex agent flow is no longer used, this is dead (and behaviour-bearing) automation. | Confirm whether `codex/*` PRs are still produced; remove the workflow if not. |
-| `tools/validate_registers.py` (CLI/pre-commit path) | Latent bug — see §10. Not a deletion; needs a 1-line stub fix. | Fix the stub (see §10) or drop the `validate-registers` pre-commit hook. |
-| `info.md` | Possibly redundant given `hacs.json: "render_readme": true`. | Keep unless HACS "Information" pane is confirmed unused. |
+| `tools/validate_registers.py` (CLI/pre-commit path) | Latent bug — see §10. Not a deletion; needs a 1-line stub fix. | ✅ **Resolved in §12** — stub fixed; `python tools/validate_registers.py` exits 0. |
+| `info.md` | Possibly redundant given `hacs.json: "render_readme": true`. | ✅ **Resolved in §12** — removed; `render_readme: true` makes `README.md` canonical. Restore as a minimal pointer only if HACS validation is shown to require it. |
 | `docs/archive/*` fully-superseded reports (subset of the 29) | Historical value only; none referenced by runtime/tests/CI. | Optional future prune; **not** deleting in this audit (they are docs). |
 | `.bandit` | Config for a linter not wired into CI/pre-commit (manual-only, documented in `CONTRIBUTING.md`). | Keep, or wire bandit into CI to make it load-bearing. |
 
@@ -284,9 +311,10 @@ was not updated to match.
   first, so the later `setdefault` stub is a no-op. Standalone CLI invocation has
   no such prior import, so the stub wins and `main()` breaks.
 
-**Suggested one-line fix (maintainer decision — not applied here):** add
+**Fix — applied in the follow-up (see §12):** added
 `read_planner_stub.group_registers = lambda *_, **__: None` alongside the existing
 `group_reads` stub. This is a tool-only change with no runtime/behaviour impact.
+`python tools/validate_registers.py` now exits 0.
 
 ---
 
@@ -307,9 +335,107 @@ Environment: **Python 3.11.15** (repo requires **3.13**). Per `CLAUDE.md` §2,
 | `python tools/check_translations.py` | ✅ pass ("All translation keys present.") |
 | `python tools/compare_registers_with_reference.py --show-renames` | ✅ exit 0 (reports vendor↔main name mapping) |
 | `python tools/compare_airpack4_vendor_coverage.py` | ✅ exit 0 (regenerated coverage docs identically — no diff) |
-| `python tools/validate_registers.py` | ❌ **fails** — see §10 (pre-existing tool bug, not introduced by this audit) |
+| `python tools/validate_registers.py` | ❌ **failed at audit time** — see §10; ✅ **fixed in §12** (now exits 0) |
 
-**Rules self-audit:** No Modbus register addresses/names, entity IDs, unique IDs,
-service IDs, translation keys, or config/options-flow behaviour were changed. No
-runtime code was modified. `dev` branch and `modbus_helpers.py` were not
-reintroduced. No files were deleted. Only this report was added.
+**Rules self-audit (audit-time snapshot):** No Modbus register addresses/names,
+entity IDs, unique IDs, service IDs, translation keys, or config/options-flow
+behaviour were changed. No runtime code was modified. `dev` branch and
+`modbus_helpers.py` were not reintroduced. No files were deleted at audit time —
+only this report was added. **§12 records the follow-up cleanup deltas**, which
+also preserved every one of those invariants.
+
+---
+
+## 12. Follow-up cleanup (applied after the audit)
+
+This section records the concrete cleanup applied on `main` in a follow-up PR
+after the audit-only pass above. **Bottom line:** there were **no runtime orphan
+modules and no duplicate files** to remove (§1, §5), but there *was*
+stale/redundant/manual tooling to clean or reclassify, and a real tool bug to
+fix. Those — and only those — were actioned here.
+
+### 12.1 Files deleted (2)
+
+| File | Reason |
+|---|---|
+| `info.md` | Stale content (claimed outdated entity counts/capabilities). `hacs.json` sets `"render_readme": true`, so `README.md` is the canonical HACS description — `info.md` was redundant and misleading. Restore as a minimal pointer (`# ThesslaGreen Modbus` → "See README.md …") **only** if HACS validation is shown to require an `info.md`. |
+| `.yamllint.yaml` | Unused lint config. Not invoked by CI or pre-commit — pre-commit uses `check-yaml`, **not** `yamllint`. Keeping an unused, unwired lint config was misleading. |
+
+### 12.2 Files moved (3, via `git mv` — history preserved)
+
+The three manual/one-shot scripts that were still living in the top-level
+`tools/` directory were relocated into `tools/manual/`, so `tools/` now holds
+**only** the recurring pipeline validators/generators:
+
+| From | To |
+|---|---|
+| `tools/cleanup_old_entities.py` | `tools/manual/cleanup_old_entities.py` |
+| `tools/generate_strings.py` | `tools/manual/generate_strings.py` |
+| `tools/sort_registers_json.py` | `tools/manual/sort_registers_json.py` |
+
+`sort_registers_json.py` and `generate_strings.py` compute the repo root from
+`__file__`; their `parents[1]` was bumped to `parents[2]` to keep resolving the
+repo root from the deeper `tools/manual/` location. `cleanup_old_entities.py`
+uses only `__file__`-relative and `Path.home()` paths, so it needed no path
+change. `tests/test_cleanup_old_entities.py` had its import updated to
+`from tools.manual.cleanup_old_entities import cleanup_entity_registry`.
+
+### 12.3 Tool bug fixed — `tools/validate_registers.py` CLI/pre-commit path
+
+The §10 finding was fixed. The `read_planner` stub in `_prepare_environment()`
+only exposed `group_reads`; `registers/loader.py` (imported by the CLI `main()`)
+now imports `group_registers` **and** `plan_group_reads` from `read_planner`, so
+standalone `python tools/validate_registers.py` raised `ImportError`. Both stub
+attributes were added alongside `group_reads`:
+
+```python
+read_planner_stub.group_registers = lambda *_, **__: None  # type: ignore
+read_planner_stub.plan_group_reads = lambda *_, **__: None  # type: ignore
+```
+
+(The audit's §10 named only `group_registers`; `loader.py` has since also
+switched to `plan_group_reads`, so both are required for the CLI to succeed.)
+`python tools/validate_registers.py` now exits 0. Tool-only change, no runtime
+impact; `tests/test_validate_registers.py` is unaffected (it imports the real
+`read_planner` first, so its `setdefault` stub stays a no-op).
+
+### 12.4 Documentation updated
+
+- `tools/README.md` — now documents only the recurring validators; points to
+  `tools/manual/` for the relocated one-shot tools.
+- `tools/manual/README.md` — added the three relocated scripts; corrected the
+  closing note (only `cleanup_old_entities.py` is unit-tested; nothing here is
+  imported by runtime, CI, or pre-commit).
+- `docs/architecture/file_inventory.md` — moved the three scripts from the
+  `tools/` row to the `tools/manual/` row; updated the `strings.json` tool
+  reference to `manual/generate_strings.py`.
+- This audit — §1, §4.1, §4.3, §5, §6, §8, §9, §10, §11 annotated; §5 no longer
+  reads a bare "none" and now states: **no runtime orphan modules, no duplicate
+  files, stale/redundant/manual tooling cleaned or reclassified, and the
+  `validate_registers` CLI bug fixed.**
+
+### 12.5 Follow-up validation
+
+Environment: **Python 3.11.15** (repo requires **3.13**). Per `CLAUDE.md` §2,
+`pytest` cannot run here — **full pytest must be verified in CI on Python 3.13.**
+
+| Command | Result |
+|---|---|
+| `python -m compileall -q custom_components/thessla_green_modbus tests tools` | ✅ pass |
+| `pytest --collect-only -q` | ⚠️ not run — `homeassistant` unavailable on 3.11 (flag for CI/3.13) |
+| `pytest tests/ -q --tb=long` | ⚠️ not run — needs Python 3.13 + HA test stack (flag for CI/3.13) |
+| `ruff check custom_components tests tools` | ✅ pass ("All checks passed!") |
+| `ruff check --select I custom_components tests tools` | ✅ pass |
+| `ruff format --check custom_components tests tools` | ✅ pass (456 files already formatted) |
+| `python tools/check_maintainability.py` | ✅ pass ("Maintainability gate passed.") |
+| `python tools/validate_entity_mappings.py` | ✅ pass ("OK: 367 entities validated") |
+| `python tools/check_translations.py` | ✅ pass ("All translation keys present.") |
+| `python tools/compare_registers_with_reference.py --show-renames` | ✅ exit 0 |
+| `python tools/compare_airpack4_vendor_coverage.py` | ✅ exit 0 (regenerated coverage docs identically — no diff) |
+| `python tools/validate_registers.py` | ✅ **exit 0** (previously failed — see §10) |
+
+**Rules self-audit (follow-up):** No Modbus register addresses/names, entity IDs,
+unique IDs, service IDs, translation keys, or config/options-flow behaviour were
+changed. No runtime module was modified or moved. `dev` branch and
+`modbus_helpers.py` were not reintroduced. No migration files were deleted. Moves
+used `git mv` (history preserved).

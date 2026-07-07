@@ -34,6 +34,8 @@ def _prepare_environment() -> None:
         "custom_components.thessla_green_modbus.registers.read_planner"
     )
     read_planner_stub.group_reads = lambda *_, **__: None  # type: ignore
+    read_planner_stub.group_registers = lambda *_, **__: None  # type: ignore
+    read_planner_stub.plan_group_reads = lambda *_, **__: None  # type: ignore
     sys.modules.setdefault(
         "custom_components.thessla_green_modbus.registers.read_planner", read_planner_stub
     )

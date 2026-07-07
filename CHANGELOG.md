@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **Repository cleanup follow-up (tooling/docs; no runtime change).** Removed the
+  stale `info.md` (its counts/capabilities were outdated and `hacs.json:
+  render_readme:true` makes `README.md` canonical) and the unused `.yamllint.yaml`
+  (not run by CI or pre-commit — pre-commit uses `check-yaml`, not `yamllint`);
+  relocated the three remaining manual/one-shot `tools/` scripts
+  (`cleanup_old_entities.py`, `generate_strings.py`, `sort_registers_json.py`) into
+  `tools/manual/` via `git mv` so the top-level `tools/` holds only recurring
+  CI/pre-commit validators/generators; fixed the `tools/validate_registers.py`
+  CLI/pre-commit path (the `read_planner` stub was missing `group_registers` /
+  `plan_group_reads`, so standalone `python tools/validate_registers.py` raised
+  `ImportError`); updated `tools/README.md`, `tools/manual/README.md`,
+  `docs/architecture/file_inventory.md`, the repository file-inventory audit, and the
+  `tests/test_cleanup_old_entities.py` import path. No Modbus register addresses/names,
+  entity/unique/service IDs, translation keys, or config/options-flow behavior changed;
+  no runtime module was touched.
 - **Repository structure cleanup (tooling/docs reorganization; no runtime change).**
   Moved one-shot / manual utilities out of `tools/` into a new `tools/manual/`
   (`migrate_register_names.py`, `translate_register_descriptions.py`,
