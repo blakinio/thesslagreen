@@ -81,6 +81,9 @@ logger:
 ## Dokumentacja dodatkowa
 
 - [Architektura docelowa](docs/thesslagreen_architecture.md)
+- [Inwentarz plików (architektura)](docs/architecture/file_inventory.md)
+- [Przepływ runtime (architektura)](docs/architecture/runtime_flow.md)
+- [Ścieżka zapisu i read-back (architektura)](docs/architecture/write_path.md)
 - [Wytyczne refaktoryzacji](docs/thesslagreen_guidelines.md)
 - [Status refaktoryzacji](docs/refactor_status.md)
 - [Changelog](CHANGELOG.md)
