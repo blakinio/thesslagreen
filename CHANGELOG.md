@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Docs
+
+- **Added architecture / file-inventory documentation** under `docs/architecture/`:
+  `file_inventory.md` (per-file ownership, risk level, and do-not-change warnings),
+  `runtime_flow.md` (config-flow scan, DeviceClient ownership, coordinator/entity
+  setup, polling, service registration, unload/reload, real-device validation
+  expectations), and `write_path.md` (HA entity → Modbus write, targeted read-back
+  rules, full-refresh fallback, why fan/climate disable read-back, and optimistic-UI
+  policy). Docs-only; no runtime code, register addresses/names, entity/unique/service
+  IDs, or translation keys changed. Linked from the README documentation list.
+
 ## [2.8.1] - 2026-07-06
 
 > Enum targeted read-back representation fix and fan percentage GUI responsiveness.
