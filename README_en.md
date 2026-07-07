@@ -114,7 +114,6 @@ cp -r thesslagreen/custom_components/thessla_green_modbus custom_components/
 > Enabling the **Full register list** option (`force_full_register_list`)
 > creates entities for every discovered register, but some may contain
 > partial values or internal configuration. Use this option with care.
-> [More details](docs/register_scanning.md).
 
 ### Auto-scan process
 During setup the `ThesslaGreenDeviceScanner` module from
