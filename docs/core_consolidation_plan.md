@@ -329,3 +329,63 @@ Blocked: real-device validation for the read path has not yet reached PASS statu
 or merged until a full real-device read cycle is confirmed correct.
 
 Re-evaluate after the device validation milestone is marked PASS in the project tracker.
+
+---
+
+## 2026-07-08 Slice 3 readiness re-assessment — connection helper consolidation
+
+**Slice: 3 — STILL BLOCKED (on real-device validation only)**
+
+Re-assessed after PR #1745 (targeted read-back allow-list) merged. This note records the
+current readiness so the next attempt does not have to re-derive it. **No connection code
+was changed in this note.**
+
+### Preconditions status
+
+| Precondition | Status |
+|---|---|
+| Import/call-site audit complete | ✅ Done — see below |
+| Connect/disconnect/lifecycle tests present | ✅ `test_coordinator_connection.py`, `test_coordinator_connection_helpers.py`, `test_coordinator_connection_state.py`, `test_coordinator_disconnect.py`, `test_coordinator_lifecycle.py`, `test_modbus_transport_lifecycle.py` |
+| No connection-path file touched in last 3 PRs | ✅ Now satisfied — last change to the three files was `8a399a1` (A1-finish, PR #1674 era); PRs #1741–#1745 did **not** touch them |
+| Real-device validation after #1684 complete/PASS | ❌ **NOT met** — `docs/real_device_validation.md` is `PARTIAL`; the IO-ownership (#1684/#1688) row is partial evidence, and the doc states it "must not be marked PASS until all evidence in section 4 is provided" |
+
+**Conclusion:** the only remaining blocker is the real-device-validation gate (plan §7 +
+Slice 3 prerequisites + CLAUDE.md §8 "never force a slice whose preconditions are unmet").
+The stale B3 precheck reason ("connection files touched in last 3 PRs") no longer applies.
+
+### Import/call-site audit (2026-07-08)
+
+The three target files total 127 lines and are imported by **exactly one** caller,
+`core/client_connection.py`:
+
+- `connection_state.py` (24 lines) — `mark_connection_established/_failure/_disconnected`
+- `disconnect.py` (50 lines) — `close_client_connection`, `disconnect_locked`
+- `connection_lifecycle.py` (53 lines) — `ensure_connected_lifecycle`
+
+Other apparent matches are unrelated: `core/connection.py` and `coordinator/coordinator.py`
+only receive these as `*_fn` **callbacks** (parameter names), and `coordinator/state.py` /
+`scanner/state.py` define their own similarly-named helpers. No test imports the three
+target modules directly (tests exercise them via the coordinator/device-client surface).
+
+### Smallest safe move (when the real-device gate clears)
+
+Per Slice 3 target and CLAUDE.md's "consolidate into the sole caller only when the plan
+allows" rule:
+
+1. `git mv`-style inline of `connection_state.py` + `disconnect.py` **into**
+   `connection_lifecycle.py` (3 connection-helper files → 1), keeping byte-identical
+   function bodies (no logic change).
+2. Update the three import blocks in `core/client_connection.py` to import all connection
+   lifecycle/state/disconnect symbols from `connection_lifecycle`. No re-export shims.
+3. `compileall` after the move to confirm no circular import; run the full per-slice
+   validation checklist (§6) including the connection/lifecycle/disconnect tests.
+4. Update this plan doc marking Slice 3 DONE with a rollback plan.
+
+**Rollback plan (for the eventual slice):** `git revert` the slice commit — re-creates
+`connection_state.py`/`disconnect.py` and restores the imports in `client_connection.py`;
+zero runtime effect either way (pure move).
+
+### Re-evaluation criteria
+
+Attempt Slice 3 once `docs/real_device_validation.md` reaches **PASS** (or the maintainer
+explicitly waives the real-device gate for this zero-behavior-change move).
