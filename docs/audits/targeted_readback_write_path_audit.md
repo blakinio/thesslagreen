@@ -341,7 +341,23 @@ The Stage-1 items are already merged. Before writing more code, reproduce the or
 
 No further Stage-1 work is required. If anything, add regression test **M5** to pin the fan optimistic-update behaviour.
 
-### Stage 2 — read-back policy refactor (the real open work)
+### Stage 2 — read-back policy refactor (the real open work) — **IMPLEMENTED**
+> Implemented as the explicit allow-list `_READBACK_ALLOW_LIST` in
+> `coordinator/schedule.py` (replacing `_NO_READBACK_REGISTERS`). `_targeted_readback_safe`
+> now returns eligible **iff** the register is on the allow-list and is still a
+> function-3 single-word register. The allow-list was derived by enumerating the
+> writable holding-1w registers exposed via the number/select/switch platforms and
+> removing every group with a `risk_category` (`communication_lockout`, `security_lock`,
+> `advanced_configuration`, `destructive_action`), the reset/trigger/config-mode set, the
+> `schedule_`/`setting_` BCD-AATT slots, and the `language`/`rtc_cal` config/clock
+> registers. The policy was kept inline in `schedule.py` (no new module) to keep the diff
+> small; extraction into a dedicated module remains an optional future cleanup. Tests
+> landed in `tests/test_write_readback.py` (allow/deny parametrised predicate tests, an
+> allow-list-composition guard, and a non-allow-listed `uart_0_baud` full-refresh
+> integration test). Fan/climate/service opt-outs and the decode-failure invariant are
+> unchanged.
+
+Original proposal (for reference):
 - Extract the policy into a dedicated helper/module (e.g. `coordinator/readback_policy.py`) so it is independently testable and does not live inside the write mixin.
 - Replace the permissive deny-list with an **allow-list / category** model: eligible only when the register is *known* 1:1 write=status. Drive exclusion of `uart_*`, `lock_*`, `access_level`, `configuration_mode`, `language`, `rtc_cal`, and any `date_time*`/multi-register fragment either by name predicate or (better) by the `risk_category` metadata already present in the entity mappings (`communication_lockout`, `security_lock`, `advanced_configuration`, `destructive_action`).
 - Land tests **M1–M4, M6** alongside the change.

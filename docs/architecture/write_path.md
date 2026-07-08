@@ -53,13 +53,16 @@ if targeted_readback and definition is not None and _targeted_readback_safe(name
 
 `_targeted_readback_safe(name, definition)` is eligible **iff**:
 
-- `name` is **not** in `_NO_READBACK_REGISTERS`
-  (`hard_reset_settings`, `hard_reset_schedule`, `filter_change`,
-  `airflow_rate_change_flag`, `temperature_change_flag`, `cfg_mode_1`, `cfg_mode_2`,
-  `pres_check_day_2`, `pres_check_time_2`), **and**
+- `name` is on the explicit **`_READBACK_ALLOW_LIST`** — a curated set (~54 registers)
+  of writable holding registers that are 1:1 with a single displayed entity state:
+  airflow / temperature / coefficient / timing setpoints and operational mode controls
+  (`mode`, `season_mode`, `special_mode`, `on_off_panel_mode`, `bypass_*`, `gwc_*`, …)
+  exposed through the number/select/switch platforms, **and**
 - `definition.function == 3` (holding register — coils are excluded), **and**
-- `definition.length == 1` (single word — multi-word blocks excluded), **and**
-- `name` does **not** start with `schedule_` or `setting_` (BCD/AATT schedule slots).
+- `definition.length == 1` (single word — multi-word blocks excluded).
+
+The `function`/`length` checks are **defence-in-depth**: only a holding single-word
+register can ever read back, even if the allow-list drifts from the register map.
 
 Outcomes:
 
@@ -79,12 +82,21 @@ Outcomes:
 > **Note:** `refresh=False` does **not** disable read-back — only
 > `targeted_readback=False` does. `refresh` only governs the full-refresh fallback.
 
-The current policy is a **deny-list over a permissive default**: any writable
-single-word holding register is eligible unless listed. This is a known, documented
-latent breadth (dangerous config entities like `uart_*`, `lock_*`, `access_level`,
-`configuration_mode` are eligible via their number/select entities). Narrowing it to
-an allow-list is a planned follow-up (see the audit, "Stage 2") — **not** an
-emergency, and out of scope for docs.
+The policy is an **explicit allow-list** (default deny). Only registers *known* to be
+1:1 write=status are eligible; everything else defaults to a full refresh, including:
+communication config (`uart_*`), security (`lock_*`, `access_level`), configuration mode
+(`configuration_mode`, `cfg_mode_*`), reset/trigger/self-clearing registers
+(`hard_reset_*`, `filter_change`, `*_change_flag`, `pres_check_*_2`), schedule/setting
+BCD-AATT slots (`schedule_*`, `setting_*`), device identity/clock/calibration
+(`language`, `rtc_cal`, `device_name`, `date_time*`), and any multi-word block.
+
+This replaced the earlier permissive **deny-list over a default-allow**, under which
+dangerous config entities (`uart_*`, `lock_*`, `access_level`, `configuration_mode`)
+were read-back eligible through their number/select/switch entities — the latent
+breadth documented as "Stage 2" in
+`docs/audits/targeted_readback_write_path_audit.md`. Registers outside the allow-list
+are still written normally; they simply converge via the debounced full refresh instead
+of a targeted read-back.
 
 ## 3. Full-refresh fallback
 
@@ -117,8 +129,12 @@ emergency, and out of scope for docs.
   blocks (clock, device name) where a single-word read-back is misleading.
 
 The simple-entity platforms (`number`, `switch`, `select`, `text`, `time`) keep the
-default `targeted_readback=True`; for their 1:1 registers the read-back is correct
-(e.g. the `number` entity for `air_flow_rate_manual` displays that same register).
+default `targeted_readback=True`, but the read-back only actually fires for registers on
+`_READBACK_ALLOW_LIST`. For their 1:1 registers the read-back is correct (e.g. the
+`number` entity for `air_flow_rate_manual` displays that same register); their dangerous
+config registers (`uart_*`, `lock_*`, `access_level`, `configuration_mode`, `language`,
+`rtc_cal`) are **not** on the allow-list, so those writes fall back to a full refresh
+even though the platform did not opt out.
 
 ## 5. Optimistic UI rules
 

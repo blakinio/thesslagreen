@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Internal
+
+- **Targeted read-back restricted to an explicit safe allow-list.** The post-write
+  targeted read-back policy (`coordinator/schedule.py`) was changed from a permissive
+  deny-list (any single-word holding register was eligible unless enumerated) to an
+  explicit `_READBACK_ALLOW_LIST` of registers known to be 1:1 with a single displayed
+  entity state — airflow / temperature / coefficient / timing setpoints and operational
+  mode controls exposed via the number/select/switch platforms. Dangerous configuration
+  registers written through those same platforms — communication config (`uart_*`),
+  security (`lock_*`, `access_level`), configuration mode (`configuration_mode`,
+  `cfg_mode_*`), device config/clock (`language`, `rtc_cal`), reset/trigger/self-clearing
+  registers, and schedule/setting BCD-AATT slots — are no longer read-back eligible and
+  now converge via the existing debounced full refresh. The `function == 3` /
+  `length == 1` checks are kept as defence-in-depth. Fan, climate, and service write
+  paths already opt out with `targeted_readback=False` and are unchanged; a read-back
+  read/decode failure still never fails a successful write, and enum read-back still
+  stores the raw int. No Modbus register addresses/names, entity IDs, unique IDs, service
+  IDs, translation keys, or config/options-flow behavior changed. See
+  `docs/architecture/write_path.md` and
+  `docs/audits/targeted_readback_write_path_audit.md` ("Stage 2").
+
 ## [2.8.2] - 2026-07-08
 
 > Mostly tooling and documentation cleanup, plus the already-merged safe optimistic
