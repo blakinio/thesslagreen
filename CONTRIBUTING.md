@@ -134,8 +134,7 @@ git checkout -b feature/your-feature-name
 We follow these conventions:
 
 **Python Code:**
-- Use [Black](https://black.readthedocs.io/) for formatting (100 char line length)
-- Use [isort](https://pycqa.github.io/isort/) for import sorting
+- Use [Ruff](https://docs.astral.sh/ruff/) for formatting and import sorting (100 char line length)
 - Follow [PEP 8](https://pep8.org/) style guidelines
 - Use type hints where possible
 
@@ -250,43 +249,35 @@ If you have a ThesslaGreen device:
 
 ### Pre-commit Checks
 
-Run `pre-commit install` once to activate these checks. Before committing, the following checks run automatically:
+Run `pre-commit install` once to activate these checks. Before committing, the following hooks run automatically (see `.pre-commit-config.yaml`):
 
-- **Black** - Code formatting
-- **isort** - Import sorting
-- **flake8** - Linting
-- **mypy** - Type checking
-- **bandit** - Security scanning
-- **yamllint** - YAML validation
-- **check-merge-conflict** - Prevents committing unresolved merge conflicts
-- **check-json** - Validates translation files
-- **hassfest** - Validates integration metadata against Home Assistant rules
-- **vulture** - Detects unused code in `custom_components/thessla_green_modbus`
+- **validate-registers** - Validates the register JSON source of truth
+- **ruff** - Linting and import sorting (`--fix`)
+- **ruff-format** - Code formatting
+- **mypy** - Type checking (`custom_components/thessla_green_modbus`)
+- **check-yaml** - YAML validation
+- **check-json** - JSON / translation file validation
+- **end-of-file-fixer** - Ensures files end with a trailing newline
+- **trailing-whitespace** - Strips trailing whitespace
 
 ### Manual Quality Checks
 
 ```bash
-# Format code
-black custom_components/
+# Lint
+ruff check custom_components tests tools
 
-# Sort imports
-isort custom_components/
+# Import order
+ruff check --select I custom_components tests tools
 
-# Lint code
-flake8 custom_components/ --max-line-length=100
+# Format (check only; drop --check to apply)
+ruff format --check custom_components tests tools
 
 # Type checking
 mypy custom_components/thessla_green_modbus/
-
-# Security scan
-bandit -r custom_components/
-
-# Validate integration metadata
-hassfest --config=.
-
-# Dead code detection
-vulture custom_components/thessla_green_modbus --min-confidence=80
 ```
+
+> **Note:** `hassfest` and `HACS` integration validation run automatically in CI via
+> dedicated GitHub Actions; they are not distributed as installable PyPI packages.
 
 ## Submitting Changes
 
