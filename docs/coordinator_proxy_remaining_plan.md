@@ -256,7 +256,7 @@ After slices 1–4, coordinator still had:
 |---|---|---|
 | `host` (get/set) | services/handlers_data, clock_sync, tests | Used by HA service handlers and clock sync |
 | `port` (get/set) | services/handlers_data, tests | Used by HA service handlers |
-| `slave_id` (get/set) | entity.py, core/runtime_io, core/read_common, services, tests | Used in entity unique_id generation, all read/write paths |
+| `slave_id` (get/set) | entity.py, core/runtime_io, core/read_batches, services, tests | Used in entity unique_id generation, all read/write paths |
 
 ### Kept `_impl` delegates (deferred — C category)
 
@@ -335,7 +335,8 @@ that were always called with `ThesslaGreenDeviceClient` as their argument:
 - `core/register_groups.py:compute_register_groups`
 - `core/runtime_io.py:call_modbus` and `read_all_register_data` (also simplified
   `device_client.device_client.X` → `device_client.X`)
-- `core/read_common.py:execute_read_call`, `log_read_retry`, `raise_for_error_response`
+- `core/read_batches.py:execute_read_call`, `log_read_retry`, `raise_for_error_response`
+  (these shared read helpers moved from the former `core/read_common.py` in Slice 4)
 
 No behavioral change. `test_dependency_direction.py` continues to pass.
 
