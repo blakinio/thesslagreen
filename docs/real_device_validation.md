@@ -354,23 +354,35 @@ This section tracks validation of the targeted read-back feature added in [Unrel
 
 ### 9.1 How it works
 
-After a successful write to a safe single holding register (e.g. `mode`,
-`air_flow_rate_manual`, `special_mode`, `comfort_temperature`, `required_temperature`),
-the coordinator immediately reads back only the written register under the same
-`_write_lock`.  The decoded value is applied to `coordinator.data` and HA listeners
-are notified via `async_set_updated_data` — without triggering a full register scan.
-If the read-back fails, the coordinator falls back to a full refresh.
+Targeted read-back is gated by an **explicit allow-list** (`_READBACK_ALLOW_LIST` in
+`coordinator/schedule.py`): only registers *known* to be 1:1 with a single displayed
+entity state are eligible — airflow / temperature / coefficient / timing setpoints and
+operational mode controls (e.g. `mode`, `air_flow_rate_manual`, `special_mode`,
+`season_mode`, `on_off_panel_mode`) exposed via number/select/switch. After a successful
+write to an allow-listed single holding register, the coordinator immediately reads back
+only the written register under the same `_write_lock`. The decoded value is applied to
+`coordinator.data` and HA listeners are notified via `async_set_updated_data` — without
+triggering a full register scan. If the read-back fails, the coordinator falls back to a
+full refresh.
 
 ### 9.2 Excluded registers (full_refresh_only / no_readback)
 
-- Reset/trigger: `hard_reset_settings`, `hard_reset_schedule`, `filter_change`,
-  `airflow_rate_change_flag`, `temperature_change_flag`, `cfg_mode_1`, `cfg_mode_2`,
+Anything **not** on `_READBACK_ALLOW_LIST` falls back to a full refresh, including:
+
+- Communication config: `uart_0_id`, `uart_1_id`, `uart_0_baud/parity/stop`,
+  `uart_1_baud/parity/stop`
+- Security / lock: `lock_pass`, `lock_flag`, `access_level`
+- Configuration mode: `configuration_mode`, `cfg_mode_1`, `cfg_mode_2`
+- Device config / clock calibration: `language`, `rtc_cal`, `device_name`, `date_time*`
+- Reset/trigger/self-clearing: `hard_reset_settings`, `hard_reset_schedule`,
+  `filter_change`, `airflow_rate_change_flag`, `temperature_change_flag`,
   `pres_check_day_2`, `pres_check_time_2`
 - Schedule BCD-time registers: all `schedule_*`
 - AATT schedule-setting registers: all `setting_*`
 - Coil registers (function=1): no holding-register read-back
 - Multi-word registers (e.g. `device_name`): full_refresh_only
-- Fan setpoint registers: full_refresh_only (fan display reads from `supply_percentage`)
+- Fan setpoint registers via the fan entity: full_refresh_only (fan display reads from
+  `supply_percentage`; the fan opts out with `targeted_readback=False`)
 
 ### 9.3 Real-device checklist
 
@@ -386,6 +398,7 @@ If the read-back fails, the coordinator falls back to a full refresh.
 | 8 | Call `reset_filters` or `reset_settings` service | Service succeeds; no targeted read-back attempted (confirm by no DEBUG read-back log line); full refresh follows if needed | — | — |
 | 9 | Confirm fan percentage still updates after fan speed change | Fan entity percentage updates correctly after a speed change (full refresh still happens for fan) | — | — |
 | 10 | Capture HA log lines showing targeted read-back and fallback | Confirm `Targeted read-back for <register> decoded to` and/or `Targeted read-back failed for <register>` lines appear at DEBUG level | — | — |
+| 11 | Change a non-allow-listed config entity (e.g. `select.access_level` or a `uart_*` entity, if exposed) | Write succeeds; **no** targeted read-back attempted for that register (no DEBUG read-back line); value converges on the next full refresh | — | — |
 
 ### 9.4 Sign-off
 

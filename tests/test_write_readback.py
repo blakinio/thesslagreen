@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 from custom_components.thessla_green_modbus.coordinator.schedule import (
-    _NO_READBACK_REGISTERS,
+    _READBACK_ALLOW_LIST,
     _targeted_readback_safe,
 )
 from custom_components.thessla_green_modbus.registers.loader import RegisterDef
@@ -70,37 +70,117 @@ def _reg(function: int = 3, length: int = 1, name: str = "test_reg") -> Register
     return RegisterDef(function=function, address=100, name=name, access="rw", length=length)
 
 
-def test_targeted_readback_safe_holding_single() -> None:
-    """Normal holding single register is eligible for targeted read-back."""
-    assert _targeted_readback_safe("mode", _reg(function=3, length=1, name="mode")) is True
+# A representative sample of allow-listed 1:1 setpoint/mode registers.
+_ALLOW_SAMPLE = [
+    "air_flow_rate_manual",
+    "mode",
+    "special_mode",
+    "season_mode",
+    "on_off_panel_mode",
+    "comfort_mode_panel",
+    "bypass_off",
+    "gwc_off",
+    "bypass_user_mode",
+    "min_bypass_temperature",
+    "supply_air_temperature_manual",
+    "fan_speed_1_coef",
+    "cfgszf_fn_new",
+]
+
+# Registers that must NOT be read-back eligible under the allow-list policy.
+_DENY_SAMPLE = [
+    # communication config
+    "uart_0_id",
+    "uart_1_id",
+    "uart_0_baud",
+    "uart_0_parity",
+    "uart_0_stop",
+    "uart_1_baud",
+    # security / lock
+    "lock_pass",
+    "lock_flag",
+    "access_level",
+    # configuration mode
+    "configuration_mode",
+    "cfg_mode_1",
+    "cfg_mode_2",
+    # device config / clock calibration
+    "language",
+    "rtc_cal",
+    # reset / trigger / self-clearing
+    "hard_reset_settings",
+    "hard_reset_schedule",
+    "filter_change",
+    "airflow_rate_change_flag",
+    "temperature_change_flag",
+    # schedule / setting BCD-AATT slots
+    "schedule_summer_mon_1",
+    "setting_summer_mon_1",
+    # not a known writable entity register at all
+    "some_unmapped_register",
+]
+
+
+@pytest.mark.parametrize("name", _ALLOW_SAMPLE)
+def test_targeted_readback_safe_allow_listed(name: str) -> None:
+    """Allow-listed holding single registers are eligible for targeted read-back."""
+    assert _targeted_readback_safe(name, _reg(function=3, length=1, name=name)) is True
+
+
+@pytest.mark.parametrize("name", _DENY_SAMPLE)
+def test_targeted_readback_safe_not_allow_listed(name: str) -> None:
+    """Non-allow-listed writable holding registers fall back to full refresh.
+
+    Even presented as a function-3 single-word register, anything outside the
+    allow-list (uart_*, lock_*, access_level, configuration_mode, reset/trigger,
+    schedule_/setting_, or unmapped registers) is never read-back eligible.
+    """
+    assert _targeted_readback_safe(name, _reg(function=3, length=1, name=name)) is False
 
 
 def test_targeted_readback_safe_coil_excluded() -> None:
-    """Coil registers (function=1) are never eligible for read-back in v1."""
+    """Coil registers (function=1) are never eligible for read-back."""
     assert _targeted_readback_safe("system_on_off", _reg(function=1, name="system_on_off")) is False
 
 
 def test_targeted_readback_safe_multi_register_excluded() -> None:
-    """Multi-word registers stay on full_refresh_only."""
+    """Multi-word registers stay on full_refresh_only (defence-in-depth length check)."""
+    # Even an allow-listed name is rejected if it is not a single-word register.
+    assert _targeted_readback_safe("mode", _reg(function=3, length=2, name="mode")) is False
     assert _targeted_readback_safe("device_name", _reg(length=8, name="device_name")) is False
 
 
-def test_targeted_readback_safe_no_readback_register() -> None:
-    """Registers in _NO_READBACK_REGISTERS are excluded."""
-    for name in _NO_READBACK_REGISTERS:
-        assert _targeted_readback_safe(name, _reg(name=name)) is False, name
-
-
-def test_targeted_readback_safe_schedule_excluded() -> None:
-    """schedule_ registers stay on full_refresh_only for v1."""
-    reg = _reg(name="schedule_summer_mon_1")
-    assert _targeted_readback_safe("schedule_summer_mon_1", reg) is False
-
-
-def test_targeted_readback_safe_setting_excluded() -> None:
-    """setting_ (AATT) registers stay on full_refresh_only for v1."""
-    reg = _reg(name="setting_summer_mon_1")
-    assert _targeted_readback_safe("setting_summer_mon_1", reg) is False
+def test_readback_allow_list_excludes_dangerous_groups() -> None:
+    """The allow-list must never contain comms/security/config-mode/reset registers."""
+    forbidden = {
+        "uart_0_id",
+        "uart_1_id",
+        "uart_0_baud",
+        "uart_0_parity",
+        "uart_0_stop",
+        "uart_1_baud",
+        "uart_1_parity",
+        "uart_1_stop",
+        "lock_pass",
+        "lock_flag",
+        "access_level",
+        "configuration_mode",
+        "cfg_mode_1",
+        "cfg_mode_2",
+        "language",
+        "rtc_cal",
+        "hard_reset_settings",
+        "hard_reset_schedule",
+        "filter_change",
+        "airflow_rate_change_flag",
+        "temperature_change_flag",
+        "pres_check_day_2",
+        "pres_check_time_2",
+    }
+    overlap = forbidden & _READBACK_ALLOW_LIST
+    assert not overlap, f"Dangerous registers leaked into allow-list: {overlap}"
+    # No schedule_/setting_ BCD-AATT slot may be allow-listed either.
+    assert not any(name.startswith(("schedule_", "setting_")) for name in _READBACK_ALLOW_LIST)
 
 
 # ---------------------------------------------------------------------------
@@ -260,7 +340,7 @@ async def test_hard_reset_settings_no_targeted_readback(coordinator, monkeypatch
     result = await coordinator.async_write_register("hard_reset_settings", 1, refresh=True)
 
     assert result is True
-    # hard_reset_settings is in _NO_READBACK_REGISTERS → no targeted read-back
+    # hard_reset_settings is not on _READBACK_ALLOW_LIST → no targeted read-back
     client.read_holding_registers.assert_not_called()
     # Falls back to full refresh (refresh=True)
     coordinator.async_request_refresh.assert_called_once()
@@ -284,6 +364,32 @@ async def test_hard_reset_schedule_no_targeted_readback(coordinator, monkeypatch
     result = await coordinator.async_write_register("hard_reset_schedule", 1, refresh=True)
 
     assert result is True
+    client.read_holding_registers.assert_not_called()
+    coordinator.async_request_refresh.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_non_allow_listed_holding_register_falls_back_to_refresh(
+    coordinator, monkeypatch
+) -> None:
+    """A writable single-word holding register NOT on the allow-list (e.g. a UART
+    comms-config register) must skip targeted read-back and use a full refresh."""
+    import custom_components.thessla_green_modbus.coordinator.coordinator as coord_mod
+
+    uart_def = RegisterDef(function=3, address=4200, name="uart_0_baud", access="rw")
+    monkeypatch.setattr(coord_mod, "get_register_definition", lambda _n: uart_def)
+
+    coordinator._ensure_connection = AsyncMock()
+    client = MagicMock()
+    client.write_register = AsyncMock(return_value=_write_response(error=False))
+    client.read_holding_registers = AsyncMock(return_value=_read_response([1]))
+    coordinator.device_client.client = client
+    coordinator.async_request_refresh = AsyncMock()
+
+    result = await coordinator.async_write_register("uart_0_baud", 1, refresh=True)
+
+    assert result is True
+    # Not on the allow-list → no targeted read-back, full refresh instead.
     client.read_holding_registers.assert_not_called()
     coordinator.async_request_refresh.assert_called_once()
 
@@ -641,15 +747,16 @@ async def test_fan_write_register_no_refresh_when_refresh_false() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_no_readback_registers_are_documented() -> None:
-    """The exclusion set contains the required safety entries."""
+def test_allow_list_contains_core_setpoints() -> None:
+    """The allow-list must retain the core 1:1 setpoint/mode controls."""
     required = {
-        "hard_reset_settings",
-        "hard_reset_schedule",
-        "filter_change",
-        "airflow_rate_change_flag",
-        "temperature_change_flag",
+        "air_flow_rate_manual",
+        "mode",
+        "special_mode",
+        "season_mode",
+        "on_off_panel_mode",
+        "supply_air_temperature_manual",
     }
-    assert required.issubset(_NO_READBACK_REGISTERS), (
-        f"Missing from _NO_READBACK_REGISTERS: {required - _NO_READBACK_REGISTERS}"
+    assert required.issubset(_READBACK_ALLOW_LIST), (
+        f"Missing from _READBACK_ALLOW_LIST: {required - _READBACK_ALLOW_LIST}"
     )

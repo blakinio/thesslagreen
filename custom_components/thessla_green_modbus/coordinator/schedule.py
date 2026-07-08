@@ -23,38 +23,106 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-# Registers that must never use targeted read-back after a write.
-# Includes reset/trigger registers (values return to 0 after device processes them),
-# block-write helpers (only written as part of multi-register sequences), and
-# destructive/service-only registers where a read-back would be misleading.
-_NO_READBACK_REGISTERS: frozenset[str] = frozenset(
+# Explicit allow-list of registers eligible for targeted read-back after a write.
+#
+# Targeted read-back is restricted to writable holding registers that are 1:1 with a
+# single displayed entity state — setpoints and operational mode controls exposed via
+# the number/select/switch platforms — where reading the just-written register straight
+# back is both safe and useful.  Everything else defaults to a full refresh, including:
+#   * communication config (uart_*),
+#   * security (lock_*, access_level),
+#   * configuration mode (configuration_mode, cfg_mode_*),
+#   * reset/trigger/self-clearing registers (hard_reset_*, filter_change, *_change_flag,
+#     pres_check_*_2),
+#   * schedule/setting BCD-AATT slots (schedule_*, setting_*),
+#   * device identity/clock/calibration (language, rtc_cal, device_name, date_time*),
+#   * and any multi-word block.
+#
+# This replaces the previous permissive deny-list (any single-word holding register was
+# eligible unless enumerated), which left dangerous config entities read-back-eligible.
+# See docs/architecture/write_path.md and docs/audits/targeted_readback_write_path_audit.md.
+_READBACK_ALLOW_LIST: frozenset[str] = frozenset(
     {
-        "hard_reset_settings",
-        "hard_reset_schedule",
-        "filter_change",
-        "airflow_rate_change_flag",
-        "temperature_change_flag",
-        "cfg_mode_1",
-        "cfg_mode_2",
-        "pres_check_day_2",
-        "pres_check_time_2",
+        # Airflow / fan-speed setpoints (%)
+        "air_flow_rate_manual",
+        "air_flow_rate_temporary",
+        "air_flow_rate_temporary_4401",
+        "fan_speed_1_coef",
+        "fan_speed_2_coef",
+        "fan_speed_3_coef",
+        "max_supply_air_flow_rate",
+        "max_exhaust_air_flow_rate",
+        "max_supply_air_flow_rate_gwc",
+        "max_exhaust_air_flow_rate_gwc",
+        "nominal_supply_air_flow",
+        "nominal_exhaust_air_flow",
+        "nominal_supply_air_flow_gwc",
+        "nominal_exhaust_air_flow_gwc",
+        # Special-function intensity setpoints (%)
+        "airing_bathroom_coef",
+        "airing_coef",
+        "airing_switch_coef",
+        "bypass_coef_1",
+        "bypass_coef_2",
+        "contamination_coef",
+        "empty_house_coef",
+        "fireplace_supply_coef",
+        "hood_supply_coef",
+        "hood_exhaust_coef",
+        "open_window_coef",
+        # Special-function / GWC timings
+        "airing_panel_mode_time",
+        "airing_switch_mode_time",
+        "airing_switch_mode_on_delay",
+        "airing_switch_mode_off_delay",
+        "fireplace_mode_time",
+        "gwc_regen_period",
+        # Temperature setpoints (°C)
+        "supply_air_temperature_manual",
+        "supply_air_temperature_temporary",
+        "supply_air_temperature_temporary_4404",
+        "min_bypass_temperature",
+        "min_gwc_air_temperature",
+        "max_gwc_air_temperature",
+        "delta_t_gwc",
+        "air_temperature_summer_free_heating",
+        "air_temperature_summer_free_cooling",
+        # Filter wear thresholds
+        "cfgszf_fn_new",
+        "cfgszf_fw_new",
+        # Operational mode controls (enum select/switch, 1:1 with displayed state)
+        "mode",
+        "season_mode",
+        "special_mode",
+        "on_off_panel_mode",
+        "comfort_mode_panel",
+        "bypass_user_mode",
+        "bypass_off",
+        "gwc_off",
+        "gwc_regen",
+        "cfg_post_heater_mode",
+        "pres_check_day",
+        "pres_check_day_4432",
     }
 )
 
 
 def _targeted_readback_safe(register_name: str, definition: Any) -> bool:
-    """Return True when single-register targeted holding-register read-back is safe.
+    """Return True only for registers on the explicit safe read-back allow-list.
 
-    Only function-3 (holding register) single-word registers that are not in the
-    explicit exclusion list are eligible.  Schedule BCD-time and AATT setting
-    registers are deferred to full_refresh_only for v1 because schedule writes
-    involve pairs of registers and a single-register read-back gives a partial view.
+    A register is eligible for targeted read-back after a write iff it is on
+    ``_READBACK_ALLOW_LIST`` (a curated set of 1:1 writable holding registers) and is
+    still a function-3 single-word register.  The function/length checks are
+    defence-in-depth: only holding single-word registers can ever read back, even if
+    the allow-list were to drift from the register definitions.  Everything not on the
+    allow-list — comms/security/config-mode registers, reset/trigger/self-clearing
+    registers, schedule/setting BCD-AATT slots, device identity/clock, and multi-word
+    blocks — falls back to a full refresh.
     """
     return (
-        register_name not in _NO_READBACK_REGISTERS
+        register_name in _READBACK_ALLOW_LIST
         and definition.function == 3
         and definition.length == 1
-        and not register_name.startswith(("schedule_", "setting_"))
     )
 
 
