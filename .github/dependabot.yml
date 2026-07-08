@@ -4,6 +4,16 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    ignore:
+      # pytest-homeassistant-custom-component 0.13.309-0.13.316 pins pydantic==2.12.2.
+      # A direct pydantic bump to 2.13.4 broke CI (#1741) and was reverted (#1743).
+      # Keep pydantic locked to the HA test plugin's pin; only move it when the plugin's
+      # supported range moves (it will pull the compatible pydantic along with it).
+      # Ignore direct minor/patch pydantic bumps so this invalid PR stops recurring.
+      - dependency-name: "pydantic"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
