@@ -1,31 +1,30 @@
 # Real-Device Validation Report
 
-**Status: Partial real-device validation / evidence collection in progress**
+**Status: PARTIAL real-device validation — latest HA log evidence recorded**
 
-> Evidence from the user confirms basic integration functionality on a real ThesslaGreen AirPack
-> device in Home Assistant. The 2026-05-30 HA log export confirms successful TCP setup,
-> service registration, and absence of critical ThesslaGreen errors during the captured setup.
-> The 2026-06-09 validate_known_registers result on HA OS 17.3 / HA Core 2026.6.1 confirms
-> stable register coverage: supported=338, missing=19. All 19 missing registers are classified.
-> Formal sign-off is still pending for HA state screenshots, fan percentage, clock sync, and service tests.
-> This document must not be marked PASS until all evidence listed in section 4 is provided.
+> This document records evidence collected from a real ThesslaGreen AirPack 4 device running
+> through Home Assistant and the `thessla_green_modbus` custom integration. It must not be
+> treated as a full quality-scale sign-off until all manual service/UI checks in the release gate
+> are completed and the exact installed integration commit is recorded.
 
 ---
 
-## 1. Validation Status
+## 1. Current validation status
 
-| Item | Status |
-|------|--------|
-| Overall validation | PARTIAL — HA log evidence committed; HA state/service evidence still pending |
-| Quality scale gate | Bronze — no upgrade until formal evidence is complete |
-| Deep scan | Not required for validation — deep scan is offline/diagnostic-only; normal scan (deep_scan=False) is sufficient for all real-device validation steps |
-| Targeted read-back after writes | PENDING real-device validation — see §9 and §10 below |
-| Fan percentage fix (#1682) | FIXED in code; real-device state screenshot/re-test evidence pending |
-| Dangerous entities config category (#1683) | Confirmed by code audit; entity_category=config, remain enabled |
-| IO ownership cleanup (#1684/#1688) | DeviceClient is sole IO owner; HA setup log after cleanup is clean/partial evidence |
-| CI / Python 3.13 validation (#1686) | CI now requires Python 3.13, ruff checks blocking |
-| Temperature sensors | User-reported working; HA state evidence pending |
-| Vendor coverage | 353/353 registers — verified by tool (`compare_airpack4_vendor_coverage.py`) |
+| Item | Status | Evidence |
+|------|--------|----------|
+| Overall validation | PARTIAL PASS | Real HA logs confirm setup, scan-cache startup, service registration, basic read path, and fan writes. UI screenshots/service evidence still pending. |
+| Quality scale gate | Bronze | Keep bronze until formal real-device evidence is complete and signed off. |
+| Latest post-refactor runtime smoke | PARTIAL PASS | 2026-07-08 HA log after the read-back / connection / read-helper refactors shows clean setup and successful writes. |
+| Config-flow scan cache | PASS | `Using config-flow scan cache` in latest log. |
+| TCP connection | PASS | `192.168.3.12:8899`, `slave_id=10`, TCP selected. |
+| Services registered | PASS | `ThesslaGreen Modbus services registered successfully`. |
+| Basic write path | PARTIAL PASS | `air_flow_rate_manual` writes to 50.0 and 30.0 succeeded. Full fan/UI behaviour still needs manual confirmation. |
+| Targeted read-back allow-list (#1745) | PARTIAL PASS | No `transaction_id mismatch` or false disconnect after writes in latest log. Specific allow-listed number/select/switch tests still pending. |
+| Connection helper consolidation (#1748) | PARTIAL PASS | Latest log shows setup and scan-cache startup after the consolidation. Longer runtime validation still pending. |
+| Read helper consolidation (#1750) | PARTIAL PASS | Latest log shows scanner/read batches completing and detected capabilities. Longer polling validation still pending. |
+| CI / Python 3.13 validation | PASS on CI | Latest runtime refactor CI was green on Python 3.13 before this docs-only update. |
+| Vendor coverage | PASS by tool | `compare_airpack4_vendor_coverage.py` reports 0 missing vendor registers in CI/validation. |
 
 ---
 
@@ -33,101 +32,113 @@
 
 | Item | Value |
 |------|-------|
-| Home Assistant OS | 17.3 (confirmed 2026-06-09 validate_known_registers session) |
-| Home Assistant Core | 2026.6.1 (confirmed 2026-06-09 validate_known_registers session) |
-| Integration version | Current repo `main` after #1688 is `3c7215d`; installed HA commit not proven by log |
 | Device model | ThesslaGreen AirPack 4 (user-reported) |
-| Firmware version | Unknown / not exposed by this device scan; non-critical |
-| Connection type | TCP, Auto-selected by config flow scan |
+| Firmware version | Unknown / not exposed by this device scan; non-critical on this unit |
+| Connection type | TCP / Auto-selected by config-flow scan |
 | Host / Port / Slave ID | `192.168.3.12` / `8899` / `10` |
 | Scan interval | `30s` |
-| max_registers_per_request | Pending user data |
-| force_full_register_list | Pending user data |
-| connection_mode | Auto / TCP selected |
-| Python on HA host | ≥ 3.13 required by pyproject.toml; exact HA host version pending |
-| Evidence source | `home-assistant_2026-05-30T10-48-08.801Z.log` |
-
-> Note: the same HA log contains a HACS download failure for `3c7215d` because HACS tried to
-> download it as a branch (`refs/heads/3c7215d.zip`). Therefore the log confirms the integration
-> runs on the real device, but does **not** by itself prove that HA was running commit `3c7215d`.
-
----
-
-## 3. Validated Items Checklist
-
-| Item | Status | Evidence |
-|------|--------|----------|
-| Integration setup completes without traceback | PASS — log evidence | `setup completed successfully`; no ThesslaGreen traceback in exported log |
-| Reload / restart works | PARTIAL PASS — log evidence | Integration unload and later setup completion observed |
-| Config-flow scan cache used | PASS — log evidence | `Using config-flow scan cache` |
-| Services registered | PASS — log evidence | `ThesslaGreen Modbus services registered successfully` |
-| TCP connection established | PASS — log evidence | TCP connection to `192.168.3.12:8899`, slave `10` |
-| Entities created after restart | User-reported ~370 entities visible | Screenshot/state export pending |
-| Approximate entity count | ~367 verified by tools; user-reported ~370 | Screenshot pending |
-| Temperature sensors available | User-reported working | HA state evidence pending |
-| Fan percentage displays correct % after #1682 | Pending re-test | Fix in code; unit tests pass; HA state evidence pending |
-| Supply fan percentage sane (0–100) | Pending re-test | — |
-| Exhaust fan percentage sane (0–100) | Pending re-test | — |
-| Supply m³/h sensor visible separately | Not yet verified on device | — |
-| Exhaust m³/h sensor visible separately | Not yet verified on device | — |
-| Bypass / free cooling | User-reported working | Screenshot/state evidence pending |
-| Device clock entity visible | User-reported `clock` entity present | Screenshot/state evidence pending |
-| Clock sync | Not yet tested on device | — |
-| Writable entities work | Not yet verified on device | — |
-| `refresh_device_data` service | Not yet tested on device | — |
-| `validate_known_registers` service | PASS — stable across 3+ runs (PRs #1709/#1711, confirmed 2026-06-09 on HA OS 17.3 / Core 2026.6.1) | supported=338, missing=19 stable; all 19 classified; no transaction_id mismatch; retried_individual_count=62 |
-| `scan_all_registers` service | Not yet tested on device | — |
-| Diagnostics download | Not yet tested on device | — |
-| No transaction_id mismatch observed | PASS — log evidence | No `transaction_id` mismatch in exported ThesslaGreen log lines |
-| No blocking I/O warning in HA log | PASS — log evidence | No blocking I/O warning for ThesslaGreen in exported log |
-| No false “Modbus transport disconnected” errors | PASS — log evidence | No false transport-disconnected error for ThesslaGreen in exported log |
-| No ThesslaGreen ERROR entries | PASS — log evidence | No `ERROR` lines from `custom_components.thessla_green_modbus` |
-| Unsupported firmware/model registers non-critical | PASS — log evidence | Firmware/version register read failed at DEBUG/WARNING, integration continued and setup completed |
-| Scanner cancellation handling | PARTIAL PASS — log evidence | One cancelled `input_registers 0-0` read observed; scanner continued, detected capabilities, setup completed |
-| Dangerous entities present and enabled | Confirmed by code audit | entity_category=config added in #1683, not disabled |
+| max_registers_per_request | `16` (confirmed in HA options screenshot, 2026-07-08) |
+| Deep scan | OFF / not required for normal validation |
+| force_full_register_list | Not enabled in available evidence |
+| Home Assistant OS | 17.3 confirmed in earlier 2026-06-09 `validate_known_registers` session |
+| Home Assistant Core | 2026.6.1 confirmed in earlier 2026-06-09 `validate_known_registers` session; exact version for 2026-07-08 log not present in exported snippet |
+| Integration commit actually installed in HA | Not proven by log. User context says the log was captured after the refactor series; treat as post-#1745/#1748/#1750 evidence, but keep exact commit pending until HA/HACS shows it. |
+| Current repository main when this document was updated | `c1e188656921e897e4604625a1fb4b229473bfad` (merge #1749; workflow-only after #1750) |
+| Latest evidence source | `home-assistant_2026-07-08T08-27-09.883Z.log` |
 
 ---
 
-## 4. Evidence
+## 3. Latest HA log evidence — 2026-07-08
+
+Provided file:
+
+```text
+home-assistant_2026-07-08T08-27-09.883Z.log
+```
+
+Relevant setup/read/write lines:
+
+```text
+2026-07-08 10:25:03.654 DEBUG Read input registers 0-0: [3]
+2026-07-08 10:25:04.028 DEBUG Expected missing input register (code 2): input registers 4-4
+2026-07-08 10:25:04.028 DEBUG Failed to read firmware version registers: missing version_patch (4)
+2026-07-08 10:25:20.102 INFO  Detected 14 capabilities
+2026-07-08 10:25:20.102 DEBUG Skipping expected optional firmware registers 4-4 (exception code 2)
+2026-07-08 10:26:19.305 INFO  Initializing ThesslaGreen device: ThesslaGreen via Modbus TCP (Auto) (192.168.3.12:8899) (slave_id=10, scan_interval=30s)
+2026-07-08 10:26:19.307 INFO  Setting up ThesslaGreen coordinator for 192.168.3.12:8899 via TCP
+2026-07-08 10:26:19.309 INFO  Using config-flow scan cache
+2026-07-08 10:26:34.375 INFO  Entity skipped due to capability: duct_supply_temperature (sensor_duct_supply_temperature not supported)
+2026-07-08 10:26:34.375 INFO  Entity skipped due to capability: gwc_temperature (sensor_gwc_temperature not supported)
+2026-07-08 10:26:50.252 INFO  ThesslaGreen Modbus services registered successfully
+2026-07-08 10:26:50.252 INFO  ThesslaGreen Modbus integration setup completed successfully
+2026-07-08 10:26:50.288 INFO  Successfully wrote 50.0 to register air_flow_rate_manual
+2026-07-08 10:26:50.584 INFO  Successfully wrote 30.0 to register air_flow_rate_manual
+```
+
+Negative checks from the same log:
+
+| Check | Result |
+|------|--------|
+| `transaction_id mismatch` | Not observed |
+| `Modbus transport is not connected` | Not observed |
+| `Traceback` | Not observed |
+| `custom_components.thessla_green_modbus` ERROR | Not observed |
+| Blocking I/O warning for ThesslaGreen | Not observed |
+| False unsupported-register spam | Not observed; firmware `version_patch` is logged as expected optional |
+
+Warnings / notes in the same exported log:
+
+| Warning | Interpretation |
+|---------|----------------|
+| `Referenced entities number.thesslagreen_air_flow_rate_manual are missing or not currently available` | Likely HA automation/script/dashboard timing or stale entity reference during startup. Not emitted by the integration. Needs user-side HA automation/entity check if it repeats after startup. |
+| `Setup of sensor platform thessla_green_modbus is taking over 10 seconds` | Non-fatal; setup later completed successfully. Expected with a large entity set. |
+| `homeassistant.components.cloud.google_config` Device ID warnings | Unrelated to ThesslaGreen. |
+| ESPHome Dallas checksum warning | Unrelated to ThesslaGreen. |
+
+Interpretation:
+
+- The post-refactor startup path is clean in the captured log.
+- Read batches/scanner calls complete and detect capabilities.
+- Config-flow scan cache is used for setup.
+- Services are registered.
+- Basic write path works for `air_flow_rate_manual`.
+- No evidence of the historical `transaction_id mismatch` problem.
+- No evidence of false `Modbus transport is not connected` during setup/write.
+- Exact installed integration commit is still not proven by the log and must be captured separately.
+
+---
+
+## 4. Earlier real-device evidence
 
 ### 4.1 HA log export — 2026-05-30
 
-Provided file: `home-assistant_2026-05-30T10-48-08.801Z.log`.
+Provided file:
 
-Relevant ThesslaGreen setup lines:
+```text
+home-assistant_2026-05-30T10-48-08.801Z.log
+```
+
+Relevant setup lines:
 
 ```text
 2026-05-30 12:44:03.898 INFO  verify_connection: connecting to 192.168.3.12:8899 (mode=tcp, timeout=10)
 2026-05-30 12:44:14.761 INFO  verify_connection: auto-selected Modbus transport tcp for 192.168.3.12:8899
 2026-05-30 12:44:41.941 INFO  Detected 14 capabilities
-2026-05-30 12:45:20.462 DEBUG Setting up ThesslaGreen Modbus integration for ThesslaGreen
 2026-05-30 12:45:20.746 INFO  Initializing ThesslaGreen device: ThesslaGreen via Modbus TCP (Auto) (192.168.3.12:8899) (slave_id=10, scan_interval=30s)
 2026-05-30 12:45:20.751 INFO  Using config-flow scan cache
 2026-05-30 12:46:00.838 INFO  ThesslaGreen Modbus services registered successfully
 2026-05-30 12:46:00.838 INFO  ThesslaGreen Modbus integration setup completed successfully
 ```
 
-Warnings observed during scan/setup:
+Known expected notes from this older log:
 
-```text
-2026-05-30 12:44:15.686 DEBUG Failed to read firmware version registers: missing version_patch (4)
-2026-05-30 12:44:24.763 WARNING Retry context layer=scanner op=read_input:0-0 ... reason=cancelled
-2026-05-30 12:44:24.763 WARNING Aborted reading input registers 0-0 after 1/3 attempts due to timeout/cancellation
-2026-05-30 12:44:41.942 WARNING The following registers were not found during scan: input_registers: version_major=0
-2026-05-30 12:45:55.668 WARNING Setup of sensor platform thessla_green_modbus is taking over 10 seconds.
-```
+- Firmware/model registers may be unavailable on this unit and are non-critical.
+- A scanner cancellation on `input_registers 0-0` was observed once, but scan/setup continued.
+- No ThesslaGreen traceback, `transaction_id` mismatch, blocking I/O warning, or false transport-disconnected error was observed.
 
-Interpretation:
+### 4.2 `validate_known_registers` evidence — 2026-06-09
 
-- The firmware/model register warnings are non-critical for this device/firmware; setup continued.
-- One scanner read cancellation was observed for `input_registers 0-0`; scanner continued and setup completed.
-- Slow sensor platform setup is expected with a large entity set and completed successfully.
-- No ThesslaGreen traceback, `transaction_id` mismatch, blocking I/O warning, or false transport-disconnected error was observed in the exported log.
-
-### 4.3 validate_known_registers real-device evidence (PRs #1709 / #1711)
-
-Real-device HA log lines observed after PRs #1709 and #1711, confirmed on HA OS 17.3 /
-HA Core 2026.6.1 (2026-06-09):
+Real-device service result observed after PRs #1709/#1711 on HA OS 17.3 / HA Core 2026.6.1:
 
 ```text
 validate_known_registers started for climate.rekuperator_climate_control: batch=16, delay=100ms
@@ -144,37 +155,27 @@ Stable result:
 | missing_by_type / holding_registers | 15 |
 | retried_individual_count | 62 |
 
-Result was stable across 3+ consecutive runs (same supported/missing counts each time).
 No `transaction_id` mismatch was observed during or after the service call.
 
-The `validate_known_registers` service response now includes a `register_classification`
-field that maps each missing register name to its classification category. See §4.4 below
-for the full classification.
+`validate_known_registers` uses the coordinator's active Modbus connection under `_write_lock`. It does not open a second Modbus connection and is the preferred real-device register classification method. `scan_all_registers` is development/offline diagnostics and must not be used as routine validation.
 
-**Safety note:** `validate_known_registers` uses the coordinator's active Modbus connection
-under `_write_lock`. It does not open a second connection and is safe to call while the
-integration is actively polling. Use this service for real-device register classification
-instead of `scan_all_registers` (which opens a separate connection and causes
-`transaction_id` mismatch errors).
+### 4.3 Expected missing / optional registers on tested device
 
-### 4.4 Expected missing / optional registers on tested device
-
-All 19 missing registers are classified below. These registers should **not** be removed
-from the register map — they may be valid on other firmware/hardware variants.
+These registers should **not** be removed from the register map — they may be valid on other firmware/hardware variants.
 
 #### Missing input_registers (4)
 
 | Register | Classification | Notes |
-|----------|---------------|-------|
-| `compilation_days` | optional_firmware_metadata | Legacy firmware (FW 3.x) does not expose build timestamp |
-| `compilation_seconds` | optional_firmware_metadata | Legacy firmware (FW 3.x) does not expose build timestamp |
+|----------|----------------|-------|
+| `compilation_days` | optional_firmware_metadata | Legacy firmware does not expose build timestamp |
+| `compilation_seconds` | optional_firmware_metadata | Legacy firmware does not expose build timestamp |
 | `version_patch` | optional_firmware_metadata | Legacy firmware exposes only version_major/version_minor |
-| `water_removal_active` | optional_feature | Water removal (HEWR) feature not present on this unit |
+| `water_removal_active` | optional_feature | Water removal feature not present on this unit |
 
 #### Missing holding_registers (15)
 
 | Register | Classification | Notes |
-|----------|---------------|-------|
+|----------|----------------|-------|
 | `cfg_post_heater_mode` | hardware_gated | Post-heater capability absent on this hardware |
 | `post_heater_on` | hardware_gated | Post-heater capability absent on this hardware |
 | `cfgszf_fn_new` | expansion_or_service | Expansion/service firmware register |
@@ -191,402 +192,124 @@ from the register map — they may be valid on other firmware/hardware variants.
 | `uart_1_parity` | internal_service_uart | Internal UART configuration; inaccessible on normal device |
 | `uart_1_stop` | internal_service_uart | Internal UART configuration; inaccessible on normal device |
 
-#### Classification categories
+---
 
-| Category | Meaning |
-|----------|---------|
-| `optional_firmware_metadata` | Build/version metadata not exposed by all firmware versions |
-| `optional_feature` | Feature-gated register; absent when hardware feature is not present |
-| `hardware_gated` | Register depends on hardware capability (e.g., post-heater) |
-| `expansion_or_service` | Expansion module or service/firmware-related register |
-| `newer_firmware_api` | API added in newer firmware; not available on legacy versions |
-| `internal_service_uart` | Internal UART configuration; expected inaccessible via Modbus |
-| `hardware_sensor_absent` | Hardware sensor not physically installed |
+## 5. Manual validation checklist
 
-### 4.2 Evidence still needed from user
+> Do not mark any row PASS without HA log evidence, screenshot evidence, or a service response.
 
-The following data must be provided and committed before formal validation is complete:
-
-1. **HA Core version** (e.g., `2026.5.x`)
-2. **Integration commit SHA actually installed in HA** (the 2026-05-30 log does not prove this because HACS failed to download `3c7215d` as a branch)
-3. **max_registers_per_request / force_full_register_list / scan mode options**
-4. **Screenshot or state export** after integration reload showing entity count and no errors
-5. **Fan percentage result after #1682** — HA state of `fan.thesslagreen_ventilation` at various speeds
-6. **Supply and exhaust m³/h sensor states** from HA Developer Tools
-7. **Temperature sensor states** from HA Developer Tools
-8. **Device clock state** and clock sync result if tested
-9. **Service results** for `refresh_device_data`, `validate_known_registers`, `scan_all_registers`, and diagnostics
-10. **Any observed errors** during normal operation
+| # | Check | Expected result | Current result | Evidence |
+|---|-------|-----------------|----------------|----------|
+| 1 | Restart/reload integration | Setup completes successfully | PASS | 2026-07-08 log: `setup completed successfully` |
+| 2 | No traceback during setup | No `Traceback` / coordinator exception | PASS | 2026-07-08 log negative search |
+| 3 | Config-flow scan cache | Cache used at setup | PASS | 2026-07-08 log: `Using config-flow scan cache` |
+| 4 | Services registered | Services available after setup | PASS | 2026-07-08 log: `services registered successfully` |
+| 5 | Normal scan detects capabilities | Expected AirPack capabilities detected | PASS | 2026-07-08 log: `Detected 14 capabilities` |
+| 6 | Entity count stable | Approx. 367–370 entities visible | PARTIAL | User-reported ~350–370 entities; screenshot/state export still pending |
+| 7 | No duplicate unique/entity IDs | No HA unique-ID warning | PARTIAL PASS | No such warning observed in captured 2026-07-08 ThesslaGreen log; full HA entity screenshot pending |
+| 8 | Basic write path | Writes complete without failure | PARTIAL PASS | `air_flow_rate_manual` 50.0 and 30.0 succeeded |
+| 9 | Fan percentage operation | GUI updates correctly; no rollback | PENDING | Need fan card screenshots/log after 30 → 50 → 30 and/or other percentages |
+| 10 | Targeted read-back allow-list | Safe number/select/switch read-back works; excluded registers use refresh | PENDING | Need DEBUG log with `Targeted read-back for <register>` for an allow-listed entity and no read-back for excluded entity |
+| 11 | Full refresh after fan writes | Fan path keeps `targeted_readback=False`; one trailing refresh | PARTIAL | No targeted read-back lines observed; need full fan operation DEBUG log/screenshot |
+| 12 | `validate_known_registers` | Stable supported/missing result; no mismatch | PASS | 2026-06-09 service result, supported=338/missing=19 |
+| 13 | `refresh_device_data` service | Service succeeds and coordinator updates | PENDING | Not yet captured |
+| 14 | Diagnostics download | JSON downloads and redacts host/serial as expected | PENDING | Not yet captured |
+| 15 | Clock entity visible | `device_clock` exists | User-reported | Screenshot/state still pending |
+| 16 | Clock sync | Sync works if options enabled | PENDING / N/A | Options are disabled by default; test only if enabled intentionally |
+| 17 | No `transaction_id mismatch` | No mismatch during scan/write/poll | PASS for captured log | 2026-07-08 log negative search |
+| 18 | No false transport disconnected | No false disconnected errors | PASS for captured log | 2026-07-08 log negative search |
+| 19 | No ThesslaGreen ERROR entries | No integration ERROR lines | PASS for captured log | 2026-07-08 log negative search |
+| 20 | Longer polling stability | Several normal 30 s refresh cycles without errors | PENDING | Need longer log after 30–60 minutes or overnight |
 
 ---
 
-## 5. Automated Test Coverage
+## 6. Targeted read-back allow-list validation
 
-The integration has comprehensive unit tests (pytest, no real device required):
+The targeted read-back policy is now an explicit allow-list in `coordinator/schedule.py`. Only single-word holding registers known to be 1:1 with a displayed number/select/switch state are eligible.
+
+Excluded groups include:
+
+- `uart_*` communication config
+- `lock_*`, `access_level`
+- `configuration_mode`, `cfg_mode_*`
+- `language`, `rtc_cal`, `device_name`, `date_time*`
+- reset/trigger/self-clearing registers
+- `schedule_*` BCD-time registers
+- `setting_*` AATT schedule-setting registers
+- coils and multi-word registers
+- fan writes through the fan entity, because fan display is based on status registers
+- climate and service write paths, which intentionally pass `targeted_readback=False`
+
+### 6.1 Required live tests
+
+| # | Test | Expected result | Current status |
+|---|------|-----------------|----------------|
+| 1 | Change allow-listed number entity, e.g. `number.comfort_temperature` | DEBUG log shows targeted read-back and UI converges quickly | PENDING |
+| 2 | Change allow-listed select entity, e.g. `select.mode` | DEBUG log shows targeted read-back and current option updates | PENDING |
+| 3 | Change allow-listed switch entity, e.g. special mode / bypass/gwc lock if safe | DEBUG log shows targeted read-back and switch state updates | PENDING |
+| 4 | Change fan percentage through fan entity | No targeted read-back for fan setpoint writes; one full refresh after operation | PARTIAL — latest log shows fan-related writes and no `Targeted read-back`; full UI evidence pending |
+| 5 | Change non-allow-listed config entity only if safe and reversible | Write succeeds; no targeted read-back line; value converges by refresh | PENDING / optional |
+| 6 | Confirm no mismatch after these writes | No `transaction_id mismatch` | PASS for 2026-07-08 captured writes; repeat after all tests |
+
+---
+
+## 7. Optimistic UI validation for controllable entities
+
+Optimistic UI applies only to control/setpoint fields after a confirmed-successful write. It must never apply to measured/status/safety/identity fields.
+
+### 7.1 Required live tests
+
+| # | Test | Expected result | Current status |
+|---|------|-----------------|----------------|
+| 1 | Fan percentage 30 → 50 → 30 | GUI updates immediately; confirmed device state later matches; no rollback | PARTIAL — writes observed; GUI evidence pending |
+| 2 | Number setpoint | GUI shows pending value immediately, confirmed later | PENDING |
+| 3 | Switch | GUI flips immediately, confirmed later | PENDING |
+| 4 | Select | GUI shows new option immediately, confirmed later | PENDING |
+| 5 | Climate target temperature / hvac / fan / preset | Command fields can be optimistic; measured fields remain confirmed-only | PENDING |
+| 6 | Measured/status fields | `current_temperature`, airflow, alarms, `device_clock`, diagnostics do not jump optimistically | PENDING |
+
+---
+
+## 8. Automated test coverage
+
+The integration has comprehensive unit/CI coverage. Latest relevant checks before this docs-only update included:
 
 | Test area | Status |
 |-----------|--------|
-| Entity mapping validation | ✅ 367 entities pass |
-| Fan percentage calculation | ✅ `test_fan_percentage_109_clamped_to_100` passes |
-| Dangerous entity risk metadata | ✅ All risk_level/risk_category/safety_warning present |
-| Dangerous entity entity_category=config | ✅ Added in #1683, tests pass |
-| DeviceClient IO ownership | ✅ `test_coordinator_io_ownership.py` — 15 tests pass |
-| AirPack4 vendor coverage | ✅ 0 missing registers |
-| Translation keys | ✅ All pass |
-| Coordinator lifecycle boundary | ✅ Coordinator no longer exposes removed lifecycle proxies after #1688 |
-| Coordinator update cycle | ✅ Mocked tests pass |
-| pymodbus pin consistency | ✅ manifest + pyproject consistent |
+| Python compileall | PASS |
+| Ruff lint / import order / format | PASS |
+| Pytest on Python 3.13 / HA test stack | PASS for latest runtime PRs |
+| HACS validation | PASS |
+| Hassfest validation | PASS |
+| Entity mapping validation | PASS, 367 entities |
+| Translation keys | PASS |
+| AirPack4 vendor coverage | PASS, 0 missing |
+| Targeted read-back allow-list tests | PASS in CI for #1745 |
+| Connection helper consolidation tests | PASS in CI for #1748 |
+| Read helper consolidation tests | PASS in CI for #1750 |
 
 ---
 
-## 6. Real-Device Findings Cleanup (2026-05-09, pre-#1682)
+## 9. Real-device release gate
 
-The following findings were identified from exported HA state data and addressed:
+Real-device validation is **not complete** until:
 
-| Finding | Status | Fix / Decision | Evidence |
-|---|---|---|---|
-| Fan percentage 109 (> 100) | FIXED | `fan.py` `percentage` property clamped to 100 per HA spec; raw value preserved in `supply_percentage` attribute | Unit test `test_fan_percentage_109_clamped_to_100`; #1682 |
-| `number.airing_coef` state 50 outside range 100–150 | NEEDS_VENDOR_CONFIRMATION | Write range unchanged (100–150) per declared metadata. Reading 50 does not crash. | Tests `test_airing_coef_native_value_below_min_does_not_crash` |
-| `binary_sensor.fire_alarm` raw true / state off | CONFIRMED_CORRECT | NC (normally-closed) contact: raw True = circuit closed = no alarm = `is_on=False`. Mapping has `inverted: True`. | Tests `test_fire_alarm_raw_true_means_no_alarm` |
-| `binary_sensor.dp_duct_filter_overflow` raw true / state on | CONFIRMED_CORRECT | Raw True = problem detected. `device_class=problem` is correct. | Test `test_dp_duct_filter_overflow_raw_true_is_problem` |
-| `sensor.serial_number` unavailable / device info Unknown | DEFERRED (partially improved) | `sw_version` now assembled from `version_major.version_minor CF<cf_version>`. Serial decode deferred. | Tests `test_sw_version_uses_version_registers_when_firmware_unknown` |
-| `sensor.rekuperator_active_errors` state unknown | FIXED | `native_value` returns `"none"` (not Python None) when no error codes are active. | Tests `test_active_errors_sensor_returns_none_string_when_no_errors` |
-| `switch.bypass_off` / `switch.gwc_off` misleading names | FIXED | Translation-only fix to “Bypass Locked” / “GWC Locked”. Entity IDs unchanged. | Translation tests pass |
+1. Exact HA-installed integration commit SHA is recorded.
+2. HA Core / OS versions for the latest validation log are recorded.
+3. Entity count screenshot or state export is attached/committed.
+4. Fan UI test is captured with logs and screenshot/video notes.
+5. Targeted read-back allow-listed number/select/switch tests are captured at DEBUG level.
+6. `refresh_device_data` and diagnostics download are tested.
+7. Clock sync is tested if enabled; otherwise marked N/A with options disabled.
+8. A longer polling log, preferably 30–60 minutes or overnight, shows no ThesslaGreen errors.
+9. A named tester signs off with date and installed commit SHA.
 
----
+Until then:
 
-## 8. Smoke Test After Coordinator Proxy Cleanup (PRs #1697–#1702)
-
-### Background
-
-PRs #1697–#1702 completed a series of coordinator internal refactors with no Modbus runtime
-behavior changes, no register address/name changes, and no entity/service/unique-ID changes:
-
-| PR | Summary |
-|----|---------|
-| #1697 | Fixed stale `coordinator.get_register_map` test mocks and guards |
-| #1698 | Removed stale `coordinator.get_register_map` mock calls from tests |
-| #1699 | Removed `coordinator.slave_id` proxy; callers migrated to `coordinator.device_client.slave_id` |
-| #1700 | Removed `coordinator.host`/`coordinator.port` proxies; deleted `coordinator/config_properties.py`; callers migrated to `coordinator.device_client.config.host`/`port` |
-| #1701 | Aligned pydantic dev pin in `requirements-dev.txt` and `pyproject.toml` |
-| #1702 | Updated `CHANGELOG.md`; added changelog policy to `claude.md` |
-
-CI for the #1702 head commit was green. The changes affect code paths that run on every
-coordinator refresh cycle. This checklist must be run against a real device before
-real-device validation can be marked PASS for the post-#1702 codebase.
-
-### 8.1 Checklist
-
-> **Instructions:** Work through each item in order. Record the result (PASS / FAIL / N/A)
-> and the evidence (log excerpt, HA screenshot filename, or "not tested") in the table.
-> **Do not mark any item PASS without attaching HA log evidence or a screenshot.**
-
-| # | Check | Expected result | Result | Evidence |
-|---|-------|----------------|--------|----------|
-| 1 | Restart or reload integration | Setup completes; `ThesslaGreen Modbus integration setup completed successfully` appears in HA log | — | — |
-| 2 | No traceback during setup | No `Traceback`, `AttributeError`, or `ThesslaGreenModbusCoordinator` exception in HA log after reload | — | — |
-| 3 | Entity count stable | Entity count in HA Developer Tools → Entities matches pre-cleanup baseline (≈367–370) | — | — |
-| 4 | No duplicated entity IDs | No `Platform thessla_green_modbus does not generate unique IDs` warning in HA log | — | — |
-| 5 | Device info still appears | HA → Devices → ThesslaGreen shows manufacturer, model (may be `Unknown` on legacy firmware), and connection info | — | — |
-| 6 | `refresh_device_data` service works | Call `thessla_green_modbus.refresh_device_data` from HA Developer Tools → Services; no error, coordinator updates | — | — |
-| 7 | `validate_known_registers` service works | Call `thessla_green_modbus.validate_known_registers`; result summary logged; no traceback | PARTIAL PASS | supported=338, missing=19 stable across 3 runs (PRs #1709/#1711); no transaction_id mismatch observed; missing registers classified via DEBUG output and service response |
-| 8 | Diagnostics download works | HA → Devices → ThesslaGreen → Download Diagnostics; JSON file downloads without error; `config.host` and `config.port` fields present in JSON | — | — |
-| 9 | Clock sync (if option enabled) | If clock-sync option is enabled in integration options, no `AttributeError` or crash for `coordinator.host`; clock sync log line present | — | N/A if option disabled |
-| 10 | No `transaction_id` mismatch during refresh | No `transaction_id mismatch` line from `custom_components.thessla_green_modbus` in HA log during normal 30-second refresh cycle | — | — |
-| 11 | No false "Modbus transport is not connected" during normal refresh | No `Modbus transport is not connected` error from integration during a clean refresh cycle (transport disconnect errors only during actual device-offline events are acceptable) | — | — |
-
-### 8.2 Expected Notes (Not Failures)
-
-- **Model Unknown** — `sensor.model` may read `Unknown` on AirPack4 devices running legacy
-  firmware that does not expose model-version registers. This is not a regression introduced
-  by PRs #1697–#1702.
-- **Firmware Unknown** — `sensor.firmware` / `sw_version` in device info may read `Unknown`
-  until the legacy-firmware fallback is implemented. This is a pre-existing known limitation.
-- **`scan_all_registers` is not routine validation** — Do not use `scan_all_registers` as
-  part of this checklist. Use `validate_known_registers` (item 7 above) instead.
-  `scan_all_registers` opens a separate Modbus connection and is intended for development
-  investigation only; see `claude.md §4`.
-- **Deep scan (full_register_scan) is noisy and offline-only** — When the config-flow scan
-  is run with `full_register_scan=True` (deep scan option), it sweeps all raw address ranges
-  (e.g. input registers 0–286) in batches. Many of these raw addresses are unsupported by
-  the device and return Modbus exception code 2. This is expected and produces hundreds of
-  batch failures in diagnostic data (`batch_failures` field). These raw batch failures are
-  NOT named-register Modbus errors: they are classified separately and shown only as a
-  diagnostic note ("deep scan: N unsupported raw ranges (named registers OK)") in the
-  config-flow confirmation, not as individual address error counts.
-  Deep scan also opens a separate Modbus connection and can interfere with the active
-  coordinator polling. It is intended for offline diagnostics / development investigation
-  only; normal real-device validation should use `validate_known_registers` instead.
-
-### 8.3 Validation Sign-off
-
-This subsection must not be marked PASS until:
-
-1. All checklist items in §8.1 that are applicable to the installed device have been
-   completed with real HA log evidence or screenshot evidence attached or committed.
-2. The HA Core version, integration commit SHA, and device host/port/slave_id used during
-   validation are recorded in §2 (Environment).
-3. A named tester has signed off below with the date and commit SHA tested.
+- `quality_scale` remains `bronze`.
+- This document remains a partial evidence record, not full sign-off.
 
 **Tester sign-off:** _(pending)_
-**HA Core version tested:** _(pending)_
-**Integration commit SHA tested:** _(pending)_
-
----
-
-## 7. Release Gate
-
-Real-device validation is **not** complete until:
-
-1. All test cases in section 3 are marked **Pass** with committed evidence.
-2. The remaining evidence in section 4.2 is fully populated.
-3. A named tester has signed off with the commit SHA actually installed in HA.
-
-Until that point, quality_scale remains **bronze** and this document is **not a release sign-off**.
-
----
-
-## 9. Targeted Read-back After Writes — Pending Real-Device Validation
-
-This section tracks validation of the targeted read-back feature added in [Unreleased].
-
-**Do not mark any item PASS without attached HA log evidence or a screenshot.**
-
-### 9.1 How it works
-
-Targeted read-back is gated by an **explicit allow-list** (`_READBACK_ALLOW_LIST` in
-`coordinator/schedule.py`): only registers *known* to be 1:1 with a single displayed
-entity state are eligible — airflow / temperature / coefficient / timing setpoints and
-operational mode controls (e.g. `mode`, `air_flow_rate_manual`, `special_mode`,
-`season_mode`, `on_off_panel_mode`) exposed via number/select/switch. After a successful
-write to an allow-listed single holding register, the coordinator immediately reads back
-only the written register under the same `_write_lock`. The decoded value is applied to
-`coordinator.data` and HA listeners are notified via `async_set_updated_data` — without
-triggering a full register scan. If the read-back fails, the coordinator falls back to a
-full refresh.
-
-### 9.2 Excluded registers (full_refresh_only / no_readback)
-
-Anything **not** on `_READBACK_ALLOW_LIST` falls back to a full refresh, including:
-
-- Communication config: `uart_0_id`, `uart_1_id`, `uart_0_baud/parity/stop`,
-  `uart_1_baud/parity/stop`
-- Security / lock: `lock_pass`, `lock_flag`, `access_level`
-- Configuration mode: `configuration_mode`, `cfg_mode_1`, `cfg_mode_2`
-- Device config / clock calibration: `language`, `rtc_cal`, `device_name`, `date_time*`
-- Reset/trigger/self-clearing: `hard_reset_settings`, `hard_reset_schedule`,
-  `filter_change`, `airflow_rate_change_flag`, `temperature_change_flag`,
-  `pres_check_day_2`, `pres_check_time_2`
-- Schedule BCD-time registers: all `schedule_*`
-- AATT schedule-setting registers: all `setting_*`
-- Coil registers (function=1): no holding-register read-back
-- Multi-word registers (e.g. `device_name`): full_refresh_only
-- Fan setpoint registers via the fan entity: full_refresh_only (fan display reads from
-  `supply_percentage`; the fan opts out with `targeted_readback=False`)
-
-### 9.3 Real-device checklist
-
-| # | Check | Expected result | Result | Evidence |
-|---|-------|----------------|--------|----------|
-| 1 | Restart HA with updated integration | Setup completes without traceback; no `AttributeError` or `ThesslaGreenModbusCoordinator` error in HA log | — | — |
-| 2 | Change a safe switch entity (e.g. `switch.boost_mode`) | HA UI updates within one Modbus read-back round-trip (≪ 30 s); no full scan seen in logs immediately after | — | — |
-| 3 | Change a number entity (e.g. `number.comfort_temperature`) | HA UI reflects new value quickly; no full scan seen in logs immediately after | — | — |
-| 4 | Change a select entity (e.g. `select.mode`) | HA UI reflects new option quickly | — | — |
-| 5 | Confirm no transaction_id mismatch during or after writes | No `transaction_id mismatch` line in HA log after write operations | — | — |
-| 6 | Confirm no false "Modbus transport disconnected" errors | No false transport-disconnected error from integration after writes | — | — |
-| 7 | Periodic full refresh still works after writes | Coordinator continues normal 30-second scans; all sensor values update | — | — |
-| 8 | Call `reset_filters` or `reset_settings` service | Service succeeds; no targeted read-back attempted (confirm by no DEBUG read-back log line); full refresh follows if needed | — | — |
-| 9 | Confirm fan percentage still updates after fan speed change | Fan entity percentage updates correctly after a speed change (full refresh still happens for fan) | — | — |
-| 10 | Capture HA log lines showing targeted read-back and fallback | Confirm `Targeted read-back for <register> decoded to` and/or `Targeted read-back failed for <register>` lines appear at DEBUG level | — | — |
-| 11 | Change a non-allow-listed config entity (e.g. `select.access_level` or a `uart_*` entity, if exposed) | Write succeeds; **no** targeted read-back attempted for that register (no DEBUG read-back line); value converges on the next full refresh | — | — |
-
-### 9.4 Sign-off
-
-**Tester sign-off:** _(pending)_
-**HA Core version tested:** _(pending)_
-**Integration commit SHA tested:** _(pending)_
-
----
-
-## 10. Targeted Read-back Write-path Validation After #1726/#1727
-
-**Status: Pending real-device execution**
-
-### 10.1 Background
-
-PR #1722 introduced targeted read-back after single holding-register writes.
-A real-device issue was observed before the hotfixes:
-
-```text
-2026-07-02 23:06:37 Successfully wrote 1 to register mode
-2026-07-02 23:06:52 Successfully wrote 10 to register air_flow_rate_manual
-```
-
-The ~15-second gap between `mode=1` and `air_flow_rate_manual=10` was caused
-by a full register refresh being sandwiched between sequential fan writes.
-
-PRs #1726 and #1727 (merged 2026-07-02 ~23:41 UTC) fixed this:
-
-- `fan._write_register` passes `targeted_readback=False` (`fan.py:311`)
-- `fan.async_set_percentage` writes both registers with `refresh=False`,
-  issues one `async_request_refresh()` after both (`fan.py:244-254`)
-- `climate._write_register` passes `targeted_readback=False` (`climate.py:212`)
-- `services/dispatch.write_register` passes `targeted_readback=False` (`dispatch.py:27`)
-- `services/handlers_maintenance.py` passes `targeted_readback=False` (`handlers_maintenance.py:277-279`)
-- Decode/read-back failure no longer fails a successful write (`schedule.py:425-443`)
-
-### 10.2 Test steps
-
-1. **Update the integration.** Copy the latest `main` tree into
-   `config/custom_components/thessla_green_modbus/` on the Home Assistant host.
-2. **Full Home Assistant restart.** Settings → System → Restart.
-3. **Enable DEBUG logging.** Add to `configuration.yaml`:
-   ```yaml
-   logger:
-     default: warning
-     logs:
-       custom_components.thessla_green_modbus: debug
-   ```
-   Reload the logger (Developer Tools → YAML → Logger) or restart again.
-4. **Change fan percentage from the HA UI.** Open the fan card
-   (`fan.thesslagreen_ventilation`) and drag the speed slider or type a
-   new percentage value.
-5. **Observe the log sequence** in Settings → System → Logs or via
-   `ha core logs --follow`.
-
-### 10.3 Log patterns to search
-
-After performing each test action, search the HA log for these patterns:
-
-```text
-Successfully wrote 1 to register mode
-Successfully wrote .* to register air_flow_rate_manual
-Targeted read-back
-transaction_id
-traceback
-Failed to write
-async_request_refresh
-```
-
-Use the HA log search bar or `grep -iE '<pattern>' home-assistant.log`.
-
-### 10.4 PASS criteria
-
-A test PASSES when **all** of the following hold:
-
-1. No ~15-second delay between `Successfully wrote 1 to register mode` and
-   `Successfully wrote <value> to register air_flow_rate_manual`.
-2. Fan operation performs sequential writes without a full refresh between them.
-3. Exactly one full refresh after the logical fan operation completes.
-4. No `transaction_id mismatch` in the log.
-5. No traceback from `custom_components.thessla_green_modbus`.
-6. Fan card updates after the full refresh.
-7. Targeted read-back is **not** performed for fan setpoint writes
-   (no `Targeted read-back for mode decoded to` or
-   `Targeted read-back for air_flow_rate_manual decoded to` lines).
-8. Normal number/switch/select entity writes still work.
-
-### 10.5 Manual validation table
-
-> **Instructions:** Perform each test in order. Record the actual result,
-> mark PASS or FAIL, and add notes (e.g. log excerpt filename, timestamps).
-> **Do not mark any row PASS without HA log evidence.**
-
-| # | Test | Action | Expected result | Actual result | PASS/FAIL | Notes |
-|---|------|--------|----------------|---------------|-----------|-------|
-| 1 | Fan percentage — manual mode | Set fan percentage via HA UI slider | `mode=1` and `air_flow_rate_manual=<value>` written back-to-back (< 2 s apart); one full refresh after both; no targeted read-back for either register | — | — | — |
-| 2 | Fan turn on | Press fan power-on button | `on_off_panel_mode=1` written; fan starts; no targeted read-back | — | — | — |
-| 3 | Fan turn off | Press fan power-off button | `on_off_panel_mode=0` written; fan stops; no targeted read-back | — | — | — |
-| 4 | Climate HVAC mode change | Change HVAC mode in climate card | `on_off_panel_mode` and/or `mode` written with `targeted_readback=False`; one refresh after the operation | — | — | — |
-| 5 | Climate target temperature | Change target temperature in climate card | `comfort_temperature` and/or `required_temperature` written with `targeted_readback=False`; one refresh after | — | — | — |
-| 6 | Number entity write | Change a number entity (e.g. `number.comfort_temperature`) | Value written; targeted read-back **does** fire (this is a simple-entity path with `targeted_readback=True`); UI updates quickly | — | — | — |
-| 7 | Switch entity write | Toggle a switch entity (e.g. `switch.boost_mode`) | Value written; targeted read-back fires for eligible holding-register switches; UI updates quickly | — | — | — |
-| 8 | Select entity write | Change a select entity (e.g. `select.mode`) | Value written; targeted read-back fires for eligible selects; UI updates quickly | — | — | — |
-| 9 | `validate_known_registers` | Call via Developer Tools → Services | Service completes; result summary logged; supported/missing counts stable; no `transaction_id` mismatch | — | — | — |
-
-### 10.6 Sign-off
-
-This section must not be marked PASS until:
-
-1. All rows in §10.5 are completed with real HA log evidence.
-2. The PASS criteria in §10.4 are met.
-3. The environment details in §2 are updated with the tested commit SHA.
-
-**Validation status:** Pending real-device execution
-**Tester sign-off:** _(pending)_
-**HA Core version tested:** _(pending)_
-**Integration commit SHA tested:** _(pending)_
-**Date tested:** _(pending)_
-
----
-
-## 11. Optimistic UI validation for controllable entities
-
-This section validates the optimistic UI mechanism added for control/setpoint
-entities (`custom_components/thessla_green_modbus/optimistic.py`).  A pending
-value is stored **only after a confirmed-successful write**, shown in the GUI
-immediately, and dropped as soon as the coordinator confirms the real device
-value or a short TTL (default 10 s) elapses — whichever comes first.
-
-**Scope — only control/setpoint fields are optimistic:**
-
-- Fan percentage (existing behaviour, unchanged).
-- Number setpoints (`native_value`).
-- Switch on/off (`is_on`, including bit and mutually-exclusive `special_mode`).
-- Select options (`current_option`, excluding schedule/setting/BCD-time selects).
-- Climate command fields: `target_temperature`, `hvac_mode`, `fan_mode`,
-  `preset_mode`, and the visible mode after turn on/off.
-
-**Never optimistic (must stay confirmed-only):** `current_temperature`,
-`hvac_action`, airflow/temperature extra attributes, supply/exhaust flow and
-percentages as status, efficiency, power, heat recovery, bypass/heating/cooling
-real status, alarms/errors, `device_clock`, firmware/model/serial, diagnostics,
-and any destructive service.
-
-### 11.1 Real-device validation checklist
-
-> **Instructions:** Perform each test, then confirm the GUI updated *before* the
-> next coordinator poll and that the confirmed state later matches. **Do not
-> mark any row PASS without HA log evidence.**
-
-| # | Test | Action | Expected result | Actual result | PASS/FAIL | Notes |
-|---|------|--------|----------------|---------------|-----------|-------|
-| 1 | Fan percentage | Set 20 → 40 → 70 → 90 % via the fan card | GUI updates immediately at each step; physical device reacts; no rollback after the next full refresh | — | — | — |
-| 2 | Number setpoint | Change a safe low-risk number entity (e.g. `number.comfort_temperature`) | GUI shows the new value immediately; confirmed state later matches | — | — | — |
-| 3 | Switch | Toggle a safe switch (e.g. `switch.boost_mode`) | GUI flips immediately; confirmed state later matches | — | — | — |
-| 4 | Select | Change a safe select mode (e.g. `select.mode`) | GUI shows the new option immediately; confirmed state later matches | — | — | — |
-| 5a | Climate target temperature | Change target temperature | GUI target updates immediately; `current_temperature` unchanged | — | — | — |
-| 5b | Climate hvac_mode | Change HVAC mode | GUI mode updates immediately for the command field only | — | — | — |
-| 5c | Climate fan_mode | Change fan mode | GUI fan mode updates immediately | — | — | — |
-| 5d | Climate preset_mode | Change preset | GUI preset updates immediately | — | — | — |
-| 5e | Climate measured fields | Observe during 5a–5d | `current_temperature` and `hvac_action` remain confirmed-only (never jump optimistically) | — | — | — |
-
-### 11.2 Log checks (all rows)
-
-For each action, confirm in the HA log:
-
-1. No `transaction_id mismatch`.
-2. No traceback from `custom_components.thessla_green_modbus`.
-3. No `Failed to write` for the tested register.
-4. No second/extra Modbus client is opened (one client per entry).
-
-### 11.3 PASS criteria
-
-An optimistic-UI test PASSES when **all** hold:
-
-1. The controllable entity's GUI state changes immediately after a successful
-   write, without waiting a full poll interval.
-2. Measured/status entities do **not** change optimistically.
-3. After the next coordinator refresh, the confirmed device value matches the
-   optimistic value (no visible rollback for a successful write).
-4. A failed write leaves the GUI on the confirmed device state (no optimistic
-   change).
-5. The log checks in §11.2 all hold.
-
-### 11.4 Sign-off
-
-**Validation status:** Pending real-device execution
-**Tester sign-off:** _(pending)_
-**HA Core version tested:** _(pending)_
-**Integration commit SHA tested:** _(pending)_
-**Date tested:** _(pending)_
+**HA Core version tested for latest log:** _(pending)_
+**Integration commit SHA tested for latest log:** _(pending)_
+**Date tested:** 2026-07-08 log evidence recorded, formal sign-off pending
