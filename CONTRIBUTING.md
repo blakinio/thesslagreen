@@ -116,16 +116,17 @@ The test suite ensures the JSON definitions remain valid.
 
 ### Branch Strategy
 
-- `main` - stable releases
-- `dev` - development branch
-- `feature/your-feature-name` - feature branches
-- `bugfix/issue-description` - bug fix branches
+- `main` - the single long-lived branch; all work targets `main`.
+- `feature/your-feature-name` - feature branches, created from `main`.
+- `bugfix/issue-description` - bug fix branches, created from `main`.
+
+> There is no `dev`/`develop` branch. Do not create or reintroduce one.
 
 ### Creating a Feature Branch
 
 ```bash
-git checkout develop
-git pull origin develop
+git checkout main
+git pull origin main
 git checkout -b feature/your-feature-name
 ```
 
@@ -285,10 +286,10 @@ mypy custom_components/thessla_green_modbus/
 
 1. **Update your branch:**
    ```bash
-   git checkout develop
-   git pull origin develop
+   git checkout main
+   git pull origin main
    git checkout your-feature-branch
-   git rebase develop
+   git rebase main
    ```
 
 2. **Run all checks:**

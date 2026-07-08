@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Docs
+
+- **Documentation consistency audit (final polish).** Aligned stale docs with the
+  current repository: `CONTRIBUTING.md` no longer instructs contributors to branch
+  off / rebase onto a `dev`/`develop` branch (it now targets `main`, matching the
+  no-`dev` rule); `docs/thesslagreen_architecture.md` file lists corrected
+  (`services.py` → `services/` package, and the phantom `core/runtime_state.py`
+  replaced with the real `core/io_mixin.py`); and `README_en.md` dropped the stale
+  `get_diagnostic_info` service bullet (no such service exists — diagnostics are
+  obtained via HA's "Download diagnostics"). No runtime, register, entity/service
+  ID, or translation changes.
+
 ### Internal
 
 - **Dead-code audit (final polish).** Removed proven-unused internal code left after the
