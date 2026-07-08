@@ -9,7 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **Consolidated the shared read helpers (core consolidation Slice 4, narrow).** The
+  `core/read_common.py` module (shared low-level read retry/error helpers:
+  `is_illegal_data_address_response`, `is_transient_error_response`, `execute_read_call`,
+  `log_read_retry`, `raise_for_error_response`, `ILLEGAL_DATA_ADDRESS`) was inlined into
+  `core/read_batches.py` with byte-identical function bodies, and `read_common.py` was
+  removed (`core/` file count 21 → 20). The sole production consumer `core/io_mixin.py`
+  and `tests/test_read_common.py` now import those helpers from `read_batches`; no
+  re-export shims were added. Pure file move — no runtime behavior change; the read/update
+  cycle is untouched, and `read_bits.py`/`runtime_io.py`/`io_mixin.py` were not moved. No
+  Modbus register addresses/names, entity IDs, unique IDs, service IDs, or translation keys
+  changed. See `docs/core_consolidation_plan.md`.
 - **Consolidated the connection helper modules (core consolidation Slice 3).** The
+  tiny `core/connection_state.py` and `core/disconnect.py` helper modules were inlined
   tiny `core/connection_state.py` and `core/disconnect.py` helper modules were inlined
   into their sole caller-adjacent module `core/connection_lifecycle.py` (byte-identical
   function bodies), reducing the `core/` file count from 23 to 21. `core/client_connection.py`

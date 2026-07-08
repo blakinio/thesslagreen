@@ -321,14 +321,12 @@ Re-assess B3 after:
 
 ## 2026-06-01 B4 — Read cluster consolidation
 
-**Slice: B4 — BLOCKED**
+**Slice: B4 — SUPERSEDED** (see "2026-07-08 Slice 4 — DONE" below)
 
-Blocked: real-device validation for the read path has not yet reached PASS status.
-
-`read_batches.py`, `read_bits.py`, `read_common.py`, `runtime_io.py` will not be moved
-or merged until a full real-device read cycle is confirmed correct.
-
-Re-evaluate after the device validation milestone is marked PASS in the project tracker.
+Originally blocked: real-device validation for the read path had not reached PASS status.
+The narrow Slice 4 step (`read_common.py` → `read_batches.py`) was executed on 2026-07-08
+as a maintainer-waived pure move; `read_bits.py` and `runtime_io.py` were **not** touched
+and remain deferred until a full real-device read cycle is confirmed correct.
 
 ---
 
@@ -451,5 +449,65 @@ the inlined functions from `connection_lifecycle.py`, and restores the imports i
 
 ### Follow-ups
 
-- Slice 4 (read helper consolidation) remains **BLOCKED** on real-device read-path
-  validation — unchanged by this slice.
+- Slice 4 (read helper consolidation) — the narrow `read_common.py` → `read_batches.py`
+  step was subsequently executed (maintainer-waived); see "2026-07-08 Slice 4 — DONE".
+
+---
+
+## 2026-07-08 Slice 4 — DONE (narrow read helper consolidation)
+
+**Slice: 4 (narrow) — ✅ DONE** (maintainer explicitly waived the real-device read-path
+gate for this zero-behavior-change move). Only the narrow plan option was taken —
+`read_common.py` → `read_batches.py`. The broader `read/` sub-package and any move of
+`read_bits.py` / `runtime_io.py` / `io_mixin.py` were **not** done and remain deferred
+until real-device read-path validation reaches PASS.
+
+### What was done
+
+- `core/read_common.py` (6 shared low-level read helpers: `ILLEGAL_DATA_ADDRESS`,
+  `is_illegal_data_address_response`, `is_transient_error_response`, `execute_read_call`,
+  `log_read_retry`, `raise_for_error_response`) was **inlined into `core/read_batches.py`**
+  with byte-identical function bodies (imports merged). `core/` file count 21 → 20.
+- `core/read_common.py` was **deleted** (`git rm`).
+- Import sites updated directly (no shims): `core/io_mixin.py` (the sole production
+  consumer — 5 `from .read_common import …` → `from .read_batches import …`) and
+  `tests/test_read_common.py`.
+
+### Why this was low-risk despite the read-path gate
+
+`read_common.py` and `read_batches.py` are **independent leaves** — neither imports the
+other or any other read-cluster module. In production both are consumed **only** by
+`core/io_mixin.py` (which is itself imported only by `core/client.py`). Merging two
+siblings that share a single consumer introduces no new import edge and no cycle
+(verified: `read_batches` imports resolve, `io_mixin` resolves all impl aliases). It is a
+pure move with no logic change, so the read/update cycle behaviour is unchanged.
+
+### Files moved / deleted
+
+| Action | File |
+|---|---|
+| Deleted | `core/read_common.py` |
+| Updated (inline target) | `core/read_batches.py` |
+| Updated (imports) | `core/io_mixin.py` |
+| Updated (test import) | `tests/test_read_common.py` |
+| Updated (docs) | `docs/coordinator_proxy_remaining_plan.md` |
+
+### Validation
+
+`compileall`, `ruff`/`ruff -I`/`ruff format --check`, `check_maintainability`,
+`validate_entity_mappings`, `check_translations`, `validate_registers`, and the register
+comparison tools all pass. `read_batches` exposes all six merged symbols and `io_mixin`
+resolves all five impl aliases (no circular import). Full `pytest` (incl.
+`test_read_common.py`, `test_read_batches.py`, `test_io_mixin*`) runs on CI (Python 3.13);
+the local sandbox is 3.11.
+
+### Rollback plan
+
+`git revert` the slice commit — re-creates `read_common.py`, removes the inlined helpers
+from `read_batches.py`, and restores the imports in `io_mixin.py` and the test. Zero
+runtime effect either way (pure move).
+
+### Still deferred
+
+- `read_bits.py`, `runtime_io.py`, `io_mixin.py` consolidation and any `read/` sub-package
+  remain **BLOCKED** on real-device read-path validation = PASS.

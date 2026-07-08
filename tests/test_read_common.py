@@ -1,4 +1,4 @@
-"""Tests for core/read_common.py."""
+"""Tests for the shared low-level read helpers (now in core/read_batches.py)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from custom_components.thessla_green_modbus.core.read_common import (
+from custom_components.thessla_green_modbus.core.read_batches import (
     execute_read_call,
     is_illegal_data_address_response,
     is_transient_error_response,
