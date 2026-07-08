@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **Consolidated the connection helper modules (core consolidation Slice 3).** The
+  tiny `core/connection_state.py` and `core/disconnect.py` helper modules were inlined
+  into their sole caller-adjacent module `core/connection_lifecycle.py` (byte-identical
+  function bodies), reducing the `core/` file count from 23 to 21. `core/client_connection.py`
+  and the two affected tests now import all connection lifecycle/state/disconnect helpers
+  from `connection_lifecycle`; no re-export shims were added. Pure file move — no runtime
+  behavior change, and no Modbus register addresses/names, entity IDs, unique IDs, service
+  IDs, or translation keys changed. See `docs/core_consolidation_plan.md`.
 - **Targeted read-back restricted to an explicit safe allow-list.** The post-write
   targeted read-back policy (`coordinator/schedule.py`) was changed from a permissive
   deny-list (any single-word holding register was eligible unless enumerated) to an

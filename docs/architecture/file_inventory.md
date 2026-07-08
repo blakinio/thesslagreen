@@ -74,7 +74,7 @@ of the Modbus connection and I/O and is assembled from mixins.
 |---|---|---|---|
 | `core/client.py` | `ThesslaGreenDeviceClient` mixin assembler (connect/close, read snapshot, scan, write). | 🟥 | **Keep as the mixin assembler** — do not merge into a monolith (CLAUDE.md). |
 | `core/write_path.py` | `SingleWritePlan`, `encode_write_value` (user units → raw). | 🟥 | Encoding correctness = correct device behaviour. |
-| `core/client_connection.py`, `connection*.py`, `disconnect.py`, `transport_select.py`, `retry.py`, `runtime_io.py`, `io_mixin.py` | Connection lifecycle, transport selection, retry/backoff, low-level I/O. | 🟥 | Sole I/O owner; do not add a second Modbus client path. |
+| `core/client_connection.py`, `connection*.py`, `transport_select.py`, `retry.py`, `runtime_io.py`, `io_mixin.py` | Connection lifecycle, transport selection, retry/backoff, low-level I/O. `connection_lifecycle.py` also holds the connection state and disconnect helpers (formerly `connection_state.py`/`disconnect.py`). | 🟥 | Sole I/O owner; do not add a second Modbus client path. |
 | `core/client_registers.py`, `read_*.py`, `register_*.py` | Batched register reads, decoding to snapshot values. | 🟥 | Respect batch boundaries from `const.py`. |
 | `core/client_scanner.py`, `scan_helpers.py`, `capabilities_mixin.py` | Capability discovery orchestration. | 🟧 | Treat Modbus exception code 2 as unsupported, not fatal. |
 | `core/models.py` | `CoordinatorConfig`, domain models. | 🟧 | — |

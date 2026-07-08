@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from custom_components.thessla_green_modbus.core import disconnect
+from custom_components.thessla_green_modbus.core import connection_lifecycle
 
 
 @pytest.mark.asyncio
@@ -14,7 +14,7 @@ async def test_disconnect_locked_uses_close_client_helper():
     close_client = AsyncMock()
     mark_disconnected = MagicMock()
 
-    await disconnect.disconnect_locked(
+    await connection_lifecycle.disconnect_locked(
         transport=None,
         client=MagicMock(),
         close_client_connection_fn=close_client,
@@ -35,5 +35,5 @@ async def test_close_client_connection_awaits_awaitable_close_result():
         return None
 
     client.close = MagicMock(return_value=_close_coro())
-    await disconnect.close_client_connection(client=client, logger=MagicMock())
+    await connection_lifecycle.close_client_connection(client=client, logger=MagicMock())
     client.close.assert_called_once()

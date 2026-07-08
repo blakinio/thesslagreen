@@ -46,24 +46,24 @@ from .connection import (
     reconnect_client_if_needed as _reconnect_client_if_needed_impl,
 )
 from .connection_lifecycle import (
+    close_client_connection as _close_client_connection_impl,
+)
+from .connection_lifecycle import (
+    disconnect_locked as _disconnect_locked_impl,
+)
+from .connection_lifecycle import (
     ensure_connected_lifecycle as _ensure_connected_lifecycle_impl,
 )
-from .connection_state import (
+from .connection_lifecycle import (
     mark_connection_disconnected as _mark_connection_disconnected_impl,
 )
-from .connection_state import (
+from .connection_lifecycle import (
     mark_connection_established as _mark_connection_established_impl,
 )
-from .connection_state import (
+from .connection_lifecycle import (
     mark_connection_failure as _mark_connection_failure_impl,
 )
 from .connection_test import run_connection_test as _run_connection_test_impl
-from .disconnect import (
-    close_client_connection as _close_client_connection_impl,
-)
-from .disconnect import (
-    disconnect_locked as _disconnect_locked_impl,
-)
 from .transport_select import (
     select_auto_transport as _select_auto_transport_impl,
 )

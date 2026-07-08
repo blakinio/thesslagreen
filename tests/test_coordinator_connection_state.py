@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from custom_components.thessla_green_modbus.core.connection_state import (
+from custom_components.thessla_green_modbus.core.connection_lifecycle import (
     mark_connection_disconnected,
     mark_connection_established,
     mark_connection_failure,
