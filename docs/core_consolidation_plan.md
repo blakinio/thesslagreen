@@ -389,3 +389,67 @@ zero runtime effect either way (pure move).
 
 Attempt Slice 3 once `docs/real_device_validation.md` reaches **PASS** (or the maintainer
 explicitly waives the real-device gate for this zero-behavior-change move).
+
+---
+
+## 2026-07-08 Slice 3 — DONE (connection helper consolidation)
+
+**Slice: 3 — ✅ DONE** (maintainer explicitly waived the real-device gate for this
+zero-behavior-change move; all other preconditions were met per the readiness re-assessment
+above).
+
+### What was done
+
+- `connection_state.py` (3 helpers) and `disconnect.py` (2 helpers) were **inlined into
+  `connection_lifecycle.py`** with byte-identical function bodies (imports merged). The
+  three connection-helper files became one; `core/` file count 23 → 21.
+- `connection_state.py` and `disconnect.py` were **deleted** (`git rm`).
+- The sole caller `core/client_connection.py` now imports `mark_connection_established`,
+  `mark_connection_failure`, `mark_connection_disconnected`, `close_client_connection`,
+  `disconnect_locked`, and `ensure_connected_lifecycle` all from `connection_lifecycle`.
+  No re-export shims.
+
+### Correction to the readiness note above
+
+The readiness re-assessment stated "No test imports the three target modules directly."
+That was **inaccurate** — two tests imported them and were updated directly (no shims):
+
+| File | Old import | New import |
+|---|---|---|
+| `tests/test_coordinator_connection_state.py` | `from core.connection_state import …` | `from core.connection_lifecycle import …` |
+| `tests/test_coordinator_disconnect.py` | `from core import disconnect` (`disconnect.disconnect_locked`, `disconnect.close_client_connection`) | `from core import connection_lifecycle` (`connection_lifecycle.…`) |
+
+Test file names were left unchanged (they still describe the behaviour they cover).
+`docs/architecture/file_inventory.md` was updated to drop `disconnect.py`.
+
+### Files moved / deleted
+
+| Action | File |
+|---|---|
+| Deleted | `core/connection_state.py` |
+| Deleted | `core/disconnect.py` |
+| Updated (inline target) | `core/connection_lifecycle.py` |
+| Updated (imports) | `core/client_connection.py` |
+| Updated (test imports) | `tests/test_coordinator_connection_state.py`, `tests/test_coordinator_disconnect.py` |
+| Updated (docs) | `docs/architecture/file_inventory.md` |
+
+### Validation
+
+`compileall`, `ruff`/`ruff -I`/`ruff format --check`, `check_maintainability`,
+`validate_entity_mappings`, `check_translations`, `validate_registers`, and the register
+comparison tools all pass. `connection_lifecycle` imports standalone and `client_connection`
+resolves all six impl aliases from it (no circular import). Full `pytest` (incl.
+`test_coordinator_connection*.py`, `test_coordinator_disconnect.py`,
+`test_coordinator_lifecycle.py`, `test_modbus_transport_lifecycle.py`) runs on CI (Python
+3.13); the local sandbox is 3.11.
+
+### Rollback plan
+
+`git revert` the slice commit — re-creates `connection_state.py`/`disconnect.py`, removes
+the inlined functions from `connection_lifecycle.py`, and restores the imports in
+`client_connection.py` and the two tests. Zero runtime effect either way (pure move).
+
+### Follow-ups
+
+- Slice 4 (read helper consolidation) remains **BLOCKED** on real-device read-path
+  validation — unchanged by this slice.
