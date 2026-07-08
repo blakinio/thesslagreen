@@ -15,12 +15,6 @@ from .read_batches import (
     execute_read_call as _execute_read_call_impl,
 )
 from .read_batches import (
-    is_illegal_data_address_response as _is_illegal_data_address_response_impl,
-)
-from .read_batches import (
-    is_transient_error_response as _is_transient_error_response_impl,
-)
-from .read_batches import (
     log_read_retry as _log_read_retry_impl,
 )
 from .read_batches import (
@@ -111,14 +105,6 @@ class _ModbusIOMixin:
 
     async def _read_all_register_data(self) -> dict[str, Any]:
         return await _read_all_register_data_impl(self)
-
-    @staticmethod
-    def _is_illegal_data_address_response(response: Any) -> bool:
-        return bool(_is_illegal_data_address_response_impl(response))
-
-    @staticmethod
-    def _is_transient_error_response(response: Any) -> bool:
-        return bool(_is_transient_error_response_impl(response))
 
     async def _execute_read_call(
         self,
