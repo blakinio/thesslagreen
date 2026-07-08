@@ -12,6 +12,13 @@ def _make_ok_response(registers):
     return resp
 
 
+def _make_bit_response(bits):
+    resp = MagicMock()
+    resp.isError.return_value = False
+    resp.bits = list(bits)
+    return resp
+
+
 async def _make_scanner(**kwargs):
     return await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 1, **kwargs)
 

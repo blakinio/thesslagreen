@@ -8,19 +8,7 @@ from pymodbus.exceptions import (
     ModbusIOException,
 )
 
-
-def _make_ok_response(registers):
-    resp = MagicMock()
-    resp.isError.return_value = False
-    resp.registers = list(registers)
-    return resp
-
-
-def _make_bit_response(bits):
-    resp = MagicMock()
-    resp.isError.return_value = False
-    resp.bits = list(bits)
-    return resp
+from .helpers_scanner import _make_ok_response
 
 
 async def _make_scanner(**kwargs):

@@ -7,16 +7,11 @@ from pymodbus.exceptions import (
     ModbusIOException,
 )
 
+from .helpers_scanner import _make_ok_response
+
 
 async def _make_scanner(**kwargs):
     return await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 1, **kwargs)
-
-
-def _make_ok_response(registers):
-    resp = MagicMock()
-    resp.isError.return_value = False
-    resp.registers = list(registers)
-    return resp
 
 
 def _make_transport(*, input_response=None, holding_response=None):

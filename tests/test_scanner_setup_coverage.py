@@ -7,12 +7,7 @@ import pytest
 from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP, CONNECTION_TYPE_RTU
 from pymodbus.exceptions import ConnectionException
 
-
-def _make_ok_response(registers):
-    resp = MagicMock()
-    resp.isError.return_value = False
-    resp.registers = list(registers)
-    return resp
+from .helpers_scanner import _make_ok_response
 
 
 async def _make_scanner(**kwargs):
