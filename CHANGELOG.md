@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **Repository hygiene audit (final polish).** Removed the orphaned `.bandit` config:
+  bandit is not installed (`requirements-dev.txt`), not wired into CI, pre-commit, or
+  `pyproject.toml`, and its only documented reference (a `CONTRIBUTING.md` dev step) was
+  already removed — leaving a config for a tool nothing runs. No automated pipeline
+  consumed it, so removal cannot affect CI. (Restore a 2-line `[bandit]` `exclude =
+  tests,tools` file if bandit is ever wired in.)
 - **Dead-code audit (final polish).** Removed proven-unused internal code left after the
   refactor series: two private no-caller static-method wrappers on `_ModbusIOMixin`
   (`_is_illegal_data_address_response`, `_is_transient_error_response` in
