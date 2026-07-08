@@ -471,3 +471,46 @@ delegates were removed.
 
 Both methods had zero callers after A5. Confirmed by `grep -r` on `custom_components` and
 `tests` before removal.
+
+---
+
+## 2026-07-08 final verification — no trivial device_client proxies remain
+
+Re-audited `coordinator/coordinator.py` against the whole codebase to confirm the
+cleanup is complete. **No trivial `coordinator → device_client` forwarders remain**
+that can be removed without changing runtime behavior or public contracts.
+
+### Correction to earlier entries
+
+Earlier entries (slice-5, A4) recorded `host`, `port`, and `slave_id` as **RETAINED**
+config property proxies. Those proxies **were subsequently removed** in commit
+`3b02b07` ("Remove coordinator.host/port proxy — all callers use device_client.config
+directly"). `_CoordinatorConfigPropertiesMixin` no longer exists. All callers now use
+`coordinator.device_client.config.host/port/slave_id` (and `device_client.slave_id`),
+including `entity.py` `unique_id` — so **no entity unique ID changed**.
+
+### Current `@property` surface on the coordinator (3 total)
+
+| Property | Classification | Why kept |
+|---|---|---|
+| `device_client` | intentional accessor | Core abstraction — the single entry point to device-domain state (220+ usages). |
+| `status_overview` | diagnostics adapter | Combines `device_client.statistics` with coordinator-level `scan_interval`; consumed by `diagnostics.py`. Not a device_client forwarder. |
+| `performance_stats` | diagnostics adapter | Aggregates `device_client.statistics`; consumed by `diagnostics.py`. Not a device_client forwarder. |
+
+### Remaining intentional (non-removable) delegating methods
+
+| Method | Classification | Why kept |
+|---|---|---|
+| `_ensure_connection` | HA-boundary adapter | Duck-typed entry point called by schedule/update/retry/client_registers submodules. |
+| `_disconnect_locked` | HA-boundary callback | Passed as `disconnect_locked_fn` to `core/connection_lifecycle.py`. |
+| `_disconnect` | HA-boundary adapter | Acquires `_client_lock`, then delegates; called by errors/schedule/update/write_path/shutdown. |
+| `_test_connection`, `_async_setup_client` | HA-boundary / test helper | Mirror HA start-up connection path; hold `_write_lock`, compose test addresses. |
+| `get_diagnostic_data`, `get_device_info` | diagnostics adapter | Combine `device_client` state with coordinator `entry`/`data`; behavior differs from `device_client`'s own methods. |
+| `_parse_backoff_jitter` (staticmethod) | test-facing helper | Forwards to `runtime.parse_backoff_jitter` (NOT device_client); asserted directly by unit tests. |
+| `_apply_scan_result`, `_run_device_scan`, `_warn_missing_device_info`, `_prepare_registers_for_setup`, `_get_scan_cache_from_entry`, `_consume_config_flow_scan_cache`, `_load_full_register_list`, `_normalise_available_registers`, `_apply_scan_cache`, `_store_scan_cache` | deferred `_impl` delegates | Forward to `coordinator/scan*.py` / `device_info.py` submodules (which need the coordinator's `entry`/`hass`), not to `device_client`. Removal requires the submodule-calling-convention refactor described in "Future Removal Path" and is gated on real-device validation. |
+
+### Conclusion
+
+The coordinator/device_client proxy reduction is **complete** for the scope achievable
+without the deferred submodule-signature refactor (which is gated on real-device
+validation). No further trivial device_client proxies exist to remove.
