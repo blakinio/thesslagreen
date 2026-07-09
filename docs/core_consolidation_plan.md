@@ -1,16 +1,27 @@
 # Core Package Consolidation Plan
 
-**Status: Slice 2 merged — runtime_state inlined into client_registers**
+**Status: Slices 1–3 + narrow Slice 4 complete, plus final polish — `core/` has 19 files (excl. `__init__.py`)**
 **Created: 2026-05-29**
-**Updated: 2026-06-01**
-**Related PRs: #1685 (planning), #1691 (slice 1 — scanner_kwargs inline), current branch (slice 2)**
+**Updated: 2026-07-09**
+**Related PRs: #1685 (planning), #1691 (Slice 1 — scanner_kwargs inline), Slice 2 — runtime_state inline, #1748 (Slice 3 — connection helper consolidation), #1750 (Slice 4 narrow — read_common → read_batches), #1752 (final polish)**
+
+> **Current recommendation (2026-07-09):** the safe consolidation slices are done.
+> **Do not start any further runtime refactor before longer real-device validation.**
+> The next safe work is real-device validation evidence and release prep — not more
+> file moves. Keep `core/client.py` as the mixin assembler, and keep `quality_scale`
+> at `bronze` until `docs/real_device_validation.md` reaches PASS. The remaining
+> candidates (broad Slice 4 `read/` package, Slice 5 mixin review, merging mixins
+> into `client.py`) are **DEFERRED / NOT RECOMMENDED NOW** — see §4 and §7.
 
 ---
 
 ## 1. Current Layout Inventory
 
-The `core/` package currently has 24 Python files (was 25; `scanner_kwargs.py` inlined into
-`client_scanner.py` in slice 1). They are grouped by concern below.
+The `core/` package currently has **19 Python files** (excluding `__init__.py`). Five
+modules from the original inventory have been inlined into their callers across Slices
+1–4 and are no longer present: `scanner_kwargs.py`, `runtime_state.py`,
+`connection_state.py`, `disconnect.py`, `read_common.py`. Files are grouped by concern
+below; this matches `docs/architecture/file_inventory.md` (canonical current structure).
 
 ### 1.1 Main client entry point
 
@@ -23,37 +34,35 @@ The `core/` package currently has 24 Python files (was 25; `scanner_kwargs.py` i
 | File | Concern |
 |---|---|
 | `connection.py` | High-level connection helpers shared by client and scanner |
-| `connection_lifecycle.py` | Async connection open/close logic |
-| `connection_state.py` | Connection state tracking (connected, offline, etc.) |
+| `connection_lifecycle.py` | Async connection open/close **plus** connection-state tracking and disconnect/teardown helpers (former `connection_state.py` + `disconnect.py`, inlined in Slice 3) |
 | `connection_test.py` | Register-probe helpers for connection validation |
-| `disconnect.py` | Disconnect / teardown helpers |
 | `transport_select.py` | Transport selection logic (TCP vs RTU, mode detection) |
+| `client_connection.py` | `_DeviceClientConnectionMixin` — connection lifecycle mixin |
 
 ### 1.3 Read path concern
 
 | File | Concern |
 |---|---|
-| `read_batches.py` | Batched multi-register reads |
+| `read_batches.py` | Batched multi-register reads **plus** shared low-level read retry/error helpers (former `read_common.py`, inlined in narrow Slice 4) |
 | `read_bits.py` | Coil / discrete input reads |
-| `read_common.py` | Shared read infrastructure (retry wrappers, error helpers) |
 | `runtime_io.py` | High-level runtime read/write dispatcher |
 | `io_mixin.py` | `_ModbusIOMixin` — Modbus read protocol mixin used by DeviceClient |
+| `client_registers.py` | `_DeviceClientRegistersMixin` — register IO helpers mixin (also holds the former `runtime_state.py` failure-tracking helpers, inlined in Slice 2) |
 
 ### 1.4 Write path concern
 
 | File | Concern |
 |---|---|
-| `write_path.py` | Write operations (single register, multi-register, coil writes) |
+| `write_path.py` | `SingleWritePlan`, `encode_write_value` (write operations, user units → raw) |
 
 ### 1.5 Scanner support
 
 | File | Concern |
 |---|---|
-| `client_scanner.py` | `_DeviceClientScannerMixin` — scanner orchestration methods |
+| `client_scanner.py` | `_DeviceClientScannerMixin` — scanner orchestration methods (also holds the former `scanner_kwargs.py` `build_scanner_kwargs`, inlined in Slice 1) |
 | `scan_helpers.py` | Scan result processing helpers |
-| `scanner_kwargs.py` | Scanner construction argument assembly |
 
-### 1.6 Capability / model / config helpers
+### 1.6 Capability / model / register helpers
 
 | File | Concern |
 |---|---|
@@ -62,57 +71,56 @@ The `core/` package currently has 24 Python files (was 25; `scanner_kwargs.py` i
 | `register_groups.py` | Register group grouping and iteration helpers |
 | `register_processing.py` | Register value post-processing (scaling, enum decode, etc.) |
 
-### 1.7 Runtime / config / state helpers
+### 1.7 Retry helper
 
 | File | Concern |
 |---|---|
-| `client_connection.py` | `_DeviceClientConnectionMixin` — connection lifecycle mixin |
-| `client_registers.py` | `_DeviceClientRegistersMixin` — register IO helpers mixin |
 | `retry.py` | Retry/backoff utilities |
-| `runtime_state.py` | Runtime state snapshot helpers |
 
 ---
 
 ## 2. Recommended Target Layout
 
-The long-term target layout reduces the file count while preserving logical separation:
+The original long-term target proposed `connection/` and `read/` sub-packages. The
+connection concern has since been consolidated **in place** (three files → one
+`connection_lifecycle.py`) rather than into a sub-package, which was simpler and
+lower-risk. The `read/` sub-package is **DEFERRED / NOT RECOMMENDED NOW** — see the
+note below.
 
-```
+```text
 core/
   __init__.py
   client.py              # ThesslaGreenDeviceClient (unchanged — assembles mixins)
   models.py              # CoordinatorConfig, data models (unchanged)
-  connection/            # or connection.py if small enough
-    __init__.py          # re-exports public symbols
-    lifecycle.py         # open/close/teardown (from connection_lifecycle, disconnect)
-    state.py             # connection state (from connection_state)
-    test.py              # connection probe (from connection_test)
-    transport_select.py  # transport selection (from transport_select)
-  read/                  # or read.py if small enough
-    __init__.py
-    batches.py           # from read_batches
-    bits.py              # from read_bits
-    common.py            # from read_common
-    io_mixin.py          # _ModbusIOMixin (from io_mixin)
-    runtime_io.py        # from runtime_io
-  write.py               # from write_path (already focused)
-  register_processing.py # unchanged
-  register_groups.py     # unchanged
-  retry.py               # unchanged
+  connection.py          # high-level connection helpers (unchanged)
+  connection_lifecycle.py# open/close + state + disconnect (Slice 3 consolidated these)
+  connection_test.py     # connection probe (unchanged)
+  transport_select.py    # transport selection (unchanged)
+  client_connection.py   # _DeviceClientConnectionMixin (unchanged)
+  read_batches.py        # batched reads + shared read helpers (narrow Slice 4)
+  read_bits.py           # coil/discrete reads (unchanged — DEFERRED from broad Slice 4)
+  runtime_io.py          # runtime read/write dispatcher (unchanged — DEFERRED)
+  io_mixin.py            # _ModbusIOMixin (unchanged — DEFERRED)
+  client_registers.py    # _DeviceClientRegistersMixin (unchanged)
+  write_path.py          # write operations (unchanged)
+  client_scanner.py      # _DeviceClientScannerMixin (unchanged)
   scan_helpers.py        # unchanged
-  scanner_kwargs.py      # unchanged
   capabilities_mixin.py  # unchanged
-  client_connection.py   # unchanged until connection/ package is ready
-  client_scanner.py      # unchanged
-  client_registers.py    # unchanged
+  register_groups.py     # unchanged
+  register_processing.py # unchanged
+  retry.py               # unchanged
 ```
 
 ### Notes on target layout
 
-- Do not merge `client.py` into a monolith — keep it as the assembler of mixins.
-- The `connection/` sub-package makes sense because there are 6 connection-related files.
-- The `read/` sub-package may be deferred if the file count is manageable.
-- Circular imports are the primary risk; always verify with `python -m compileall` after moves.
+- **Do not merge `client.py` into a monolith** — keep it as the assembler of mixins.
+- The `connection/` sub-package was **not** created; in-place consolidation into
+  `connection_lifecycle.py` achieved the same file-count reduction with less churn.
+- A `read/` sub-package (moving `read_bits.py` / `runtime_io.py` / `io_mixin.py` into
+  `core/read/`) is **DEFERRED / NOT RECOMMENDED NOW** — it touches the live read/update
+  cycle and must wait for real-device read-path validation = PASS.
+- Circular imports are the primary risk; always verify with `python -m compileall`
+  after any future move.
 
 ---
 
@@ -120,9 +128,8 @@ core/
 
 These rules apply to every consolidation slice:
 
-1. **Preserve public imports** — if a module is imported by name outside `core/`, keep the old
-   name as a re-export shim for one PR cycle, then remove it in the next.
-   Exception: purely internal helpers with no external import are safe to move immediately.
+1. **Preserve public imports** — update all import sites directly. No re-export shims
+   (per `docs/thesslagreen_guidelines.md`, compatibility shims are forbidden).
 
 2. **No behavior changes** — consolidation is file moves only. No logic changes.
 
@@ -130,167 +137,127 @@ These rules apply to every consolidation slice:
 
 4. **One concern per PR** — do not mix connection and read consolidation in the same PR.
 
-5. **Run full validation after every slice** — see the validation checklist at the bottom.
+5. **Run full validation after every slice** — see the validation checklist (§6).
 
 6. **Avoid actively-touched files** — if a file was modified in the last 3 PRs or is
    referenced in a real-device fix, defer its consolidation.
 
-7. **No shims** — per `docs/thesslagreen_guidelines.md`, compatibility shims are forbidden.
-   Update all import sites instead of adding re-export modules.
+7. **Respect the real-device gate** — never force a slice whose preconditions
+   (real-device validation PASS, a prior slice being stable) are unmet.
 
 ---
 
-## 4. Suggested Safe Slices
-
-### Slice 0 — Documentation only (this PR)
-
-- Create this document.
-- Identify the safest first move.
-- No code changed.
+## 4. Slice status
 
 ### Slice 1 — Tiny internal-only helper ✅ DONE (PR #1691)
 
-**Chosen file:** `scanner_kwargs.py` (35 lines)
-
-**Why:** Grep confirmed only one import site (`core/client_scanner.py`), no external callers,
-no test direct-import, no test patch targets. Lowest-risk possible change.
-
-**What was done:**
-- `build_scanner_kwargs` function body moved into `core/client_scanner.py`
-- `scanner_kwargs.py` deleted (git rm)
-- `client_scanner.py` now calls `build_scanner_kwargs` directly (no alias, no shim)
-- `test_dependency_direction.py` extended with transport and scanner direction checks
-- `docs/core_consolidation_plan.md` updated to reflect completion
-
-**Files moved / deleted:**
-| Action | File |
-|---|---|
-| Deleted | `core/scanner_kwargs.py` |
-| Updated (inline target) | `core/client_scanner.py` |
-
-**Import-site changes:**
-| File | Old import | New situation |
-|---|---|---|
-| `core/client_scanner.py` | `from .scanner_kwargs import build_scanner_kwargs as _build_scanner_kwargs_impl` | function defined locally; no import needed |
-
-**Rollback plan:** `git revert <PR #1691 merge commit>`. Re-creates `scanner_kwargs.py` and
-restores the import in `client_scanner.py`. Zero runtime effect either way.
-
-**Deferred candidates from original assessment:**
-
-| File | Lines | Reason deferred |
-|---|---|---|
-| `retry.py` | 269 | Too many external callers (coordinator, core, tests); high blast radius |
-| `runtime_state.py` | 25 | One test directly imports it; safe but deferred to slice 2 |
-
-**No behavior changes:** function body of `build_scanner_kwargs` is byte-for-byte identical.
+`scanner_kwargs.py` (35 lines) inlined into `core/client_scanner.py`; module deleted.
+No external callers, no shims. See the dated log below for the full record.
 
 ### Slice 2 — Next tiny internal-only helper ✅ DONE (2026-06-01)
 
-**Target:** `runtime_state.py` (25 lines) → inlined into `core/client_registers.py`
+`runtime_state.py` (25 lines) inlined into `core/client_registers.py`; module deleted.
+One test import updated. See the dated log below.
 
-**What was done:**
-- `mark_registers_failed` and `clear_register_failure` moved into `client_registers.py`
-- `runtime_state.py` deleted (git rm)
-- `tests/test_coordinator_runtime_state.py` import updated from
-  `core.runtime_state` → `core.client_registers`
-- Full validation passed
+### Slice 3 — Connection helper consolidation ✅ DONE (PR #1748)
 
-**Files moved / deleted:**
-| Action | File |
-|---|---|
-| Deleted | `core/runtime_state.py` |
-| Updated (inline target) | `core/client_registers.py` |
-| Updated (test import) | `tests/test_coordinator_runtime_state.py` |
-
-**Rollback plan:** `git revert <B2 commit>`. Re-creates `runtime_state.py`, removes the
-inlined functions from `client_registers.py`, and restores the test import. Zero runtime effect.
-
-**core/ file count:** 23 (was 24)
-
-### Slice 3 — Connection helper consolidation
-
-Target: merge `connection_state.py` and `disconnect.py` into `connection_lifecycle.py`
-(or into a `connection/` sub-package).
-
-Prerequisites:
-- Real-device validation after #1684 must be complete.
-- All imports from these modules must be audited.
-- Tests must cover connect/disconnect paths.
-
-Risk: Medium — touches the connection runtime path that was recently changed in #1684.
+`connection_state.py` and `disconnect.py` inlined into `connection_lifecycle.py`
+(three connection-helper files → one); both modules deleted. `client_connection.py`
+and two tests updated to import from `connection_lifecycle`. Maintainer explicitly
+waived the real-device gate for this zero-behavior-change move. See the dated log below.
 
 ### Slice 4 — Read helper consolidation
 
-Target: merge `read_common.py` into `read_batches.py` or create a `read/` sub-package.
+- **Narrow step ✅ DONE (PR #1750):** `read_common.py` (6 shared low-level read
+  helpers) inlined into `read_batches.py`; module deleted. `io_mixin.py` and
+  `tests/test_read_common.py` updated. Maintainer-waived pure move. See the dated log.
+- **Broad step ❌ DEFERRED / NOT RECOMMENDED NOW:** moving `read_bits.py` /
+  `runtime_io.py` / `io_mixin.py` into a `core/read/` sub-package. This touches the
+  live read/update cycle and is **BLOCKED** on real-device read-path validation = PASS.
 
-Prerequisites:
-- Slice 3 must be stable.
-- Read path tests must pass on a real device.
+### Slice 5 — Mixin review ❌ DEFERRED / NOT RECOMMENDED NOW
 
-Risk: High — touches the update read cycle. Defer until #1684 real-device validation is done.
+Reviewing whether `capabilities_mixin.py` and `io_mixin.py` should be inlined into
+`client.py` is **not recommended now**. Merging any mixin into `client.py` is
+explicitly out of scope until longer real-device validation is complete — and
+`client.py` must remain the mixin assembler regardless (CLAUDE.md hard rule).
 
-### Slice 5 — Mixin review
+### Final polish ✅ DONE (PR #1752)
 
-Target: review whether `capabilities_mixin.py` and `io_mixin.py` should be inlined into
-`client.py` or kept as separate concerns.
-
-Prerequisites:
-- All previous slices must be stable.
-- Only after `check_maintainability.py` reports no violations in `client.py`.
-
-Risk: Low if mechanical, but touches the main client which is central.
+Not a consolidation slice, but the closing cleanup of the refactor series: removal of
+no-caller wrappers/constants (two private `_ModbusIOMixin` static-method wrappers and
+three unreferenced `const.py` constants), scanner test-helper consolidation into
+`tests/helpers_scanner.py`, a docs consistency audit, and removal of the orphaned
+`.bandit` config. No runtime behavior, register, entity/service ID, or translation
+changes. See `CHANGELOG.md` and PR #1752.
 
 ---
 
-## 5. Decision Points
+## 5. Decision Points & current recommendation
 
-Before executing slices, the team must decide:
+| Decision | Chosen |
+|---|---|
+| Module size preference | Small focused files (current style) |
+| Sub-package vs single file | In-place inline (no sub-packages created so far) |
+| Import compatibility | Update all import sites directly (no shims) |
+| Timing of remaining slices | **After** longer real-device validation only |
 
-| Decision | Option A | Option B |
-|---|---|---|
-| Module size preference | Small focused files (current style) | Topic files (fewer, larger) |
-| Sub-package vs single file | `connection/` sub-package | Single `connection.py` |
-| Import compatibility | Update all import sites | Brief re-export shim (one PR) |
-| Timing | After real-device validation | Before real-device validation |
+**Current recommendation (2026-07-09):**
 
-**Current recommendation:** Follow Option A (small files), use sub-packages for groups with
-≥3 files, update import sites directly (no shims), and wait for real-device validation before
-any Slice 2+ work.
+- **No further runtime refactor before longer real-device validation.** The remaining
+  candidates all touch the live read path or the central client and carry real
+  regression risk without new real-device evidence.
+- **Next safe work is real-device validation evidence and release prep**, not more
+  file moves. See `docs/real_device_validation.md` and `docs/release_readiness.md`.
+- **Keep `core/client.py` as the mixin assembler** — do not merge mixins into it.
+- **Keep `quality_scale` at `bronze`** until `docs/real_device_validation.md` is
+  marked PASS with committed real-device evidence.
 
 ---
 
 ## 6. Validation Checklist (per slice)
 
-Run these after every consolidation slice:
+Run these after any consolidation slice (and for the release/validation work that
+follows). If `pytest` cannot collect in the local sandbox (Python < 3.13), run the
+rest and flag that full `pytest` needs CI verification on Python 3.13.
 
 ```bash
 python -m compileall -q custom_components/thessla_green_modbus tests tools
+pytest --collect-only -q
 pytest tests/ -q --tb=long
 ruff check custom_components tests tools
 ruff check --select I custom_components tests tools
 ruff format --check custom_components tests tools
-python tools/compare_airpack4_vendor_coverage.py
 python tools/compare_registers_with_reference.py --show-renames
+python tools/compare_airpack4_vendor_coverage.py
+python tools/check_maintainability.py
 python tools/validate_entity_mappings.py
 python tools/check_translations.py
-python tools/check_maintainability.py
+python tools/validate_registers.py
 ```
 
-All must pass before merging any slice.
+All applicable commands must pass before merging any slice.
 
 ---
 
 ## 7. Deferred Work
 
-The following are explicitly out of scope until prerequisites are met:
+The following are explicitly out of scope until their prerequisites (chiefly
+real-device validation = PASS) are met:
 
-- `read_batches.py` / `read_bits.py` / `read_common.py` consolidation — deferred until
-  Slice 2 (connection) is stable and real-device validation is done.
-- `connection.py` / `connection_lifecycle.py` / `disconnect.py` merge — deferred until
-  real-device validation after #1684 is complete.
+- **Broad Slice 4** — moving `read_bits.py` / `runtime_io.py` / `io_mixin.py` into a
+  `core/read/` sub-package. **DEFERRED / NOT RECOMMENDED NOW** — touches the live
+  read/update cycle.
+- **Slice 5 mixin review** — inlining `capabilities_mixin.py` / `io_mixin.py`.
+  **DEFERRED / NOT RECOMMENDED NOW.**
+- **Merging any mixin into `client.py`.** **NOT RECOMMENDED** — `client.py` must stay
+  the mixin assembler (CLAUDE.md hard rule).
 - Any consolidation that touches the Modbus read/write runtime.
 - Any consolidation that changes public import paths without a full import-site audit.
+
+**Only real-device validation evidence remains before considering further runtime
+refactors.** No broad read-path refactor, no Slice 5 mixin review, and no merging of
+mixins into `client.py` should be attempted before that validation is complete.
 
 ---
 
@@ -511,3 +478,29 @@ runtime effect either way (pure move).
 
 - `read_bits.py`, `runtime_io.py`, `io_mixin.py` consolidation and any `read/` sub-package
   remain **BLOCKED** on real-device read-path validation = PASS.
+
+---
+
+## 2026-07-09 Docs refresh — plan aligned with completed slices
+
+**Docs-only.** Sections 1–7 above were refreshed to reflect the current repository state
+after Slices 1–3, narrow Slice 4, and the PR #1752 final polish:
+
+- Header status/date/PR list updated; `core/` file count corrected to **19** (excl.
+  `__init__.py`). The stale "Slice 2 merged / 24 files / 2026-06-01" header was removed.
+- The Current Layout Inventory (§1) now lists the real 19 files and no longer references
+  the deleted `scanner_kwargs.py`, `runtime_state.py`, `connection_state.py`,
+  `disconnect.py`, or `read_common.py`. It matches `docs/architecture/file_inventory.md`.
+- Completed slices recorded (§4): Slice 1 (scanner_kwargs → client_scanner), Slice 2
+  (runtime_state → client_registers), Slice 3 (connection_state + disconnect →
+  connection_lifecycle), narrow Slice 4 (read_common → read_batches), and the final polish
+  (no-caller wrappers/constants removed, scanner test helpers consolidated).
+- Broad Slice 4 (`read/` package move), Slice 5 mixin review, and merging mixins into
+  `client.py` marked **DEFERRED / NOT RECOMMENDED NOW** (§2, §4, §7).
+- Current recommendation added (§5): no further runtime refactor before longer real-device
+  validation; next safe work is validation evidence + release prep; keep `client.py` as the
+  mixin assembler; keep `quality_scale` at `bronze` until validation PASS.
+- Validation checklist (§6) refreshed to the full current command set.
+
+No runtime, register, entity/service ID, or translation changes. The dated log entries
+above are preserved as historical record.
