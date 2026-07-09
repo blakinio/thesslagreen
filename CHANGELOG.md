@@ -7,8 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.3] - 2026-07-09
+
+> Wrap-up of the post-refactor cleanup series. Ships the targeted read-back safe
+> allow-list, the connection-helper and narrow read-helper `core/` consolidations,
+> and real-device validation, dead-code, test-helper, and documentation polish.
+> **No Modbus register addresses/names, entity IDs, unique IDs, service IDs,
+> translation keys, or config/options-flow behavior changed.** `quality_scale`
+> stays `bronze` — real-device validation is still PARTIAL pending the manual
+> UI/service evidence enumerated in the release gate.
+
 ### Docs
 
+- **Real-device validation evidence + plan refresh.** Recorded the 2026-07-08 real
+  device HA-log evidence in `docs/real_device_validation.md` (clean post-refactor
+  setup, config-flow scan-cache startup, service registration, basic read path, and
+  successful `air_flow_rate_manual` writes; no `transaction_id mismatch` or false
+  transport disconnect observed), and refreshed `docs/core_consolidation_plan.md` to
+  the current repository state after the completed slices (19 `core/` files; broad
+  Slice 4 / Slice 5 / mixin-into-`client.py` marked DEFERRED / NOT RECOMMENDED NOW).
+  Validation remains PARTIAL and `quality_scale` stays `bronze`. Docs-only.
 - **Documentation consistency audit (final polish).** Aligned stale docs with the
   current repository: `CONTRIBUTING.md` no longer instructs contributors to branch
   off / rebase onto a `dev`/`develop` branch (it now targets `main`, matching the
@@ -51,8 +69,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cycle is untouched, and `read_bits.py`/`runtime_io.py`/`io_mixin.py` were not moved. No
   Modbus register addresses/names, entity IDs, unique IDs, service IDs, or translation keys
   changed. See `docs/core_consolidation_plan.md`.
+- **Consolidated the scanner test helpers (final polish).** Duplicated response-mock
+  factories across the scanner test modules were consolidated into
+  `tests/helpers_scanner.py` so the tests share one source of truth. Test-only change;
+  no runtime, register, entity/service ID, or translation changes.
 - **Consolidated the connection helper modules (core consolidation Slice 3).** The
-  tiny `core/connection_state.py` and `core/disconnect.py` helper modules were inlined
   tiny `core/connection_state.py` and `core/disconnect.py` helper modules were inlined
   into their sole caller-adjacent module `core/connection_lifecycle.py` (byte-identical
   function bodies), reducing the `core/` file count from 23 to 21. `core/client_connection.py`
