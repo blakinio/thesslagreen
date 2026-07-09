@@ -5,16 +5,11 @@ from custom_components.thessla_green_modbus.const import CONNECTION_TYPE_RTU
 from custom_components.thessla_green_modbus.scanner.core import ThesslaGreenDeviceScanner
 from pymodbus.exceptions import ConnectionException
 
+from .helpers_scanner import _make_ok_response
+
 
 async def _make_scanner(**kwargs):
     return await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 1, **kwargs)
-
-
-def _make_ok_response(registers):
-    resp = MagicMock()
-    resp.isError.return_value = False
-    resp.registers = list(registers)
-    return resp
 
 
 def _make_transport():

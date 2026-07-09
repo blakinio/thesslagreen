@@ -48,7 +48,6 @@ HOLDING_BATCH_BOUNDARIES: frozenset[int] = frozenset({16, 8192})
 # Integration constants
 DOMAIN = "thessla_green_modbus"
 MANUFACTURER = "ThesslaGreen"
-MODEL = "AirPack Home Series 4"
 # Fallback model name used when the unit does not report one
 UNKNOWN_MODEL = "Unknown"
 
@@ -89,7 +88,6 @@ DEFAULT_CONNECTION_TYPE = CONNECTION_TYPE_TCP
 CONNECTION_MODE_TCP = "tcp"
 CONNECTION_MODE_TCP_RTU = "tcp_rtu"
 CONNECTION_MODE_AUTO = "auto"
-DEFAULT_CONNECTION_MODE = CONNECTION_MODE_AUTO
 
 # Default serial settings per ProtokolModbusRTU_AirPack4 specification: "9600 bps 8/N/1"
 DEFAULT_SERIAL_PORT = ""
@@ -176,7 +174,6 @@ DEFAULT_DEEP_SCAN = False
 DEFAULT_MAX_REGISTERS_PER_REQUEST = MAX_BATCH_REGISTERS
 DEFAULT_SAFE_SCAN = False
 DEFAULT_LOG_LEVEL = "info"
-LOG_LEVEL_OPTIONS = ["debug", "info", "warning", "error"]
 
 # Registers that are known to be unavailable on some devices
 KNOWN_MISSING_REGISTERS = {

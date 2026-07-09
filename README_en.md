@@ -212,8 +212,7 @@ Logs are visible in **Settings → System → Logs** and the `home-assistant.log
 
 ### View last read and error counters
 - **Entity attributes:** in **Developer Tools → States** open any integration entity; the `last_updated` attribute marks the last successful poll.
-- **Device diagnostics:** **Settings → Devices & Services → ThesslaGreen Modbus → ⋮ → Download diagnostics** to see `last_successful_update`, `successful_reads`/`failed_reads`, `last_error` and response-time statistics.
-- **`get_diagnostic_info` service:** call `thessla_green_modbus.get_diagnostic_info` from **Developer Tools → Services** to retrieve full diagnostics (device identity, available registers, error history).
+- **Device diagnostics:** **Settings → Devices & Services → ThesslaGreen Modbus → ⋮ → Download diagnostics** to see `last_successful_update`, `successful_reads`/`failed_reads`, `last_error` and response-time statistics (device identity, available registers and error history are included in the same download).
 
 ## ❔ FAQ
 

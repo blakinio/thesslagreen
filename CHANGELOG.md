@@ -7,8 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Docs
+
+- **Documentation consistency audit (final polish).** Aligned stale docs with the
+  current repository: `CONTRIBUTING.md` no longer instructs contributors to branch
+  off / rebase onto a `dev`/`develop` branch (it now targets `main`, matching the
+  no-`dev` rule); `docs/thesslagreen_architecture.md` file lists corrected
+  (`services.py` → `services/` package, and the phantom `core/runtime_state.py`
+  replaced with the real `core/io_mixin.py`); and `README_en.md` dropped the stale
+  `get_diagnostic_info` service bullet (no such service exists — diagnostics are
+  obtained via HA's "Download diagnostics"). No runtime, register, entity/service
+  ID, or translation changes.
+
 ### Internal
 
+- **Repository hygiene audit (final polish).** Removed the orphaned `.bandit` config:
+  bandit is not installed (`requirements-dev.txt`), not wired into CI, pre-commit, or
+  `pyproject.toml`, and its only documented reference (a `CONTRIBUTING.md` dev step) was
+  already removed — leaving a config for a tool nothing runs. No automated pipeline
+  consumed it, so removal cannot affect CI. (Restore a 2-line `[bandit]` `exclude =
+  tests,tools` file if bandit is ever wired in.)
+- **Dead-code audit (final polish).** Removed proven-unused internal code left after the
+  refactor series: two private no-caller static-method wrappers on `_ModbusIOMixin`
+  (`_is_illegal_data_address_response`, `_is_transient_error_response` in
+  `core/io_mixin.py`) plus their now-orphaned `read_batches` imports — the live read path
+  calls the `read_batches` module functions directly; and three unreferenced module-level
+  constants in `const.py` (`MODEL`, `DEFAULT_CONNECTION_MODE`, `LOG_LEVEL_OPTIONS`). All
+  removals were verified to have zero references across `custom_components/`, `tests/`, and
+  `tools/` and no dynamic lookups. The protected batch-boundary constants
+  (`MAX_REGISTERS_PER_REQUEST = 16`, `HOLDING_BATCH_BOUNDARIES = {16, 8192}`) and all
+  documented public API (DeviceClient `async_close`/`async_test_connection`/
+  `async_scan_device`/`get_capabilities`, `error_contract.is_transient`, the `errors.py`
+  exception hierarchy) were retained. No Modbus register addresses/names, entity IDs,
+  unique IDs, service IDs, translation keys, or config/options-flow behavior changed.
 - **Consolidated the shared read helpers (core consolidation Slice 4, narrow).** The
   `core/read_common.py` module (shared low-level read retry/error helpers:
   `is_illegal_data_address_response`, `is_transient_error_response`, `execute_read_call`,

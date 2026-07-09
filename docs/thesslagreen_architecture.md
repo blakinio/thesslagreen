@@ -85,7 +85,7 @@ Pliki i moduły:
 ```text
 __init__.py
 config_flow.py
-services.py
+services/
 diagnostics.py
 repairs.py
 entity.py
@@ -183,7 +183,7 @@ core/write_path.py          — SingleWritePlan, encode_write_value
 core/capabilities_mixin.py  — mixin capabilities
 core/models.py              — modele domenowe
 core/connection.py          — connection state
-core/runtime_state.py       — runtime state
+core/io_mixin.py            — read-path Modbus IO
 ```
 
 Odpowiedzialność:
