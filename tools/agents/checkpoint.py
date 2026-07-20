@@ -171,9 +171,11 @@ def validate_checkpoint(data: dict[str, object], path: Path) -> list[str]:
 
     required_fields = contract.get("required_fields", [])
     assert isinstance(required_fields, list)
-    for key in required_fields:
-        if key not in data:
-            errors.append(f"{path}: missing checkpoint field {key}")
+    errors.extend(
+        f"{path}: missing checkpoint field {key}"
+        for key in required_fields
+        if key not in data
+    )
 
     if str(data.get("checkpoint_version", "")) != str(contract.get("version")):
         errors.append(f"{path}: wrong checkpoint_version")
@@ -236,11 +238,11 @@ def validate_checkpoint(data: dict[str, object], path: Path) -> list[str]:
     for index, left in enumerate(evidence_fields):
         for right in evidence_fields[index + 1 :]:
             overlap = evidence_sets[left] & evidence_sets[right]
-            for fact in sorted(overlap):
-                errors.append(
-                    f"{path}: evidence fact appears in both "
-                    f"{left} and {right}: {fact}"
-                )
+            errors.extend(
+                f"{path}: evidence fact appears in both "
+                f"{left} and {right}: {fact}"
+                for fact in sorted(overlap)
+            )
 
     return errors
 
