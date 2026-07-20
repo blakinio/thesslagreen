@@ -8,6 +8,12 @@ updated: YYYY-MM-DD
 related_pr: ""
 owned_paths:
   - <path/glob>
+required_reads:
+  - AGENTS.md
+  - docs/agents/CONTEXT_HANDOFF.md
+  # Add task-specific architecture, contract, or program files here.
+search_first: []
+optional_reads: []
 ---
 
 # <Task title>
