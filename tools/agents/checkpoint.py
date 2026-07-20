@@ -57,9 +57,7 @@ def parse_checkpoint(path: Path) -> dict[str, object] | None:
     if not matches:
         return None
     if len(matches) != 1:
-        raise ValueError(
-            f"{path}: expected exactly one {CHECKPOINT_HEADING} section"
-        )
+        raise ValueError(f"{path}: expected exactly one {CHECKPOINT_HEADING} section")
 
     remainder = text[matches[0].end() :]
     next_heading = re.search(r"(?m)^##\s+", remainder)
@@ -76,9 +74,7 @@ def parse_checkpoint(path: Path) -> dict[str, object] | None:
     current_key: str | None = None
     current_validation: dict[str, str] | None = None
 
-    for line_number, raw in enumerate(
-        section[fence.end() : block_end].splitlines(), start=1
-    ):
+    for line_number, raw in enumerate(section[fence.end() : block_end].splitlines(), start=1):
         if not raw.strip() or raw.lstrip().startswith("#"):
             continue
 
@@ -87,9 +83,7 @@ def parse_checkpoint(path: Path) -> dict[str, object] | None:
 
         if indent == 0:
             if ":" not in line:
-                raise ValueError(
-                    f"{path}:{line_number}: invalid checkpoint line"
-                )
+                raise ValueError(f"{path}:{line_number}: invalid checkpoint line")
             key, value = line.split(":", 1)
             key = key.strip()
             value = value.strip()
@@ -100,15 +94,11 @@ def parse_checkpoint(path: Path) -> dict[str, object] | None:
             current_validation = None
             if key in LIST_KEYS or key == "validation":
                 if value not in {"", "[]"}:
-                    raise ValueError(
-                        f"{path}:{line_number}: {key} must be a YAML list"
-                    )
+                    raise ValueError(f"{path}:{line_number}: {key} must be a YAML list")
                 data[key] = []
             elif key == "first_failure":
                 if value:
-                    raise ValueError(
-                        f"{path}:{line_number}: first_failure must be a mapping"
-                    )
+                    raise ValueError(f"{path}:{line_number}: first_failure must be a mapping")
                 data[key] = {}
             else:
                 data[key] = scalar(value)
@@ -116,9 +106,7 @@ def parse_checkpoint(path: Path) -> dict[str, object] | None:
 
         if current_key in LIST_KEYS:
             if indent != 2 or not line.startswith("- "):
-                raise ValueError(
-                    f"{path}:{line_number}: invalid list item under {current_key}"
-                )
+                raise ValueError(f"{path}:{line_number}: invalid list item under {current_key}")
             values = data[current_key]
             assert isinstance(values, list)
             values.append(scalar(line[2:]))
@@ -126,9 +114,7 @@ def parse_checkpoint(path: Path) -> dict[str, object] | None:
 
         if current_key == "first_failure":
             if indent != 2 or ":" not in line:
-                raise ValueError(
-                    f"{path}:{line_number}: invalid first_failure item"
-                )
+                raise ValueError(f"{path}:{line_number}: invalid first_failure item")
             key, value = line.split(":", 1)
             mapping = data[current_key]
             assert isinstance(mapping, dict)
@@ -141,9 +127,7 @@ def parse_checkpoint(path: Path) -> dict[str, object] | None:
             if indent == 2 and line.startswith("- "):
                 item = line[2:].strip()
                 if ":" not in item:
-                    raise ValueError(
-                        f"{path}:{line_number}: invalid validation item"
-                    )
+                    raise ValueError(f"{path}:{line_number}: invalid validation item")
                 key, value = item.split(":", 1)
                 current_validation = {key.strip(): scalar(value)}
                 items.append(current_validation)
@@ -154,9 +138,7 @@ def parse_checkpoint(path: Path) -> dict[str, object] | None:
                 continue
             raise ValueError(f"{path}:{line_number}: invalid validation item")
 
-        raise ValueError(
-            f"{path}:{line_number}: scalar field cannot have nested values"
-        )
+        raise ValueError(f"{path}:{line_number}: scalar field cannot have nested values")
 
     return data
 
@@ -172,9 +154,7 @@ def validate_checkpoint(data: dict[str, object], path: Path) -> list[str]:
     required_fields = contract.get("required_fields", [])
     assert isinstance(required_fields, list)
     errors.extend(
-        f"{path}: missing checkpoint field {key}"
-        for key in required_fields
-        if key not in data
+        f"{path}: missing checkpoint field {key}" for key in required_fields if key not in data
     )
 
     if str(data.get("checkpoint_version", "")) != str(contract.get("version")):
@@ -191,8 +171,7 @@ def validate_checkpoint(data: dict[str, object], path: Path) -> list[str]:
 
     first_failure = data.get("first_failure")
     if not isinstance(first_failure, dict) or not all(
-        str(first_failure.get(key, "")).strip()
-        for key in ("marker", "evidence")
+        str(first_failure.get(key, "")).strip() for key in ("marker", "evidence")
     ):
         errors.append(f"{path}: invalid first_failure")
 
@@ -204,8 +183,7 @@ def validate_checkpoint(data: dict[str, object], path: Path) -> list[str]:
     else:
         for index, item in enumerate(validation, start=1):
             if not isinstance(item, dict) or not all(
-                str(item.get(key, "")).strip()
-                for key in ("command", "result", "evidence")
+                str(item.get(key, "")).strip() for key in ("command", "result", "evidence")
             ):
                 errors.append(f"{path}: invalid validation item {index}")
                 continue
@@ -219,28 +197,20 @@ def validate_checkpoint(data: dict[str, object], path: Path) -> list[str]:
         if not isinstance(value, list):
             errors.append(f"{path}: {key} must be a list")
         elif len(value) > int(limit):
-            errors.append(
-                f"{path}: {key} has {len(value)} items; "
-                f"compactness limit is {limit}"
-            )
+            errors.append(f"{path}: {key} has {len(value)} items; compactness limit is {limit}")
 
     evidence_map = contract.get("evidence_state_fields", {})
     assert isinstance(evidence_map, dict)
     evidence_fields = list(evidence_map.values())
     evidence_sets = {
-        key: {
-            normalized_fact(str(item))
-            for item in data.get(key, [])
-            if str(item).strip()
-        }
+        key: {normalized_fact(str(item)) for item in data.get(key, []) if str(item).strip()}
         for key in evidence_fields
     }
     for index, left in enumerate(evidence_fields):
         for right in evidence_fields[index + 1 :]:
             overlap = evidence_sets[left] & evidence_sets[right]
             errors.extend(
-                f"{path}: evidence fact appears in both "
-                f"{left} and {right}: {fact}"
+                f"{path}: evidence fact appears in both {left} and {right}: {fact}"
                 for fact in sorted(overlap)
             )
 
@@ -248,9 +218,7 @@ def validate_checkpoint(data: dict[str, object], path: Path) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Validate compact agent task checkpoints"
-    )
+    parser = argparse.ArgumentParser(description="Validate compact agent task checkpoints")
     parser.add_argument("task", nargs="?", type=Path)
     parser.add_argument("--tasks", type=Path)
     parser.add_argument("--require-checkpoint", action="store_true")
