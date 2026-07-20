@@ -8,7 +8,6 @@ from pathlib import Path
 
 import checkpoint
 
-
 DEFAULT_REQUIRED_READS = ["AGENTS.md", "docs/agents/CONTEXT_HANDOFF.md"]
 ROUTING_KEYS = ("required_reads", "search_first", "optional_reads")
 
