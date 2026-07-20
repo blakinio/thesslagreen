@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "contract_name": "portable-agent-checkpoint-handoff",
+  "shared_checkpoint_contract": {
+    "version": 1,
+    "required_fields": ["checkpoint_version", "updated_at", "head", "branch", "pr", "status", "context_routes", "owned_paths", "proven", "derived", "unknown", "conflicts", "first_failure", "rejected_hypotheses", "changed_paths", "validation", "blockers", "next_action"],
+    "allowed_statuses": ["investigating", "implementing", "validating", "blocked", "ready"],
+    "allowed_validation_results": ["PASS", "FAIL", "BLOCKED", "NOT_RUN"],
+    "evidence_state_fields": {"PROVEN": "proven", "DERIVED": "derived", "UNKNOWN": "unknown", "CONFLICT": "conflicts"},
+    "compactness_limits": {"context_routes": 8, "owned_paths": 64, "proven": 16, "derived": 12, "unknown": 12, "conflicts": 8, "rejected_hypotheses": 16, "changed_paths": 32, "validation": 12, "blockers": 8}
+  }
+}
