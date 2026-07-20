@@ -1,68 +1,284 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse,json,re,sys
+
+import argparse
+import json
+import re
+import sys
 from pathlib import Path
-H="## Context checkpoint";L={"context_routes","owned_paths","proven","derived","unknown","conflicts","rejected_hypotheses","changed_paths","blockers"};P={"","none","unknown","pending","n/a","tbd","todo","later"}
-def cfg():return json.loads((Path(__file__).resolve().parents[2]/"docs/agents/GOVERNANCE_CONTRACT.json").read_text())["shared_checkpoint_contract"]
-def s(v):
- v=v.strip();return v[1:-1] if len(v)>=2 and v[0]==v[-1] and v[0] in {'\"',"'"} else v
-def parse(p):
- t=p.read_text();m=list(re.finditer(r"(?m)^## Context checkpoint\s*$",t))
- if not m:return None
- if len(m)!=1:raise ValueError(f"{p}: expected one {H}")
- r=t[m[0].end():];n=re.search(r"(?m)^##\s+",r);q=r[:n.start()] if n else r;f=re.search(r"```(?:yaml|yml)\s*\n",q,re.I)
- if not f:raise ValueError(f"{p}: checkpoint has no YAML fence")
- e=q.find("```",f.end());d={};cur=None;cv=None
- if e<0:raise ValueError(f"{p}: checkpoint fence not closed")
- for no,raw in enumerate(q[f.end():e].splitlines(),1):
-  if not raw.strip() or raw.lstrip().startswith("#"):continue
-  ind=len(raw)-len(raw.lstrip());line=raw.strip()
-  if ind==0:
-   if ":" not in line:raise ValueError(f"{p}:{no}: invalid line")
-   k,v=line.split(":",1);k=k.strip();v=v.strip();cur=k;cv=None
-   if k in d:raise ValueError(f"{p}:{no}: duplicate {k}")
-   if k in L or k=="validation":d[k]=[] if v in {"","[]"} else (_ for _ in ()).throw(ValueError(f"{p}:{no}: {k} must be list"))
-   elif k=="first_failure":d[k]={}
-   else:d[k]=s(v)
-  elif cur in L:d[cur].append(s(line[2:])) if ind==2 and line.startswith("- ") else (_ for _ in ()).throw(ValueError(f"{p}:{no}: invalid list"))
-  elif cur=="first_failure":k,v=line.split(":",1);d[cur][k.strip()]=s(v)
-  elif cur=="validation":
-   if ind==2 and line.startswith("- "):k,v=line[2:].split(":",1);cv={k.strip():s(v)};d[cur].append(cv)
-   elif ind==4 and cv is not None:k,v=line.split(":",1);cv[k.strip()]=s(v)
-   else:raise ValueError(f"{p}:{no}: invalid validation")
- return d
-def validate(d,p):
- c=cfg();e=[]
- for k in c["required_fields"]:
-  if k not in d:e.append(f"{p}: missing {k}")
- if str(d.get("checkpoint_version",""))!=str(c["version"]):e.append(f"{p}: wrong checkpoint_version")
- if d.get("status") not in c["allowed_statuses"]:e.append(f"{p}: unsupported status")
- if str(d.get("next_action","")).strip().casefold() in P:e.append(f"{p}: next_action must be concrete")
- ff=d.get("first_failure")
- if not isinstance(ff,dict) or not all(str(ff.get(k,"")).strip() for k in ("marker","evidence")):e.append(f"{p}: invalid first_failure")
- for k,limit in c.get("compactness_limits",{}).items():
-  v=d.get(k,[])
-  if not isinstance(v,list):e.append(f"{p}: {k} must be list")
-  elif len(v)>limit:e.append(f"{p}: {k} compactness limit {limit} exceeded")
- val=d.get("validation",[])
- for i,x in enumerate(val,1):
-  if not isinstance(x,dict) or not all(str(x.get(k,"")).strip() for k in ("command","result","evidence")):e.append(f"{p}: invalid validation {i}")
-  elif x["result"] not in c["allowed_validation_results"]:e.append(f"{p}: unsupported validation result")
- fields=list(c["evidence_state_fields"].values());sets={k:{" ".join(str(x).casefold().split()) for x in d.get(k,[]) if str(x).strip()} for k in fields}
- for i,a in enumerate(fields):
-  for b in fields[i+1:]:
-   if sets[a]&sets[b]:e.append(f"{p}: evidence overlaps {a}/{b}")
- return e
-def main():
- a=argparse.ArgumentParser();a.add_argument("task",nargs="?",type=Path);a.add_argument("--tasks",type=Path);a.add_argument("--require-checkpoint",action="store_true");x=a.parse_args()
- if bool(x.task)==bool(x.tasks):a.error("provide one task or --tasks")
- ps=[x.task] if x.task else sorted(x.tasks.glob("*.md"));err=[]
- for p in ps:
-  try:d=parse(p)
-  except Exception as z:err.append(str(z));continue
-  if d is None:
-   if x.require_checkpoint:err.append(f"{p}: missing {H}")
-  else:err+=validate(d,p)
- for z in err:print("ERROR:",z,file=sys.stderr)
- return 1 if err else (print(f"Validated {len(ps)} checkpoint task(s).") or 0)
-if __name__=="__main__":raise SystemExit(main())
+
+CHECKPOINT_HEADING = "## Context checkpoint"
+LIST_KEYS = {
+    "context_routes",
+    "owned_paths",
+    "proven",
+    "derived",
+    "unknown",
+    "conflicts",
+    "rejected_hypotheses",
+    "changed_paths",
+    "blockers",
+}
+PLACEHOLDER_NEXT_ACTIONS = {
+    "",
+    "none",
+    "unknown",
+    "pending",
+    "n/a",
+    "tbd",
+    "todo",
+    "later",
+}
+
+
+def repository_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def load_contract() -> dict[str, object]:
+    path = repository_root() / "docs/agents/GOVERNANCE_CONTRACT.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    contract = raw["shared_checkpoint_contract"]
+    if not isinstance(contract, dict):
+        raise ValueError(f"{path}: invalid shared checkpoint contract")
+    return contract
+
+
+def scalar(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        return value[1:-1]
+    return value
+
+
+def parse_checkpoint(path: Path) -> dict[str, object] | None:
+    text = path.read_text(encoding="utf-8")
+    matches = list(re.finditer(r"(?m)^## Context checkpoint\s*$", text))
+    if not matches:
+        return None
+    if len(matches) != 1:
+        raise ValueError(
+            f"{path}: expected exactly one {CHECKPOINT_HEADING} section"
+        )
+
+    remainder = text[matches[0].end() :]
+    next_heading = re.search(r"(?m)^##\s+", remainder)
+    section = remainder[: next_heading.start()] if next_heading else remainder
+    fence = re.search(r"```(?:yaml|yml)\s*\n", section, re.IGNORECASE)
+    if not fence:
+        raise ValueError(f"{path}: checkpoint has no fenced YAML block")
+
+    block_end = section.find("```", fence.end())
+    if block_end < 0:
+        raise ValueError(f"{path}: checkpoint fence is not closed")
+
+    data: dict[str, object] = {}
+    current_key: str | None = None
+    current_validation: dict[str, str] | None = None
+
+    for line_number, raw in enumerate(
+        section[fence.end() : block_end].splitlines(), start=1
+    ):
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+
+        indent = len(raw) - len(raw.lstrip(" "))
+        line = raw.strip()
+
+        if indent == 0:
+            if ":" not in line:
+                raise ValueError(
+                    f"{path}:{line_number}: invalid checkpoint line"
+                )
+            key, value = line.split(":", 1)
+            key = key.strip()
+            value = value.strip()
+            if key in data:
+                raise ValueError(f"{path}:{line_number}: duplicate key {key}")
+
+            current_key = key
+            current_validation = None
+            if key in LIST_KEYS or key == "validation":
+                if value not in {"", "[]"}:
+                    raise ValueError(
+                        f"{path}:{line_number}: {key} must be a YAML list"
+                    )
+                data[key] = []
+            elif key == "first_failure":
+                if value:
+                    raise ValueError(
+                        f"{path}:{line_number}: first_failure must be a mapping"
+                    )
+                data[key] = {}
+            else:
+                data[key] = scalar(value)
+            continue
+
+        if current_key in LIST_KEYS:
+            if indent != 2 or not line.startswith("- "):
+                raise ValueError(
+                    f"{path}:{line_number}: invalid list item under {current_key}"
+                )
+            values = data[current_key]
+            assert isinstance(values, list)
+            values.append(scalar(line[2:]))
+            continue
+
+        if current_key == "first_failure":
+            if indent != 2 or ":" not in line:
+                raise ValueError(
+                    f"{path}:{line_number}: invalid first_failure item"
+                )
+            key, value = line.split(":", 1)
+            mapping = data[current_key]
+            assert isinstance(mapping, dict)
+            mapping[key.strip()] = scalar(value)
+            continue
+
+        if current_key == "validation":
+            items = data[current_key]
+            assert isinstance(items, list)
+            if indent == 2 and line.startswith("- "):
+                item = line[2:].strip()
+                if ":" not in item:
+                    raise ValueError(
+                        f"{path}:{line_number}: invalid validation item"
+                    )
+                key, value = item.split(":", 1)
+                current_validation = {key.strip(): scalar(value)}
+                items.append(current_validation)
+                continue
+            if indent == 4 and current_validation is not None and ":" in line:
+                key, value = line.split(":", 1)
+                current_validation[key.strip()] = scalar(value)
+                continue
+            raise ValueError(f"{path}:{line_number}: invalid validation item")
+
+        raise ValueError(
+            f"{path}:{line_number}: scalar field cannot have nested values"
+        )
+
+    return data
+
+
+def normalized_fact(value: str) -> str:
+    return " ".join(value.casefold().split())
+
+
+def validate_checkpoint(data: dict[str, object], path: Path) -> list[str]:
+    contract = load_contract()
+    errors: list[str] = []
+
+    required_fields = contract.get("required_fields", [])
+    assert isinstance(required_fields, list)
+    for key in required_fields:
+        if key not in data:
+            errors.append(f"{path}: missing checkpoint field {key}")
+
+    if str(data.get("checkpoint_version", "")) != str(contract.get("version")):
+        errors.append(f"{path}: wrong checkpoint_version")
+
+    statuses = contract.get("allowed_statuses", [])
+    assert isinstance(statuses, list)
+    if data.get("status") not in statuses:
+        errors.append(f"{path}: unsupported status")
+
+    next_action = str(data.get("next_action", "")).strip().casefold()
+    if next_action in PLACEHOLDER_NEXT_ACTIONS:
+        errors.append(f"{path}: next_action must be concrete")
+
+    first_failure = data.get("first_failure")
+    if not isinstance(first_failure, dict) or not all(
+        str(first_failure.get(key, "")).strip()
+        for key in ("marker", "evidence")
+    ):
+        errors.append(f"{path}: invalid first_failure")
+
+    validation = data.get("validation")
+    allowed_results = contract.get("allowed_validation_results", [])
+    assert isinstance(allowed_results, list)
+    if not isinstance(validation, list):
+        errors.append(f"{path}: validation must be a list")
+    else:
+        for index, item in enumerate(validation, start=1):
+            if not isinstance(item, dict) or not all(
+                str(item.get(key, "")).strip()
+                for key in ("command", "result", "evidence")
+            ):
+                errors.append(f"{path}: invalid validation item {index}")
+                continue
+            if item["result"] not in allowed_results:
+                errors.append(f"{path}: unsupported validation result")
+
+    limits = contract.get("compactness_limits", {})
+    assert isinstance(limits, dict)
+    for key, limit in limits.items():
+        value = data.get(key, [])
+        if not isinstance(value, list):
+            errors.append(f"{path}: {key} must be a list")
+        elif len(value) > int(limit):
+            errors.append(
+                f"{path}: {key} has {len(value)} items; "
+                f"compactness limit is {limit}"
+            )
+
+    evidence_map = contract.get("evidence_state_fields", {})
+    assert isinstance(evidence_map, dict)
+    evidence_fields = list(evidence_map.values())
+    evidence_sets = {
+        key: {
+            normalized_fact(str(item))
+            for item in data.get(key, [])
+            if str(item).strip()
+        }
+        for key in evidence_fields
+    }
+    for index, left in enumerate(evidence_fields):
+        for right in evidence_fields[index + 1 :]:
+            overlap = evidence_sets[left] & evidence_sets[right]
+            for fact in sorted(overlap):
+                errors.append(
+                    f"{path}: evidence fact appears in both "
+                    f"{left} and {right}: {fact}"
+                )
+
+    return errors
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Validate compact agent task checkpoints"
+    )
+    parser.add_argument("task", nargs="?", type=Path)
+    parser.add_argument("--tasks", type=Path)
+    parser.add_argument("--require-checkpoint", action="store_true")
+    args = parser.parse_args()
+
+    if bool(args.task) == bool(args.tasks):
+        parser.error("provide exactly one task or --tasks directory")
+
+    paths = [args.task] if args.task else sorted(args.tasks.glob("*.md"))
+    errors: list[str] = []
+    for path in paths:
+        try:
+            data = parse_checkpoint(path)
+        except (OSError, ValueError) as exc:
+            errors.append(str(exc))
+            continue
+        if data is None:
+            if args.require_checkpoint:
+                errors.append(f"{path}: missing {CHECKPOINT_HEADING}")
+        else:
+            errors.extend(validate_checkpoint(data, path))
+
+    for error in errors:
+        print(f"ERROR: {error}", file=sys.stderr)
+    if errors:
+        return 1
+
+    print(f"Validated {len(paths)} checkpoint task(s).")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
