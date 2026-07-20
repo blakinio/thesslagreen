@@ -95,10 +95,8 @@ def render_prompt(data: dict[str, object]) -> str:
     if isinstance(first_failure, dict):
         lines.extend(
             [
-                "FIRST_FAILURE_MARKER: "
-                f"{first_failure.get('marker', 'none')}",
-                "FIRST_FAILURE_EVIDENCE: "
-                f"{first_failure.get('evidence', 'none')}",
+                f"FIRST_FAILURE_MARKER: {first_failure.get('marker', 'none')}",
+                f"FIRST_FAILURE_EVIDENCE: {first_failure.get('evidence', 'none')}",
             ]
         )
 
