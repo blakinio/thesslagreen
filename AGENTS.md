@@ -12,6 +12,13 @@
 - Treat chat history as disposable. Keep durable task or handoff state compact and leave exactly one concrete next action when handing work off.
 - When the next action is safe and autonomous, continue without waiting for acknowledgement.
 
+## Durable continuation
+
+- For substantial work, use the checkpoint contract in `docs/agents/CONTEXT_HANDOFF.md`.
+- Validate the active task checkpoint with `python tools/agents/checkpoint.py <task-path> --require-checkpoint`.
+- Generate a compact next-agent prompt with `python tools/agents/resume.py --task <task-path>`.
+- A continuation agent must resume from Git, the task checkpoint and live PR/CI state, not from the previous chat transcript.
+
 ## Scope and precedence
 
 - Repository-local and nearest nested `AGENTS.md` instructions remain authoritative for repository-specific safety, branching, ownership, validation, deployment, and merge rules.
