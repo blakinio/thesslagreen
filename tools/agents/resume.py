@@ -103,12 +103,12 @@ def render_prompt(data: dict[str, object]) -> str:
         )
 
     lines.append("VALIDATION:")
-    for item in data.get("validation", []):
-        if isinstance(item, dict):
-            lines.append(
-                f"- {item.get('command', '')}: {item.get('result', '')}; "
-                f"evidence={item.get('evidence', '')}"
-            )
+    lines.extend(
+        f"- {item.get('command', '')}: {item.get('result', '')}; "
+        f"evidence={item.get('evidence', '')}"
+        for item in data.get("validation", [])
+        if isinstance(item, dict)
+    )
 
     lines.extend(
         [
