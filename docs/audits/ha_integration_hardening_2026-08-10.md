@@ -1,6 +1,6 @@
 # Home Assistant integration hardening — 2026-08-10
 
-Status: implementation under CI validation
+Status: final canonical CI validation
 
 ## Scope
 
@@ -26,9 +26,18 @@ This hardening pass follows a repository-wide static audit of the Home Assistant
 - Full diagnostic scans acquire the DeviceClient I/O lock, disconnect the primary transport, scan with the same configured transport type/settings, close the diagnostic scanner, then restore the primary connection before releasing the lock.
 - Known-register validation reports `supported`, `unsupported`, and `indeterminate` separately; transport failures are never treated as proof that a register is absent.
 - Any entity mapping with `risk_level` is disabled by default and categorized as configuration while retaining risk metadata for expert opt-in.
-- Entity platform setup is being converted away from redundant `update_before_add=True` where the coordinator has already completed its initial refresh.
+- Entity platform setup no longer requests redundant `update_before_add=True` where the coordinator has already completed its initial refresh.
+- Fan writes now reject missing/unavailable write paths and surface rejected/failed writes instead of returning a false Home Assistant success.
 - Package metadata remains at the existing release version 2.8.3; this hardening branch does not create a release implicitly.
 
-## Verification requirement
+## Automated verification evidence
 
-Do not merge based on static inspection alone. The branch must pass repository lint, compile, pytest/coverage, hassfest, HACS validation, mapping validation, and new Home Assistant contract tests. Real-device soak/transport validation remains a separate hardware acceptance gate where it cannot be proven in GitHub CI.
+- Functional hardening head: `5af39b91b6f2fc2b84e363a483b5463bfed780d5`.
+- GitHub compare against `main`: branch was 107 commits ahead and 0 behind at that functional head.
+- Focused final runner `31432840105` passed Ruff formatting/checks plus `pytest -q tests/test_fan.py tests/test_scan_safe_mode.py tests/test_scan_service_isolation.py` before committing the final fan/scan patch.
+- The temporary verification workflows removed themselves from the committed functional head after that success.
+- Earlier canonical CI iterations established green Ruff, format, compile, vendor coverage, translation, maintainability, Hassfest, HACS, and entity-map gates while failures were iteratively corrected. A final canonical full repository CI run on the finalized checkpoint/CI configuration remains the automated closure gate.
+
+## Remaining acceptance boundary
+
+Do not merge based on focused/static verification alone. The finalized branch must pass the canonical repository lint, compile, pytest/coverage, Hassfest, HACS validation, entity mapping validation, checkpoint validation, and Home Assistant contract tests. Real-device soak/transport validation remains a separate hardware acceptance gate because GitHub CI cannot prove behavior against the physical ThesslaGreen controller.
