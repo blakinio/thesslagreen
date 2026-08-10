@@ -16,10 +16,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from .coordinator import ThesslaGreenModbusCoordinator
 
-from .const import (
-    DEFAULT_NAME,
-    DOMAIN,
-)
+from .const import DEFAULT_NAME
 from .const import PLATFORMS as PLATFORM_DOMAINS
 
 _LOGGER = logging.getLogger(__name__)
