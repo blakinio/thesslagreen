@@ -88,6 +88,9 @@ class _DeviceClientConnectionMixin:
     _write_lock: Any
     offline_state: bool
     statistics: dict[str, Any]
+    retry: int
+    backoff: float
+    timeout: float
     _resolved_connection_mode: str | None
 
     # ------------------------------------------------------------------

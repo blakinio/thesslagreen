@@ -106,9 +106,10 @@ def _extract_scan_registers(
 async def _load_translations(hass: HomeAssistant) -> dict[str, str]:
     """Load translation mapping used to describe status/error registers."""
     try:
-        return await translation.async_get_translations(
+        raw = await translation.async_get_translations(
             hass, hass.config.language, f"component.{DOMAIN}"
         )
+        return {str(key): str(value) for key, value in raw.items()}
     except (OSError, ValueError, HomeAssistantError, RuntimeError) as err:
         _LOGGER.debug("Translation load failed: %s", err)
     except Exception as err:  # pragma: no cover  # noqa: BLE001

@@ -82,8 +82,8 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         self._attr_translation_key = definition["translation_key"]
         self._attr_icon = definition.get("icon")
         self._attr_has_entity_name = True
-        self._states = definition["states"]
-        self._reverse_states = {v: k for k, v in self._states.items()}
+        self._states: dict[str, Any] = dict(definition["states"])
+        self._reverse_states: dict[Any, str] = {v: k for k, v in self._states.items()}
         self._attr_options = list(self._states.keys())
         if _ec := definition.get("entity_category"):
             self._attr_entity_category = EntityCategory(_ec)

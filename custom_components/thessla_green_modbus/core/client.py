@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from ..registers.maps import (
     coil_registers,
@@ -172,7 +172,7 @@ class ThesslaGreenDeviceClient(
 
     def get_register_map(self, register_type: str) -> dict[str, int]:
         """Return the register map for the given register type."""
-        return cast(dict[str, int], self._register_maps.get(register_type, {}))
+        return self._register_maps.get(register_type, {})
 
     @property
     def device_name(self) -> str:

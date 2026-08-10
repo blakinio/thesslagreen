@@ -6,7 +6,7 @@ import asyncio
 import inspect
 import traceback
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, NoReturn, cast
 
 from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
 
@@ -98,7 +98,7 @@ def _require_verify_connection(scanner: Any) -> Callable[[], Any]:
     verify_cb = getattr(scanner, "verify_connection", None)
     if not callable(verify_cb):
         raise AttributeError("verify_connection")
-    return verify_cb
+    return cast(Callable[[], Any], verify_cb)
 
 
 def _compute_verify_timeout(scanner: Any, timeout: float) -> float:
@@ -227,7 +227,7 @@ def _map_validation_exception(
     should_log_timeout_traceback: Callable[[BaseException], bool],
     logger: Any,
     timeout_exceptions: tuple[type[BaseException], ...],
-) -> Exception:
+) -> BaseException:
     """Map low-level exceptions to flow-facing exceptions."""
     if isinstance(exc, ConnectionException):
         logger.error("Connection error: %s", exc)
@@ -272,7 +272,7 @@ def _map_validation_exception(
     return exc  # passthrough
 
 
-def _raise_if_unmapped(mapped: Exception, original: BaseException) -> None:
+def _raise_if_unmapped(mapped: BaseException, original: BaseException) -> NoReturn:
     """Raise mapped exceptions, passthrough unknown ones untouched."""
     if mapped is original:
         raise original

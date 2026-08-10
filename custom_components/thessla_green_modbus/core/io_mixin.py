@@ -55,6 +55,7 @@ if TYPE_CHECKING:
 class _ModbusIOMixin:
     """Read-path Modbus methods shared by DeviceClient and the coordinator."""
 
+    device_client: Any
     _transport: BaseModbusTransport | None
     client: Any | None
     slave_id: int

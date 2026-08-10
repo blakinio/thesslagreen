@@ -217,7 +217,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     def fan_mode(self) -> str | None:
         pending = self._optimistic.get_pending("fan_mode")
         if pending is not None:
-            return pending
+            return str(pending)
         return self._confirmed_fan_mode()
 
     @property
@@ -239,7 +239,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     def preset_mode(self) -> str | None:
         pending = self._optimistic.get_pending("preset_mode")
         if pending is not None:
-            return pending
+            return str(pending)
         return self._confirmed_preset_mode()
 
     @property

@@ -128,7 +128,7 @@ def _resolve_sw_version(coordinator: Any) -> str:
     dc = coordinator.device_client
     firmware = dc.device_info.get("firmware", "Unknown")
     if firmware and firmware != "Unknown":
-        return firmware
+        return str(firmware)
 
     data: dict[str, Any] = getattr(coordinator, "data", {}) or {}
     major = data.get("version_major")

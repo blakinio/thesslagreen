@@ -41,6 +41,7 @@ class _CoordinatorCapabilitiesMixin:
     """Capability and derived-value logic shared by DeviceClient and coordinator."""
 
     device_info: dict[str, Any]
+    device_client: Any
 
     _STANDBY_POWER_W: float = 10.0
     _MODEL_POWER_DATA: ClassVar[Mapping[int, tuple[float, float]]] = MappingProxyType(
@@ -127,18 +128,22 @@ class _CoordinatorCapabilitiesMixin:
         raw_ddtt = data.get("date_time_ddtt")
         raw_ggmm = data.get("date_time_ggmm")
         raw_sscc = data.get("date_time_sscc")
-        if any(v is None for v in (raw_yymm, raw_ddtt, raw_ggmm, raw_sscc)):
+        if raw_yymm is None or raw_ddtt is None or raw_ggmm is None or raw_sscc is None:
             return None
 
         def _bcd(b: int) -> int:
             return ((b >> 4) & 0xF) * 10 + (b & 0xF)
 
-        yy = _bcd((raw_yymm >> 8) & 0xFF)
-        mm = _bcd(raw_yymm & 0xFF)
-        dd = _bcd((raw_ddtt >> 8) & 0xFF)
-        hh = _bcd((raw_ggmm >> 8) & 0xFF)
-        mi = _bcd(raw_ggmm & 0xFF)
-        ss = _bcd((raw_sscc >> 8) & 0xFF)
+        yymm = int(raw_yymm)
+        ddtt = int(raw_ddtt)
+        ggmm = int(raw_ggmm)
+        sscc = int(raw_sscc)
+        yy = _bcd((yymm >> 8) & 0xFF)
+        mm = _bcd(yymm & 0xFF)
+        dd = _bcd((ddtt >> 8) & 0xFF)
+        hh = _bcd((ggmm >> 8) & 0xFF)
+        mi = _bcd(ggmm & 0xFF)
+        ss = _bcd((sscc >> 8) & 0xFF)
         year = 2000 + yy
         if 1 <= mm <= 12 and 1 <= dd <= 31 and hh <= 23 and mi <= 59 and ss <= 59:
             return f"{year:04d}-{mm:02d}-{dd:02d}T{hh:02d}:{mi:02d}:{ss:02d}"

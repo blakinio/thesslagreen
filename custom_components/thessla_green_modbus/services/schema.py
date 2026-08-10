@@ -31,7 +31,7 @@ _CV_STRING = getattr(cv, "string", str)
 _SEASONS = ("summer", "winter")
 
 
-def _target_schema(fields: dict[Any, Any] | None = None):
+def _target_schema(fields: dict[Any, Any] | None = None) -> vol.Schema:
     """Create a standard Home Assistant entity-service target schema."""
     return cv.make_entity_service_schema(fields or {})
 

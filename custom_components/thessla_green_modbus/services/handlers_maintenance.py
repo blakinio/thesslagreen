@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
 from datetime import datetime as _dt
+from typing import Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
@@ -38,7 +39,8 @@ from .validation import (
     reset_settings_registers,
 )
 
-ServiceAction = Callable[[str, object], Awaitable[bool]]
+type ServiceAction = Callable[[str, Any], Awaitable[bool]]
+type ServiceHandler = Callable[[ServiceCall], Awaitable[None]]
 _DEVICE_ERRORS = (ModbusException, ConnectionException, TimeoutError, OSError)
 
 
@@ -61,7 +63,7 @@ async def _iter_targets(
     return await deps.iter_target_coordinators(hass, call)
 
 
-def _maintenance_registrations():
+def _maintenance_registrations() -> list[tuple[str, Any]]:
     """Return registration rows for maintenance services."""
     return [
         ("reset_filters", RESET_FILTERS_SCHEMA),
@@ -74,21 +76,23 @@ def _maintenance_registrations():
     ]
 
 
-def _iter_maintenance_service_bindings(handlers: dict[str, object]):
+def _iter_maintenance_service_bindings(
+    handlers: dict[str, ServiceHandler],
+) -> Iterator[tuple[str, Any, ServiceHandler]]:
     """Yield maintenance registration rows with bound handlers."""
     for service, schema in _maintenance_registrations():
         yield service, schema, handlers[service]
 
 
 def _maintenance_handlers(
-    reset_filters: object,
-    reset_settings: object,
-    start_pressure_test: object,
-    set_modbus_parameters: object,
-    set_device_name: object,
-    sync_time: object,
-    sync_device_clock: object,
-) -> dict[str, object]:
+    reset_filters: ServiceHandler,
+    reset_settings: ServiceHandler,
+    start_pressure_test: ServiceHandler,
+    set_modbus_parameters: ServiceHandler,
+    set_device_name: ServiceHandler,
+    sync_time: ServiceHandler,
+    sync_device_clock: ServiceHandler,
+) -> dict[str, ServiceHandler]:
     """Return maintenance service handlers keyed by service name."""
     return {
         "reset_filters": reset_filters,
@@ -102,7 +106,7 @@ def _maintenance_handlers(
 
 
 async def _run_with_success_log(
-    coordinator: object,
+    coordinator: Any,
     deps: ServiceHandlerDeps,
     success_message: str,
     *args: object,
@@ -116,15 +120,15 @@ def _register_maintenance_service(
     hass: HomeAssistant,
     deps: ServiceHandlerDeps,
     service: str,
-    schema: object,
-    handler: object,
+    schema: Any,
+    handler: ServiceHandler,
 ) -> None:
     """Register one maintenance service with schema."""
     hass.services.async_register(deps.domain, service, handler, schema)
 
 
 def _register_maintenance_bindings(
-    hass: HomeAssistant, deps: ServiceHandlerDeps, handlers: dict[str, object]
+    hass: HomeAssistant, deps: ServiceHandlerDeps, handlers: dict[str, ServiceHandler]
 ) -> None:
     """Finalize maintenance registration loop preserving order."""
     for service, schema, handler in _iter_maintenance_service_bindings(handlers):
@@ -144,7 +148,7 @@ async def _run_for_targets(
 
 async def _write_then_refresh(
     *,
-    coordinator: object,
+    coordinator: Any,
     entity_id: str,
     deps: ServiceHandlerDeps,
     success_message: str,
@@ -157,11 +161,11 @@ async def _write_then_refresh(
     return await _run_with_success_log(coordinator, deps, success_message, *success_args)
 
 
-def _build_reset_filters_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
+def _build_reset_filters_handler(hass: HomeAssistant, deps: ServiceHandlerDeps) -> ServiceHandler:
     async def reset_filters(call: ServiceCall) -> None:
         filter_value = filter_reset_value(deps.normalize_option, call.data["filter_type"])
 
-        async def _reset_filters_for_target(entity_id: str, coordinator: object) -> bool:
+        async def _reset_filters_for_target(entity_id: str, coordinator: Any) -> bool:
             async def _write_flow() -> bool:
                 return await deps.write_register(
                     coordinator, "filter_change", filter_value, entity_id, "reset filters"
@@ -181,12 +185,12 @@ def _build_reset_filters_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
     return reset_filters
 
 
-def _build_reset_settings_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
+def _build_reset_settings_handler(hass: HomeAssistant, deps: ServiceHandlerDeps) -> ServiceHandler:
     async def reset_settings(call: ServiceCall) -> None:
         reset_type = deps.normalize_option(call.data["reset_type"])
         registers = reset_settings_registers(reset_type)
 
-        async def _reset_settings_for_target(entity_id: str, coordinator: object) -> bool:
+        async def _reset_settings_for_target(entity_id: str, coordinator: Any) -> bool:
             return await _write_then_refresh(
                 coordinator=coordinator,
                 entity_id=entity_id,
@@ -212,9 +216,11 @@ def _build_reset_settings_handler(hass: HomeAssistant, deps: ServiceHandlerDeps)
     return reset_settings
 
 
-def _build_start_pressure_test_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
+def _build_start_pressure_test_handler(
+    hass: HomeAssistant, deps: ServiceHandlerDeps
+) -> ServiceHandler:
     async def start_pressure_test(call: ServiceCall) -> None:
-        async def _start_pressure_test_for_target(entity_id: str, coordinator: object) -> bool:
+        async def _start_pressure_test_for_target(entity_id: str, coordinator: Any) -> bool:
             if not await write_register_batch(
                 coordinator,
                 pressure_test_payload(deps.dt_now()),
@@ -239,13 +245,15 @@ def _build_start_pressure_test_handler(hass: HomeAssistant, deps: ServiceHandler
     return start_pressure_test
 
 
-def _build_set_modbus_parameters_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
+def _build_set_modbus_parameters_handler(
+    hass: HomeAssistant, deps: ServiceHandlerDeps
+) -> ServiceHandler:
     async def set_modbus_parameters(call: ServiceCall) -> None:
         port, baud_rate, parity, stop_bits = normalize_modbus_options(
             deps.normalize_option, call.data
         )
 
-        async def _set_modbus_parameters_for_target(entity_id: str, coordinator: object) -> bool:
+        async def _set_modbus_parameters_for_target(entity_id: str, coordinator: Any) -> bool:
             writes = iter_modbus_parameter_writes(port, baud_rate, parity, stop_bits)
             for register_name, option_value, option_map, error_message in writes:
                 if not await write_mapped_optional_register(
@@ -271,11 +279,11 @@ def _build_set_modbus_parameters_handler(hass: HomeAssistant, deps: ServiceHandl
     return set_modbus_parameters
 
 
-def _build_set_device_name_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
+def _build_set_device_name_handler(hass: HomeAssistant, deps: ServiceHandlerDeps) -> ServiceHandler:
     async def set_device_name(call: ServiceCall) -> None:
         device_name = call.data["device_name"]
 
-        async def _set_device_name_for_target(entity_id: str, coordinator: object) -> bool:
+        async def _set_device_name_for_target(entity_id: str, coordinator: Any) -> bool:
             try:
                 if len(device_name) >= 16:
                     success = await coordinator.async_write_register(
@@ -307,9 +315,9 @@ def _build_set_device_name_handler(hass: HomeAssistant, deps: ServiceHandlerDeps
     return set_device_name
 
 
-def _build_sync_time_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
+def _build_sync_time_handler(hass: HomeAssistant, deps: ServiceHandlerDeps) -> ServiceHandler:
     async def sync_time(call: ServiceCall) -> None:
-        async def _sync_time_for_target(entity_id: str, coordinator: object) -> bool:
+        async def _sync_time_for_target(entity_id: str, coordinator: Any) -> bool:
             now = _dt.now()
             try:
                 success = await coordinator.async_write_registers(
@@ -339,12 +347,14 @@ def _build_sync_time_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
     return sync_time
 
 
-def _build_sync_device_clock_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
+def _build_sync_device_clock_handler(
+    hass: HomeAssistant, deps: ServiceHandlerDeps
+) -> ServiceHandler:
     async def sync_device_clock(call: ServiceCall) -> None:
         force = bool(call.data.get("force", False))
 
-        async def _sync_device_clock_for_target(entity_id: str, coordinator: object) -> bool:
-            opts = {}
+        async def _sync_device_clock_for_target(entity_id: str, coordinator: Any) -> bool:
+            opts: dict[str, Any] = {}
             if hasattr(coordinator, "entry") and coordinator.entry is not None:
                 opts = getattr(coordinator.entry, "options", {}) or {}
             max_drift = int(

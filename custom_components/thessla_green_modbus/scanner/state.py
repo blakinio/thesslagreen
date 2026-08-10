@@ -29,7 +29,7 @@ class ScannerConnectionState:
     """Resolved scanner connection state normalized from raw init parameters."""
 
     connection_type: str
-    connection_mode: str
+    connection_mode: str | None
     resolved_connection_mode: str | None
     serial_port: str
     baud_rate: int
@@ -40,7 +40,7 @@ class ScannerConnectionState:
 def build_connection_state(
     *,
     connection_type: str,
-    connection_mode: str,
+    connection_mode: str | None,
     resolved_connection_mode: str | None,
     serial_port: str,
     baud_rate: int,
@@ -83,7 +83,7 @@ def resolve_connection_configuration(
     connection_type: str,
     connection_mode: str | None,
     port: int,
-) -> tuple[str, str, str | None]:
+) -> tuple[str, str | None, str | None]:
     """Resolve transport selection and cached fixed mode."""
     resolved_type, resolved_mode = resolve_connection_settings(
         connection_type, connection_mode, port
@@ -103,9 +103,7 @@ def apply_connection_state(scanner: Any, state: ScannerConnectionState) -> None:
     scanner.stop_bits = state.stop_bits
 
 
-def apply_register_defaults(
-    scanner: Any, *, known_missing_registers: dict[str, dict[str, Any]]
-) -> None:
+def apply_register_defaults(scanner: Any, *, known_missing_registers: dict[str, set[str]]) -> None:
     """Apply default scanner register maps and known-missing metadata."""
     scanner._input_register_map = INPUT_REGISTERS
     scanner._holding_register_map = HOLDING_REGISTERS

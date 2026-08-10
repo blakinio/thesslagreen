@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
 
@@ -185,7 +185,7 @@ async def _handle_retry_exception(
             exc=exc,
             timeout=timeout,
         )
-        return exc
+        return cast(Exception, exc)
 
     log_coordinator_retry(
         operation=f"read:{register_type}:{start_address}",

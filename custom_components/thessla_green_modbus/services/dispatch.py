@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterator
 from typing import Any
 
 from homeassistant.exceptions import HomeAssistantError
@@ -149,7 +150,7 @@ async def write_register_steps(
 
 def _iter_executable_steps(
     steps: list[tuple[str, object, bool, str]],
-):
+) -> Iterator[tuple[str, object, bool, str]]:
     """Yield only write steps that should be executed."""
     for register_name, value, optional, error_message in steps:
         if _should_write_step(optional, value):

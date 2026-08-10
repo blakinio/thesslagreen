@@ -373,21 +373,21 @@ def _register_validate_known_registers_service(
                 summary["missing_count"],
                 summary["indeterminate_count"],
             )
-            for rt, names in missing_sorted.items():
-                if names:
+            for rt, sorted_names in missing_sorted.items():
+                if sorted_names:
                     _LOGGER.debug(
                         "validate_known_registers unsupported %s for %s: %s",
                         rt,
                         entity_id,
-                        names,
+                        sorted_names,
                     )
-            for rt, names in indeterminate_sorted.items():
-                if names:
+            for rt, sorted_names in indeterminate_sorted.items():
+                if sorted_names:
                     _LOGGER.warning(
                         "validate_known_registers indeterminate %s for %s: %s",
                         rt,
                         entity_id,
-                        names,
+                        sorted_names,
                     )
         return results
 
