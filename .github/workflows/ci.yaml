@@ -49,7 +49,22 @@ jobs:
         run: ruff check --select I --output-format=github custom_components tests tools
 
       - name: Ruff format
-        run: ruff format --check custom_components tests tools
+        shell: bash
+        run: |
+          status=0
+          output="$(ruff format --check custom_components tests tools 2>&1)" || status=$?
+          printf '%s\n' "$output"
+          if [ "$status" -ne 0 ]; then
+            while IFS= read -r line; do
+              case "$line" in
+                "Would reformat: "*)
+                  file="${line#Would reformat: }"
+                  echo "::error file=${file}::Ruff formatter would reformat this file"
+                  ;;
+              esac
+            done <<< "$output"
+            exit "$status"
+          fi
 
       - name: Compile Python sources
         run: python -m compileall -q custom_components/thessla_green_modbus tests tools
