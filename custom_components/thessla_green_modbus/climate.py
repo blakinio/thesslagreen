@@ -15,7 +15,9 @@ from homeassistant.components.climate import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from pymodbus.exceptions import ConnectionException, ModbusException
 
 from .const import (
     SPECIAL_FUNCTION_MAP,
@@ -66,6 +68,7 @@ EXTRA_ATTRS_PASSTHROUGH = {
     "co2_level": "co2_level",
     "humidity_indoor": "humidity",
 }
+_WRITE_ERRORS = (ModbusException, ConnectionException, TimeoutError, OSError)
 
 
 def _first_numeric(data: dict[str, Any], keys: tuple[str, ...]) -> float | None:
@@ -112,13 +115,9 @@ async def async_setup_entry(
 ) -> None:
     coordinator: ThesslaGreenModbusCoordinator = config_entry.runtime_data
     if coordinator.device_client.capabilities.basic_control:
-        entities = [ThesslaGreenClimate(coordinator)]
-        try:
-            async_add_entities(entities, True)
-        except asyncio.CancelledError:
-            _LOGGER.warning("Cancelled while adding climate entity, retrying without initial state")
-            async_add_entities(entities, False)
-            return
+        # The coordinator completes its initial refresh before platforms are
+        # forwarded, so requesting another update here only delays setup.
+        async_add_entities([ThesslaGreenClimate(coordinator)], False)
         _LOGGER.debug("Climate entity created for %s", coordinator.device_client.device_name)
     else:
         _LOGGER.info("Entity skipped due to capability: basic_control not supported")
@@ -143,9 +142,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         self._attr_target_temperature_step = TEMPERATURE_STEP_C
         self._attr_hvac_modes = [HVACMode.OFF, HVACMode.AUTO, HVACMode.FAN_ONLY]
         self._attr_preset_modes = PRESET_MODES
-
-        # Optimistic command fields only.  Measured state (current_temperature,
-        # hvac_action, airflow/temperature extra attrs) is never made optimistic.
         self._optimistic = OptimisticState()
 
     @callback
@@ -166,18 +162,13 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         self._optimistic.clear_if_confirmed("preset_mode", self._confirmed_preset_mode())
 
     def _set_optimistic(self, key: str, value: Any) -> None:
-        """Record an optimistic command value and push it to the GUI.
-
-        Only called after a confirmed-successful write; the value is set before
-        the caller awaits the post-write refresh so the GUI updates immediately.
-        """
+        """Record an optimistic command value and push it to the GUI."""
         self._optimistic.set_pending(key, value)
         if self.hass is not None:
             self.async_write_ha_state()
 
     @property
     def current_temperature(self) -> float | None:
-        # Measured value — never optimistic.
         return _first_numeric(self.coordinator.data, ("supply_temperature", "ambient_temperature"))
 
     def _confirmed_target_temperature(self) -> float | None:
@@ -202,8 +193,6 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
     @property
     def hvac_action(self) -> HVACAction:
-        # Derived from confirmed status only — never from optimistic command
-        # fields, so it uses the confirmed hvac_mode rather than the property.
         if self._confirmed_hvac_mode() == HVACMode.OFF:
             return HVACAction.OFF
         if self.coordinator.data.get("heating_cable", False):
@@ -257,113 +246,109 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         return _extra_state_attributes(self.coordinator.data)
 
-    async def _write_register(self, register: str, value: Any, *, refresh: bool = False) -> Any:  # type: ignore[override]
-        """Write a register for climate.
-
-        Climate's write flows always call ``async_request_refresh()``
-        themselves once their logical operation (which may involve more than
-        one register write) completes, so targeted read-back is disabled here
-        to avoid a redundant/misleading intermediate update ahead of that
-        refresh.
-        """
+    async def _write_register(self, register: str, value: Any, *, refresh: bool = False) -> None:  # type: ignore[override]
+        """Write one climate register or raise a Home Assistant action error."""
         try:
-            return await self.coordinator.async_write_register(
-                register, value, refresh=refresh, offset=0, targeted_readback=False
-            )
-        except TypeError:
-            return await self.coordinator.async_write_register(
-                register, value, refresh=refresh, targeted_readback=False
-            )
+            try:
+                success = await self.coordinator.async_write_register(
+                    register, value, refresh=refresh, offset=0, targeted_readback=False
+                )
+            except TypeError:
+                success = await self.coordinator.async_write_register(
+                    register, value, refresh=refresh, targeted_readback=False
+                )
+        except asyncio.CancelledError:
+            raise
+        except _WRITE_ERRORS as err:
+            raise HomeAssistantError(f"Failed to write {register}: {err}") from err
+        if not success:
+            raise HomeAssistantError(f"Device did not confirm write to {register}.")
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         if hvac_mode == HVACMode.OFF:
-            success = await self._write_register("on_off_panel_mode", 0, refresh=False)
+            await self._write_register("on_off_panel_mode", 0, refresh=False)
         else:
-            power_on_success = await self._write_register("on_off_panel_mode", 1, refresh=False)
-            if not power_on_success:
-                _LOGGER.warning("Power-on failed when setting HVAC mode to %s, retrying", hvac_mode)
-                power_on_success = await self._write_register("on_off_panel_mode", 1, refresh=False)
-            if not power_on_success:
-                _LOGGER.error("Failed to enable device before setting HVAC mode to %s", hvac_mode)
-                return
-            success = await self._write_register(
-                "mode", HVAC_MODE_REVERSE_MAP.get(hvac_mode, 0), refresh=False
+            if hvac_mode not in HVAC_MODE_REVERSE_MAP:
+                raise ServiceValidationError(f"Unsupported HVAC mode: {hvac_mode}")
+            await self._write_register("on_off_panel_mode", 1, refresh=False)
+            await self._write_register(
+                "mode", HVAC_MODE_REVERSE_MAP[hvac_mode], refresh=False
             )
-        if success:
-            self._set_optimistic("hvac_mode", hvac_mode)
-            await self.coordinator.async_request_refresh()
-        else:
-            _LOGGER.error("Failed to set HVAC mode to %s", hvac_mode)
+        self._set_optimistic("hvac_mode", hvac_mode)
+        await self.coordinator.async_request_refresh()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
+        temperature = float(temperature)
+        if not TEMPERATURE_MIN_C <= temperature <= TEMPERATURE_MAX_C:
+            raise ServiceValidationError(
+                f"Target temperature must be between {TEMPERATURE_MIN_C} and {TEMPERATURE_MAX_C} °C."
+            )
+
         coordinator_data = self.coordinator.data or {}
         if coordinator_data.get("mode") == 2:
-            success = await self.coordinator.async_write_temporary_temperature(
-                float(temperature), refresh=False
-            )
-            if success:
-                self._set_optimistic("target_temperature", float(temperature))
-                await self.coordinator.async_request_refresh()
-            else:
-                _LOGGER.error("Failed to set temporary target temperature to %s°C", temperature)
-            return
-        success = True
-        if "comfort_temperature" in holding_registers():
-            success = await self.coordinator.async_write_register(
-                "comfort_temperature", temperature, refresh=False, offset=0, targeted_readback=False
-            )
-        if success:
-            success = await self._write_register("required_temperature", temperature, refresh=False)
-        if success:
-            self._set_optimistic("target_temperature", float(temperature))
-            await self.coordinator.async_request_refresh()
+            try:
+                success = await self.coordinator.async_write_temporary_temperature(
+                    temperature, refresh=False
+                )
+            except asyncio.CancelledError:
+                raise
+            except _WRITE_ERRORS as err:
+                raise HomeAssistantError(
+                    f"Failed to set temporary target temperature: {err}"
+                ) from err
+            if not success:
+                raise HomeAssistantError(
+                    "Device did not confirm temporary target-temperature write."
+                )
         else:
-            _LOGGER.error("Failed to set target temperature to %s°C", temperature)
+            available = self.coordinator.device_client.available_registers.get(
+                "holding_registers", set()
+            )
+            if "comfort_temperature" in holding_registers() and "comfort_temperature" in available:
+                await self._write_register("comfort_temperature", temperature, refresh=False)
+            await self._write_register("required_temperature", temperature, refresh=False)
+
+        self._set_optimistic("target_temperature", temperature)
+        await self.coordinator.async_request_refresh()
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         try:
             airflow = int(fan_mode.rstrip("%"))
-            min_pct, max_pct = self._percentage_limits()
-            airflow = max(min_pct, min(max_pct, airflow))
-            success = await self._write_register("air_flow_rate_manual", airflow, refresh=False)
-            if success:
-                self._set_optimistic("fan_mode", f"{airflow}%")
-                await self.coordinator.async_request_refresh()
-            else:
-                _LOGGER.error("Failed to set fan mode to %s", fan_mode)
-        except ValueError:
-            _LOGGER.error("Invalid fan mode format: %s", fan_mode)
+        except (AttributeError, ValueError) as err:
+            raise ServiceValidationError(f"Invalid fan mode: {fan_mode!r}") from err
+        min_pct, max_pct = self._percentage_limits()
+        if not min_pct <= airflow <= max_pct:
+            raise ServiceValidationError(
+                f"Fan mode must be between {min_pct}% and {max_pct}%."
+            )
+        await self._write_register("air_flow_rate_manual", airflow, refresh=False)
+        self._set_optimistic("fan_mode", f"{airflow}%")
+        await self.coordinator.async_request_refresh()
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        success = await self._write_register("on_off_panel_mode", 1, refresh=False)
-        if success:
-            success = await self._write_register(
-                "special_mode", _special_mode_from_preset(preset_mode), refresh=False
-            )
-        if success:
-            self._set_optimistic("preset_mode", preset_mode)
-            await self.coordinator.async_request_refresh()
-        else:
-            _LOGGER.error("Failed to set preset mode to %s", preset_mode)
+        if preset_mode not in PRESET_MODES:
+            raise ServiceValidationError(f"Unsupported preset mode: {preset_mode}")
+        await self._write_register("on_off_panel_mode", 1, refresh=False)
+        await self._write_register(
+            "special_mode", _special_mode_from_preset(preset_mode), refresh=False
+        )
+        self._set_optimistic("preset_mode", preset_mode)
+        await self.coordinator.async_request_refresh()
 
     async def async_turn_on(self) -> None:
-        success = await self._write_register("on_off_panel_mode", 1, refresh=False)
-        if success:
-            # Turning on reveals the mode implied by the confirmed ``mode``
-            # register; show that immediately instead of the OFF state.
-            self._set_optimistic(
-                "hvac_mode", HVAC_MODE_MAP.get(self.coordinator.data.get("mode", 0), HVACMode.AUTO)
-            )
-            await self.coordinator.async_request_refresh()
+        await self._write_register("on_off_panel_mode", 1, refresh=False)
+        self._set_optimistic(
+            "hvac_mode", HVAC_MODE_MAP.get(self.coordinator.data.get("mode", 0), HVACMode.AUTO)
+        )
+        await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self) -> None:
-        success = await self._write_register("on_off_panel_mode", 0, refresh=False)
-        if success:
-            self._set_optimistic("hvac_mode", HVACMode.OFF)
-            await self.coordinator.async_request_refresh()
+        await self._write_register("on_off_panel_mode", 0, refresh=False)
+        self._set_optimistic("hvac_mode", HVACMode.OFF)
+        await self.coordinator.async_request_refresh()
 
     @property
     def hvac_modes(self) -> list[HVACMode]:
