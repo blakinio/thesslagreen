@@ -36,22 +36,36 @@ from ..const import (
 from ..utils import resolve_connection_settings
 from .payloads import caps_to_dict
 
+_INVALID_DEVICE_IDENTIFIERS = frozenset({"", "0", "unknown", "none", "n/a", "na", "null"})
 
-def build_unique_id(data: dict[str, Any]) -> str:
-    """Generate a unique identifier for the config entry."""
-    connection_type = data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE)
-    slave_id = data.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)
 
+def build_stable_unique_id(device_info: dict[str, Any]) -> str | None:
+    """Return a stable config-entry unique ID from confirmed device identity."""
+    raw_serial = device_info.get("serial_number")
+    if raw_serial is None:
+        return None
+    serial = str(raw_serial).strip()
+    if serial.casefold() in _INVALID_DEVICE_IDENTIFIERS:
+        return None
+    return f"serial:{serial.casefold()}"
+
+
+def build_connection_match(data: dict[str, Any]) -> dict[str, Any]:
+    """Return normalized connection fields suitable for duplicate-entry matching."""
+    connection_type = str(data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE))
+    slave_id = int(data.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID))
     if connection_type == CONNECTION_TYPE_RTU:
-        serial_port = str(data.get(CONF_SERIAL_PORT, ""))
-        identifier = serial_port or "serial"
-        sanitized = identifier.replace(":", "-").replace("/", "_")
-        return f"{connection_type}:{sanitized}:{slave_id}"
-
-    host = str(data.get(CONF_HOST, ""))
-    port = data.get(CONF_PORT, DEFAULT_PORT)
-    unique_host = host.replace(":", "-") if host else ""
-    return f"{unique_host}:{port}:{slave_id}"
+        return {
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_RTU,
+            CONF_SERIAL_PORT: str(data.get(CONF_SERIAL_PORT, "")),
+            CONF_SLAVE_ID: slave_id,
+        }
+    return {
+        CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+        CONF_HOST: str(data.get(CONF_HOST, "")).strip().casefold(),
+        CONF_PORT: int(data.get(CONF_PORT, DEFAULT_PORT)),
+        CONF_SLAVE_ID: slave_id,
+    }
 
 
 def _build_config_flow_scan_cache(
