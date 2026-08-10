@@ -24,7 +24,9 @@ jobs:
           python-version: '3.13'
 
       - name: Apply domain-boundary cleanup
-        run: python .github/scripts/agent_core_boundary_fix.py
+        run: |
+          python .github/scripts/agent_core_boundary_fix.py
+          python .github/scripts/agent_core_boundary_fix2.py
 
       - name: Fix generated boundary-test style
         run: >-
