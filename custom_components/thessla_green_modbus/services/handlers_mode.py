@@ -31,6 +31,7 @@ def register_mode_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
                 duration_register = f"{mode}_duration"
                 holding = coordinator.device_client.available_registers.get(
                     "holding_registers", set()
+                )
                 if duration_register not in holding:
                     raise ServiceValidationError(
                         f"{entity_id} does not expose {duration_register}; "
