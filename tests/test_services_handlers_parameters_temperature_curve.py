@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 from custom_components.thessla_green_modbus.services import async_setup_services
+from homeassistant.exceptions import HomeAssistantError
 
 
 class _Services:
@@ -87,7 +88,8 @@ async def test_set_temperature_curve_with_supply_temps(monkeypatch):
 async def test_set_temperature_curve_write_failure(monkeypatch):
     coord = _Coordinator(write_result=False)
     handler = await _setup_and_get(_make_hass(), "set_temperature_curve", coord, monkeypatch)
-    await handler(_make_call({"entity_id": ["climate.dev"], "slope": 2.0, "offset": 0.0}))
+    with pytest.raises(HomeAssistantError):
+        await handler(_make_call({"entity_id": ["climate.dev"], "slope": 2.0, "offset": 0.0}))
     coord.async_request_refresh.assert_not_awaited()
 
 
@@ -96,7 +98,8 @@ async def test_set_temperature_curve_offset_write_failure(monkeypatch):
     coord = _Coordinator()
     coord.async_write_register = AsyncMock(side_effect=[True, False])
     handler = await _setup_and_get(_make_hass(), "set_temperature_curve", coord, monkeypatch)
-    await handler(_make_call({"entity_id": ["climate.dev"], "slope": 2.0, "offset": 1.0}))
+    with pytest.raises(HomeAssistantError):
+        await handler(_make_call({"entity_id": ["climate.dev"], "slope": 2.0, "offset": 1.0}))
     coord.async_request_refresh.assert_not_awaited()
 
 
@@ -105,16 +108,17 @@ async def test_set_temperature_curve_max_supply_write_failure(monkeypatch):
     coord = _Coordinator()
     coord.async_write_register = AsyncMock(side_effect=[True, True, False])
     handler = await _setup_and_get(_make_hass(), "set_temperature_curve", coord, monkeypatch)
-    await handler(
-        _make_call(
-            {
-                "entity_id": ["climate.dev"],
-                "slope": 2.0,
-                "offset": 1.0,
-                "max_supply_temp": 60.0,
-            }
+    with pytest.raises(HomeAssistantError):
+        await handler(
+            _make_call(
+                {
+                    "entity_id": ["climate.dev"],
+                    "slope": 2.0,
+                    "offset": 1.0,
+                    "max_supply_temp": 60.0,
+                }
+            )
         )
-    )
     coord.async_request_refresh.assert_not_awaited()
 
 
@@ -123,15 +127,16 @@ async def test_set_temperature_curve_min_supply_write_failure(monkeypatch):
     coord = _Coordinator()
     coord.async_write_register = AsyncMock(side_effect=[True, True, True, False])
     handler = await _setup_and_get(_make_hass(), "set_temperature_curve", coord, monkeypatch)
-    await handler(
-        _make_call(
-            {
-                "entity_id": ["climate.dev"],
-                "slope": 2.0,
-                "offset": 1.0,
-                "max_supply_temp": 60.0,
-                "min_supply_temp": 20.0,
-            }
+    with pytest.raises(HomeAssistantError):
+        await handler(
+            _make_call(
+                {
+                    "entity_id": ["climate.dev"],
+                    "slope": 2.0,
+                    "offset": 1.0,
+                    "max_supply_temp": 60.0,
+                    "min_supply_temp": 20.0,
+                }
+            )
         )
-    )
     coord.async_request_refresh.assert_not_awaited()
