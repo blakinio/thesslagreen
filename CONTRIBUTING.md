@@ -1,399 +1,117 @@
-# Contributing to ThesslaGreen Modbus Integration
+# Contributing to ThesslaGreen Modbus
 
-🎉 Thank you for your interest in contributing to the ThesslaGreen Modbus Integration!
+Thank you for contributing to the ThesslaGreen AirPack integration for Home Assistant.
 
-## 📋 Table of Contents
+## Development baseline
 
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-- [Development Setup](#development-setup)
-- [Making Changes](#making-changes)
-- [Testing](#testing)
-- [Code Quality](#code-quality)
-- [Submitting Changes](#submitting-changes)
-- [Release Process](#release-process)
+- Python **3.13+** for the declared minimum Home Assistant line.
+- Home Assistant **2026.1.0+**.
+- `main` is the only long-lived branch. Create task branches from `main`; do not reintroduce `dev`/`develop`.
+- Register addresses in code/documentation use decimal notation.
+- The canonical register specification is `custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
 
-## Code of Conduct
-
-This project adheres to a simple code of conduct:
-- Be respectful and inclusive
-- Focus on constructive feedback
-- Help others learn and grow
-- Keep discussions on-topic
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.13+
-- Home Assistant 2026.1.0+ (managed outside `requirements.txt`)
-- Git
-- A ThesslaGreen AirPack device (for testing)
-
-### Areas for Contribution
-
-We welcome contributions in these areas:
-
-🔧 **Bug Fixes**
-- Modbus communication issues
-- Entity state problems
-- Configuration errors
-
-✨ **Features**
-- New sensor types
-- Additional device models
-- Enhanced automation capabilities
-
-📚 **Documentation**
-- Installation guides
-- Configuration examples
-- Troubleshooting help
-
-🧪 **Testing**
-- Unit tests
-- Integration tests
-- Performance testing
-
-🌍 **Translations**
-- Additional languages
-- Improved existing translations
-
-## Development Setup
-
-### 1. Fork and Clone
+Clone the repository with:
 
 ```bash
-# Fork the repository on GitHub first, then:
-git clone https://github.com/thesslagreen/thessla-green-modbus-ha.git
-cd thessla_green_modbus
+git clone https://github.com/blakinio/thesslagreen.git
+cd thesslagreen
 ```
 
-### 2. Set up Development Environment
+Create and activate a virtual environment, then install the development stack:
 
 ```bash
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies used by local checks
-pip install -r requirements.txt -r requirements-dev.txt
-
-# Install pre-commit hooks (run again after pulling new changes)
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt
+python -m pip install -e .
 pre-commit install
 ```
 
-> **Note:** Some tests and tools import Home Assistant modules. Install `requirements-dev.txt` and, if needed, run only the stable suite (`python tests/run_tests.py --suite stable`) which provides stubs for local validation.
+## Required local checks
 
-### 3. Verify Setup
+Run the relevant focused tests while developing. Before opening a PR, run as much of the canonical gate as your environment supports:
 
 ```bash
-# Verify module syntax
-python -m compileall -q custom_components/thessla_green_modbus tests tools
-
-# Lint
 ruff check custom_components tests tools
-
-# Run recommended local gate
-python tests/run_tests.py --suite stable
-```
-
-### Updating register maps
-
-Register addresses are defined in
-`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`
-and this file serves as the sole source of truth. The integration reads the JSON
-directly.
-
-You can validate the definitions with:
-
-```bash
-python tools/validate_registers.py
-```
-
-The test suite ensures the JSON definitions remain valid.
-
-## Making Changes
-
-### Branch Strategy
-
-- `main` - the single long-lived branch; all work targets `main`.
-- `feature/your-feature-name` - feature branches, created from `main`.
-- `bugfix/issue-description` - bug fix branches, created from `main`.
-
-> There is no `dev`/`develop` branch. Do not create or reintroduce one.
-
-### Creating a Feature Branch
-
-```bash
-git checkout main
-git pull origin main
-git checkout -b feature/your-feature-name
-```
-
-### Code Style Guidelines
-
-We follow these conventions:
-
-**Python Code:**
-- Use [Ruff](https://docs.astral.sh/ruff/) for formatting and import sorting (100 char line length)
-- Follow [PEP 8](https://pep8.org/) style guidelines
-- Use type hints where possible
-
-**Home Assistant Specific:**
-- Follow [HA development guidelines](https://developers.home-assistant.io/)
-- Use `async`/`await` for I/O operations
-- Implement proper error handling
-- Include device info for entities
-
-**Modbus Communication:**
-- Handle connection errors gracefully
-- Implement retry logic
-- Use efficient batch reading
-- Validate register values
-
-### Refactor guardrails
-
-When touching architecture-related code/docs, keep these constraints:
-
-- No legacy modules.
-- No compatibility shims.
-- No re-export shims.
-- No proxy modules.
-- `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant.
-- coordinator package migration is completed (`coordinator/` is canonical and top-level `coordinator.py` was removed).
-
-See also: [`docs/refactor_status.md`](docs/refactor_status.md).
-
-### File Structure
-
-```
-custom_components/thessla_green_modbus/
-├── __init__.py              # Integration setup
-├── manifest.json            # Integration metadata
-├── config_flow.py           # Configuration UI
-├── const.py                 # Constants and register definitions
-├── coordinator/             # Coordinator package (canonical)
-├── scanner/                 # Device capability scanner modules
-├── climate.py               # Climate entity (enhanced)
-├── sensor.py                # Sensor entities
-├── binary_sensor.py         # Binary sensor entities (enhanced)
-├── select.py                # Select entities
-├── number.py                # Number entities
-├── switch.py                # Switch entities
-├── fan.py                   # Fan entity
-├── services.yaml            # Service definitions
-└── translations/            # Translation files
-    ├── en.json
-    └── pl.json
-```
-
-### Validating register definitions
-
-The canonical register specification lives in
-`custom_components/thessla_green_modbus/registers/thessla_green_registers_full.json`.
-After editing this file, run the validation tests to ensure everything remains
-consistent.
-
-Commit the updated JSON file.
-
-## Testing
-
-### Running Tests
-
-```bash
-# Run all tests
-pytest -q
-
-# Run focused suite
-python tests/run_tests.py --suite stable
-
-# Validate register file
-pytest -q tests/test_register_loader.py
-
-# Validate mapping/register consistency tools
-python tools/validate_registers.py
-python tools/validate_entity_mappings.py
-```
-
-### Writing Tests
-
-For new features, please include:
-
-1. **Unit Tests** - Test individual functions/classes
-2. **Integration Tests** - Test component interactions
-3. **Mock Tests** - Test with simulated Modbus responses
-
-Example test structure:
-```python
-async def test_your_feature():
-    """Test your new feature."""
-    # Arrange
-    coordinator = create_mock_coordinator()
-
-    # Act
-    result = await coordinator.your_method()
-
-    # Assert
-    assert result == expected_value
-```
-
-### Testing with Real Hardware
-
-If you have a ThesslaGreen device:
-
-1. Create a test configuration
-2. Test with different device states
-3. Verify all registers are read correctly
-4. Test error conditions (disconnection, etc.)
-
-## Code Quality
-
-### Pre-commit Checks
-
-Run `pre-commit install` once to activate these checks. Before committing, the following hooks run automatically (see `.pre-commit-config.yaml`):
-
-- **validate-registers** - Validates the register JSON source of truth
-- **ruff** - Linting and import sorting (`--fix`)
-- **ruff-format** - Code formatting
-- **mypy** - Type checking (`custom_components/thessla_green_modbus`)
-- **check-yaml** - YAML validation
-- **check-json** - JSON / translation file validation
-- **end-of-file-fixer** - Ensures files end with a trailing newline
-- **trailing-whitespace** - Strips trailing whitespace
-
-### Manual Quality Checks
-
-```bash
-# Lint
-ruff check custom_components tests tools
-
-# Import order
 ruff check --select I custom_components tests tools
-
-# Format (check only; drop --check to apply)
 ruff format --check custom_components tests tools
-
-# Type checking
-mypy custom_components/thessla_green_modbus/
+python -m compileall -q custom_components/thessla_green_modbus tests tools
+mypy custom_components/thessla_green_modbus
+python tools/compare_registers_with_reference.py --show-renames
+python tools/compare_airpack4_vendor_coverage.py
+python tools/check_translations.py
+python tools/check_maintainability.py
+python tools/validate_entity_mappings.py
+pytest tests/ -q
 ```
 
-> **Note:** `hassfest` and `HACS` integration validation run automatically in CI via
-> dedicated GitHub Actions; they are not distributed as installable PyPI packages.
+GitHub CI is authoritative for the complete environment. It additionally validates Hassfest, HACS, the declared minimum Home Assistant API contract, a current stable Home Assistant contract, and supported pymodbus boundary versions.
 
-## Submitting Changes
+## Architecture guardrails
 
-### Pull Request Process
+Keep these repository invariants unless an approved architectural decision explicitly changes them:
 
-1. **Update your branch:**
-   ```bash
-   git checkout main
-   git pull origin main
-   git checkout your-feature-branch
-   git rebase main
-   ```
+- no legacy modules;
+- no compatibility/re-export/proxy shims;
+- `core/`, `transport/`, `registers/`, and `scanner/` must not gain Home Assistant runtime imports;
+- Home Assistant entities/actions must not perform raw Modbus I/O directly;
+- Modbus requests must respect the integration's maximum 16-register safety boundary;
+- the coordinator owns Home Assistant scheduling/state publication, while device/transport behavior belongs below that boundary;
+- destructive, service-only, communication, and other risk-marked controls must remain opt-in/guarded;
+- a failed final Modbus write must never be reported as a successful Home Assistant action.
 
-2. **Run all checks:**
-   ```bash
-   python -m compileall -q custom_components/thessla_green_modbus tests tools
-   ruff check custom_components tests tools
-   python tests/run_tests.py --suite stable
-   ```
+Before attempting broad read-path/mixin consolidation, read [`docs/core_consolidation_plan.md`](docs/core_consolidation_plan.md). That work is deliberately gated by longer real-device validation.
 
-3. **Commit your changes:**
-   ```bash
-   git add .
-   git commit -m "feat: add new sensor for XYZ"
-   ```
+## Home Assistant behavior
 
-4. **Push and create PR:**
-   ```bash
-   git push origin your-feature-branch
-   # Create PR on GitHub
-   ```
+Use Home Assistant-native patterns:
 
-### Commit Message Format
+- asynchronous I/O only;
+- config entries/config flow rather than YAML configuration;
+- stable config-entry and entity unique IDs;
+- translated `ServiceValidationError`/`HomeAssistantError` semantics at the HA boundary;
+- integration-wide actions registered from process-level `async_setup()`;
+- diagnostics with privacy-conscious redaction;
+- Repairs for actionable persistent failures where appropriate.
 
-We use [Conventional Commits](https://www.conventionalcommits.org/):
+Do not weaken CI, disable failing tests, add blanket ignores, or convert real failures into logs-only success paths.
 
-- `feat:` - New features
-- `fix:` - Bug fixes
-- `docs:` - Documentation changes
-- `test:` - Adding tests
-- `refactor:` - Code refactoring
-- `perf:` - Performance improvements
-- `chore:` - Maintenance tasks
+## Modbus and security
 
-Examples:
-```
-feat: add bypass temperature control
-fix: resolve modbus timeout issues
-docs: update installation instructions
-test: add coordinator unit tests
-```
+Modbus TCP/raw RTU-over-TCP should be treated as trusted-LAN protocols. Do not document or recommend public Internet exposure or direct port-forwarding. Prefer VLAN/firewall isolation and authenticated remote access such as a VPN. See [`SECURITY.md`](SECURITY.md).
 
-### Pull Request Guidelines
+For RTU/USB production examples use persistent paths such as `/dev/serial/by-id/...` rather than `/dev/ttyUSB0`.
 
-**Title:** Clear, descriptive summary of changes
+## Register changes
 
-**Description should include:**
-- What changed and why
-- Any breaking changes
-- Testing performed
-- Related issues (if any)
+When changing register definitions:
 
-**PR Checklist:**
-- [ ] Code follows style guidelines
-- [ ] Tests added/updated
-- [ ] Documentation updated
-- [ ] No breaking changes (or clearly documented)
-- [ ] All checks pass
+1. edit the canonical JSON source;
+2. keep register names/addresses and multi-register semantics compatible unless a migration is explicitly designed;
+3. validate vendor coverage and entity mappings;
+4. add tests for encoding/decoding, batching boundaries, unsupported-register behavior, and safe write/read-back where relevant.
 
-## Release Process
+Never infer that a register is globally unsupported because one AirPack/firmware returns Illegal Data Address.
 
-### Versioning
+## Testing on real hardware
 
-We use [Semantic Versioning](https://semver.org/):
-- `MAJOR.MINOR.PATCH`
-- Major: Breaking changes
-- Minor: New features (backward compatible)
-- Patch: Bug fixes
+Hardware evidence is a separate evidence class from CI. Record the exact candidate commit/version, Home Assistant version, AirPack model/firmware, transport, slave ID, polling interval, and batch size.
 
-### Release Checklist
+For runtime-sensitive changes, follow [`docs/real_device_validation.md`](docs/real_device_validation.md), including representative writes, reconnect behavior, diagnostic scan restoration, and soak testing. Do not turn historical device evidence into a claim about a newer candidate.
 
-For maintainers:
+## Pull requests
 
-1. Update version in `manifest.json`
-2. Update `CHANGELOG.md`
-3. Run full test suite
-4. Create release tag
-5. Publish to GitHub releases
-6. Update HACS repository
+Use Conventional Commit-style titles where practical (`fix:`, `feat:`, `docs:`, `test:`, `refactor:`, `chore:`). PR descriptions should state:
 
-## Getting Help
+- what changed and why;
+- compatibility or safety impact;
+- validation performed and its exact result;
+- any physical-device evidence or explicitly pending hardware gates;
+- rollback considerations for high-risk changes.
 
-### Documentation
+For large/multi-step tasks, follow the repository checkpoint/handoff rules in `AGENTS.md` and `docs/agents/CONTEXT_HANDOFF.md`.
 
-- [Installation Guide](README.md#installation)
-- [Configuration Guide](DEPLOYMENT.md)
-- [Troubleshooting](README.md#troubleshooting)
+## Releases
 
-### Support Channels
-
-- **GitHub Issues** - Bug reports and feature requests
-- **Discussions** - General questions and ideas
-- **Wiki** - Detailed documentation
-
-### Modbus Resources
-
-- [ThesslaGreen Modbus Documentation](docs/)
-- [pymodbus Documentation](https://pymodbus.readthedocs.io/)
-- [Home Assistant Developer Docs](https://developers.home-assistant.io/)
-
-## Recognition
-
-Contributors will be recognized in:
-- `README.md` contributors section
-- Release notes
-- GitHub contributors page
-
-Thank you for contributing to make ThesslaGreen integration better! 🚀
+Do not tag or publish from an unverified branch. Follow [`docs/release_process.md`](docs/release_process.md). `manifest.json` and `pyproject.toml` versions must match, CI must be green, and hardware-validation claims in release notes must match actual recorded evidence.
