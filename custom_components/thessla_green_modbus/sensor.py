@@ -6,7 +6,6 @@ are present on the scanned device are exposed as entities.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any, cast
 
@@ -48,8 +47,7 @@ def _is_error_or_status_register(key: str) -> bool:
 
 
 def _format_error_status_code(key: str) -> str:
-    """Convert internal register key (e.g. ``e_100``) to display code (``E100``)."""
-
+    """Convert an internal register key to its display code."""
     if key.startswith((ERROR_REGISTER_PREFIX, STATUS_REGISTER_PREFIX)):
         prefix, _, suffix = key.partition("_")
         if suffix.isdigit():
@@ -59,15 +57,9 @@ def _format_error_status_code(key: str) -> str:
 
 def _error_status_description(key: str) -> str:
     """Return a human-readable description for an error/status register key."""
-
     try:
         definition = get_register_definition(key)
-    except (
-        AttributeError,
-        KeyError,
-        TypeError,
-        ValueError,
-    ):
+    except (AttributeError, KeyError, TypeError, ValueError):
         return key
     return definition.description_en or definition.description or key
 
@@ -77,18 +69,13 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen sensor entities based on available registers.
-
-    This is invoked by Home Assistant during platform setup.
-    """
+    """Set up ThesslaGreen sensor entities based on available registers."""
     coordinator: ThesslaGreenModbusCoordinator = config_entry.runtime_data
 
     entities = []
     temp_created = 0
     temp_skipped = 0
 
-    # Create sensors for discovered registers, or all known registers when
-    # ``force_full_register_list`` is enabled.
     for register_name, sensor_def in SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
         is_temp = sensor_def.get("device_class") == SensorDeviceClass.TEMPERATURE
@@ -99,7 +86,6 @@ async def async_setup_entry(
                 temp_skipped += 1
             continue
 
-        # Calculated sensors are derived from coordinator data and have no Modbus address.
         if register_type == "calculated":
             entities.append(ThesslaGreenSensor(coordinator, register_name, None, sensor_def))
             _LOGGER.debug("Created calculated sensor: %s", sensor_def["translation_key"])
@@ -107,15 +93,10 @@ async def async_setup_entry(
 
         register_map = coordinator.device_client.get_register_map(register_type)
         available = coordinator.device_client.available_registers.get(register_type, set())
-        # serial_number is always force-created: it reads from device_info (assembled
-        # during scan from 6 registers) rather than via per-register polling, so it
-        # works even when the device rejects block reads at those addresses.
         force_create = (
             coordinator.device_client.force_full_register_list and register_name in register_map
         ) or (register_name == "serial_number" and register_name in register_map)
 
-        # Check if this register is available on the device or should be
-        # forcibly added from the full register list.
         if register_name in available or force_create:
             address = register_map.get(register_name)
             if address is None:
@@ -141,6 +122,7 @@ async def async_setup_entry(
         _LOGGER.debug("Translations unavailable during sensor setup; using empty mapping")
         translations = {}
     entities.append(ThesslaGreenErrorCodesSensor(coordinator, translations))
+
     error_registers = [
         key
         for key in coordinator.device_client.available_registers.get("holding_registers", set())
@@ -150,11 +132,9 @@ async def async_setup_entry(
         entities.append(ThesslaGreenActiveErrorsSensor(coordinator))
 
     if entities:
-        try:
-            async_add_entities(entities, True)
-        except asyncio.CancelledError:
-            _LOGGER.warning("Entity addition cancelled, adding without initial update")
-            async_add_entities(entities, False)
+        # The coordinator has completed its first refresh before platforms are
+        # forwarded, so per-entity initial updates would duplicate Modbus IO.
+        async_add_entities(entities, False)
         _LOGGER.debug(
             "Created %d sensor entities for %s",
             len(entities),
@@ -173,11 +153,7 @@ async def async_setup_entry(
 
 
 class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
-    """Sensor entity for ThesslaGreen device.
-
-    ``_attr_*`` attributes and properties implement the Home Assistant
-    ``SensorEntity`` API and thus may appear unused.
-    """
+    """Sensor entity for ThesslaGreen device."""
 
     def __init__(
         self,
@@ -191,8 +167,6 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
         self._register_name = register_name
         self._sensor_def = sensor_definition
-
-        # Sensor specific attributes
         self._attr_icon = sensor_definition.get("icon")
         self._attr_native_unit_of_measurement = sensor_definition.get("unit")
         if self._use_percentage():
@@ -213,8 +187,6 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             self._attr_suggested_display_precision = sensor_definition[
                 "suggested_display_precision"
             ]
-
-        # Translation setup
         self._attr_translation_key = sensor_definition.get("translation_key")
 
         _LOGGER.debug(
@@ -253,16 +225,10 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
             self.coordinator.device_client, "offline_state", False
         ):
             return False
-
         if value == SENSOR_UNAVAILABLE:
             return False
-
-        # Some schedule slots can be intentionally unset on device and decode to
-        # ``None`` (e.g. 0xFFFF). Keep the entity available in that case so it
-        # appears as unknown instead of unavailable.
         if value is None and not self._register_name.startswith(TIME_REGISTER_PREFIXES):
             return False
-
         return not (self._use_percentage() and self._get_nominal_flow() is None)
 
     @property
@@ -302,14 +268,7 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
 
 
 class ThesslaGreenSerialNumberSensor(ThesslaGreenSensor):
-    """Diagnostic sensor that reads the serial number from device_info.
-
-    The serial number spans 6 input registers (addresses 24-29) and is
-    assembled by the scanner during device discovery.  Some devices reject
-    block reads for that address range, so this sensor reads the pre-assembled
-    value from ``coordinator.device_client.device_info["serial_number"]`` instead of polling
-    the registers individually on every update cycle.
-    """
+    """Diagnostic sensor that reads the serial number from device_info."""
 
     @property
     def native_value(self) -> str | None:
@@ -391,12 +350,7 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
 
     @property
     def available(self) -> bool:
-        """Return sensor availability.
-
-        This entity is synthetic (key ``active_errors`` does not map to a raw
-        register), so availability must depend on coordinator state rather than
-        ``coordinator.data[self._key]``.
-        """
+        """Return sensor availability."""
         return bool(
             self.coordinator.last_update_success
             and not getattr(self.coordinator.device_client, "offline_state", False)
@@ -404,13 +358,7 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | None:
-        """Return comma-separated list of active E/S code identifiers.
-
-        Returns "none" (not Python None) when no codes are active and the
-        coordinator has been successfully updated, so HA shows a clear
-        "no active errors" state rather than the misleading "unknown".
-        Returns None only when the coordinator has not yet delivered data.
-        """
+        """Return comma-separated list of active E/S code identifiers."""
         codes = [
             key
             for key, value in self.coordinator.data.items()
