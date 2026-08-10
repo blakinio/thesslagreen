@@ -24,27 +24,10 @@ jobs:
           python-version: '3.13'
 
       - name: Apply domain-boundary cleanup
-        shell: bash
-        run: |
-          python .github/scripts/agent_core_boundary_fix.py
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('tests/test_domain_layer_boundaries.py')
-          text = path.read_text(encoding='utf-8')
-          old = '''                for module in modules:
-                    if module == "homeassistant" or module.startswith("homeassistant."):
-                        violations.append(f"{path.relative_to(COMPONENT)} -> {module}")
-'''
-          new = '''                violations.extend(
-                    f"{path.relative_to(COMPONENT)} -> {module}"
-                    for module in modules
-                    if module == "homeassistant" or module.startswith("homeassistant.")
-                )
-'''
-          if old not in text:
-              raise SystemExit('expected boundary-test block not found')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
-          PY
+        run: python .github/scripts/agent_core_boundary_fix.py
+
+      - name: Fix generated test lint
+        run: ruff check --fix --select PERF401 tests/test_domain_layer_boundaries.py
 
       - name: Install validation stack
         run: |
