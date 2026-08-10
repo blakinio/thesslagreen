@@ -25,6 +25,7 @@ from custom_components.thessla_green_modbus.services.validation import (
     validate_bypass_temperature_range,
     validate_gwc_temperature_range,
 )
+from homeassistant.exceptions import HomeAssistantError
 from pymodbus.exceptions import ConnectionException
 
 
@@ -35,9 +36,9 @@ async def test_write_register_handles_connection_exception():
     )
     logger = SimpleNamespace(error=MagicMock(), info=MagicMock())
 
-    result = await write_register(coordinator, "reg", 1, "climate.a", "action", logger)
+    with pytest.raises(HomeAssistantError):
+        await write_register(coordinator, "reg", 1, "climate.a", "action", logger)
 
-    assert result is False
     logger.error.assert_called_once()
 
 
