@@ -36,9 +36,7 @@ async def write_register(
         raise
     except _WRITE_ERRORS as err:
         logger.error("Failed to %s for %s: %s", action, entity_id, err)
-        raise HomeAssistantError(
-            f"Failed to {action} for {entity_id}: {err}"
-        ) from err
+        raise HomeAssistantError(f"Failed to {action} for {entity_id}: {err}") from err
 
     if not success:
         logger.error("Failed to %s for %s: device rejected the write", action, entity_id)
