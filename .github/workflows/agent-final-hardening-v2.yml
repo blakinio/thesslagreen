@@ -59,8 +59,8 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          path = Path("custom_components/thessla_green_modbus/fan.py")
-          lines = path.read_text().splitlines()
+          fan_path = Path("custom_components/thessla_green_modbus/fan.py")
+          lines = fan_path.read_text().splitlines()
           generated_methods = (
               "    def _validate_percentage_write_path(",
               "    async def async_turn_on(",
@@ -90,12 +90,83 @@ jobs:
                   f"Expected to repair {len(generated_methods)} generated methods, repaired {fixed}"
               )
 
-          text = "\n".join(lines) + "\n"
-          text = text.replace(
+          fan_text = "\n".join(lines) + "\n"
+          fan_text = fan_text.replace(
               "except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:",
               "except (ModbusException, ConnectionException, TimeoutError, OSError, RuntimeError) as exc:",
           )
-          path.write_text(text)
+          fan_path.write_text(fan_text)
+
+          fan_tests_path = Path("tests/test_fan.py")
+          fan_tests = fan_tests_path.read_text()
+          old = '''def test_fan_write_register_invalid_raises(mock_coordinator):
+              """_write_register raises ValueError for unknown register names (line 278)."""
+              fan = ThesslaGreenFan(mock_coordinator)
+              with pytest.raises(ValueError):
+                  asyncio.run(fan._write_register("nonexistent_xyz_register_99", 1))'''
+          new = '''def test_fan_write_register_invalid_raises(mock_coordinator):
+              """_write_register rejects unknown register names as invalid HA actions."""
+              fan = ThesslaGreenFan(mock_coordinator)
+              with pytest.raises(ServiceValidationError):
+                  asyncio.run(fan._write_register("nonexistent_xyz_register_99", 1))'''
+          if fan_tests.count(old) != 1:
+              raise SystemExit("fan invalid-register test did not match exactly once")
+          fan_tests_path.write_text(fan_tests.replace(old, new))
+
+          scan_path = Path("tests/test_scan_safe_mode.py")
+          scan = scan_path.read_text()
+          marker = '''# ---------------------------------------------------------------------------
+          # validate_known_registers — must not call scanner_create (no second connection)
+          # ---------------------------------------------------------------------------'''
+          helper = '''def _modbus_error_response():
+              """Return an explicit device-side Modbus error response."""
+              response = MagicMock()
+              response.registers = []
+              response.bits = []
+              response.isError.return_value = True
+              return response
+
+
+          '''
+          if scan.count(marker) != 1:
+              raise SystemExit("validate helper insertion marker did not match exactly once")
+          scan = scan.replace(marker, helper + marker, 1)
+
+          old_import = "from pymodbus.exceptions import ConnectionException, ModbusException"
+          if scan.count(old_import) != 1:
+              raise SystemExit("individual fallback import did not match exactly once")
+          scan = scan.replace(old_import, "from pymodbus.exceptions import ModbusException", 1)
+
+          old_individual = 'if addr == 1:\n            raise ConnectionException("addr 1 unsupported")'
+          if scan.count(old_individual) != 1:
+              raise SystemExit("individual unsupported read did not match exactly once")
+          scan = scan.replace(
+              old_individual,
+              'if addr == 1:\n            return _modbus_error_response()',
+              1,
+          )
+
+          old_device_error = '''coord.device_client._call_modbus = AsyncMock(
+              side_effect=ModbusException("device does not support this register")
+          )'''
+          if scan.count(old_device_error) != 1:
+              raise SystemExit("explicit unsupported test did not match exactly once")
+          scan = scan.replace(
+              old_device_error,
+              "coord.device_client._call_modbus = AsyncMock(return_value=_modbus_error_response())",
+              1,
+          )
+
+          old_unsupported = 'AsyncMock(side_effect=ModbusException("unsupported"))'
+          if scan.count(old_unsupported) < 4:
+              raise SystemExit(
+                  f"expected at least four legacy unsupported exception stubs, got {scan.count(old_unsupported)}"
+              )
+          scan = scan.replace(
+              old_unsupported,
+              "AsyncMock(return_value=_modbus_error_response())",
+          )
+          scan_path.write_text(scan)
           PY
 
           ruff format custom_components/thessla_green_modbus/fan.py tests/test_fan.py tests/test_scan_safe_mode.py
