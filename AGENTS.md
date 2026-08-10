@@ -34,9 +34,9 @@
 
 Before claiming that GitHub access is unavailable:
 
-1. Inspect the available GitHub connector tools.
-2. Call `github_get_user_login` or the equivalent authenticated-identity operation.
-3. Call `github_get_repo` or `github_list_repositories` for the requested repository scope.
-4. Attempt the required read operation through the connector when it is safe to do so.
+1. Inspect the available GitHub connector tools and determine whether the connector is registered and enabled and whether the required operations exist.
+2. If an authenticated-identity operation exists and the connector is callable, call `github_get_user_login` or its equivalent; otherwise record the confirmed missing or disabled connector or missing identity operation.
+3. If a repository lookup or listing operation exists and the connector is callable, call `github_get_repo` or `github_list_repositories` for the requested repository scope; otherwise record the missing capability.
+4. If the required read operation exists and is callable, attempt it through the connector when it is safe and within the task's authority; otherwise record the unavailable capability.
 
-Report a GitHub access blocker only after an actual connector call returns an authentication or permission error. Include the exact failed operation and error.
+Report a GitHub access blocker only after the applicable availability and capability checks above and, when an applicable operation exists and is safe to attempt, an actual connector call. Authentication or permission errors, a confirmed missing or disabled connector, a missing required operation, rate limiting, and transport or service failures are valid blockers when they prevent the task and no safe permitted connector, local `git`, or `gh` fallback can complete it. Include the exact availability and capability verification performed. When a call was attempted, include the failed operation and returned error; when no call was possible, identify the missing or disabled connector or unavailable operation instead.
