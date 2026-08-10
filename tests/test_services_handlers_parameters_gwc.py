@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 from custom_components.thessla_green_modbus.services import async_setup_services
+from homeassistant.exceptions import HomeAssistantError
 
 
 class _Services:
@@ -87,7 +88,8 @@ async def test_set_gwc_parameters_with_temps(monkeypatch):
 async def test_set_gwc_parameters_write_failure(monkeypatch):
     coord = _Coordinator(write_result=False)
     handler = await _setup_and_get(_make_hass(), "set_gwc_parameters", coord, monkeypatch)
-    await handler(_make_call({"entity_id": ["climate.dev"], "mode": "off"}))
+    with pytest.raises(HomeAssistantError):
+        await handler(_make_call({"entity_id": ["climate.dev"], "mode": "off"}))
     coord.async_request_refresh.assert_not_awaited()
 
 
@@ -96,15 +98,16 @@ async def test_set_gwc_parameters_min_temp_write_failure(monkeypatch):
     coord = _Coordinator()
     coord.async_write_register = AsyncMock(side_effect=[True, False])
     handler = await _setup_and_get(_make_hass(), "set_gwc_parameters", coord, monkeypatch)
-    await handler(
-        _make_call(
-            {
-                "entity_id": ["climate.dev"],
-                "mode": "auto",
-                "min_air_temperature": 5.0,
-            }
+    with pytest.raises(HomeAssistantError):
+        await handler(
+            _make_call(
+                {
+                    "entity_id": ["climate.dev"],
+                    "mode": "auto",
+                    "min_air_temperature": 5.0,
+                }
+            )
         )
-    )
     coord.async_request_refresh.assert_not_awaited()
 
 
@@ -113,16 +116,17 @@ async def test_set_gwc_parameters_max_temp_write_failure(monkeypatch):
     coord = _Coordinator()
     coord.async_write_register = AsyncMock(side_effect=[True, True, False])
     handler = await _setup_and_get(_make_hass(), "set_gwc_parameters", coord, monkeypatch)
-    await handler(
-        _make_call(
-            {
-                "entity_id": ["climate.dev"],
-                "mode": "auto",
-                "min_air_temperature": 5.0,
-                "max_air_temperature": 35.0,
-            }
+    with pytest.raises(HomeAssistantError):
+        await handler(
+            _make_call(
+                {
+                    "entity_id": ["climate.dev"],
+                    "mode": "auto",
+                    "min_air_temperature": 5.0,
+                    "max_air_temperature": 35.0,
+                }
+            )
         )
-    )
     coord.async_request_refresh.assert_not_awaited()
 
 
