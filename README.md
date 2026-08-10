@@ -5,23 +5,25 @@
 [![Python](https://img.shields.io/badge/Python-3.13%2B-blue.svg)](https://python.org/)
 
 Lokalna integracja (hub) dla rekuperatorów ThesslaGreen AirPack przez Modbus.
-Repozytorium zawiera integrację Home Assistant z konfiguracją przez UI, automatyczną detekcją dostępnych funkcji urządzenia, walidacją znanych rejestrów oraz zestawem serwisów do sterowania urządzeniem.
+Repozytorium zawiera integrację Home Assistant z konfiguracją przez UI, automatyczną detekcją dostępnych funkcji urządzenia, walidacją znanych rejestrów oraz zestawem akcji do sterowania urządzeniem.
 
 ## Wymagania
 
 - Home Assistant **2026.1.0+**
 - Python **3.13+**
-- `pymodbus>=3.6.0` (instalowane przez integrację)
+- `pymodbus>=3.6.0,<4.0` (instalowane przez integrację)
 
 ## Co obsługuje integracja
 
-- **Transporty:** Modbus TCP oraz Modbus RTU/USB.
-- **Urządzenia:** ThesslaGreen AirPack Home (serie zgodne z protokołem Modbus producenta).
+- **Transporty:** Modbus TCP, RTU-over-TCP oraz Modbus RTU/USB.
+- **Urządzenia:** ThesslaGreen AirPack Home zgodne z obsługiwanym protokołem Modbus producenta.
 - **Konfiguracja przez UI:** `config_flow` + opcje integracji.
 - **Auto-detekcja możliwości urządzenia:** tworzone są tylko encje dla dostępnych rejestrów/funkcji.
-- **Diagnostyka:** dane diagnostyczne urządzenia i serwis do podniesienia poziomu logowania.
-- **Walidacja znanych rejestrów:** `validate_known_registers` reużywa aktywnego połączenia Modbus — bezpieczne przy aktywnym pollingu.
-- **Skan diagnostyczny (offline/advanced):** `scan_all_registers` otwiera osobne połączenie Modbus — nie uruchamiać, gdy integracja aktywnie polluje urządzenie.
+- **Diagnostyka:** dane diagnostyczne urządzenia i akcja do czasowego podniesienia poziomu logowania.
+- **Walidacja znanych rejestrów:** `validate_known_registers` korzysta z kontrolowanej ścieżki I/O koordynatora.
+- **Skan diagnostyczny (advanced):** `scan_all_registers` jest izolowany od normalnego pollingu; na czas skanu główny transport jest rozłączany, skan używa skonfigurowanego typu transportu, a po zakończeniu połączenie jest odtwarzane.
+- **Błędy zapisu:** końcowe niepowodzenie Modbus jest zgłaszane do Home Assistanta; follow-up hardening dodaje także wpis Repairs, który znika po następnym potwierdzonym zapisie.
+- **Szacowanie mocy:** `electrical_power` jest estymacją chwilową, nie licznikiem energii. Integracja nie publikuje procesu-pamięciowego `total_energy` jako trwałego pomiaru energii.
 
 > Integracja korzysta z definicji rejestrów z pliku JSON i mapowania encji. Nie każdy wykryty rejestr musi mieć osobną encję w Home Assistant.
 
@@ -42,9 +44,19 @@ git clone https://github.com/blakinio/thesslagreen.git
 cp -r thesslagreen/custom_components/thessla_green_modbus custom_components/
 ```
 
-## Serwisy
+## Modbus RTU / USB
 
-Integracja udostępnia serwisy m.in. do:
+Dla instalacji produkcyjnej preferuj trwałą ścieżkę urządzenia, np.:
+
+```text
+/dev/serial/by-id/usb-...
+```
+
+Zamiast `/dev/ttyUSB0`, ponieważ numer `ttyUSB` może zmienić się po restarcie hosta lub ponownym podłączeniu adaptera. Ustaw baud rate, parity, stop bits i slave ID zgodnie z konfiguracją centrali.
+
+## Akcje / serwisy
+
+Integracja udostępnia akcje m.in. do:
 
 - trybów specjalnych,
 - harmonogramu przepływu,
@@ -53,14 +65,14 @@ Integracja udostępnia serwisy m.in. do:
 - resetów,
 - odświeżenia danych,
 - bezpiecznej walidacji znanych rejestrów (`validate_known_registers`),
-- pełnego diagnostycznego skanu rejestrów — offline/advanced only (`scan_all_registers`),
+- pełnego diagnostycznego skanu rejestrów (`scan_all_registers`),
 - czasowego podniesienia poziomu logów.
 
 Pełna lista: [`custom_components/thessla_green_modbus/services.yaml`](custom_components/thessla_green_modbus/services.yaml).
 
 ## Diagnostyka i problemy
 
-- Włącz debug logi integracji:
+Włącz debug logi integracji:
 
 ```yaml
 logger:
@@ -69,17 +81,21 @@ logger:
 ```
 
 - Sprawdź szczegóły błędów i statystyk przez „Pobierz diagnostykę” w Home Assistant.
-- Upewnij się, że tylko jedno narzędzie utrzymuje aktywne połączenie Modbus do urządzenia.
+- Upewnij się, że zewnętrzne narzędzia nie utrzymują konkurencyjnego połączenia Modbus do tej samej centrali podczas normalnej pracy integracji.
+- Do normalnej klasyfikacji znanych rejestrów preferuj `validate_known_registers`.
 
-> **⚠ scan_all_registers — tylko offline / advanced:**
-> `scan_all_registers` otwiera osobne połączenie Modbus i może konfliktować z aktywnym pollingiem.
-> Do normalnej walidacji używaj `validate_known_registers` — reużywa aktywnego połączenia i jest bezpieczny przy działającej integracji.
-> W danym momencie tylko jedno narzędzie Modbus powinno komunikować się z urządzeniem.
+> **⚠ `scan_all_registers` — advanced diagnostics:**
+> pełny skan jest operacją ciężką i może potrwać długo. Integracja izoluje go od normalnego I/O i odtwarza główny transport po zakończeniu, ale nie należy używać go jako cyklicznej automatyzacji.
 
-> **Status jakości:** `quality_scale: bronze`. Walidacja na urządzeniu fizycznym jest w toku i dokumentowana w [`docs/real_device_validation.md`](docs/real_device_validation.md).
+> **Status jakości:** manifest deklaruje `quality_scale: bronze`. Aktualny stan automatycznych i sprzętowych dowodów jest opisany w [`docs/quality/STATUS.md`](docs/quality/STATUS.md) oraz [`docs/real_device_validation.md`](docs/real_device_validation.md).
 
 ## Dokumentacja dodatkowa
 
+- [Kanoniczny status jakości](docs/quality/STATUS.md)
+- [Audyt HA Quality Scale](docs/ha_quality_scale_audit.md)
+- [Walidacja na urządzeniu fizycznym](docs/real_device_validation.md)
+- [Gotowość wydania](docs/release_readiness.md)
+- [Proces wydawania](docs/release_process.md)
 - [Architektura docelowa](docs/thesslagreen_architecture.md)
 - [Inwentarz plików (architektura)](docs/architecture/file_inventory.md)
 - [Przepływ runtime (architektura)](docs/architecture/runtime_flow.md)
@@ -90,19 +106,22 @@ logger:
 
 ## Rozwój i testy
 
-Uruchamianie testów:
+**Python 3.13 jest wymagany** (zgodnie z Home Assistant 2026.1+ i `pyproject.toml`).
 
 ```bash
-pytest
+pip install -r requirements-dev.txt
+ruff check custom_components tests tools
+ruff check --select I custom_components tests tools
+ruff format --check custom_components tests tools
+mypy custom_components/thessla_green_modbus
+pytest tests/ -q
+python tools/validate_entity_mappings.py
+python tools/check_translations.py
 ```
 
-Kontrybucja: [CONTRIBUTING.md](CONTRIBUTING.md).
+CI dodatkowo uruchamia Hassfest, HACS validation, porównanie rejestrów z referencją producenta oraz skupiony test kontraktów API na minimalnej deklarowanej wersji Home Assistant `2026.1.0`.
 
-## Development
-
-**Python 3.13 is required** (matches Home Assistant 2026.1+).
-
-Lekki smoke-check (bez pełnego środowiska Home Assistant):
+Lekki smoke-check bez pełnego środowiska Home Assistant:
 
 ```bash
 pip install -r requirements-test-min.txt
@@ -111,18 +130,4 @@ python tools/validate_registers.py
 
 To sprawdzenie jest również uruchamiane przez `pre-commit` (hook `validate-registers`).
 
-```bash
-pyenv install 3.13 && pyenv local 3.13   # lub: asdf install python 3.13.0
-pip install -r requirements-dev.txt
-pre-commit install
-ruff check custom_components/ tests/ tools/
-mypy custom_components/thessla_green_modbus/
-pytest tests/ -x -q
-```
-
-> **Note for Codex / AI agents:** The integration uses `enum.StrEnum`
-> (Python 3.11+). Running `pytest` in a container with Python < 3.13 will
-> fail at import with `ImportError: cannot import name 'StrEnum' from 'enum'`.
-> This is expected — the test environment must use Python 3.13.
-
-> **Refactor constraints (must keep):** no legacy modules, no compatibility/re-export/proxy shims; `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant; coordinator package migration is completed (`coordinator/` is canonical, top-level `coordinator.py` removed). See [`docs/refactor_status.md`](docs/refactor_status.md).
+> **Refactor constraints (must keep):** no legacy modules, no compatibility/re-export/proxy shims; `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant; coordinator package migration is completed (`coordinator/` is canonical, top-level `coordinator.py` removed). Further broad read-path consolidation is deliberately deferred until longer real-device validation; see [`docs/core_consolidation_plan.md`](docs/core_consolidation_plan.md).
