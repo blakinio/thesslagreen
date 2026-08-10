@@ -168,9 +168,7 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
 
         if register_type in ["coil_registers", "discrete_inputs"]:
             result = bool(value)
-        elif register_type == "input_registers":
-            result = bool(value & bit) if bit is not None else bool(value)
-        elif register_type == "holding_registers":
+        elif register_type in {"input_registers", "holding_registers"}:
             result = bool(value & bit) if bit is not None else bool(value)
         else:
             result = False
