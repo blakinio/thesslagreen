@@ -6,7 +6,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-
 from custom_components.thessla_green_modbus import async_setup, async_unload_entry
 from custom_components.thessla_green_modbus.const import DOMAIN
 
