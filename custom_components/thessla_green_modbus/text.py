@@ -7,13 +7,13 @@ detected on the device during the scanning phase.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
 from homeassistant.components.text import TextEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pymodbus.exceptions import ConnectionException, ModbusException
@@ -60,22 +60,14 @@ async def async_setup_entry(
             entities.append(ThesslaGreenText(coordinator, register_name, address, text_def))
 
     if entities:
-        try:
-            async_add_entities(entities, True)
-        except asyncio.CancelledError:
-            _LOGGER.warning("Cancelled while adding text entities, retrying without initial state")
-            async_add_entities(entities, False)
-            return
+        # The coordinator has already completed its first refresh before
+        # platforms are forwarded. Avoid one redundant update per entity.
+        async_add_entities(entities, False)
         _LOGGER.debug("Created %d text entities", len(entities))
 
 
 class ThesslaGreenText(ThesslaGreenEntity, TextEntity):
-    """Text entity for a writable ASCII multi-register string.
-
-    The coordinator decodes ASCII register sequences to plain Python strings.
-    This entity presents the value as a native HA ``text`` control so users
-    can read and set the register directly from the UI.
-    """
+    """Text entity for a writable ASCII multi-register string."""
 
     def __init__(
         self,
@@ -93,6 +85,7 @@ class ThesslaGreenText(ThesslaGreenEntity, TextEntity):
         self._attr_native_max = definition.get("max_length", 16)
         if _ec := definition.get("entity_category"):
             self._attr_entity_category = EntityCategory(_ec)
+        self._apply_risk_policy(definition)
 
     @property
     def available(self) -> bool:
@@ -121,8 +114,7 @@ class ThesslaGreenText(ThesslaGreenEntity, TextEntity):
         """Write a new string value to the register."""
         try:
             await self._write_register(self._register_name, value)
-        except (ModbusException, ConnectionException) as err:
-            _LOGGER.error("Error setting %s to %r: %s", self._register_name, value, err)
-            return
-        except RuntimeError as err:
-            _LOGGER.error("Failed to set %s to %r: %s", self._register_name, value, err)
+        except (ModbusException, ConnectionException, RuntimeError, TimeoutError, OSError) as err:
+            msg = f"Failed to set {self._register_name} to {value!r}: {err}"
+            _LOGGER.error(msg)
+            raise HomeAssistantError(msg) from err
