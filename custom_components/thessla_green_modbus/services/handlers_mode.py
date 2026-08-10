@@ -22,7 +22,7 @@ def register_mode_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
         mode = deps.normalize_option(call.data["mode"])
         duration = call.data.get("duration", 0)
 
-        for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
+        for entity_id, coordinator in await deps.iter_target_coordinators(hass, call):
             special_mode_value = deps.special_function_map.get(mode, 0)
             if not await deps.write_register(
                 coordinator, "special_mode", special_mode_value, entity_id, "set special mode"
