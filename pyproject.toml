@@ -22,7 +22,7 @@ classifiers = [
     "Topic :: Home Automation",
 ]
 requires-python = ">=3.13"
-dependencies = ["pymodbus>=3.6.0,<4.0", "voluptuous>=0.13"]
+dependencies = ["pymodbus>=3.6.1,<4.0", "voluptuous>=0.13"]
 
 [project.optional-dependencies]
 dev = [
@@ -48,136 +48,80 @@ docs = [
     "sphinx-rtd-theme>=1.0.0",
 ]
 
-[project.urls]
-"Homepage" = "https://github.com/blakinio/thesslagreen"
-"Bug Reports" = "https://github.com/blakinio/thesslagreen/issues"
-"Source" = "https://github.com/blakinio/thesslagreen"
-"Documentation" = "https://github.com/blakinio/thesslagreen/wiki"
-
 [tool.setuptools]
-include-package-data = true
+packages = []
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["custom_components*"]
-
-[tool.setuptools.package-data]
-"custom_components.thessla_green_modbus" = [
-    "options/*.json",
-    "registers/*.json",
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+asyncio_default_test_loop_scope = "function"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "integration: integration tests requiring a live Home Assistant instance",
+]
+filterwarnings = [
+    "ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited:RuntimeWarning",
 ]
 
 [tool.ruff]
-line-length = 100
 target-version = "py313"
-src = ["custom_components", "tests", "tools"]
+line-length = 100
+extend-exclude = ["docs"]
 
 [tool.ruff.lint]
-select = ["F", "E", "W", "B", "SIM", "RUF", "UP", "I", "PERF", "BLE"]
-ignore = [
-    "E501",
-    "RUF002",
-    "RUF003",
-    "SIM102",
-]
-extend-safe-fixes = ["ANN"]
-per-file-ignores = {"tests/*" = ["BLE001", "E402", "RUF001", "SIM117"], "tools/manual/translate_register_descriptions.py" = ["RUF001"]}
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]
 
-[tool.ruff.format]
-line-ending = "lf"
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011", "SIM117"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.thessla_green_modbus"]
 
 [tool.black]
-target-version = ["py313"]
 line-length = 100
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/
-'''
+target-version = ["py313"]
 
 [tool.isort]
 profile = "black"
 line_length = 100
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
+known_first_party = ["custom_components.thessla_green_modbus"]
 
 [tool.mypy]
 python_version = "3.13"
-files = ["custom_components/thessla_green_modbus"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 check_untyped_defs = true
-warn_redundant_casts = true
-warn_unused_ignores = true
+no_implicit_optional = true
+strict_equality = true
 show_error_codes = true
-namespace_packages = true
-explicit_package_bases = true
-mypy_path = ["."]
-follow_imports = "skip"
+exclude = ["tests/"]
 
 [[tool.mypy.overrides]]
-module = [
-    "homeassistant.*",
-    "pymodbus.*",
-    "pydantic.*",
-    "voluptuous.*",
-]
+module = ["pymodbus.*"]
 ignore_missing_imports = true
 
-[[tool.mypy.overrides]]
-module = ["tests.*"]
-ignore_errors = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-norecursedirs = [".git", "testing_config"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = [
-    "--strict-markers",
-    "--disable-warnings",
-    "--tb=short",
-    "-ra",
-    "-q",
-]
-asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
-    "unit: marks tests as unit tests",
-    "asyncio: marks asynchronous tests",
-]
-
 [tool.coverage.run]
-source = ["custom_components.thessla_green_modbus"]
-branch = true
+source = ["custom_components/thessla_green_modbus"]
 omit = [
-    "custom_components/thessla_green_modbus/_compat.py",
-    "custom_components/thessla_green_modbus/translations/*",
+    "*/tests/*",
+    "*/test_*.py",
 ]
 
 [tool.coverage.report]
 fail_under = 80
 show_missing = true
+skip_covered = false
 exclude_lines = [
     "pragma: no cover",
-    "raise NotImplementedError",
     "if TYPE_CHECKING:",
-    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
 ]
+
+[tool.coverage.xml]
+output = "coverage.xml"
