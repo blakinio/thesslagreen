@@ -44,7 +44,6 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-# Re-export schema constants for compatibility with tests/tooling.
 SET_SPECIAL_MODE_SCHEMA = _services_schema.SET_SPECIAL_MODE_SCHEMA
 SET_AIRFLOW_SCHEDULE_SCHEMA = _services_schema.SET_AIRFLOW_SCHEDULE_SCHEMA
 SET_LOG_LEVEL_SCHEMA = _services_schema.SET_LOG_LEVEL_SCHEMA
@@ -178,6 +177,7 @@ async def _iter_target_coordinators(
         hass,
         call,
         coordinator_getter=_get_coordinator_from_entity_id,
+        entity_id_extractor=_extract_entity_ids,
     )
 
 
