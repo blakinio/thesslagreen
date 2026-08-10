@@ -39,6 +39,7 @@ from .validation import (
 )
 
 ServiceAction = Callable[[str, object], Awaitable[bool]]
+_DEVICE_ERRORS = (ModbusException, ConnectionException, TimeoutError, OSError)
 
 
 def _to_bcd(value: int) -> int:
@@ -53,9 +54,11 @@ def _clock_payload(now: _dt) -> list[int]:
     return [reg_yymm, reg_ddtt, reg_ggmm, reg_sscc]
 
 
-def _iter_targets(hass: HomeAssistant, call: ServiceCall, deps: ServiceHandlerDeps):
-    """Yield targeted coordinators for maintenance service handlers."""
-    yield from deps.iter_target_coordinators(hass, call)
+async def _iter_targets(
+    hass: HomeAssistant, call: ServiceCall, deps: ServiceHandlerDeps
+) -> list[tuple[str, object]]:
+    """Resolve targeted coordinators for maintenance service handlers."""
+    return await deps.iter_target_coordinators(hass, call)
 
 
 def _maintenance_registrations():
@@ -135,7 +138,7 @@ async def _run_for_targets(
     action: ServiceAction,
 ) -> None:
     """Run a maintenance action for each targeted coordinator."""
-    for entity_id, coordinator in _iter_targets(hass, call, deps):
+    for entity_id, coordinator in await _iter_targets(hass, call, deps):
         await action(entity_id, coordinator)
 
 
@@ -150,7 +153,9 @@ async def _write_then_refresh(
 ) -> bool:
     """Execute target write flow and common refresh/success logging."""
     if not await write_flow():
-        return False
+        raise HomeAssistantError(
+            f"Device did not confirm maintenance action for {entity_id}."
+        )
     return await _run_with_success_log(coordinator, deps, success_message, *success_args)
 
 
@@ -160,12 +165,9 @@ def _build_reset_filters_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
 
         async def _reset_filters_for_target(entity_id: str, coordinator: object) -> bool:
             async def _write_flow() -> bool:
-                if not await deps.write_register(
+                return await deps.write_register(
                     coordinator, "filter_change", filter_value, entity_id, "reset filters"
-                ):
-                    deps.logger.error("Failed to reset filters for %s", entity_id)
-                    return False
-                return True
+                )
 
             return await _write_then_refresh(
                 coordinator=coordinator,
@@ -227,7 +229,9 @@ def _build_start_pressure_test_handler(hass: HomeAssistant, deps: ServiceHandler
                     "pres_check_time_2": "Failed to start pressure test for %s",
                 },
             ):
-                return False
+                raise HomeAssistantError(
+                    f"Device did not confirm pressure test start for {entity_id}."
+                )
             return await _run_with_success_log(
                 coordinator, deps, "Started pressure test for %s", entity_id
             )
@@ -257,7 +261,9 @@ def _build_set_modbus_parameters_handler(hass: HomeAssistant, deps: ServiceHandl
                     deps.write_register,
                     deps.logger,
                 ):
-                    return False
+                    raise HomeAssistantError(
+                        f"Device did not confirm Modbus parameter update for {entity_id}."
+                    )
             return await _run_with_success_log(
                 coordinator, deps, "Set Modbus parameters for %s", entity_id
             )
@@ -283,12 +289,17 @@ def _build_set_device_name_handler(hass: HomeAssistant, deps: ServiceHandlerDeps
                         device_name,
                         getattr(coordinator, "effective_batch", 2),
                     )
-                if not success:
-                    deps.logger.error("Failed to set device name for %s", entity_id)
-                    return False
-            except (ModbusException, ConnectionException) as err:
+            except _DEVICE_ERRORS as err:
                 deps.logger.error("Failed to set device name for %s: %s", entity_id, err)
-                return False
+                raise HomeAssistantError(
+                    f"Failed to set device name for {entity_id}: {err}"
+                ) from err
+
+            if not success:
+                deps.logger.error("Failed to set device name for %s", entity_id)
+                raise HomeAssistantError(
+                    f"Device did not confirm device-name update for {entity_id}."
+                )
             return await _run_with_success_log(
                 coordinator, deps, "Set device name to '%s' for %s", device_name, entity_id
             )
@@ -308,16 +319,23 @@ def _build_sync_time_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
                     values=_clock_payload(now),
                     refresh=False,
                 )
-                if success:
-                    deps.logger.info(
-                        "Synced device clock to %s for %s",
-                        now.strftime("%Y-%m-%d %H:%M:%S"),
-                        entity_id,
-                    )
-                else:
-                    deps.logger.error("Failed to sync clock for %s", entity_id)
-            except (ModbusException, ConnectionException) as err:
+            except _DEVICE_ERRORS as err:
                 deps.logger.error("Failed to sync clock for %s: %s", entity_id, err)
+                raise HomeAssistantError(
+                    f"Failed to sync clock for {entity_id}: {err}"
+                ) from err
+
+            if not success:
+                deps.logger.error("Failed to sync clock for %s", entity_id)
+                raise HomeAssistantError(
+                    f"Device did not confirm clock synchronization for {entity_id}."
+                )
+
+            deps.logger.info(
+                "Synced device clock to %s for %s",
+                now.strftime("%Y-%m-%d %H:%M:%S"),
+                entity_id,
+            )
             return True
 
         await _run_for_targets(hass, call, deps, _sync_time_for_target)
@@ -350,10 +368,14 @@ def _build_sync_device_clock_handler(hass: HomeAssistant, deps: ServiceHandlerDe
                 raise
             except Exception as err:  # noqa: BLE001
                 deps.logger.error("Clock sync failed for %s: %s", entity_id, err)
-                return False
+                raise HomeAssistantError(
+                    f"Clock synchronization failed for {entity_id}: {err}"
+                ) from err
             if not ok:
                 deps.logger.error("Failed to sync device clock for %s", entity_id)
-                return False
+                raise HomeAssistantError(
+                    f"Device did not confirm clock synchronization for {entity_id}."
+                )
             return True
 
         await _run_for_targets(hass, call, deps, _sync_device_clock_for_target)
