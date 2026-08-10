@@ -53,6 +53,51 @@ jobs:
           Path("/tmp/final_hardening_patch.py").write_text("\n".join(lines) + "\n")
           PY
           python /tmp/final_hardening_patch.py
+
+          # The v1 workflow stores replacement source inside a YAML-indented Python
+          # heredoc. Reconstruct the intended class-body indentation before parsing.
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("custom_components/thessla_green_modbus/fan.py")
+          lines = path.read_text().splitlines()
+          generated_methods = (
+              "    def _validate_percentage_write_path(",
+              "    async def async_turn_on(",
+              "    async def async_turn_off(",
+              "    async def async_set_percentage(",
+              "    async def _write_register(",
+          )
+
+          index = 0
+          fixed = 0
+          while index < len(lines):
+              if lines[index].startswith(generated_methods):
+                  fixed += 1
+                  index += 1
+                  while index < len(lines) and not (
+                      lines[index].startswith("    def ")
+                      or lines[index].startswith("    async def ")
+                  ):
+                      if lines[index].strip():
+                          lines[index] = "    " + lines[index]
+                      index += 1
+                  continue
+              index += 1
+
+          if fixed != len(generated_methods):
+              raise SystemExit(
+                  f"Expected to repair {len(generated_methods)} generated methods, repaired {fixed}"
+              )
+
+          text = "\n".join(lines) + "\n"
+          text = text.replace(
+              "except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:",
+              "except (ModbusException, ConnectionException, TimeoutError, OSError, RuntimeError) as exc:",
+          )
+          path.write_text(text)
+          PY
+
           ruff format custom_components/thessla_green_modbus/fan.py tests/test_fan.py tests/test_scan_safe_mode.py
           ruff check --output-format=github custom_components/thessla_green_modbus/fan.py tests/test_fan.py tests/test_scan_safe_mode.py
           git diff --check
