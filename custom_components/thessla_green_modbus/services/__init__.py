@@ -165,14 +165,16 @@ REGISTERED_SERVICE_NAMES: tuple[str, ...] = tuple(
 )
 
 
-def _extract_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
-    """Return entity IDs from a service call."""
-    return _extract_entity_ids_impl(hass, call, extractor=async_extract_entity_ids)
+async def _extract_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
+    """Resolve all Home Assistant targets to entity IDs."""
+    return await _extract_entity_ids_impl(hass, call, extractor=async_extract_entity_ids)
 
 
-def _iter_target_coordinators(hass: HomeAssistant, call: ServiceCall) -> list[tuple[str, Any]]:
-    """Resolve entity IDs to coordinator instances, skipping missing ones."""
-    return _iter_target_coordinators_impl(
+async def _iter_target_coordinators(
+    hass: HomeAssistant, call: ServiceCall
+) -> list[tuple[str, Any]]:
+    """Resolve Home Assistant targets to loaded coordinator instances."""
+    return await _iter_target_coordinators_impl(
         hass,
         call,
         coordinator_getter=_get_coordinator_from_entity_id,
@@ -236,7 +238,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
-    """Unload services for ThesslaGreen Modbus integration."""
+    """Unload services for ThesslaGreen Modbus integration.
+
+    Services are normally process-lifetime registrations created from
+    ``async_setup``. This helper remains available for tests and controlled
+    development teardown, but config-entry unload must not call it.
+    """
     for service in REGISTERED_SERVICE_NAMES:
         hass.services.async_remove(DOMAIN, service)
 
