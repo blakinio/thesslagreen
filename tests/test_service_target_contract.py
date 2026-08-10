@@ -21,9 +21,7 @@ async def test_async_target_extractor_is_awaited() -> None:
     call = SimpleNamespace(data={"device_id": ["device-1"]})
     extractor = AsyncMock(return_value={"sensor.airpack"})
 
-    result = await extract_entity_ids_with_extractor(
-        SimpleNamespace(), call, extractor=extractor
-    )
+    result = await extract_entity_ids_with_extractor(SimpleNamespace(), call, extractor=extractor)
 
     assert result == {"sensor.airpack"}
     extractor.assert_awaited_once_with(call)
@@ -35,9 +33,7 @@ async def test_indirect_target_without_entity_id_is_resolved() -> None:
     call = SimpleNamespace(data={"area_id": ["utility_room"]})
     extractor = AsyncMock(return_value={"fan.airpack"})
 
-    result = await extract_entity_ids_with_extractor(
-        SimpleNamespace(), call, extractor=extractor
-    )
+    result = await extract_entity_ids_with_extractor(SimpleNamespace(), call, extractor=extractor)
 
     assert result == {"fan.airpack"}
     extractor.assert_awaited_once_with(call)
