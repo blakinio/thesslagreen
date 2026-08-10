@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
+from homeassistant.exceptions import HomeAssistantError
 from pymodbus.exceptions import ConnectionException, ModbusException
+
+_WRITE_ERRORS = (ModbusException, ConnectionException, TimeoutError, OSError)
 
 
 async def write_register(
@@ -15,21 +19,33 @@ async def write_register(
     action: str,
     logger: Any,
 ) -> bool:
-    """Write to a register with consistent error handling.
+    """Write to a register and surface operational failures to Home Assistant.
 
     Service writes may target dangerous/internal/service-only registers and
     always perform their own refresh/logging afterwards, so targeted
-    read-back is disabled here.
+    read-back is disabled here. A failed action must never be reported to Home
+    Assistant as a successful service call.
     """
     try:
-        return bool(
+        success = bool(
             await coordinator.async_write_register(
                 register, value, refresh=False, targeted_readback=False
             )
         )
-    except (ModbusException, ConnectionException) as err:
+    except asyncio.CancelledError:
+        raise
+    except _WRITE_ERRORS as err:
         logger.error("Failed to %s for %s: %s", action, entity_id, err)
-        return False
+        raise HomeAssistantError(
+            f"Failed to {action} for {entity_id}: {err}"
+        ) from err
+
+    if not success:
+        logger.error("Failed to %s for %s: device rejected the write", action, entity_id)
+        raise HomeAssistantError(
+            f"Failed to {action} for {entity_id}: device did not confirm the write."
+        )
+    return True
 
 
 async def refresh_and_log_success(
