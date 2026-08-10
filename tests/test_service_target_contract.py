@@ -6,14 +6,13 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
-
 from custom_components.thessla_green_modbus.services.dispatch import write_register
 from custom_components.thessla_green_modbus.services.schema import REFRESH_DEVICE_DATA_SCHEMA
 from custom_components.thessla_green_modbus.services.targets import (
     extract_entity_ids_with_extractor,
     iter_target_coordinators,
 )
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
 
 @pytest.mark.asyncio
