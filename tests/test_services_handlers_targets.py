@@ -221,9 +221,7 @@ def test_get_coordinator_returns_none_when_runtime_data_missing():
     hass = SimpleNamespace()
     entry = SimpleNamespace(config_entry_id="entry1")
     hass.entity_registry = SimpleNamespace(async_get=lambda _e: entry)
-    hass.config_entries = SimpleNamespace(
-        async_get_entry=lambda _id: SimpleNamespace()
-    )
+    hass.config_entries = SimpleNamespace(async_get_entry=lambda _id: SimpleNamespace())
 
     assert _get_coordinator_from_entity_id(hass, "sensor.device") is None
 
@@ -260,9 +258,7 @@ async def test_extract_entity_ids_with_extractor_async_contract():
     call = SimpleNamespace(data={"entity_id": ["sensor.three"]})
     extractor = AsyncMock(return_value={"sensor.three"})
 
-    result = await extract_entity_ids_with_extractor(
-        SimpleNamespace(), call, extractor=extractor
-    )
+    result = await extract_entity_ids_with_extractor(SimpleNamespace(), call, extractor=extractor)
 
     assert result == {"sensor.three"}
     extractor.assert_awaited_once_with(call)
@@ -278,9 +274,7 @@ async def test_extract_entity_ids_allows_indirect_target_without_entity_id():
     call = SimpleNamespace(data={"area_id": ["utility_room"]})
     extractor = AsyncMock(return_value={"fan.airpack"})
 
-    result = await extract_entity_ids_with_extractor(
-        SimpleNamespace(), call, extractor=extractor
-    )
+    result = await extract_entity_ids_with_extractor(SimpleNamespace(), call, extractor=extractor)
 
     assert result == {"fan.airpack"}
     extractor.assert_awaited_once_with(call)
