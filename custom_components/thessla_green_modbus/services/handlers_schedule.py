@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
 
 from .handler_deps import ServiceHandlerDeps
 from .schema import SET_AIRFLOW_SCHEDULE_SCHEMA
@@ -35,48 +36,44 @@ def register_schedule_services(hass: HomeAssistant, deps: ServiceHandlerDeps) ->
         start_value = f"{start_time.hour:02d}:{start_time.minute:02d}"
 
         if end_time is not None:
-            deps.logger.warning(
-                "set_airflow_schedule: end_time is not writable on AirPack4 "
-                "(slot end = next slot's start). Ignoring end_time=%s.",
-                end_time,
+            raise ServiceValidationError(
+                "end_time cannot be written by AirPack4: a schedule slot ends "
+                "when the next slot starts. Set the next slot's start_time instead."
             )
 
         for entity_id, coordinator in await deps.iter_target_coordinators(hass, call):
             holding = coordinator.device_client.available_registers.get("holding_registers", set())
-            if schedule_register not in holding or setting_register not in holding:
-                deps.logger.error(
-                    "set_airflow_schedule: %s or %s not available on %s — aborting",
-                    schedule_register,
-                    setting_register,
-                    entity_id,
+            missing = {
+                register
+                for register in (schedule_register, setting_register)
+                if register not in holding
+            }
+            if missing:
+                raise ServiceValidationError(
+                    f"{entity_id} does not expose required schedule registers: "
+                    f"{', '.join(sorted(missing))}."
                 )
-                continue
 
             clamped_airflow = deps.clamp_airflow_rate(coordinator, airflow_rate)
-            if not await deps.write_register(
-                coordinator,
-                schedule_register,
-                start_value,
-                entity_id,
-                "set airflow schedule start",
-            ):
-                deps.logger.error("Failed to set schedule start for %s", entity_id)
-                continue
-
             temp_byte = _resolve_schedule_temperature_byte(
                 coordinator, setting_register, temperature
             )
             aatt_value = ((clamped_airflow & 0xFF) << 8) | (temp_byte & 0xFF)
 
-            if not await deps.write_register(
+            await deps.write_register(
+                coordinator,
+                schedule_register,
+                start_value,
+                entity_id,
+                "set airflow schedule start",
+            )
+            await deps.write_register(
                 coordinator,
                 setting_register,
                 aatt_value,
                 entity_id,
                 "set airflow schedule AATT",
-            ):
-                deps.logger.error("Failed to set schedule AATT for %s", entity_id)
-                continue
+            )
 
             await coordinator.async_request_refresh()
             deps.logger.info(
