@@ -1,19 +1,21 @@
-"""Device-domain Modbus client for ThesslaGreen units.
+"""Device-domain client for ThesslaGreen Modbus integration.
 
-This module owns all device/protocol concerns.  It deliberately contains no
-Home Assistant imports so that it can be tested and reused independently.
+ThesslaGreenDeviceClient owns all device-domain state and operations,
+keeping the coordinator as a thin Home Assistant adapter.
+
+Responsibilities are split across focused sub-modules:
+- client_connection.py  – connection lifecycle and transport construction
+- client_scanner.py     – scanner orchestration and capability discovery
+- client_registers.py   – register groups, IO helpers, and write support
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, cast
+from contextlib import suppress
+from typing import TYPE_CHECKING, Any, cast
 
-from ..const import (
-    CONNECTION_MODE_AUTO,
-    DEFAULT_MAX_REGISTERS_PER_REQUEST,
-)
 from ..registers.maps import (
     coil_registers,
     discrete_input_registers,
@@ -21,74 +23,97 @@ from ..registers.maps import (
     input_registers,
 )
 from ..scanner import DeviceCapabilities
-from ..utils import utcnow as _utcnow
+from ..transport.base import BaseModbusTransport
 from .capabilities_mixin import _CoordinatorCapabilitiesMixin
 from .client_connection import _DeviceClientConnectionMixin
 from .client_registers import _DeviceClientRegistersMixin
 from .client_scanner import _DeviceClientScannerMixin
+from .io_mixin import _ModbusIOMixin
 from .models import CoordinatorConfig
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class ThesslaGreenDeviceClient(
-    _CoordinatorCapabilitiesMixin,
     _DeviceClientConnectionMixin,
-    _DeviceClientRegistersMixin,
     _DeviceClientScannerMixin,
+    _DeviceClientRegistersMixin,
+    _ModbusIOMixin,
+    _CoordinatorCapabilitiesMixin,
 ):
-    """Device-domain client owning connection, scanner and register state."""
+    """Device-domain operations client for ThesslaGreen Modbus integration.
+
+    Owns all device-domain mutable state and provides device operations.
+    The coordinator acts as a thin HA adapter that delegates to this client.
+
+    Method groups are implemented in focused mixins:
+    - Connection lifecycle / transport: _DeviceClientConnectionMixin
+    - Scanner orchestration: _DeviceClientScannerMixin
+    - Register groups / IO helpers / writes: _DeviceClientRegistersMixin
+    - Modbus read protocol: _ModbusIOMixin (core/io_mixin.py)
+    - Derived capability metrics: _CoordinatorCapabilitiesMixin (core/capabilities_mixin.py)
+    """
+
+    #: Asyncio locks owned by this client.
+    _client_lock: asyncio.Lock
+    _write_lock: asyncio.Lock
+
+    @property
+    def device_client(self) -> ThesslaGreenDeviceClient:
+        """Return self — allows IO helpers to use owner.device_client.X uniformly."""
+        return self
 
     def __init__(
         self,
         config: CoordinatorConfig,
         *,
-        hass: Any = None,
-        effective_batch: int = DEFAULT_MAX_REGISTERS_PER_REQUEST,
-        resolved_connection_mode: str | None = None,
-        backoff: float = 1.0,
-        backoff_jitter: float | tuple[float, float] | None = None,
-        entry: Any = None,
+        hass: HomeAssistant,
+        effective_batch: int,
+        resolved_connection_mode: str | None,
+        backoff: float,
+        backoff_jitter: float | tuple[float, float] | None,
+        entry: ConfigEntry | None = None,
     ) -> None:
-        """Initialize device client state."""
+        """Initialize device client from coordinator config."""
         self.config = config
         self.hass = hass
-        self.entry = entry
 
-        # Connection/config state.
-        self.host = config.host
-        self.port = config.port
+        # Convenience aliases for frequently-accessed config fields.
         self.slave_id = config.slave_id
-        self._device_name = config.name
         self.timeout = config.timeout
         self.retry = config.retry
         self.backoff = backoff
         self.backoff_jitter = backoff_jitter
-        self.connection_type = config.connection_type
-        self.connection_mode = config.connection_mode
-        self._resolved_connection_mode = resolved_connection_mode
-        self.serial_port = config.serial_port
-        self.baud_rate = config.baud_rate
-        self.parity = config.parity
-        self.stop_bits = config.stop_bits
-        self.effective_batch = effective_batch
         self.force_full_register_list = config.force_full_register_list
         self.scan_uart_settings = config.scan_uart_settings
         self.deep_scan = config.deep_scan
         self.safe_scan = config.safe_scan
         self.skip_missing_registers = config.skip_missing_registers
+        self.effective_batch = effective_batch
+        self.max_registers_per_request = effective_batch
+        self._resolved_connection_mode = resolved_connection_mode
+        self._device_name: str = config.name
 
-        # Client/transport lifecycle.
-        self.client: Any = None
-        self._transport: Any = None
+        # Connection state.
+        self.client: Any | None = None
+        self._transport: BaseModbusTransport | None = None
         self._client_lock = asyncio.Lock()
         self._write_lock = asyncio.Lock()
-        self._update_in_progress = False
-        self.offline_state = False
+        self._update_in_progress: bool = False
+        self.offline_state: bool = False
 
-        # Device and register state.
-        self.device_info: dict[str, Any] = {}
+        # Device state.
         self.capabilities = DeviceCapabilities()
+        if entry is not None and isinstance(entry.data.get("capabilities"), dict):
+            with suppress(TypeError, ValueError):
+                self.capabilities = DeviceCapabilities(**entry.data["capabilities"])
+        self.device_info: dict[str, Any] = {}
+
+        # Register availability and mappings.
         self.available_registers: dict[str, set[str]] = {
             "input_registers": set(),
             "holding_registers": set(),
@@ -166,35 +191,3 @@ class ThesslaGreenDeviceClient(
     def selected_transport(self) -> str | None:
         """Return the currently selected transport/connection mode."""
         return self._resolved_connection_mode
-
-    async def async_close(self) -> None:
-        """Close the active connection."""
-        await self.async_disconnect()
-
-    async def async_test_connection(self) -> bool:
-        """Test whether the configured device can be reached."""
-        try:
-            await self.async_ensure_connected()
-        except Exception:  # noqa: BLE001 - device boundary converts failures to bool
-            return False
-        return self.is_connected
-
-    async def async_scan_device(self) -> dict[str, Any]:
-        """Run a device scan and return its result."""
-        scanner = await self.async_create_scanner()
-        try:
-            scan_result = await scanner.scan_device()
-            if isinstance(scan_result, dict):
-                return scan_result
-            return dict(scan_result or {})
-        finally:
-            await scanner.close()
-
-    @property
-    def selected_connection_mode(self) -> str:
-        """Return resolved connection mode or configured mode."""
-        return self._resolved_connection_mode or self.connection_mode or CONNECTION_MODE_AUTO
-
-    def mark_update_success(self) -> None:
-        """Record a successful update timestamp."""
-        self.statistics["last_successful_update"] = _utcnow()
