@@ -330,9 +330,13 @@ def _register_validate_known_registers_service(
                 delay_ms,
             )
 
-            available, missing, indeterminate, failed_ranges, retried_count = (
-                await _read_known_registers_safe(coordinator, batch, delay_ms)
-            )
+            (
+                available,
+                missing,
+                indeterminate,
+                failed_ranges,
+                retried_count,
+            ) = await _read_known_registers_safe(coordinator, batch, delay_ms)
 
             missing_by_type = {rt: len(v) for rt, v in missing.items() if v}
             indeterminate_by_type = {rt: len(v) for rt, v in indeterminate.items() if v}
@@ -348,9 +352,7 @@ def _register_validate_known_registers_service(
             indeterminate_sorted: dict[str, list[str]] = {
                 rt: sorted(v) for rt, v in indeterminate.items()
             }
-            available_sorted: dict[str, list[str]] = {
-                rt: sorted(v) for rt, v in available.items()
-            }
+            available_sorted: dict[str, list[str]] = {rt: sorted(v) for rt, v in available.items()}
             classification: dict[str, str] = {}
             for names in missing.values():
                 for name in names:
