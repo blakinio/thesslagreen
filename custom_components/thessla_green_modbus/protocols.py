@@ -32,6 +32,12 @@ class ScannerFactory(Protocol):
         full_register_scan: bool,
         max_registers_per_request: int,
         delay_between_requests_ms: int = 0,
+        connection_type: str,
+        connection_mode: str | None,
+        serial_port: str,
+        baud_rate: int,
+        parity: str,
+        stop_bits: int,
         hass: HomeAssistant,
     ) -> Awaitable[ScannerProtocol]: ...
 
