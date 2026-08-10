@@ -24,3 +24,19 @@
 - Repository-local and nearest nested `AGENTS.md` instructions remain authoritative for repository-specific safety, branching, ownership, validation, deployment, and merge rules.
 - When instructions overlap, follow the more restrictive safety rule.
 - Never infer permission to write to a repository, deploy, merge, publish, or perform destructive actions from this baseline alone.
+
+## GitHub connector routing — mandatory
+
+- For GitHub repository, pull request, issue, review, and remote-file tasks, inspect and use the connected GitHub plugin or connector before falling back to local `git` or `gh`.
+- Treat an explicit `@GitHub` selection as a request to use the connected GitHub plugin.
+- Local `git` may be used for checkout, worktree, diff, branch, and commit operations. Use `gh` only for operations the connector does not support or when repository policy explicitly requires it.
+- A missing local checkout, missing `gh` binary, or unauthenticated local `gh` session is not evidence that the GitHub connector is unavailable.
+
+Before claiming that GitHub access is unavailable:
+
+1. Inspect the available GitHub connector tools.
+2. Call `github_get_user_login` or the equivalent authenticated-identity operation.
+3. Call `github_get_repo` or `github_list_repositories` for the requested repository scope.
+4. Attempt the required read operation through the connector when it is safe to do so.
+
+Report a GitHub access blocker only after an actual connector call returns an authentication or permission error. Include the exact failed operation and error.
