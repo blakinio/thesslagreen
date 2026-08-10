@@ -81,6 +81,8 @@ jobs:
       - name: Maintainability gate
         run: python tools/check_maintainability.py
 
+      - name: Validate agent checkpoint
+        run: python tools/agents/checkpoint.py docs/agents/tasks/TASK-20260810-ha-integration-hardening.md --require-checkpoint
 
   tests:
     name: Tests
