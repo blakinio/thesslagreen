@@ -1,0 +1,413 @@
+name: One-shot final hardening patch
+
+on:
+  push:
+    branches: ["fix/ha-integration-hardening-20260810"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/ha-integration-hardening-20260810
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            constraints.txt
+
+      - name: Apply bounded hardening patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def sub_once(text: str, pattern: str, replacement: str, label: str, *, flags: int = 0) -> str:
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one match, got {count}")
+              return updated
+
+          # ---- stale scan-service harness: model the isolated transport contract ----
+          scan_path = Path("tests/test_scan_safe_mode.py")
+          scan = scan_path.read_text()
+          scan = sub_once(
+              scan,
+              r'(?m)^(\s*)device_scan_result=None,\n\1config=SimpleNamespace\(',
+              lambda m: (
+                  f"{m.group(1)}device_scan_result=None,\n"
+                  f"{m.group(1)}_write_lock=asyncio.Lock(),\n"
+                  f"{m.group(1)}async_disconnect=AsyncMock(),\n"
+                  f"{m.group(1)}async_ensure_connected=AsyncMock(),\n"
+                  f"{m.group(1)}config=SimpleNamespace("
+              ),
+              "scan coordinator transport fixture",
+          )
+          scan = sub_once(
+              scan,
+              r'(?m)^(\s*)host="192\.168\.1\.10",\n\1port=502,\n\1slave_id=slave_id,\n',
+              lambda m: (
+                  f'{m.group(1)}host="192.168.1.10",\n'
+                  f"{m.group(1)}port=502,\n"
+                  f"{m.group(1)}slave_id=slave_id,\n"
+                  f'{m.group(1)}connection_type="tcp",\n'
+                  f'{m.group(1)}connection_mode="tcp",\n'
+                  f"{m.group(1)}serial_port=None,\n"
+                  f"{m.group(1)}baud_rate=9600,\n"
+                  f'{m.group(1)}parity="N",\n'
+                  f"{m.group(1)}stop_bits=1,\n"
+              ),
+              "scan coordinator connection config",
+          )
+          scan = sub_once(
+              scan,
+              r"def test_validate_known_registers_marks_missing_on_failure\(monkeypatch\):",
+              "def test_validate_known_registers_marks_indeterminate_on_transport_failure(monkeypatch):",
+              "transport-failure test name",
+          )
+          scan = sub_once(
+              scan,
+              r'"""Registers are marked missing when _call_modbus raises ConnectionException\."""',
+              '"""Transport failures are indeterminate, not proof that registers are missing."""',
+              "transport-failure test docstring",
+          )
+          scan = sub_once(
+              scan,
+              r'assert summary\["missing_count"\] > 0',
+              'assert summary["missing_count"] == 0\n    assert summary["indeterminate_count"] > 0',
+              "transport-failure assertions",
+          )
+          scan_path.write_text(scan)
+
+          # ---- fan: no silent successful no-op and HA-native error contract ----
+          fan_path = Path("custom_components/thessla_green_modbus/fan.py")
+          fan = fan_path.read_text()
+          fan = sub_once(
+              fan,
+              r"from homeassistant\.core import HomeAssistant, callback\n",
+              "from homeassistant.core import HomeAssistant, callback\n"
+              "from homeassistant.exceptions import HomeAssistantError, ServiceValidationError\n",
+              "fan HA exception imports",
+          )
+
+          turn_on = '''    def _validate_percentage_write_path(self, percentage: int) -> None:
+              """Ensure a positive fan-speed request has a writable device path."""
+              if percentage <= 0:
+                  return
+              current_mode = self._get_current_mode()
+              if current_mode == "temporary":
+                  return
+              register = (
+                  "air_flow_rate_manual"
+                  if current_mode == "manual" or not current_mode
+                  else "air_flow_rate_temporary_2"
+              )
+              if not self._is_writable_holding_register(register):
+                  raise ServiceValidationError(
+                      f"Fan speed control register {register} is unavailable on this device."
+                  )
+
+              async def async_turn_on(
+              self,
+              percentage: int | None = None,
+              preset_mode: str | None = None,
+              **kwargs: Any,
+          ) -> None:
+              """Turn on the fan without reporting success for an unsupported speed path."""
+              requested_percentage = FAN_DEFAULT_PERCENT if percentage is None else percentage
+              if requested_percentage < 0:
+                  raise ServiceValidationError("Fan percentage must be greater than or equal to 0.")
+
+              self._validate_percentage_write_path(requested_percentage)
+              if self._is_writable_holding_register("on_off_panel_mode"):
+                  await self._write_register("on_off_panel_mode", 1, refresh=False)
+
+              await self.async_set_percentage(requested_percentage)
+              _LOGGER.debug("Turned on fan")
+
+          '''
+          # Correct indentation in the generated method declaration after keeping the literal readable.
+          turn_on = turn_on.replace("\n            async def async_turn_on(", "\n\n    async def async_turn_on(")
+          fan = sub_once(
+              fan,
+              r"    async def async_turn_on\(.*?(?=    async def async_turn_off\()",
+              turn_on,
+              "fan turn_on",
+              flags=re.S,
+          )
+
+          turn_off = '''    async def async_turn_off(self, **kwargs: Any) -> None:
+              """Turn off the fan and fail explicitly when no write path exists."""
+              self._pending_percentage = None
+              if self._is_writable_holding_register("on_off_panel_mode"):
+                  await self._write_register("on_off_panel_mode", 0)
+                  self.coordinator.data["on_off_panel_mode"] = 0
+                  _LOGGER.debug("Turned off fan")
+                  return
+
+              current_mode = self._get_current_mode()
+              register = (
+                  "air_flow_rate_manual"
+                  if current_mode == "manual" or not current_mode
+                  else "air_flow_rate_temporary_2"
+              )
+              if not self._is_writable_holding_register(register):
+                  raise ServiceValidationError(
+                      "Fan cannot be turned off because no writable power or airflow register is available."
+                  )
+              await self._write_register(register, 0)
+              self.coordinator.data[register] = 0
+              _LOGGER.debug("Turned off fan")
+
+          '''
+          fan = sub_once(
+              fan,
+              r"    async def async_turn_off\(.*?(?=    async def async_set_percentage\()",
+              turn_off,
+              "fan turn_off",
+              flags=re.S,
+          )
+
+          set_percentage = '''    async def async_set_percentage(self, percentage: int) -> None:
+              """Set fan speed and surface unsupported or failed writes to Home Assistant."""
+              min_pct, max_pct = self._percentage_limits()
+              if percentage < 0:
+                  raise ServiceValidationError("Fan percentage must be greater than or equal to 0.")
+
+              requested = min(percentage, max_pct)
+              if requested == 0:
+                  await self.async_turn_off()
+                  _LOGGER.debug("Set fan speed to 0%%")
+                  return
+
+              actual_percentage = max(min_pct, requested)
+              current_mode = self._get_current_mode()
+
+              if current_mode == "manual" or not current_mode:
+                  if not self._is_writable_holding_register("air_flow_rate_manual"):
+                      raise ServiceValidationError(
+                          "Manual fan speed control is unavailable on this device."
+                      )
+                  if self._is_writable_holding_register("mode"):
+                      await self._write_register("mode", 1, refresh=False)
+                  await self._write_register(
+                      "air_flow_rate_manual", actual_percentage, refresh=False
+                  )
+                  self._set_pending_percentage(actual_percentage)
+                  await self.coordinator.async_request_refresh()
+                  _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
+                  return
+
+              if current_mode == "temporary":
+                  try:
+                      success = await self.coordinator.async_write_temporary_airflow(
+                          actual_percentage, refresh=False
+                      )
+                  except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:
+                      raise HomeAssistantError("Failed to write temporary fan airflow.") from exc
+                  if not success:
+                      raise HomeAssistantError(
+                          "Device did not confirm the temporary fan airflow write."
+                      )
+                  self._set_pending_percentage(actual_percentage)
+                  await self.coordinator.async_request_refresh()
+                  _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
+                  return
+
+              if not self._is_writable_holding_register("air_flow_rate_temporary_2"):
+                  raise ServiceValidationError(
+                      "Temporary fan speed control is unavailable on this device."
+                  )
+              await self._write_register(
+                  "air_flow_rate_temporary_2", actual_percentage, refresh=False
+              )
+              self._set_pending_percentage(actual_percentage)
+              await self.coordinator.async_request_refresh()
+              _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
+
+          '''
+          fan = sub_once(
+              fan,
+              r"    async def async_set_percentage\(.*?(?=    def _get_current_mode\()",
+              set_percentage,
+              "fan set_percentage",
+              flags=re.S,
+          )
+
+          write_register = '''    async def _write_register(
+              self,
+              register_name: str,
+              value: Any,
+              *,
+              offset: int = 0,
+              refresh: bool = True,
+              include_offset: bool = False,
+          ) -> None:
+              """Write a discovered holding register and require device confirmation."""
+              del include_offset
+              if register_name not in holding_registers():
+                  raise ServiceValidationError(f"Register {register_name} is not writable.")
+
+              holding_regs = self.coordinator.device_client.available_registers.get(
+                  "holding_registers", set()
+              )
+              if register_name not in holding_regs:
+                  raise ServiceValidationError(
+                      f"Register {register_name} is unavailable on this device."
+                  )
+
+              kwargs: dict[str, Any] = {"refresh": False, "targeted_readback": False}
+              if offset != 0:
+                  kwargs["offset"] = offset
+              try:
+                  success = await self.coordinator.async_write_register(
+                      register_name, int(value), **kwargs
+                  )
+              except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:
+                  raise HomeAssistantError(
+                      f"Failed to write fan register {register_name}."
+                  ) from exc
+              if not success:
+                  raise HomeAssistantError(
+                      f"Device did not confirm write to fan register {register_name}."
+                  )
+              if refresh:
+                  await self.coordinator.async_request_refresh()
+
+          '''
+          fan = sub_once(
+              fan,
+              r"    async def _write_register\(.*?(?=    def _is_writable_holding_register\()",
+              write_register,
+              "fan write_register",
+              flags=re.S,
+          )
+          fan_path.write_text(fan)
+
+          # ---- tests: align expectations and add no-op regressions ----
+          fan_test_path = Path("tests/test_fan.py")
+          tests = fan_test_path.read_text()
+          tests = sub_once(
+              tests,
+              r"from custom_components\.thessla_green_modbus\.fan import ThesslaGreenFan\n",
+              "from custom_components.thessla_green_modbus.fan import ThesslaGreenFan\n"
+              "from homeassistant.exceptions import HomeAssistantError, ServiceValidationError\n",
+              "fan test exception imports",
+          )
+          tests = tests.replace("with pytest.raises(ConnectionException):", "with pytest.raises(HomeAssistantError):")
+          tests = tests.replace("with pytest.raises(RuntimeError):", "with pytest.raises(HomeAssistantError):")
+          tests = tests.replace("raises RuntimeError", "raises HomeAssistantError")
+          tests = tests.replace("re-raises ConnectionException", "surfaces ConnectionException as HomeAssistantError")
+
+          tests = sub_once(
+              tests,
+              r"    asyncio\.run\(fan\.async_set_percentage\(-1\)\)\n    mock_coordinator\.async_write_register\.assert_not_called\(\)",
+              "    with pytest.raises(ServiceValidationError):\n"
+              "        asyncio.run(fan.async_set_percentage(-1))\n"
+              "    mock_coordinator.async_write_register.assert_not_called()",
+              "negative percentage test",
+          )
+
+          unavailable_test = '''def test_fan_write_register_not_in_available_raises(mock_coordinator):
+              """_write_register rejects a known register that the device did not expose."""
+              mock_coordinator.device_client.available_registers["holding_registers"].discard(
+                  "air_flow_rate_manual"
+              )
+              mock_coordinator.async_write_register = AsyncMock(return_value=True)
+              fan = ThesslaGreenFan(mock_coordinator)
+              with pytest.raises(ServiceValidationError):
+                  asyncio.run(fan._write_register("air_flow_rate_manual", 50))
+              mock_coordinator.async_write_register.assert_not_called()
+
+
+          '''
+          fan = tests
+          fan = sub_once(
+              fan,
+              r"def test_fan_write_register_not_in_available_skips\(mock_coordinator\):.*?(?=def test_is_writable_holding_register_true\()",
+              unavailable_test,
+              "unavailable register test",
+              flags=re.S,
+          )
+          tests = fan
+
+          insertion = '''def test_fan_manual_speed_requires_setpoint_register(mock_coordinator):
+              """Manual speed requests cannot succeed after only changing mode."""
+              mock_coordinator.data["mode"] = 1
+              mock_coordinator.device_client.available_registers["holding_registers"].discard(
+                  "air_flow_rate_manual"
+              )
+              mock_coordinator.async_write_register = AsyncMock(return_value=True)
+              fan = ThesslaGreenFan(mock_coordinator)
+              with pytest.raises(ServiceValidationError):
+                  asyncio.run(fan.async_set_percentage(60))
+              mock_coordinator.async_write_register.assert_not_called()
+
+
+          def test_fan_turn_off_requires_write_path(mock_coordinator):
+              """Turn-off cannot report success when neither power nor airflow is writable."""
+              available = mock_coordinator.device_client.available_registers["holding_registers"]
+              available.discard("on_off_panel_mode")
+              available.discard("air_flow_rate_manual")
+              mock_coordinator.data["mode"] = 1
+              mock_coordinator.async_write_register = AsyncMock(return_value=True)
+              fan = ThesslaGreenFan(mock_coordinator)
+              with pytest.raises(ServiceValidationError):
+                  asyncio.run(fan.async_turn_off())
+              mock_coordinator.async_write_register.assert_not_called()
+
+
+          def test_fan_turn_on_validates_speed_path_before_power_write(mock_coordinator):
+              """Turn-on validates the speed path before energising the panel."""
+              available = mock_coordinator.device_client.available_registers["holding_registers"]
+              available.discard("air_flow_rate_manual")
+              mock_coordinator.data["mode"] = 1
+              mock_coordinator.async_write_register = AsyncMock(return_value=True)
+              fan = ThesslaGreenFan(mock_coordinator)
+              with pytest.raises(ServiceValidationError):
+                  asyncio.run(fan.async_turn_on(percentage=60))
+              mock_coordinator.async_write_register.assert_not_called()
+
+
+          '''
+          tests = sub_once(
+              tests,
+              r"(?=def test_is_writable_holding_register_true\()",
+              insertion,
+              "fan no-op regression tests",
+          )
+          fan_test_path.write_text(tests)
+          PY
+
+          ruff format custom_components/thessla_green_modbus/fan.py tests/test_fan.py tests/test_scan_safe_mode.py
+          ruff check --output-format=github custom_components/thessla_green_modbus/fan.py tests/test_fan.py tests/test_scan_safe_mode.py
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+          python -m pip install -e .
+          python -m pip install homeassistant==2026.2.3 hacs
+
+      - name: Verify focused regressions
+        run: pytest -q tests/test_fan.py tests/test_scan_safe_mode.py tests/test_scan_service_isolation.py
+
+      - name: Commit verified patch and remove helper workflow
+        shell: bash
+        run: |
+          rm .github/workflows/agent-apply-final-hardening.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add custom_components/thessla_green_modbus/fan.py tests/test_fan.py tests/test_scan_safe_mode.py .github/workflows/agent-apply-final-hardening.yml
+          git diff --cached --check
+          git commit -m "fix: eliminate remaining fan no-op write paths"
+          git push origin HEAD:fix/ha-integration-hardening-20260810
