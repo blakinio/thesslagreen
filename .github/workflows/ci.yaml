@@ -43,10 +43,10 @@ jobs:
           python -m pip install homeassistant==${{ matrix.ha-version }} hacs
 
       - name: Ruff
-        run: ruff check custom_components tests tools
+        run: ruff check --output-format=github custom_components tests tools
 
       - name: Ruff import order
-        run: ruff check --select I custom_components tests tools
+        run: ruff check --select I --output-format=github custom_components tests tools
 
       - name: Ruff format
         run: ruff format --check custom_components tests tools
