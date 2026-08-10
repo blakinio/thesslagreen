@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from homeassistant.helpers.entity import EntityCategory
-
 from custom_components.thessla_green_modbus.entity import ThesslaGreenEntity
+from homeassistant.helpers.entity import EntityCategory
 
 
 class _TestEntity(ThesslaGreenEntity):
