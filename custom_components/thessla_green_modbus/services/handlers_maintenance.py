@@ -153,9 +153,7 @@ async def _write_then_refresh(
 ) -> bool:
     """Execute target write flow and common refresh/success logging."""
     if not await write_flow():
-        raise HomeAssistantError(
-            f"Device did not confirm maintenance action for {entity_id}."
-        )
+        raise HomeAssistantError(f"Device did not confirm maintenance action for {entity_id}.")
     return await _run_with_success_log(coordinator, deps, success_message, *success_args)
 
 
@@ -321,9 +319,7 @@ def _build_sync_time_handler(hass: HomeAssistant, deps: ServiceHandlerDeps):
                 )
             except _DEVICE_ERRORS as err:
                 deps.logger.error("Failed to sync clock for %s: %s", entity_id, err)
-                raise HomeAssistantError(
-                    f"Failed to sync clock for {entity_id}: {err}"
-                ) from err
+                raise HomeAssistantError(f"Failed to sync clock for {entity_id}: {err}") from err
 
             if not success:
                 deps.logger.error("Failed to sync clock for %s", entity_id)
