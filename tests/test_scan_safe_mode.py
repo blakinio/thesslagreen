@@ -42,10 +42,19 @@ class _Coordinator:
             unknown_registers={},
             scanned_registers={},
             device_scan_result=None,
+            _write_lock=asyncio.Lock(),
+            async_disconnect=AsyncMock(),
+            async_ensure_connected=AsyncMock(),
             config=SimpleNamespace(
                 host="192.168.1.10",
                 port=502,
                 slave_id=slave_id,
+                connection_type="tcp",
+                connection_mode="tcp",
+                serial_port=None,
+                baud_rate=9600,
+                parity="N",
+                stop_bits=1,
             ),
         )
 
@@ -539,6 +548,15 @@ def _make_validate_coordinator(effective_batch=4, call_modbus_resp=None):
     )
 
 
+def _modbus_error_response():
+    """Return an explicit device-side Modbus error response."""
+    response = MagicMock()
+    response.registers = []
+    response.bits = []
+    response.isError.return_value = True
+    return response
+
+
 # ---------------------------------------------------------------------------
 # validate_known_registers — must not call scanner_create (no second connection)
 # ---------------------------------------------------------------------------
@@ -684,8 +702,8 @@ async def test_validate_known_registers_marks_available_on_success(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_validate_known_registers_marks_missing_on_failure(monkeypatch):
-    """Registers are marked missing when _call_modbus raises ConnectionException."""
+async def test_validate_known_registers_marks_indeterminate_on_transport_failure(monkeypatch):
+    """Transport failures are indeterminate, not proof that registers are missing."""
     from pymodbus.exceptions import ConnectionException
 
     coord = _make_validate_coordinator()
@@ -705,7 +723,8 @@ async def test_validate_known_registers_marks_missing_on_failure(monkeypatch):
 
     summary = result["climate.dev"]["summary"]
     assert summary["supported_count"] == 0
-    assert summary["missing_count"] > 0
+    assert summary["missing_count"] == 0
+    assert summary["indeterminate_count"] > 0
 
 
 # ---------------------------------------------------------------------------
@@ -1000,7 +1019,7 @@ async def test_validate_known_registers_individual_fallback_reduces_missing_coun
     (version_minor) fails individually. Without fallback both would be missing;
     with fallback only version_minor is missing.
     """
-    from pymodbus.exceptions import ConnectionException, ModbusException
+    from pymodbus.exceptions import ModbusException
 
     good_resp = MagicMock()
     good_resp.registers = [99]
@@ -1016,7 +1035,7 @@ async def test_validate_known_registers_individual_fallback_reduces_missing_coun
         if addr == 0:
             return good_resp
         if addr == 1:
-            raise ConnectionException("addr 1 unsupported")
+            return _modbus_error_response()
         return good_resp
 
     coord = _make_validate_coordinator()
@@ -1050,12 +1069,9 @@ async def test_validate_known_registers_individual_fallback_reduces_missing_coun
 @pytest.mark.asyncio
 async def test_validate_known_registers_unsupported_remain_missing(monkeypatch):
     """Registers that fail both batch and individual reads are marked missing."""
-    from pymodbus.exceptions import ModbusException
 
     coord = _make_validate_coordinator()
-    coord.device_client._call_modbus = AsyncMock(
-        side_effect=ModbusException("device does not support this register")
-    )
+    coord.device_client._call_modbus = AsyncMock(return_value=_modbus_error_response())
     hass = _make_hass()
 
     from custom_components.thessla_green_modbus import services as svc_mod
@@ -1114,10 +1130,9 @@ async def test_validate_known_registers_output_includes_missing_registers(monkey
 @pytest.mark.asyncio
 async def test_validate_known_registers_missing_by_type_counts(monkeypatch):
     """missing_by_type in summary reflects per-type missing counts."""
-    from pymodbus.exceptions import ModbusException
 
     coord = _make_validate_coordinator()
-    coord.device_client._call_modbus = AsyncMock(side_effect=ModbusException("unsupported"))
+    coord.device_client._call_modbus = AsyncMock(return_value=_modbus_error_response())
     hass = _make_hass()
 
     from custom_components.thessla_green_modbus import services as svc_mod
@@ -1149,10 +1164,9 @@ async def test_validate_known_registers_missing_by_type_counts(monkeypatch):
 @pytest.mark.asyncio
 async def test_validate_known_registers_missing_names_are_sorted(monkeypatch):
     """missing_registers values are sorted lists, not sets — deterministic output."""
-    from pymodbus.exceptions import ModbusException
 
     coord = _make_validate_coordinator()
-    coord.device_client._call_modbus = AsyncMock(side_effect=ModbusException("unsupported"))
+    coord.device_client._call_modbus = AsyncMock(return_value=_modbus_error_response())
     hass = _make_hass()
 
     from custom_components.thessla_green_modbus import services as svc_mod
@@ -1182,10 +1196,8 @@ async def test_validate_known_registers_info_log_no_full_lists(monkeypatch, capl
     """INFO log lines must not contain individual missing register names."""
     import logging
 
-    from pymodbus.exceptions import ModbusException
-
     coord = _make_validate_coordinator()
-    coord.device_client._call_modbus = AsyncMock(side_effect=ModbusException("unsupported"))
+    coord.device_client._call_modbus = AsyncMock(return_value=_modbus_error_response())
     hass = _make_hass()
 
     from custom_components.thessla_green_modbus import services as svc_mod
@@ -1218,10 +1230,8 @@ async def test_validate_known_registers_debug_log_includes_full_lists(monkeypatc
     """DEBUG log must contain the full list of missing register names."""
     import logging
 
-    from pymodbus.exceptions import ModbusException
-
     coord = _make_validate_coordinator()
-    coord.device_client._call_modbus = AsyncMock(side_effect=ModbusException("unsupported"))
+    coord.device_client._call_modbus = AsyncMock(return_value=_modbus_error_response())
     hass = _make_hass()
 
     from custom_components.thessla_green_modbus import services as svc_mod
@@ -1384,10 +1394,9 @@ async def test_validate_known_registers_response_is_json_serializable(monkeypatc
 @pytest.mark.asyncio
 async def test_validate_known_registers_missing_registers_grouped_by_type(monkeypatch):
     """missing_registers is grouped by register type with register names as list values."""
-    from pymodbus.exceptions import ModbusException
 
     coord = _make_validate_coordinator()
-    coord.device_client._call_modbus = AsyncMock(side_effect=ModbusException("unsupported"))
+    coord.device_client._call_modbus = AsyncMock(return_value=_modbus_error_response())
     hass = _make_hass()
 
     from custom_components.thessla_green_modbus import services as svc_mod

@@ -14,6 +14,7 @@ from typing import Any, ClassVar
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pymodbus.exceptions import ConnectionException, ModbusException
 
@@ -266,132 +267,120 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
         return None
 
+    def _validate_percentage_write_path(self, percentage: int) -> None:
+        """Ensure a positive fan-speed request has a writable device path."""
+        if percentage <= 0:
+            return
+        current_mode = self._get_current_mode()
+        if current_mode == "temporary":
+            return
+        register = (
+            "air_flow_rate_manual"
+            if current_mode == "manual" or not current_mode
+            else "air_flow_rate_temporary_2"
+        )
+        if not self._is_writable_holding_register(register):
+            raise ServiceValidationError(
+                f"Fan speed control register {register} is unavailable on this device."
+            )
+
     async def async_turn_on(
         self,
         percentage: int | None = None,
         preset_mode: str | None = None,
         **kwargs: Any,
     ) -> None:
-        """Turn on the fan."""
-        try:
-            # First ensure system is on. Skip the per-write refresh here:
-            # async_set_percentage() below performs its own single refresh
-            # once all of its writes complete, so refreshing now would just
-            # insert an extra full poll between this write and the next.
-            if self._is_writable_holding_register("on_off_panel_mode"):
-                await self._write_register("on_off_panel_mode", 1, refresh=False)
+        """Turn on the fan without reporting success for an unsupported speed path."""
+        requested_percentage = FAN_DEFAULT_PERCENT if percentage is None else percentage
+        if requested_percentage < 0:
+            raise ServiceValidationError("Fan percentage must be greater than or equal to 0.")
 
-            # Set flow rate
-            if percentage is not None:
-                await self.async_set_percentage(percentage)
-            else:
-                # Default to 50% if no percentage specified
-                await self.async_set_percentage(FAN_DEFAULT_PERCENT)
+        self._validate_percentage_write_path(requested_percentage)
+        if self._is_writable_holding_register("on_off_panel_mode"):
+            await self._write_register("on_off_panel_mode", 1, refresh=False)
 
-            _LOGGER.debug("Turned on fan")
-
-        except (ModbusException, ConnectionException, RuntimeError) as exc:
-            _LOGGER.error("Failed to turn on fan: %s", exc)
-            raise
+        await self.async_set_percentage(requested_percentage)
+        _LOGGER.debug("Turned on fan")
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn off the fan."""
-        # Drop any optimistic speed override: turning off must never leave the
-        # GUI showing a stale non-zero percentage.  is_on already reflects the
-        # off state via on_off_panel_mode below.
+        """Turn off the fan and fail explicitly when no write path exists."""
         self._pending_percentage = None
-        try:
-            if self._is_writable_holding_register("on_off_panel_mode"):
-                # If system power control is available, use it to turn off.
-                # _write_register() already triggers one full refresh below
-                # (refresh=True default); the direct assignment here is a
-                # same-tick optimistic update so is_on() reflects the change
-                # immediately without waiting for the refresh to land.
-                await self._write_register("on_off_panel_mode", 0)
-                self.coordinator.data["on_off_panel_mode"] = 0
-            else:
-                # Otherwise write zero flow to the active airflow register
-                current_mode = self._get_current_mode()
-                register = (
-                    "air_flow_rate_manual"
-                    if current_mode == "manual" or not current_mode
-                    else "air_flow_rate_temporary_2"
-                )
-                if self._is_writable_holding_register(register):
-                    await self._write_register(register, 0)
-                    self.coordinator.data[register] = 0
-
+        if self._is_writable_holding_register("on_off_panel_mode"):
+            await self._write_register("on_off_panel_mode", 0)
+            self.coordinator.data["on_off_panel_mode"] = 0
             _LOGGER.debug("Turned off fan")
-
-        except (ModbusException, ConnectionException, RuntimeError) as exc:
-            _LOGGER.error("Failed to turn off fan: %s", exc)
-            raise
-
-    async def async_set_percentage(self, percentage: int) -> None:
-        """Set the speed percentage of the fan."""
-        min_pct, max_pct = self._percentage_limits()
-        if percentage < 0:
-            _LOGGER.error("Invalid percentage %d (must be >= 0)", percentage)
             return
 
-        try:
-            requested = min(percentage, max_pct)
-            if requested == 0:
-                await self.async_turn_off()
-                _LOGGER.debug("Set fan speed to 0%")
-                return
+        current_mode = self._get_current_mode()
+        register = (
+            "air_flow_rate_manual"
+            if current_mode == "manual" or not current_mode
+            else "air_flow_rate_temporary_2"
+        )
+        if not self._is_writable_holding_register(register):
+            raise ServiceValidationError(
+                "Fan cannot be turned off because no writable power or airflow register is available."
+            )
+        await self._write_register(register, 0)
+        self.coordinator.data[register] = 0
+        _LOGGER.debug("Turned off fan")
 
-            actual_percentage = max(min_pct, requested)
+    async def async_set_percentage(self, percentage: int) -> None:
+        """Set fan speed and surface unsupported or failed writes to Home Assistant."""
+        min_pct, max_pct = self._percentage_limits()
+        if percentage < 0:
+            raise ServiceValidationError("Fan percentage must be greater than or equal to 0.")
 
-            # Determine which register to write based on current mode
-            current_mode = self._get_current_mode()
-            if current_mode == "manual" or not current_mode:
-                # Set manual mode and flow rate. Both writes skip the
-                # per-write refresh so they run back-to-back; a single
-                # refresh follows once both have completed instead of a
-                # full register poll being sandwiched between them.
-                wrote_manual = False
-                if self._is_writable_holding_register("mode"):
-                    await self._write_register("mode", 1, refresh=False)  # Manual mode
-                    wrote_manual = True
-                if self._is_writable_holding_register("air_flow_rate_manual"):
-                    await self._write_register(
-                        "air_flow_rate_manual", actual_percentage, refresh=False
-                    )
-                    wrote_manual = True
-                if wrote_manual:
-                    # Push the optimistic percentage to the GUI *before* the
-                    # full refresh so the displayed speed updates immediately;
-                    # the refresh then reconciles it against the confirmed
-                    # supply/exhaust status registers.
-                    self._set_pending_percentage(actual_percentage)
-                    await self.coordinator.async_request_refresh()
-            else:
-                # Temporary mode - must use 3-register write block
-                if current_mode == "temporary":
-                    success = await self.coordinator.async_write_temporary_airflow(
-                        actual_percentage, refresh=False
-                    )
-                    if not success:
-                        raise RuntimeError("Failed to write temporary airflow block")
-                    # Optimistic GUI update before the refresh (see manual branch).
-                    self._set_pending_percentage(actual_percentage)
-                    await self.coordinator.async_request_refresh()
-                    return
-                if self._is_writable_holding_register("air_flow_rate_temporary_2"):
-                    # Skip the per-write refresh so the optimistic percentage is
-                    # published before the (single, caller-controlled) refresh.
-                    await self._write_register(
-                        "air_flow_rate_temporary_2", actual_percentage, refresh=False
-                    )
-                    self._set_pending_percentage(actual_percentage)
-                    await self.coordinator.async_request_refresh()
+        requested = min(percentage, max_pct)
+        if requested == 0:
+            await self.async_turn_off()
+            _LOGGER.debug("Set fan speed to 0%%")
+            return
 
+        actual_percentage = max(min_pct, requested)
+        current_mode = self._get_current_mode()
+
+        if current_mode == "manual" or not current_mode:
+            if not self._is_writable_holding_register("air_flow_rate_manual"):
+                raise ServiceValidationError(
+                    "Manual fan speed control is unavailable on this device."
+                )
+            if self._is_writable_holding_register("mode"):
+                await self._write_register("mode", 1, refresh=False)
+            await self._write_register("air_flow_rate_manual", actual_percentage, refresh=False)
+            self._set_pending_percentage(actual_percentage)
+            await self.coordinator.async_request_refresh()
             _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
+            return
 
-        except (ModbusException, ConnectionException, RuntimeError) as exc:
-            _LOGGER.error("Failed to set fan speed to %d%%: %s", percentage, exc)
-            raise
+        if current_mode == "temporary":
+            try:
+                success = await self.coordinator.async_write_temporary_airflow(
+                    actual_percentage, refresh=False
+                )
+            except (
+                ModbusException,
+                ConnectionException,
+                TimeoutError,
+                OSError,
+                RuntimeError,
+            ) as exc:
+                raise HomeAssistantError("Failed to write temporary fan airflow.") from exc
+            if not success:
+                raise HomeAssistantError("Device did not confirm the temporary fan airflow write.")
+            self._set_pending_percentage(actual_percentage)
+            await self.coordinator.async_request_refresh()
+            _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
+            return
+
+        if not self._is_writable_holding_register("air_flow_rate_temporary_2"):
+            raise ServiceValidationError(
+                "Temporary fan speed control is unavailable on this device."
+            )
+        await self._write_register("air_flow_rate_temporary_2", actual_percentage, refresh=False)
+        self._set_pending_percentage(actual_percentage)
+        await self.coordinator.async_request_refresh()
+        _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
 
     def _get_current_mode(self) -> str | None:
         """Get current system mode."""
@@ -408,34 +397,30 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         refresh: bool = True,
         include_offset: bool = False,
     ) -> None:
-        """Write value to holding register when present on the device.
-
-        Fan keeps full_refresh_only: the displayed state (fan.percentage) reads
-        from supply_percentage / exhaust_percentage, which are status registers
-        that differ from the written setpoint registers (air_flow_rate_manual,
-        mode, on_off_panel_mode).  Targeted read-back of a setpoint register
-        would not update the displayed percentage and could publish a
-        misleading intermediate value, so it is disabled here; the coordinator
-        write itself never triggers its own full-refresh fallback either
-        (``refresh=False``) since this method's own ``refresh`` flag governs
-        the (single, caller-controlled) full refresh instead.
-        """
+        """Write a discovered holding register and require device confirmation."""
+        del include_offset
         if register_name not in holding_registers():
-            raise ValueError(f"Register {register_name} is not writable")
+            raise ServiceValidationError(f"Register {register_name} is not writable.")
 
         holding_regs = self.coordinator.device_client.available_registers.get(
             "holding_registers", set()
         )
         if register_name not in holding_regs:
-            _LOGGER.debug("Register %s unavailable, skipping write", register_name)
-            return
+            raise ServiceValidationError(f"Register {register_name} is unavailable on this device.")
 
         kwargs: dict[str, Any] = {"refresh": False, "targeted_readback": False}
         if offset != 0:
             kwargs["offset"] = offset
-        success = await self.coordinator.async_write_register(register_name, int(value), **kwargs)
+        try:
+            success = await self.coordinator.async_write_register(
+                register_name, int(value), **kwargs
+            )
+        except (ModbusException, ConnectionException, TimeoutError, OSError, RuntimeError) as exc:
+            raise HomeAssistantError(f"Failed to write fan register {register_name}.") from exc
         if not success:
-            raise RuntimeError(f"Failed to write register {register_name}")
+            raise HomeAssistantError(
+                f"Device did not confirm write to fan register {register_name}."
+            )
         if refresh:
             await self.coordinator.async_request_refresh()
 
