@@ -44,9 +44,7 @@ async def test_config_entry_unload_does_not_remove_global_services(monkeypatch) 
     runtime = SimpleNamespace(async_shutdown=AsyncMock())
     entry = SimpleNamespace(runtime_data=runtime)
 
-    monkeypatch.setattr(
-        "custom_components.thessla_green_modbus._get_platforms", lambda: []
-    )
+    monkeypatch.setattr("custom_components.thessla_green_modbus._get_platforms", lambda: [])
 
     assert await async_unload_entry(hass, entry) is True
     assert (DOMAIN, "set_special_mode") in services.registered
