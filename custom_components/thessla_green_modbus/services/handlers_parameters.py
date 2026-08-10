@@ -170,7 +170,7 @@ async def _run_parameter_steps(
     success_log: str,
 ) -> None:
     """Run shared write/refresh flow for parameter handlers."""
-    for entity_id, coordinator in deps.iter_target_coordinators(hass, call):
+    for entity_id, coordinator in await deps.iter_target_coordinators(hass, call):
         if not await write_register_steps(
             coordinator,
             steps,
