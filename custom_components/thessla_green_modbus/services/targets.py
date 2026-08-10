@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -56,6 +56,10 @@ async def iter_target_coordinators(
     call: ServiceCall,
     *,
     coordinator_getter: Callable[[HomeAssistant, str], Any | None],
+    entity_id_extractor: Callable[
+        [HomeAssistant, ServiceCall], Awaitable[set[str]]
+    ]
+    | None = None,
 ) -> list[tuple[str, Any]]:
     """Resolve service targets to loaded ThesslaGreen coordinators.
 
@@ -64,8 +68,9 @@ async def iter_target_coordinators(
     resolves to no loaded ThesslaGreen entity is invalid and is surfaced to the
     caller instead of silently succeeding.
     """
+    resolver = entity_id_extractor or extract_entity_ids
     targets: list[tuple[str, Any]] = []
-    for entity_id in await extract_entity_ids(hass, call):
+    for entity_id in await resolver(hass, call):
         coordinator = coordinator_getter(hass, entity_id)
         if coordinator is None:
             continue
