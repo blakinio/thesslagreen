@@ -1,6 +1,6 @@
 ---
 task_id: TASK-20260810-ha-integration-hardening
-status: validating
+status: ready
 branch: fix/ha-integration-hardening-20260810
 base_branch: main
 created: 2026-08-10
@@ -34,11 +34,11 @@ optional_reads:
 
 ```yaml
 checkpoint_version: 1
-updated_at: 2026-08-10T21:15:12Z
-head: 5af39b91b6f2fc2b84e363a483b5463bfed780d5
+updated_at: 2026-08-10T21:52:00Z
+head: 5ad72386d195dc9a7ee48b5a5e0996233a1ec16c
 branch: fix/ha-integration-hardening-20260810
 pr: 1762
-status: validating
+status: ready
 context_routes:
   - AGENTS.md
   - docs/agents/CONTEXT_HANDOFF.md
@@ -54,7 +54,7 @@ owned_paths:
   - docs/**
 proven:
   - GitHub connector has push/admin access to blakinio/thesslagreen.
-  - Base main commit is b1a1d21b2146467a6e12c0574f779bd8d2ad7236; branch is 107 commits ahead and 0 behind at functional head validation.
+  - Base main commit is b1a1d21b2146467a6e12c0574f779bd8d2ad7236; branch was 121 commits ahead and 0 behind at final functional-head validation.
   - Home Assistant target resolution is awaited and supports standard indirect targets through the framework extractor.
   - Integration-wide services register from async_setup and survive config-entry unload/reload.
   - Failed or rejected Modbus writes surface HomeAssistantError; invalid or unsupported requests surface ServiceValidationError.
@@ -66,15 +66,15 @@ proven:
   - Fan control no longer reports success for missing write paths, rejected writes, invalid percentages, or unavailable registers.
   - Focused fan/scan hardening runner 31432840105 completed successfully and committed functional head 5af39b91b6f2fc2b84e363a483b5463bfed780d5.
   - Temporary patch workflows were removed from the committed functional head.
+  - Canonical CI run 31435299678 (#1145) passed lint, checkpoint validation, Hassfest, HACS, entity mappings, and the full pytest suite on functional head 5ad72386d195dc9a7ee48b5a5e0996233a1ec16c; total coverage was 90.68% against the 80% gate.
 derived:
-  - Automated focused verification covers the highest-risk final fan and scanner regressions; the remaining automated acceptance requirement is one canonical full repository CI run on the finalized checkpoint/CI configuration.
+  - Automated repository acceptance gates are satisfied for functional head 5ad72386d195dc9a7ee48b5a5e0996233a1ec16c; this checkpoint-only finalization commit requires the normal PR CI before merge.
 unknown:
-  - Final canonical repository CI result for the finalized checkpoint/CI commit.
   - Real-device hardware soak and transport behavior after the isolated-scan change.
 conflicts: []
 first_failure:
   marker: none
-  evidence: Focused hardening runner 31432840105 completed successfully before commit.
+  evidence: Canonical CI run 31435299678 completed all mandatory jobs successfully on the finalized functional code.
 rejected_hypotheses:
   - GitHub connector is unavailable; connector access is verified.
   - Missing entity_id means no service target; standard Home Assistant indirect targets are supported.
@@ -98,13 +98,14 @@ changed_paths:
   - tests/test_fan.py
   - tests/test_risky_entity_defaults.py
   - tests/test_entity_write_error_contract.py
+  - tests/test_text.py
   - pyproject.toml
   - requirements.txt
   - docs/audits/ha_integration_hardening_2026-08-10.md
 validation:
   - command: GitHub compare main...fix/ha-integration-hardening-20260810
     result: PASS
-    evidence: branch ahead_by=107 and behind_by=0 at functional head 5af39b91b6f2fc2b84e363a483b5463bfed780d5
+    evidence: branch ahead_by=121 and behind_by=0 at final functional head validation
   - command: ruff format/check on fan.py, test_fan.py, test_scan_safe_mode.py
     result: PASS
     evidence: GitHub Actions run 31432840105 step Extract and apply bounded patch
@@ -112,8 +113,8 @@ validation:
     result: PASS
     evidence: GitHub Actions run 31432840105 step Verify focused regressions
   - command: canonical full repository CI
-    result: NOT_RUN
-    evidence: final checkpoint and CI gate configuration are being committed before the canonical run
+    result: PASS
+    evidence: GitHub Actions run 31435299678 (#1145); lint, Hassfest, HACS, entity mappings, full pytest and 90.68% coverage all passed
 blockers: []
-next_action: Run canonical CI on the finalized branch and fix any failing mandatory gate before marking the task ready.
+next_action: Verify the checkpoint-only finalization CI, mark PR #1762 ready, and merge if all mandatory gates remain green.
 ```
