@@ -10,7 +10,7 @@
 ### Oprogramowanie
 - Home Assistant **2026.1.0** lub nowszy (zadeklarowane w `manifest.json`)
 - Python **3.13** lub nowszy
-- Biblioteka `pymodbus>=3.6.0,<4.0` (instalowane automatycznie przez integrację)
+- Biblioteka `pymodbus>=3.6.1,<4.0` (instalowane automatycznie przez integrację)
 
 ## 🚀 Instalacja
 

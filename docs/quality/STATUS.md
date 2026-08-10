@@ -4,7 +4,7 @@
 **Current released version:** `2.8.3`  
 **Repository quality declaration:** Home Assistant `bronze`  
 **Minimum Home Assistant:** `2026.1.0`  
-**Runtime Modbus dependency:** `pymodbus>=3.6.0,<4.0`
+**Runtime Modbus dependency:** `pymodbus>=3.6.1,<4.0`
 
 This file is the canonical snapshot for current quality, validation, and release-readiness status. Historical audit documents may describe older commits and must not be interpreted as the current state unless explicitly marked current.
 

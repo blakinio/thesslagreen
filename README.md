@@ -11,7 +11,7 @@ Repozytorium zawiera integrację Home Assistant z konfiguracją przez UI, automa
 
 - Home Assistant **2026.1.0+**
 - Python **3.13+**
-- `pymodbus>=3.6.0,<4.0` (instalowane przez integrację)
+- `pymodbus>=3.6.1,<4.0` (instalowane przez integrację)
 
 ## Co obsługuje integracja
 

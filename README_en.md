@@ -13,7 +13,7 @@ The integration provides UI configuration, device/register discovery, Home Assis
 
 - Home Assistant **2026.1.0+**
 - Python **3.13+**
-- `pymodbus>=3.6.0,<4.0`
+- `pymodbus>=3.6.1,<4.0`
 
 ## Supported connection modes
 
