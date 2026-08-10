@@ -4,5 +4,5 @@
 # (minimum supported Home Assistant is validated in CI)
 
 # Modbus communication library
-pymodbus>=3.6.0,<4.0
+pymodbus>=3.6.1,<4.0
 voluptuous>=0.13
