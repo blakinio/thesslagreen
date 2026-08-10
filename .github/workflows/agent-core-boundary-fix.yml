@@ -1,4 +1,4 @@
-name: Temporary core boundary cleanup
+name: Temporary hardening cleanup
 
 on:
   push:
@@ -23,10 +23,11 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Apply domain-boundary cleanup
+      - name: Apply boundary and config-flow cleanup
         run: |
           python .github/scripts/agent_core_boundary_fix.py
           python .github/scripts/agent_core_boundary_fix2.py
+          python .github/scripts/agent_configflow_fix.py
 
       - name: Fix generated boundary-test style
         run: >-
@@ -45,13 +46,20 @@ jobs:
           ruff format custom_components tests tools
           ruff check custom_components tests tools
           mypy custom_components/thessla_green_modbus
-          pytest -q tests/test_domain_layer_boundaries.py tests/test_device_client.py tests/test_integration.py
+          pytest -q \
+            tests/test_domain_layer_boundaries.py \
+            tests/test_device_client.py \
+            tests/test_integration.py \
+            tests/test_config_flow_stable_identity.py \
+            tests/test_config_flow_user_duplicates.py \
+            tests/test_config_flow_confirm.py \
+            tests/test_config_flow_user.py
 
-      - name: Commit boundary cleanup
+      - name: Commit verified cleanup
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git diff --cached --check
-          git commit -m 'refactor(core): remove Home Assistant object coupling'
+          git commit -m 'fix: finish HA boundary and config-flow hardening'
           git push origin HEAD:fix/ha-integration-10of10-followup-20260810
