@@ -39,4 +39,4 @@ Before claiming that GitHub access is unavailable:
 3. Call `github_get_repo` or `github_list_repositories` for the requested repository scope.
 4. Attempt the required read operation through the connector when it is safe to do so.
 
-Report a GitHub access blocker only after an actual connector call returns an authentication or permission error. Include the exact failed operation and error.
+Report a GitHub access blocker only after connector availability and capability have been checked and, when the required operation exists, an actual connector call has been attempted. Authentication or permission errors, a confirmed missing or disabled connector, a missing required operation, rate limiting, and transport or service failures are valid blockers when they prevent the task and no safe connector or `gh` fallback can complete it. Include the exact verification performed, failed operation, and returned error.
