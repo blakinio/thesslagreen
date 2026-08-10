@@ -8,8 +8,35 @@ from typing import Any
 from pymodbus.exceptions import ConnectionException, ModbusException
 
 from ..core.write_path import SingleWritePlan
+from ..repairs import clear_write_failure_issue, create_write_failure_issue
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _create_write_repair(coordinator: Any, register: str) -> None:
+    """Best-effort repair issue creation at the Home Assistant boundary."""
+    hass = getattr(coordinator, "hass", None)
+    if hass is None:
+        return
+    try:
+        create_write_failure_issue(
+            hass,
+            getattr(coordinator, "entry", None),
+            register=register,
+        )
+    except (AttributeError, KeyError, TypeError, RuntimeError) as exc:
+        _LOGGER.debug("Could not create write-failure repair issue: %s", exc)
+
+
+def _clear_write_repair(coordinator: Any) -> None:
+    """Best-effort repair issue cleanup after a confirmed successful write."""
+    hass = getattr(coordinator, "hass", None)
+    if hass is None:
+        return
+    try:
+        clear_write_failure_issue(hass, getattr(coordinator, "entry", None))
+    except (AttributeError, KeyError, TypeError, RuntimeError) as exc:
+        _LOGGER.debug("Could not clear write-failure repair issue: %s", exc)
 
 
 async def run_single_write_attempts(
@@ -35,6 +62,7 @@ async def run_single_write_attempts(
                     error_args=(plan.register_name, response),
                 )
                 if not should_retry:
+                    _create_write_repair(coordinator, plan.register_name)
                     return False, False
                 continue
 
@@ -43,6 +71,7 @@ async def run_single_write_attempts(
                 original_value=plan.original_value,
                 refresh=refresh,
             )
+            _clear_write_repair(coordinator)
             break
         except (ModbusException, ConnectionException, TimeoutError, OSError) as exc:
             should_retry = await coordinator._handle_write_attempt_exception(
@@ -56,6 +85,7 @@ async def run_single_write_attempts(
                 unexpected_message="Unexpected error writing register %s",
             )
             if not should_retry:
+                _create_write_repair(coordinator, plan.register_name)
                 return False, False
             continue
     return True, refresh_after_write
@@ -86,10 +116,12 @@ async def run_multi_register_write_attempts(
                     error_args=(start_address, response),
                 )
                 if not should_retry:
+                    _create_write_repair(coordinator, str(start_address))
                     return False, False
                 await coordinator._disconnect()
                 continue
             refresh_after_write = refresh
+            _clear_write_repair(coordinator)
             _LOGGER.info(
                 "Successfully wrote %s to registers starting at %s",
                 values,
@@ -108,6 +140,7 @@ async def run_multi_register_write_attempts(
                 unexpected_message="Unexpected error writing registers at %s",
             )
             if not should_retry:
+                _create_write_repair(coordinator, str(start_address))
                 return False, False
             continue
     return True, refresh_after_write
