@@ -6,11 +6,10 @@ from datetime import time as dt_time
 from unittest.mock import AsyncMock
 
 import pytest
-from homeassistant.components.climate import HVACMode
-from homeassistant.exceptions import HomeAssistantError
-
 from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
 from custom_components.thessla_green_modbus.time import ThesslaGreenTime
+from homeassistant.components.climate import HVACMode
+from homeassistant.exceptions import HomeAssistantError
 
 
 @pytest.mark.asyncio
