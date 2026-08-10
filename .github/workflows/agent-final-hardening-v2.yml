@@ -54,10 +54,9 @@ jobs:
           PY
           python /tmp/final_hardening_patch.py
 
-          # The v1 workflow stores replacement source inside a YAML-indented Python
-          # heredoc. Reconstruct the intended class-body indentation before parsing.
           python - <<'PY'
           from pathlib import Path
+          import re
 
           fan_path = Path("custom_components/thessla_green_modbus/fan.py")
           lines = fan_path.read_text().splitlines()
@@ -146,29 +145,33 @@ jobs:
               1,
           )
 
-          old_device_error = '''coord.device_client._call_modbus = AsyncMock(
-              side_effect=ModbusException("device does not support this register")
-          )'''
-          if scan.count(old_device_error) != 1:
-              raise SystemExit("explicit unsupported test did not match exactly once")
-          scan = scan.replace(
-              old_device_error,
+          explicit_pattern = re.compile(
+              r'coord\.device_client\._call_modbus\s*=\s*AsyncMock\(\s*'
+              r'side_effect=ModbusException\("device does not support this register"\)\s*\)'
+          )
+          scan, count = explicit_pattern.subn(
               "coord.device_client._call_modbus = AsyncMock(return_value=_modbus_error_response())",
-              1,
+              scan,
+              count=1,
           )
+          if count != 1:
+              raise SystemExit(f"explicit unsupported test expected one match, got {count}")
 
-          old_unsupported = 'AsyncMock(side_effect=ModbusException("unsupported"))'
-          if scan.count(old_unsupported) < 4:
-              raise SystemExit(
-                  f"expected at least four legacy unsupported exception stubs, got {scan.count(old_unsupported)}"
-              )
-          scan = scan.replace(
-              old_unsupported,
-              "AsyncMock(return_value=_modbus_error_response())",
+          unsupported_pattern = re.compile(
+              r'AsyncMock\(\s*side_effect=ModbusException\("unsupported"\)\s*\)'
           )
+          scan, count = unsupported_pattern.subn(
+              "AsyncMock(return_value=_modbus_error_response())",
+              scan,
+          )
+          if count < 4:
+              raise SystemExit(f"expected at least four legacy unsupported stubs, got {count}")
+
           scan_path.write_text(scan)
           PY
 
+          ruff format custom_components/thessla_green_modbus/fan.py tests/test_fan.py tests/test_scan_safe_mode.py
+          ruff check --fix custom_components/thessla_green_modbus/fan.py tests/test_fan.py tests/test_scan_safe_mode.py
           ruff format custom_components/thessla_green_modbus/fan.py tests/test_fan.py tests/test_scan_safe_mode.py
           ruff check --output-format=github custom_components/thessla_green_modbus/fan.py tests/test_fan.py tests/test_scan_safe_mode.py
           git diff --check
