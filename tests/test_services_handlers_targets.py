@@ -7,14 +7,13 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from homeassistant.exceptions import ServiceValidationError
-
 from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 from custom_components.thessla_green_modbus.services import (
     _get_coordinator_from_entity_id,
     async_setup_services,
     async_unload_services,
 )
+from homeassistant.exceptions import ServiceValidationError
 
 
 class _AsyncLock:
