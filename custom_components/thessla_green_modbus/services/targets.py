@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable
-from functools import lru_cache
-from typing import Any, cast
+from typing import Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 
 __all__ = [
@@ -18,73 +18,67 @@ __all__ = [
 ]
 
 
-@lru_cache(maxsize=32)
-def _extractor_needs_hass(extractor: Callable[..., Any]) -> bool:
-    """Detect whether `extractor` needs `hass` as its first argument.
+async def extract_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
+    """Resolve all Home Assistant service targets to entity IDs.
 
-    HA's async_extract_entity_ids dropped the `hass` parameter in HA
-    2025.10; older cores still require `(hass, service_call)`. Inspected
-    once per extractor and cached, since the extractor is typically the
-    same function on every service call.
+    Home Assistant 2026.1+ exposes ``async_extract_entity_ids(service_call)``.
+    The helper expands direct entities as well as indirect targets such as
+    devices, areas, floors, labels, and groups. ``hass`` is intentionally kept
+    in this internal signature so callers do not need a second compatibility
+    adapter; the Home Assistant helper reads the instance from ``call.hass``.
     """
-    try:
-        parameters = inspect.signature(extractor).parameters.values()
-    except (TypeError, ValueError):
-        return False
-    required_positional = [
-        p
-        for p in parameters
-        if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
-        and p.default is inspect.Parameter.empty
-    ]
-    return len(required_positional) >= 2
-
-
-def extract_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]:
-    """Return entity IDs from a service call."""
     from homeassistant.helpers.service import async_extract_entity_ids
 
-    return extract_entity_ids_with_extractor(hass, call, extractor=async_extract_entity_ids)
+    return await extract_entity_ids_with_extractor(
+        hass,
+        call,
+        extractor=async_extract_entity_ids,
+    )
 
 
-def extract_entity_ids_with_extractor(
+async def extract_entity_ids_with_extractor(
     hass: HomeAssistant,
     call: ServiceCall,
     *,
     extractor: Callable[..., Any],
 ) -> set[str]:
-    """Return entity IDs from a service call using injectable extraction backend.
+    """Resolve target entity IDs using an injectable extraction backend.
 
-    Compatible with both the pre-2025.10 HA signature
-    ``async_extract_entity_ids(hass, service_call)`` and the current
-    ``async_extract_entity_ids(service_call)`` signature.
+    Production uses Home Assistant's asynchronous extractor. A synchronous
+    return value is accepted only to keep small unit-test doubles lightweight;
+    production awaitables are always awaited and are never closed/discarded.
     """
-    if not call.data.get("entity_id"):
-        return set()
-
-    extracted = extractor(hass, call) if _extractor_needs_hass(extractor) else extractor(call)
+    del hass
+    extracted = extractor(call)
     if inspect.isawaitable(extracted):
-        extracted.close()
-        raw_ids = call.data.get("entity_id")
-        if raw_ids is None:
-            return set()
-        return {raw_ids} if isinstance(raw_ids, str) else set(raw_ids)
-    return cast(set[str], extracted)
+        extracted = await extracted
+    return set(extracted)
 
 
-def iter_target_coordinators(
+async def iter_target_coordinators(
     hass: HomeAssistant,
     call: ServiceCall,
     *,
     coordinator_getter: Callable[[HomeAssistant, str], Any | None],
 ) -> list[tuple[str, Any]]:
-    """Resolve entity IDs to coordinator instances, skipping missing ones."""
+    """Resolve service targets to loaded ThesslaGreen coordinators.
+
+    Targets may contain entities from other integrations (for example when an
+    area is selected), so non-ThesslaGreen entities are ignored. A call that
+    resolves to no loaded ThesslaGreen entity is invalid and is surfaced to the
+    caller instead of silently succeeding.
+    """
     targets: list[tuple[str, Any]] = []
-    for entity_id in extract_entity_ids(hass, call):
+    for entity_id in await extract_entity_ids(hass, call):
         coordinator = coordinator_getter(hass, entity_id)
         if coordinator is None:
             continue
         targets.append((entity_id, coordinator))
+
+    if not targets:
+        raise ServiceValidationError(
+            "No loaded ThesslaGreen entity matched the selected target."
+        )
     return targets
 
 
