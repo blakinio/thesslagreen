@@ -366,7 +366,7 @@ def _build_sync_device_clock_handler(hass: HomeAssistant, deps: ServiceHandlerDe
                 )
             except HomeAssistantError:
                 raise
-            except Exception as err:  # noqa: BLE001
+            except Exception as err:
                 deps.logger.error("Clock sync failed for %s: %s", entity_id, err)
                 raise HomeAssistantError(
                     f"Clock synchronization failed for {entity_id}: {err}"
