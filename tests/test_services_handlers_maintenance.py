@@ -24,6 +24,7 @@ from custom_components.thessla_green_modbus.services.schema import (
     START_PRESSURE_TEST_SCHEMA,
     SYNC_TIME_SCHEMA,
 )
+from homeassistant.exceptions import HomeAssistantError
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -112,13 +113,14 @@ async def test_reset_filters_basic(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_reset_filters_write_failure(monkeypatch):
-    """reset_filters aborts when write fails."""
+    """reset_filters surfaces a rejected write."""
     coord = _Coordinator(write_result=False)
     hass = _make_hass()
     handler = await _setup_and_get(hass, "reset_filters", coord, monkeypatch)
 
     call = _make_call({"entity_id": ["climate.dev"], "filter_type": "presostat"})
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
@@ -205,7 +207,7 @@ async def test_start_pressure_test_basic(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_start_pressure_test_write_failure(monkeypatch):
-    """start_pressure_test aborts when day write fails."""
+    """start_pressure_test surfaces a rejected day write."""
     import datetime
 
     coord = _Coordinator(write_result=False)
@@ -220,7 +222,8 @@ async def test_start_pressure_test_write_failure(monkeypatch):
     )
 
     call = _make_call({"entity_id": ["climate.dev"]})
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
@@ -231,38 +234,41 @@ async def test_start_pressure_test_write_failure(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_reset_settings_user_write_failure(monkeypatch):
-    """reset_settings(user_settings) aborts on write failure."""
+    """reset_settings(user_settings) surfaces a rejected write."""
     coord = _Coordinator(write_result=False)
     hass = _make_hass()
     handler = await _setup_and_get(hass, "reset_settings", coord, monkeypatch)
 
     call = _make_call({"entity_id": ["climate.dev"], "reset_type": "user_settings"})
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_reset_settings_schedule_write_failure(monkeypatch):
-    """reset_settings(schedule_settings) aborts on write failure."""
+    """reset_settings(schedule_settings) surfaces a rejected write."""
     coord = _Coordinator(write_result=False)
     hass = _make_hass()
     handler = await _setup_and_get(hass, "reset_settings", coord, monkeypatch)
 
     call = _make_call({"entity_id": ["climate.dev"], "reset_type": "schedule_settings"})
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_reset_settings_all_first_write_failure(monkeypatch):
-    """reset_settings(all_settings) aborts when user settings write fails."""
+    """reset_settings(all_settings) surfaces failure on the first write."""
     coord = _Coordinator(write_result=False)
     hass = _make_hass()
     handler = await _setup_and_get(hass, "reset_settings", coord, monkeypatch)
 
     call = _make_call({"entity_id": ["climate.dev"], "reset_type": "all_settings"})
-    await handler(call)
-    # Only one write attempted (user settings failed)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
+    # Only one write attempted (user settings failed).
     assert coord.async_write_register.call_count == 1
     coord.async_request_refresh.assert_not_awaited()
 
@@ -274,7 +280,7 @@ async def test_reset_settings_all_first_write_failure(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_start_pressure_test_time_write_failure(monkeypatch):
-    """start_pressure_test aborts when pres_check_time write fails (2nd write)."""
+    """start_pressure_test surfaces a rejected pres_check_time write."""
     import datetime
 
     coord = _Coordinator()
@@ -290,7 +296,8 @@ async def test_start_pressure_test_time_write_failure(monkeypatch):
     )
 
     call = _make_call({"entity_id": ["climate.dev"]})
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
