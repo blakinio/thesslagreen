@@ -117,7 +117,7 @@ replace(
     "    hass = MagicMock()\n    client = ThesslaGreenDeviceClient(\n"
     "        config,\n        hass=hass,\n",
     "    client = ThesslaGreenDeviceClient(\n        config,\n",
-    count=2,
+    count=3,
 )
 replace(
     "tests/test_integration.py",
