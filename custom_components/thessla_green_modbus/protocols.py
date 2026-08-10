@@ -36,7 +36,9 @@ class ScannerFactory(Protocol):
     ) -> Awaitable[ScannerProtocol]: ...
 
 
-IterTargetCoordinators: TypeAlias = Callable[[HomeAssistant, ServiceCall], list[tuple[str, Any]]]  # noqa: UP040
+IterTargetCoordinators: TypeAlias = Callable[
+    [HomeAssistant, ServiceCall], Awaitable[list[tuple[str, Any]]]
+]  # noqa: UP040
 NormalizeOption: TypeAlias = Callable[[str], str]  # noqa: UP040
 ClampAirflowRate: TypeAlias = Callable[[Any, int], int]  # noqa: UP040
 WriteRegister: TypeAlias = Callable[[Any, str, Any, str, str], Awaitable[bool]]  # noqa: UP040
