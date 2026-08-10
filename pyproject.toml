@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thessla-green-modbus"
-version = "2.8.0"
+version = "2.8.3"
 description = "ThesslaGreen Modbus integration for Home Assistant"
 readme = "README.md"
 license = {text = "MIT"}
@@ -22,7 +22,6 @@ classifiers = [
     "Topic :: Home Automation",
 ]
 requires-python = ">=3.13"
-# Core dependencies
 dependencies = ["pymodbus>=3.6.0,<4.0", "voluptuous>=0.13"]
 
 [project.optional-dependencies]
@@ -86,7 +85,6 @@ per-file-ignores = {"tests/*" = ["BLE001", "E402", "RUF001", "SIM117"], "tools/m
 
 [tool.ruff.format]
 line-ending = "lf"
-
 
 [tool.black]
 target-version = ["py313"]
@@ -165,7 +163,6 @@ markers = [
     "unit: marks tests as unit tests",
     "asyncio: marks asynchronous tests",
 ]
-
 
 [tool.coverage.run]
 source = ["custom_components.thessla_green_modbus"]
