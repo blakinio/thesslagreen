@@ -24,7 +24,9 @@ jobs:
           python-version: '3.13'
 
       - name: Apply deterministic typing fixes
-        run: python .github/scripts/agent_mypy_fix.py
+        run: |
+          python .github/scripts/agent_mypy_fix.py
+          python .github/scripts/agent_mypy_fix2.py
 
       - name: Install validation dependencies
         run: |
