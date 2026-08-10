@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from custom_components.thessla_green_modbus.coordinator.write_path import (
     run_multi_register_write_attempts,
     run_single_write_attempts,
