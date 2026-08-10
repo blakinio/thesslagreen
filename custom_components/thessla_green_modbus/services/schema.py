@@ -110,13 +110,9 @@ SET_TEMPERATURE_CURVE_SCHEMA = _target_schema(
     }
 )
 
-RESET_FILTERS_SCHEMA = _target_schema(
-    {vol.Required("filter_type"): vol.In(FILTER_TYPES)}
-)
+RESET_FILTERS_SCHEMA = _target_schema({vol.Required("filter_type"): vol.In(FILTER_TYPES)})
 
-RESET_SETTINGS_SCHEMA = _target_schema(
-    {vol.Required("reset_type"): vol.In(RESET_TYPES)}
-)
+RESET_SETTINGS_SCHEMA = _target_schema({vol.Required("reset_type"): vol.In(RESET_TYPES)})
 
 START_PRESSURE_TEST_SCHEMA = _target_schema()
 
@@ -134,9 +130,7 @@ SET_DEVICE_NAME_SCHEMA = _target_schema(
 )
 
 SYNC_TIME_SCHEMA = _target_schema()
-SYNC_DEVICE_CLOCK_SCHEMA = _target_schema(
-    {vol.Optional("force", default=False): bool}
-)
+SYNC_DEVICE_CLOCK_SCHEMA = _target_schema({vol.Optional("force", default=False): bool})
 REFRESH_DEVICE_DATA_SCHEMA = _target_schema()
 SCAN_ALL_REGISTERS_SCHEMA = _target_schema(
     {
