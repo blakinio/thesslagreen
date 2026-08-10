@@ -16,10 +16,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from .coordinator import ThesslaGreenModbusCoordinator
 
-from .const import (
-    DEFAULT_NAME,
-    DOMAIN,
-)
+from .const import DEFAULT_NAME
 from .const import PLATFORMS as PLATFORM_DOMAINS
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,6 +29,19 @@ def _get_platforms() -> list[Any]:
     from ._setup import _get_platforms as _setup_get_platforms
 
     return _setup_get_platforms(tuple(PLATFORM_DOMAINS))
+
+
+async def async_setup(hass: HomeAssistant, _config: dict[str, Any]) -> bool:
+    """Set up integration-wide resources.
+
+    Home Assistant service actions are registered here rather than from a
+    config entry. This keeps action schemas available even when no AirPack is
+    currently loaded and avoids lifecycle bugs with multiple config entries.
+    """
+    from .services import async_setup_services
+
+    await async_setup_services(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -67,37 +77,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _clock_sync_manager.attach()
     coordinator._clock_sync_manager = _clock_sync_manager
 
-    if len(hass.config_entries.async_entries(DOMAIN)) == 1:
-        from .services import async_setup_services
-
-        await async_setup_services(hass)
-
     entry.async_on_unload(entry.add_update_listener(async_update_options))
     _LOGGER.info("ThesslaGreen Modbus integration setup completed successfully")
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry.
-
-    Called by Home Assistant when a config entry is removed.  Kept for the
-    callback interface despite not being referenced directly.
-    """
+    """Unload a config entry while keeping integration-wide services registered."""
     _LOGGER.debug("Unloading ThesslaGreen Modbus integration")
 
-    # Unload platforms
     platforms = _get_platforms()
     unload_ok = cast(bool, await hass.config_entries.async_unload_platforms(entry, platforms))
 
-    if unload_ok:
-        if hasattr(entry, "runtime_data") and entry.runtime_data is not None:
-            await entry.runtime_data.async_shutdown()
-
-        # Unload services when last entry is removed
-        if not hass.config_entries.async_entries(DOMAIN):
-            from .services import async_unload_services
-
-            await async_unload_services(hass)
+    if unload_ok and hasattr(entry, "runtime_data") and entry.runtime_data is not None:
+        await entry.runtime_data.async_shutdown()
 
     _LOGGER.info("ThesslaGreen Modbus integration unloaded successfully")
     return unload_ok

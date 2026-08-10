@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 from custom_components.thessla_green_modbus.services import async_setup_services
+from homeassistant.exceptions import HomeAssistantError
 
 
 class _Services:
@@ -88,6 +89,7 @@ async def test_set_air_quality_thresholds_partial(monkeypatch):
 async def test_set_air_quality_thresholds_write_failure(monkeypatch):
     coord = _Coordinator(write_result=False)
     handler = await _setup_and_get(_make_hass(), "set_air_quality_thresholds", coord, monkeypatch)
-    await handler(_make_call({"entity_id": ["climate.dev"], "co2_low": 600, "co2_medium": 900}))
+    with pytest.raises(HomeAssistantError):
+        await handler(_make_call({"entity_id": ["climate.dev"], "co2_low": 600, "co2_medium": 900}))
     coord.async_request_refresh.assert_not_awaited()
     assert coord.async_write_register.call_count == 1

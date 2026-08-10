@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -24,8 +23,6 @@ _LOGGER = logging.getLogger(__name__)
 
 PARALLEL_UPDATES = 1
 
-
-# Unit mappings
 UNIT_MAPPINGS = {
     "°C": UnitOfTemperature.CELSIUS,
     "%": PERCENTAGE,
@@ -40,19 +37,11 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen number entities from config entry.
-
-    This hook is invoked by Home Assistant during platform setup.
-    """
+    """Set up ThesslaGreen number entities from config entry."""
     coordinator: ThesslaGreenModbusCoordinator = entry.runtime_data
-
     entities = []
-
-    # Get number entity mappings
     number_mappings: dict[str, dict[str, Any]] = ENTITY_MAPPINGS["number"]
 
-    # Create number entities for discovered registers, or all known registers
-    # when ``force_full_register_list`` is enabled.
     holding_map = coordinator.device_client.get_register_map("holding_registers")
     available = coordinator.device_client.available_registers.get("holding_registers", set())
 
@@ -84,25 +73,14 @@ async def async_setup_entry(
             _LOGGER.debug("Created number entity: %s", register_name)
 
     if entities:
-        try:
-            async_add_entities(entities, True)
-        except asyncio.CancelledError:
-            _LOGGER.warning(
-                "Cancelled while adding number entities, retrying without initial state"
-            )
-            async_add_entities(entities, False)
-            return
+        async_add_entities(entities, False)
         _LOGGER.debug("Added %d number entities", len(entities))
     else:
         _LOGGER.debug("No number entities were created")
 
 
 class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
-    """ThesslaGreen number entity.
-
-    ``_attr_*`` attributes and entity methods implement the Home Assistant
-    ``NumberEntity`` API and therefore look unused to vulture.
-    """
+    """ThesslaGreen number entity."""
 
     def __init__(
         self,
@@ -122,34 +100,23 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         self.register_name = register_name
         self.entity_config = entity_config
         self.register_type = register_type
-
-        # Entity configuration
         self._attr_translation_key = register_name
-
-        # Number configuration
         self._setup_number_attributes()
-
-        # Transient optimistic setpoint shown immediately after a confirmed
-        # write, until the coordinator reports the confirmed device value.
+        self._apply_risk_policy(entity_config)
         self._optimistic = OptimisticState()
 
         _LOGGER.debug("Initialized number entity for register: %s", register_name)
 
     def _setup_number_attributes(self) -> None:
         """Setup number attributes based on entity configuration."""
-        # Unit of measurement
         if "unit" in self.entity_config:
             unit = self.entity_config["unit"]
             self._attr_native_unit_of_measurement = UNIT_MAPPINGS.get(unit, unit)
 
-        # Min/max values
         self._attr_native_min_value = self.entity_config.get("min", 0)
         self._attr_native_max_value = self.entity_config.get("max", 100)
-
-        # Step size
         self._attr_native_step = self.entity_config.get("step", 1)
 
-        # Mode - slider for temperatures, durations and coefficients
         if any(
             keyword in self.register_name
             for keyword in ["temperature", "duration", "coef", "percentage"]
@@ -158,7 +125,6 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         else:
             self._attr_mode = NumberMode.BOX
 
-        # Icon
         if "temperature" in self.register_name:
             self._attr_icon = "mdi:thermometer"
         elif (
@@ -176,14 +142,12 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         else:
             self._attr_icon = "mdi:numeric"
 
-        # Entity category for configuration parameters
         if any(
             keyword in self.register_name
             for keyword in ["hysteresis", "correction", "max", "min", "balance", "coef"]
         ):
             self._attr_entity_category = EntityCategory.CONFIG
 
-        # Explicit mapping override always wins
         if "entity_category" in self.entity_config:
             ec_val = self.entity_config["entity_category"]
             self._attr_entity_category = (
@@ -213,12 +177,7 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
 
     @property
     def native_value(self) -> float | None:
-        """Return the current value.
-
-        Immediately after a confirmed write the optimistic pending value is
-        returned so the GUI reflects the requested setpoint without waiting for
-        the coordinator to catch up.
-        """
+        """Return the current value."""
         pending = self._optimistic.get_pending(self.register_name)
         if pending is not None:
             return float(pending)
@@ -227,8 +186,6 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
             return None
 
         raw_value = self.coordinator.data[self.register_name]
-
-        # Handle None values
         if raw_value is None:
             return None
 
@@ -238,16 +195,14 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         """Set new value."""
         try:
             await self._write_register(self.register_name, value, include_offset=True)
-            # Only reached when the write confirmed success (a failure raises).
             self._optimistic.set_pending(self.register_name, float(value))
             if self.hass is not None:
                 self.async_write_ha_state()
             _LOGGER.debug("Set %s to %.2f", self.register_name, value)
-
-        except (ModbusException, ConnectionException, RuntimeError) as exc:
+        except (ModbusException, ConnectionException, RuntimeError, TimeoutError, OSError) as exc:
             _LOGGER.error("Failed to set %s to %.2f: %s", self.register_name, value, exc)
             raise
-        except (ValueError, OSError) as exc:  # pragma: no cover - unexpected
+        except ValueError as exc:  # pragma: no cover - unexpected
             _LOGGER.exception(
                 "Error setting %s to %.2f: %s",
                 self.register_name,
@@ -260,26 +215,21 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attributes: dict[str, Any] = {}
-
-        # Add register information
         attributes["register_name"] = self.register_name
         register_address = self._address if self._address is not None else 0
         attributes["register_address"] = f"{register_address}"
 
-        # Add raw value for debugging
         if self.register_name in self.coordinator.data:
             raw_value = self.coordinator.data[self.register_name]
             if raw_value is not None:
                 attributes["raw_value"] = raw_value
 
-        # Add valid range
         attributes["valid_range"] = {
             "min": self._attr_native_min_value,
             "max": self._attr_native_max_value,
             "step": self._attr_native_step,
         }
 
-        # Add last update time
         last_update = (
             self.coordinator.device_client.statistics.get("last_successful_update")
             or self.coordinator.last_update
@@ -287,7 +237,6 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
         if last_update is not None:
             attributes["last_updated"] = last_update.isoformat()
 
-        # Surface risk metadata from entity mapping
         for meta_key in ("risk_level", "risk_category", "safety_warning"):
             meta_val = self.entity_config.get(meta_key)
             if meta_val is not None:

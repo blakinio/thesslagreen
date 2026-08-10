@@ -7,7 +7,6 @@ as binary sensor entities.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
 from typing import Any, ClassVar
@@ -21,8 +20,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .capability_rules import capability_block_reason
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
-
-# Binary sensor mappings are defined centrally in entity_mappings
 from .mappings import BINARY_SENSOR_ENTITY_MAPPINGS
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,18 +35,12 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen binary sensor entities.
-
-    This coroutine is a Home Assistant platform setup hook and is invoked
-    by the framework; it is not called directly within this repository.
-    """
+    """Set up ThesslaGreen binary sensor entities."""
     coordinator: ThesslaGreenModbusCoordinator = config_entry.runtime_data
 
     entities = []
     skipped_stale_problem = 0
 
-    # Create binary sensors for discovered registers, or all known registers
-    # when ``force_full_register_list`` is enabled.
     for key, sensor_def in BINARY_SENSOR_DEFINITIONS.items():
         register_type = sensor_def["register_type"]
         register_name = sensor_def.get("register", key)
@@ -71,8 +62,6 @@ async def async_setup_entry(
             coordinator.device_client.force_full_register_list and register_name in register_map
         )
 
-        # Check if this register is available on the device or should be
-        # forcibly added from the full register list.
         if register_name in available or force_create:
             address = register_map.get(register_name)
             if address is None:
@@ -89,14 +78,9 @@ async def async_setup_entry(
             _LOGGER.debug("Created binary sensor: %s", sensor_def["translation_key"])
 
     if entities:
-        try:
-            async_add_entities(entities, True)
-        except asyncio.CancelledError:
-            _LOGGER.warning(
-                "Cancelled while adding binary sensor entities, retrying without initial state"
-            )
-            async_add_entities(entities, False)
-            return
+        # The coordinator has completed its first refresh before platforms are
+        # forwarded; per-entity initial updates only duplicate Modbus traffic.
+        async_add_entities(entities, False)
         _LOGGER.debug(
             "Created %d binary sensor entities for %s",
             len(entities),
@@ -112,12 +96,7 @@ async def async_setup_entry(
 
 
 class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
-    """Binary sensor entity for ThesslaGreen device.
-
-    Attributes with the ``_attr_`` prefix are consumed by Home Assistant to
-    configure the entity and therefore appear unused to static analysis
-    tools like vulture.
-    """
+    """Binary sensor entity for ThesslaGreen device."""
 
     def __init__(
         self,
@@ -136,8 +115,6 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
 
         self._register_name = register_name
         self._sensor_def = sensor_definition
-
-        # Binary sensor specific attributes
         self._attr_icon = sensor_definition.get("icon")
         self._attr_device_class: BinarySensorDeviceClass | None = sensor_definition.get(
             "device_class"
@@ -148,7 +125,6 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         if self._attr_entity_category is EntityCategory.DIAGNOSTIC:
             self._attr_entity_registry_enabled_default = False
 
-        # Translation setup
         self._attr_translation_key = sensor_definition.get("translation_key")
 
         _LOGGER.debug(
@@ -159,32 +135,18 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
 
     @property
     def suggested_object_id(self) -> str:
-        """Return bit-specific object ID for bitmask sensors, register key otherwise.
-
-        For bit-level entities, ``_attr_translation_key`` holds the unique
-        per-bit key (e.g. ``e_196_e_199_e196``), while the parent's ``_key``
-        is the shared register name (``e_196_e_199``).  Returning the
-        translation_key here gives each bit entity a distinct entity_id without
-        changing the unique_id format.
-        """
+        """Return bit-specific object ID for bitmask sensors, register key otherwise."""
         tk = self._attr_translation_key
         if tk and tk != self._key:
             return str(tk)
         return super().suggested_object_id
 
-    # Prefixes that identify diagnostic alarm/error/status registers.
     _DIAG_PREFIXES = ("s_", "e_", "f_")
     _DIAG_NAMES: ClassVar[frozenset[str]] = frozenset({"alarm", "error"})
 
     @property
     def available(self) -> bool:
-        """Return if entity is available.
-
-        Alarm, error and fault status registers (alarm, error, s_*, e_*, f_*)
-        are considered available as long as the coordinator is connected.
-        When data is temporarily missing the entity shows «unknown» instead of
-        «unavailable», which is less alarming and more accurate.
-        """
+        """Return if entity is available."""
         if self._register_name in self._DIAG_NAMES or self._register_name.startswith(
             self._DIAG_PREFIXES
         ):
@@ -201,23 +163,13 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         if value is None:
             return None
 
-        # Handle different register types
         register_type = self._sensor_def["register_type"]
-
         bit = self._sensor_def.get("bit")
 
         if register_type in ["coil_registers", "discrete_inputs"]:
-            # Coils and discrete inputs are already boolean
             result = bool(value)
-
-        elif register_type == "input_registers":
-            # Input registers: 1 = active/on, 0 = inactive/off
+        elif register_type in {"input_registers", "holding_registers"}:
             result = bool(value & bit) if bit is not None else bool(value)
-
-        elif register_type == "holding_registers":
-            # Holding registers: apply bit mask for bitmask registers
-            result = bool(value & bit) if bit is not None else bool(value)
-
         else:
             result = False
 
@@ -230,19 +182,16 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         """Return additional state attributes."""
         attrs = {}
 
-        # Add register information for debugging
         if self.coordinator.device_client.device_scan_result:
             attrs["register_name"] = self._register_name
             attrs["register_type"] = self._sensor_def["register_type"]
 
-        # Add raw value for diagnostic purposes
         raw_value = self.coordinator.data.get(self._register_name)
         if raw_value is not None:
             attrs["raw_value"] = raw_value
             if self._sensor_def.get("bitmask") and self._sensor_def.get("bit") is None:
                 attrs["bitmask"] = raw_value
 
-        # Add specific information for alarm/error sensors and severity registers
         if (
             "alarm" in self._register_name
             or "error" in self._register_name
@@ -256,10 +205,8 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
     @property
     def icon(self) -> str:
         """Return the icon for the binary sensor."""
-        # Ensure base_icon is a string before using it
         base_icon = self._attr_icon if isinstance(self._attr_icon, str) else None
 
-        # Dynamic icon changes for certain sensors
         if base_icon and self._register_name in [
             "bypass",
             "gwc",
@@ -268,7 +215,6 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
         ]:
             if self.is_on:
                 return base_icon
-            # Return "off" version of icon
             if "fan" in base_icon:
                 return base_icon.replace("fan", "fan-off")
             if "heating" in base_icon:
@@ -276,7 +222,6 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
             if "pipe" in base_icon:
                 return "mdi:pipe"
 
-        # Dynamic icon for alarms, errors and severity registers
         if (
             "alarm" in self._register_name
             or "error" in self._register_name
@@ -286,5 +231,4 @@ class ThesslaGreenBinarySensor(ThesslaGreenEntity, BinarySensorEntity):
                 return "mdi:help-circle"
             return "mdi:alert-circle" if self.is_on else "mdi:check-circle"
 
-        # Fallback icon when no icon is configured
         return base_icon or "mdi:fan-off"

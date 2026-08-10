@@ -11,6 +11,7 @@ from custom_components.thessla_green_modbus.registers.loader import get_register
 from custom_components.thessla_green_modbus.services import (
     async_setup_services,
 )
+from homeassistant.exceptions import HomeAssistantError
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -149,7 +150,7 @@ async def test_set_airflow_schedule_clamp_rate(monkeypatch):
             "day": "monday",
             "period": 1,
             "start_time": start,
-            "airflow_rate": 200,  # above max, should be clamped to 80
+            "airflow_rate": 200,
         }
     )
     await handler(call)
@@ -163,7 +164,7 @@ async def test_set_airflow_schedule_clamp_rate(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_write_failure(monkeypatch):
-    """set_airflow_schedule aborts on write failure."""
+    """set_airflow_schedule surfaces a rejected write."""
     coord = _Coordinator(write_result=False)
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
@@ -178,7 +179,8 @@ async def test_set_airflow_schedule_write_failure(monkeypatch):
             "airflow_rate": 50,
         }
     )
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
@@ -205,7 +207,7 @@ async def test_set_airflow_schedule_clamp_bad_min(monkeypatch):
             "airflow_rate": 50,
         }
     )
-    await handler(call)  # should not raise
+    await handler(call)
     coord.async_request_refresh.assert_awaited_once()
 
 
@@ -227,7 +229,7 @@ async def test_set_airflow_schedule_clamp_bad_max(monkeypatch):
             "airflow_rate": 80,
         }
     )
-    await handler(call)  # should not raise
+    await handler(call)
     coord.async_request_refresh.assert_awaited_once()
 
 
@@ -235,7 +237,7 @@ async def test_set_airflow_schedule_clamp_bad_max(monkeypatch):
 async def test_set_airflow_schedule_clamp_inverted_bounds(monkeypatch):
     """_clamp_airflow_rate clamps when max < min (max is set to min)."""
     coord = _Coordinator()
-    coord.data = {"min_percentage": 60, "max_percentage": 30}  # inverted
+    coord.data = {"min_percentage": 60, "max_percentage": 30}
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
 
@@ -246,7 +248,7 @@ async def test_set_airflow_schedule_clamp_inverted_bounds(monkeypatch):
             "day": "wednesday",
             "period": 1,
             "start_time": start,
-            "airflow_rate": 10,  # below both, should clamp to 60 (min==max after fix)
+            "airflow_rate": 10,
         }
     )
     await handler(call)
@@ -265,7 +267,7 @@ async def test_set_airflow_schedule_clamp_inverted_bounds(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_setting_write_failure(monkeypatch):
-    """set_airflow_schedule aborts when AATT setting write fails (2nd write)."""
+    """set_airflow_schedule surfaces a rejected AATT setting write."""
     coord = _Coordinator()
     coord.async_write_register = AsyncMock(side_effect=[True, False])
     hass = _make_hass()
@@ -281,13 +283,14 @@ async def test_set_airflow_schedule_setting_write_failure(monkeypatch):
             "airflow_rate": 50,
         }
     )
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_start_write_failure(monkeypatch):
-    """set_airflow_schedule aborts when start write fails (1st write)."""
+    """set_airflow_schedule surfaces a rejected start write."""
     coord = _Coordinator()
     coord.async_write_register = AsyncMock(side_effect=[False])
     hass = _make_hass()
@@ -303,13 +306,14 @@ async def test_set_airflow_schedule_start_write_failure(monkeypatch):
             "airflow_rate": 50,
         }
     )
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_temp_write_failure(monkeypatch):
-    """set_airflow_schedule aborts when AATT write fails with temperature."""
+    """set_airflow_schedule surfaces a rejected AATT write with temperature."""
     coord = _Coordinator()
     coord.async_write_register = AsyncMock(side_effect=[True, False])
     hass = _make_hass()
@@ -326,7 +330,8 @@ async def test_set_airflow_schedule_temp_write_failure(monkeypatch):
             "temperature": 22.0,
         }
     )
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 

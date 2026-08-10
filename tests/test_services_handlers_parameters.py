@@ -11,6 +11,7 @@ from custom_components.thessla_green_modbus.registers.loader import get_register
 from custom_components.thessla_green_modbus.services import (
     async_setup_services,
 )
+from homeassistant.exceptions import HomeAssistantError
 from pymodbus.exceptions import (
     ConnectionException,
     ModbusException,
@@ -134,7 +135,7 @@ async def test_set_modbus_parameters_all_params(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_set_modbus_parameters_write_failure(monkeypatch):
-    """set_modbus_parameters aborts on write failure."""
+    """set_modbus_parameters surfaces a rejected write."""
     coord = _Coordinator(write_result=False)
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_modbus_parameters", coord, monkeypatch)
@@ -146,7 +147,8 @@ async def test_set_modbus_parameters_write_failure(monkeypatch):
             "baud_rate": "9600",
         }
     )
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
@@ -157,7 +159,7 @@ async def test_set_modbus_parameters_write_failure(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_set_modbus_parameters_parity_write_failure(monkeypatch):
-    """set_modbus_parameters aborts when parity write fails (2nd write)."""
+    """set_modbus_parameters surfaces a rejected parity write."""
     coord = _Coordinator()
     coord.async_write_register = AsyncMock(side_effect=[True, False])
     hass = _make_hass()
@@ -171,13 +173,14 @@ async def test_set_modbus_parameters_parity_write_failure(monkeypatch):
             "parity": "even",
         }
     )
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_set_modbus_parameters_stop_write_failure(monkeypatch):
-    """set_modbus_parameters aborts when stop_bits write fails (3rd write)."""
+    """set_modbus_parameters surfaces a rejected stop_bits write."""
     coord = _Coordinator()
     coord.async_write_register = AsyncMock(side_effect=[True, True, False])
     hass = _make_hass()
@@ -192,7 +195,8 @@ async def test_set_modbus_parameters_stop_write_failure(monkeypatch):
             "stop_bits": "2",
         }
     )
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
@@ -232,27 +236,29 @@ async def test_set_device_name_long(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_set_device_name_long_write_failure(monkeypatch):
-    """set_device_name with 16+ chars aborts on write error."""
+    """set_device_name with 16+ chars surfaces a connection error."""
     coord = _Coordinator()
     coord.async_write_register.side_effect = ConnectionException("fail")
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_device_name", coord, monkeypatch)
 
     call = _make_call({"entity_id": ["climate.dev"], "device_name": "ABCDEFGHIJKLMNOP"})
-    await handler(call)  # should not raise
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_set_device_name_short_write_failure(monkeypatch):
-    """set_device_name aborts chunked writes on exception."""
+    """set_device_name surfaces an exception from chunked writes."""
     coord = _Coordinator()
     coord.async_write_register.side_effect = ModbusException("fail")
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_device_name", coord, monkeypatch)
 
     call = _make_call({"entity_id": ["climate.dev"], "device_name": "HELLO"})
-    await handler(call)  # should not raise
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
@@ -263,23 +269,25 @@ async def test_set_device_name_short_write_failure(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_set_device_name_long_write_result_false(monkeypatch):
-    """set_device_name with 16+ chars aborts when write returns False."""
+    """set_device_name with 16+ chars surfaces a rejected write."""
     coord = _Coordinator(write_result=False)
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_device_name", coord, monkeypatch)
 
     call = _make_call({"entity_id": ["climate.dev"], "device_name": "ABCDEFGHIJKLMNOP"})
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_set_device_name_short_write_result_false(monkeypatch):
-    """set_device_name with short name aborts when a chunk write returns False."""
+    """set_device_name with short name surfaces a rejected chunk write."""
     coord = _Coordinator(write_result=False)
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_device_name", coord, monkeypatch)
 
     call = _make_call({"entity_id": ["climate.dev"], "device_name": "HELLO"})
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()

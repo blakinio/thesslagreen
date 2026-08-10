@@ -3,7 +3,11 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from custom_components.thessla_green_modbus import async_setup_entry, async_unload_entry
+from custom_components.thessla_green_modbus import (
+    async_setup,
+    async_setup_entry,
+    async_unload_entry,
+)
 from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
@@ -236,7 +240,6 @@ async def test_async_unload_entry_success():
     entry = MagicMock(spec=ConfigEntry)
     entry.entry_id = "test_entry"
 
-    # Mock coordinator with shutdown method
     mock_coordinator = MagicMock()
     mock_coordinator.async_shutdown = AsyncMock()
     entry.runtime_data = mock_coordinator
@@ -302,13 +305,11 @@ async def test_register_constants():
     input_regs = regs_by_fn["input"]
     holding = regs_by_fn["holding"]
 
-    # Test that key registers are defined
     assert "power_supply_fans" in coil
     assert "outside_temperature" in input_regs
     assert "mode" in holding
     assert "expansion" in discrete
 
-    # Test address ranges
     assert coil["power_supply_fans"] == 11
     assert input_regs["outside_temperature"] == 16
     assert discrete["expansion"] == 1
@@ -316,7 +317,7 @@ async def test_register_constants():
 
 
 async def test_unload_and_reload_entry():
-    """Test unloading and reloading a config entry reinitializes the integration."""
+    """Config-entry reload must not churn integration-wide service actions."""
     hass = MagicMock()
     hass.data = {}
     hass.async_add_executor_job = AsyncMock(side_effect=lambda func, *a: func(*a))
@@ -345,10 +346,6 @@ async def test_unload_and_reload_entry():
     coordinator2.async_setup = AsyncMock(return_value=True)
     coordinator2.async_shutdown = AsyncMock()
 
-    # Configure async_entries: returns [entry] during setup (→ services set up once),
-    # returns [] during unload (→ services unloaded), then [entry] on reload.
-    hass.config_entries.async_entries.side_effect = [[entry], [], [entry]]
-
     with (
         patch(
             "homeassistant.helpers.entity_registry.async_entries_for_config_entry",
@@ -368,26 +365,25 @@ async def test_unload_and_reload_entry():
         ) as mock_unload_services,
     ):
         mock_coordinator_class.side_effect = [coordinator1, coordinator2]
-        # Initial setup
+
+        assert await async_setup(hass, {})
+        mock_setup_services.assert_awaited_once_with(hass)
+
         assert await async_setup_entry(hass, entry)
         assert entry.runtime_data is coordinator1
         hass.config_entries.async_forward_entry_setups.assert_called_once()
-        mock_setup_services.assert_called_once()
+        assert mock_setup_services.await_count == 1
 
-        # Unload
         assert await async_unload_entry(hass, entry)
-        mock_unload_services.assert_called_once()
+        mock_unload_services.assert_not_awaited()
         coordinator1.async_shutdown.assert_called_once()
 
-        # Reset mocks for reload
         hass.config_entries.async_forward_entry_setups.reset_mock()
-        mock_setup_services.reset_mock()
 
-        # Reload
         assert await async_setup_entry(hass, entry)
         assert entry.runtime_data is coordinator2
         assert hass.config_entries.async_forward_entry_setups.call_count == 1
-        mock_setup_services.assert_called_once()
+        assert mock_setup_services.await_count == 1
         assert mock_coordinator_class.call_count == 2
 
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -30,16 +29,10 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen switch entities from config entry.
-
-    Home Assistant invokes this during platform setup.
-    """
+    """Set up ThesslaGreen switch entities from config entry."""
     coordinator: ThesslaGreenModbusCoordinator = entry.runtime_data
-
     entities = []
 
-    # Create switch entities only for writable registers discovered by
-    # ThesslaGreenDeviceScanner.scan_device()
     holding_map = holding_registers()
     coil_map = coil_registers()
     for key, config in ENTITY_MAPPINGS["switch"].items():
@@ -49,9 +42,7 @@ async def async_setup_entry(
             _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
             continue
 
-        # Check if this register is available and writable
         is_available = False
-
         if config["register_type"] == "holding_registers":
             if register_name in coordinator.device_client.available_registers.get(
                 "holding_registers", set()
@@ -84,27 +75,14 @@ async def async_setup_entry(
             _LOGGER.debug("Created switch entity: %s", key)
 
     if entities:
-        # Coordinator already holds initial data from setup, so update entities before add
-        # to populate their state without triggering another refresh
-        try:
-            async_add_entities(entities, True)
-        except asyncio.CancelledError:
-            _LOGGER.warning(
-                "Cancelled while adding switch entities, retrying without initial state"
-            )
-            async_add_entities(entities, False)
-            return
+        async_add_entities(entities, False)
         _LOGGER.debug("Added %d switch entities", len(entities))
     else:
         _LOGGER.debug("No switch entities were created")
 
 
 class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
-    """ThesslaGreen switch entity.
-
-    ``_attr_*`` attributes and entity methods implement the Home Assistant
-    ``SwitchEntity`` API and therefore may look unused.
-    """
+    """ThesslaGreen switch entity."""
 
     def __init__(
         self,
@@ -121,18 +99,14 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         self.register_name = register_name
         self.bit = entity_config.get("bit")
 
-        # Entity configuration
         self._attr_translation_key = entity_config["translation_key"]
         self._attr_icon = entity_config.get("icon", "mdi:toggle-switch")
 
-        # Set entity category if specified
         if _ec := entity_config.get("category"):
             self._attr_entity_category = EntityCategory(_ec)
+        self._apply_risk_policy(entity_config)
 
-        # Transient optimistic raw register value shown immediately after a
-        # confirmed write, until the coordinator reports the confirmed value.
         self._optimistic = OptimisticState()
-
         _LOGGER.debug("Initialized switch entity: %s", key)
 
     @callback
@@ -163,18 +137,11 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
                 return bool(raw_value == self.bit)
             return bool(raw_value & self.bit)
 
-        # Convert to boolean
         return bool(raw_value)
 
     @property
     def is_on(self) -> bool | None:
-        """Return true if switch is on.
-
-        A fresh optimistic raw value (recorded after a confirmed write) takes
-        precedence so the GUI reflects the requested state immediately.  The
-        pending value is the raw register value so bit and special_mode
-        switches evaluate consistently.
-        """
+        """Return true if switch is on."""
         pending = self._optimistic.get_pending(self.register_name)
         if pending is not None:
             return self._evaluate_raw(pending)
@@ -198,8 +165,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             await self._write_register(self.register_name, value)
             self._set_optimistic(value)
             _LOGGER.debug("Turned on %s", self.register_name)
-
-        except (ModbusException, ConnectionException, RuntimeError) as exc:
+        except (ModbusException, ConnectionException, RuntimeError, TimeoutError, OSError) as exc:
             _LOGGER.error("Failed to turn on %s: %s", self.register_name, exc)
             raise
 
@@ -217,17 +183,12 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
             await self._write_register(self.register_name, value)
             self._set_optimistic(value)
             _LOGGER.debug("Turned off %s", self.register_name)
-
-        except (ModbusException, ConnectionException, RuntimeError) as exc:
+        except (ModbusException, ConnectionException, RuntimeError, TimeoutError, OSError) as exc:
             _LOGGER.error("Failed to turn off %s: %s", self.register_name, exc)
             raise
 
     def _set_optimistic(self, value: int) -> None:
-        """Record the optimistic raw value and push it to the GUI immediately.
-
-        Only called after a confirmed-successful write (a failure raises before
-        reaching here), so a failed write never updates the GUI optimistically.
-        """
+        """Record the optimistic raw value and push it to the GUI immediately."""
         self._optimistic.set_pending(self.register_name, value)
         if self.hass is not None:
             self.async_write_ha_state()
@@ -255,8 +216,6 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional state attributes."""
         attributes = {}
-
-        # Add register information
         attributes["register_name"] = self.register_name
         register_type = self.entity_config["register_type"]
 
@@ -264,13 +223,11 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         attributes["register_address"] = f"{register_address}"
         attributes["register_type"] = register_type
 
-        # Add raw value for debugging
         if self.register_name in self.coordinator.data:
             raw_value = self.coordinator.data[self.register_name]
             if raw_value is not None:
                 attributes["raw_value"] = raw_value
 
-        # Add last update time
         last_update = (
             self.coordinator.device_client.statistics.get("last_successful_update")
             or self.coordinator.last_update
@@ -278,7 +235,6 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         if last_update is not None:
             attributes["last_updated"] = last_update.isoformat()
 
-        # Add mode-specific information
         if self.register_name == "special_mode":
             attributes["control_type"] = "special_mode"
             if self.bit is not None:
@@ -288,7 +244,6 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         elif "mode" in self.register_name:
             attributes["control_type"] = "operating_mode"
 
-        # Surface risk metadata from entity mapping
         for meta_key in ("risk_level", "risk_category", "safety_warning"):
             meta_val = self.entity_config.get(meta_key)
             if meta_val is not None:
@@ -299,6 +254,4 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        # For switch entities, we don't require the register to be in current data
-        # as they are primarily for control, not just display.
         return self._coordinator_connected()

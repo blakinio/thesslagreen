@@ -26,10 +26,14 @@ from .validation import (
     validate_gwc_temperature_range as _validate_gwc_temperature_range_impl,
 )
 
-_ENTITY_IDS_VALIDATOR = getattr(cv, "entity_ids", list)
 _CV_TIME = getattr(cv, "time", str)
 _CV_STRING = getattr(cv, "string", str)
 _SEASONS = ("summer", "winter")
+
+
+def _target_schema(fields: dict[Any, Any] | None = None):
+    """Create a standard Home Assistant entity-service target schema."""
+    return cv.make_entity_service_schema(fields or {})
 
 
 def validate_bypass_temperature_range(data: dict[str, Any]) -> dict[str, Any]:
@@ -42,17 +46,15 @@ def validate_gwc_temperature_range(data: dict[str, Any]) -> dict[str, Any]:
     return _validate_gwc_temperature_range_impl(data)
 
 
-SET_SPECIAL_MODE_SCHEMA = vol.Schema(
+SET_SPECIAL_MODE_SCHEMA = _target_schema(
     {
-        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Required("mode"): vol.In(SPECIAL_MODE_OPTIONS),
         vol.Optional("duration", default=0): vol.All(vol.Coerce(int), vol.Range(min=0, max=480)),
     }
 )
 
-SET_AIRFLOW_SCHEDULE_SCHEMA = vol.Schema(
+SET_AIRFLOW_SCHEDULE_SCHEMA = _target_schema(
     {
-        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Required("day"): vol.In(DAYS_OF_WEEK),
         vol.Required("period"): vol.All(vol.Coerce(int), vol.Range(min=1, max=4)),
         vol.Required("start_time"): _CV_TIME,
@@ -64,9 +66,8 @@ SET_AIRFLOW_SCHEDULE_SCHEMA = vol.Schema(
 )
 
 SET_BYPASS_PARAMETERS_SCHEMA = vol.All(
-    vol.Schema(
+    _target_schema(
         {
-            vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
             vol.Required("mode"): vol.In(BYPASS_MODES),
             vol.Optional("min_outdoor_temperature"): vol.All(
                 vol.Coerce(float), vol.Range(min=-20.0, max=40.0)
@@ -77,9 +78,8 @@ SET_BYPASS_PARAMETERS_SCHEMA = vol.All(
 )
 
 SET_GWC_PARAMETERS_SCHEMA = vol.All(
-    vol.Schema(
+    _target_schema(
         {
-            vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
             vol.Required("mode"): vol.In(GWC_MODES),
             vol.Optional("min_air_temperature"): vol.All(
                 vol.Coerce(float), vol.Range(min=0.0, max=20.0)
@@ -92,9 +92,8 @@ SET_GWC_PARAMETERS_SCHEMA = vol.All(
     validate_gwc_temperature_range,
 )
 
-SET_AIR_QUALITY_THRESHOLDS_SCHEMA = vol.Schema(
+SET_AIR_QUALITY_THRESHOLDS_SCHEMA = _target_schema(
     {
-        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Optional("co2_low"): vol.All(vol.Coerce(int), vol.Range(min=400, max=800)),
         vol.Optional("co2_medium"): vol.All(vol.Coerce(int), vol.Range(min=600, max=1200)),
         vol.Optional("co2_high"): vol.All(vol.Coerce(int), vol.Range(min=800, max=1600)),
@@ -102,9 +101,8 @@ SET_AIR_QUALITY_THRESHOLDS_SCHEMA = vol.Schema(
     }
 )
 
-SET_TEMPERATURE_CURVE_SCHEMA = vol.Schema(
+SET_TEMPERATURE_CURVE_SCHEMA = _target_schema(
     {
-        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Required("slope"): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=3.0)),
         vol.Required("offset"): vol.All(vol.Coerce(float), vol.Range(min=-10.0, max=10.0)),
         vol.Optional("max_supply_temp"): vol.All(vol.Coerce(float), vol.Range(min=25.0, max=95.0)),
@@ -112,25 +110,14 @@ SET_TEMPERATURE_CURVE_SCHEMA = vol.Schema(
     }
 )
 
-RESET_FILTERS_SCHEMA = vol.Schema(
-    {
-        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
-        vol.Required("filter_type"): vol.In(FILTER_TYPES),
-    }
-)
+RESET_FILTERS_SCHEMA = _target_schema({vol.Required("filter_type"): vol.In(FILTER_TYPES)})
 
-RESET_SETTINGS_SCHEMA = vol.Schema(
-    {
-        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
-        vol.Required("reset_type"): vol.In(RESET_TYPES),
-    }
-)
+RESET_SETTINGS_SCHEMA = _target_schema({vol.Required("reset_type"): vol.In(RESET_TYPES)})
 
-START_PRESSURE_TEST_SCHEMA = vol.Schema({vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR})
+START_PRESSURE_TEST_SCHEMA = _target_schema()
 
-SET_MODBUS_PARAMETERS_SCHEMA = vol.Schema(
+SET_MODBUS_PARAMETERS_SCHEMA = _target_schema(
     {
-        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Required("port"): vol.In(MODBUS_PORTS),
         vol.Optional("baud_rate"): vol.In(MODBUS_BAUD_RATES),
         vol.Optional("parity"): vol.In(MODBUS_PARITY),
@@ -138,24 +125,15 @@ SET_MODBUS_PARAMETERS_SCHEMA = vol.Schema(
     }
 )
 
-SET_DEVICE_NAME_SCHEMA = vol.Schema(
-    {
-        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
-        vol.Required("device_name"): vol.All(_CV_STRING, vol.Length(min=1, max=16)),
-    }
+SET_DEVICE_NAME_SCHEMA = _target_schema(
+    {vol.Required("device_name"): vol.All(_CV_STRING, vol.Length(min=1, max=16))}
 )
 
-SYNC_TIME_SCHEMA = vol.Schema({vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR})
-SYNC_DEVICE_CLOCK_SCHEMA = vol.Schema(
+SYNC_TIME_SCHEMA = _target_schema()
+SYNC_DEVICE_CLOCK_SCHEMA = _target_schema({vol.Optional("force", default=False): bool})
+REFRESH_DEVICE_DATA_SCHEMA = _target_schema()
+SCAN_ALL_REGISTERS_SCHEMA = _target_schema(
     {
-        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
-        vol.Optional("force", default=False): bool,
-    }
-)
-REFRESH_DEVICE_DATA_SCHEMA = vol.Schema({vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR})
-SCAN_ALL_REGISTERS_SCHEMA = vol.Schema(
-    {
-        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Optional("max_registers_per_request"): vol.All(
             vol.Coerce(int), vol.Range(min=1, max=16)
         ),
@@ -165,9 +143,8 @@ SCAN_ALL_REGISTERS_SCHEMA = vol.Schema(
         vol.Optional("known_registers_only", default=False): bool,
     }
 )
-VALIDATE_KNOWN_REGISTERS_SCHEMA = vol.Schema(
+VALIDATE_KNOWN_REGISTERS_SCHEMA = _target_schema(
     {
-        vol.Required("entity_id"): _ENTITY_IDS_VALIDATOR,
         vol.Optional("max_registers_per_request"): vol.All(
             vol.Coerce(int), vol.Range(min=1, max=16)
         ),

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import MAX_VENTILATION_PERCENT
@@ -35,6 +36,19 @@ class ThesslaGreenEntity(CoordinatorEntity):
         # Home Assistant reads ``_attr_device_info`` directly during entity
         # setup; keeping this attribute avoids additional property wrappers.
         self._attr_device_info = coordinator.get_device_info()
+
+    def _apply_risk_policy(self, entity_config: dict[str, Any]) -> None:
+        """Keep advanced/destructive controls opt-in in the entity registry.
+
+        Mapping entries carrying ``risk_level`` represent controls that can
+        reset configuration, alter communication/security, or otherwise make
+        the device harder to recover. They remain available to expert users,
+        but are disabled by default and grouped under configuration.
+        """
+        if not entity_config.get("risk_level"):
+            return
+        self._attr_entity_registry_enabled_default = False
+        self._attr_entity_category = EntityCategory.CONFIG
 
     @property
     def suggested_object_id(self) -> str:

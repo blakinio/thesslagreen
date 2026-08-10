@@ -6,7 +6,6 @@ registers that are detected on the device during the scanning phase.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -43,9 +42,6 @@ async def async_setup_entry(
     coordinator: ThesslaGreenModbusCoordinator = config_entry.runtime_data
 
     entities = []
-    # Only create selects for registers discovered by
-    # ThesslaGreenDeviceScanner.scan_device() or all known registers when
-    # ``force_full_register_list`` is enabled.
     for register_name, select_def in ENTITY_MAPPINGS["select"].items():
         register_type = select_def["register_type"]
         register_map = coordinator.device_client.get_register_map(register_type)
@@ -64,23 +60,13 @@ async def async_setup_entry(
             entities.append(ThesslaGreenSelect(coordinator, register_name, address, select_def))
 
     if entities:
-        try:
-            async_add_entities(entities, True)
-        except asyncio.CancelledError:
-            _LOGGER.warning(
-                "Cancelled while adding select entities, retrying without initial state"
-            )
-            async_add_entities(entities, False)
-            return
+        # Initial coordinator data is already available before platform setup.
+        async_add_entities(entities, False)
         _LOGGER.debug("Created %d select entities", len(entities))
 
 
 class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
-    """Select entity for ThesslaGreen device.
-
-    ``_attr_*`` attributes and methods implement the Home Assistant
-    ``SelectEntity`` API and may appear unused.
-    """
+    """Select entity for ThesslaGreen device."""
 
     def __init__(
         self,
@@ -101,10 +87,9 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         self._attr_options = list(self._states.keys())
         if _ec := definition.get("entity_category"):
             self._attr_entity_category = EntityCategory(_ec)
+        self._apply_risk_policy(definition)
 
         # Optimistic UI is only safe for plain enumerated control selects.
-        # Schedule/setting/BCD-time registers decode to strings or AATT dicts
-        # and are intentionally excluded until proven safe.
         self._optimistic_enabled = not register_name.startswith(
             BCD_TIME_PREFIXES + SETTING_SCHEDULE_PREFIXES
         )
@@ -126,14 +111,7 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
 
     @property
     def available(self) -> bool:
-        """Return if entity is available.
-
-        Time-based schedule selects (BCD time registers) are considered
-        available whenever the coordinator is connected, even when no time
-        value is currently stored.  This lets users configure a slot that
-        the device reports as «not set» (e.g. BCD sentinel 0xFFFF) without
-        the entity disappearing as «unavailable».
-        """
+        """Return if entity is available."""
         if self._register_name.startswith(BCD_TIME_PREFIXES + SETTING_SCHEDULE_PREFIXES):
             return self._coordinator_connected()
         return super().available
@@ -150,12 +128,7 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        """Return current option.
-
-        A fresh optimistic raw value (recorded after a confirmed write) is
-        mapped back to its option so the GUI reflects the requested selection
-        immediately.  Only enabled for plain enumerated selects.
-        """
+        """Return current option."""
         if self._optimistic_enabled:
             pending = self._optimistic.get_pending(self._register_name)
             if pending is not None:
@@ -167,9 +140,6 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         if value is None:
             return None
 
-        # AATT registers (setting_summer_*, setting_winter_*) decode to a
-        # dict with "airflow_pct" and "temp_c" keys.  The select entity only
-        # cares about the airflow percentage.
         if isinstance(value, dict):
             value = value.get("airflow_pct")
             if value is None:
@@ -188,12 +158,10 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         try:
             await self._write_register(self._register_name, value)
         except RuntimeError as err:
-            # Invalid option raised above; a failed write raises here — in
-            # neither case is an optimistic value recorded.
             msg = f"Failed to set {self._register_name} to {option}: {err}"
             _LOGGER.error(msg)
             raise HomeAssistantError(msg) from err
-        except (ModbusException, ConnectionException) as err:
+        except (ModbusException, ConnectionException, TimeoutError, OSError) as err:
             err_txt = str(err)
             for prefix in ("Modbus Error: [Connection] ", "Modbus Error: "):
                 if err_txt.startswith(prefix):
@@ -203,7 +171,6 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
             _LOGGER.error(msg)
             raise HomeAssistantError(msg) from err
 
-        # Only reached when the write confirmed success.
         if self._optimistic_enabled:
             self._optimistic.set_pending(self._register_name, value)
             if self.hass is not None:

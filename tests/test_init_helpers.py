@@ -1,15 +1,25 @@
-"""Tests for __init__.py helper functions: async_setup, _apply_log_level."""
+"""Tests for __init__.py and setup helper functions."""
 
 import logging
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 
-def test_async_setup_removed():
-    """async_setup is no longer exported — coordinator lives in entry.runtime_data."""
+@pytest.mark.asyncio
+async def test_async_setup_registers_global_services(monkeypatch):
+    """async_setup owns process-lifetime integration service registration."""
     import custom_components.thessla_green_modbus as mod
 
-    assert not hasattr(mod, "async_setup"), (
-        "async_setup should have been removed; use entry.runtime_data instead of hass.data"
+    hass = MagicMock()
+    setup_services = AsyncMock()
+    monkeypatch.setattr(
+        "custom_components.thessla_green_modbus.services.async_setup_services",
+        setup_services,
     )
+
+    assert await mod.async_setup(hass, {}) is True
+    setup_services.assert_awaited_once_with(hass)
 
 
 def test_apply_log_level_sets_debug():
@@ -19,12 +29,9 @@ def test_apply_log_level_sets_debug():
     """
     import importlib
 
-    # _setup.py requires pydantic via its register-map imports; skip gracefully when unavailable.
     try:
         mod = importlib.import_module("custom_components.thessla_green_modbus._setup")
     except ModuleNotFoundError as exc:
-        import pytest
-
         pytest.skip(f"Skipping: missing optional dependency — {exc}")
         return
 

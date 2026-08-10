@@ -3,10 +3,12 @@
 import asyncio
 from unittest.mock import AsyncMock
 
+import pytest
 from custom_components.thessla_green_modbus import optimistic
 from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
 from homeassistant.components.climate import HVACAction, HVACMode
 from homeassistant.const import ATTR_TEMPERATURE
+from homeassistant.exceptions import HomeAssistantError
 
 
 def _make_climate(mock_coordinator, data):
@@ -34,14 +36,12 @@ async def test_target_temperature_pending_before_refresh(mock_coordinator):
     task = asyncio.create_task(climate.async_set_temperature(**{ATTR_TEMPERATURE: 21.5}))
     await asyncio.wait_for(started.wait(), timeout=1)
 
-    # Write done, refresh still parked: GUI already shows the requested setpoint.
     assert climate.target_temperature == 21.5
     assert mock_coordinator.data["required_temperature"] == 18.0
 
     release.set()
     await asyncio.wait_for(task, timeout=1)
 
-    # Confirmed device value takes over once it matches.
     mock_coordinator.data["required_temperature"] = 21.5
     climate._clear_optimistic_if_confirmed()
     assert climate._optimistic.get_pending("target_temperature") is None
@@ -63,7 +63,6 @@ async def test_hvac_mode_pending_before_refresh(mock_coordinator):
     task = asyncio.create_task(climate.async_set_hvac_mode(HVACMode.AUTO))
     await asyncio.wait_for(started.wait(), timeout=1)
 
-    # Confirmed data still reports OFF (panel off) but the GUI shows AUTO.
     assert climate.hvac_mode == HVACMode.AUTO
     assert climate._confirmed_hvac_mode() == HVACMode.OFF
 
@@ -126,7 +125,7 @@ async def test_preset_mode_pending_before_refresh(mock_coordinator):
     release.set()
     await asyncio.wait_for(task, timeout=1)
 
-    mock_coordinator.data["special_mode"] = 1  # boost bit
+    mock_coordinator.data["special_mode"] = 1
     climate._clear_optimistic_if_confirmed()
     assert climate._optimistic.get_pending("preset_mode") is None
     assert climate.preset_mode == "boost"
@@ -144,26 +143,26 @@ def test_current_temperature_confirmed_only(mock_coordinator):
         },
     )
     climate._optimistic.set_pending("target_temperature", 25.0)
-    assert climate.current_temperature == 20.0  # measured, unaffected
+    assert climate.current_temperature == 20.0
 
 
 def test_hvac_action_confirmed_only(mock_coordinator):
     """hvac_action is derived from confirmed status, not optimistic hvac_mode."""
     climate = _make_climate(mock_coordinator, {"on_off_panel_mode": 1, "mode": 0})
-    # Optimistically claim OFF; hvac_action must still reflect confirmed state.
     climate._optimistic.set_pending("hvac_mode", HVACMode.OFF)
-    assert climate.hvac_mode == HVACMode.OFF  # optimistic command field
-    assert climate.hvac_action == HVACAction.IDLE  # confirmed-only
+    assert climate.hvac_mode == HVACMode.OFF
+    assert climate.hvac_action == HVACAction.IDLE
 
 
 def test_failed_write_does_not_set_pending(mock_coordinator):
-    """A failed write never records an optimistic command field."""
+    """A rejected write raises and never records an optimistic command field."""
     climate = _make_climate(
         mock_coordinator, {"on_off_panel_mode": 1, "mode": 0, "required_temperature": 18.0}
     )
     mock_coordinator.async_write_register = AsyncMock(return_value=False)
 
-    asyncio.run(climate.async_set_temperature(**{ATTR_TEMPERATURE: 21.5}))
+    with pytest.raises(HomeAssistantError):
+        asyncio.run(climate.async_set_temperature(**{ATTR_TEMPERATURE: 21.5}))
 
     assert climate._optimistic.get_pending("target_temperature") is None
     assert climate.target_temperature == 18.0

@@ -7,7 +7,6 @@ that are detected on the device during the scanning phase.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import time as dt_time
 from typing import Any
@@ -15,6 +14,7 @@ from typing import Any
 from homeassistant.components.time import TimeEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pymodbus.exceptions import ConnectionException, ModbusException
 
@@ -26,6 +26,7 @@ from .mappings import ENTITY_MAPPINGS
 _LOGGER = logging.getLogger(__name__)
 
 PARALLEL_UPDATES = 1
+_WRITE_ERRORS = (ModbusException, ConnectionException, RuntimeError, TimeoutError, OSError)
 
 
 async def async_setup_entry(
@@ -33,10 +34,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ThesslaGreen time entities.
-
-    Home Assistant invokes this during platform setup.
-    """
+    """Set up ThesslaGreen time entities."""
     coordinator: ThesslaGreenModbusCoordinator = config_entry.runtime_data
 
     entities = []
@@ -60,22 +58,13 @@ async def async_setup_entry(
             entities.append(ThesslaGreenTime(coordinator, register_name, address, time_def))
 
     if entities:
-        try:
-            async_add_entities(entities, True)
-        except asyncio.CancelledError:
-            _LOGGER.warning("Cancelled while adding time entities, retrying without initial state")
-            async_add_entities(entities, False)
-            return
+        # Initial coordinator data is available before platform setup.
+        async_add_entities(entities, False)
         _LOGGER.debug("Created %d time entities", len(entities))
 
 
 class ThesslaGreenTime(ThesslaGreenEntity, TimeEntity):
-    """Time entity for a writable BCD HHMM register.
-
-    The coordinator decodes BCD HHMM register values to ``"HH:MM"`` strings.
-    This entity presents the value as a native HA ``time`` control so users
-    can set the register directly from the UI without manual encoding.
-    """
+    """Time entity for a writable BCD HHMM register."""
 
     def __init__(
         self,
@@ -92,12 +81,7 @@ class ThesslaGreenTime(ThesslaGreenEntity, TimeEntity):
 
     @property
     def available(self) -> bool:
-        """Return True whenever the coordinator is connected.
-
-        BCD time registers may legitimately return None (unset / sentinel
-        0xFFFF), so we keep the entity available to allow the user to set
-        an initial value.
-        """
+        """Return True whenever the coordinator is connected."""
         return self._coordinator_connected()
 
     @property
@@ -105,10 +89,6 @@ class ThesslaGreenTime(ThesslaGreenEntity, TimeEntity):
         """Return the current time value decoded from the register."""
         raw = self.coordinator.data.get(self._register_name)
         if raw is None:
-            # Sentinel 0xFFFF means the slot is not configured on the device.
-            # Returning dt_time(0, 0) keeps the HA frontend input interactive
-            # so users can set an initial value (unknown-state inputs are
-            # read-only in the HA lovelace UI).
             return dt_time(0, 0)
         if isinstance(raw, str) and ":" in raw:
             try:
@@ -124,17 +104,11 @@ class ThesslaGreenTime(ThesslaGreenEntity, TimeEntity):
         return dt_time(0, 0)
 
     async def async_set_value(self, value: dt_time) -> None:
-        """Set a new time value.
-
-        The loader's ``encode`` method for BCD time registers accepts an
-        ``"HH:MM"`` string and converts it to the packed HHMM integer before
-        writing to the device.
-        """
+        """Set a new time value and surface device failures to Home Assistant."""
         time_str = f"{value.hour:02d}:{value.minute:02d}"
         try:
             await self._write_register(self._register_name, time_str)
-        except (ModbusException, ConnectionException) as err:
-            _LOGGER.error("Error setting %s to %s: %s", self._register_name, time_str, err)
-            return
-        except RuntimeError as err:
-            _LOGGER.error("Failed to set %s to %s: %s", self._register_name, time_str, err)
+        except _WRITE_ERRORS as err:
+            msg = f"Failed to set {self._register_name} to {time_str}: {err}"
+            _LOGGER.error(msg)
+            raise HomeAssistantError(msg) from err

@@ -43,13 +43,28 @@ jobs:
           python -m pip install homeassistant==${{ matrix.ha-version }} hacs
 
       - name: Ruff
-        run: ruff check custom_components tests tools
+        run: ruff check --output-format=github custom_components tests tools
 
       - name: Ruff import order
-        run: ruff check --select I custom_components tests tools
+        run: ruff check --select I --output-format=github custom_components tests tools
 
       - name: Ruff format
-        run: ruff format --check custom_components tests tools
+        shell: bash
+        run: |
+          status=0
+          output="$(ruff format --check custom_components tests tools 2>&1)" || status=$?
+          printf '%s\n' "$output"
+          if [ "$status" -ne 0 ]; then
+            while IFS= read -r line; do
+              case "$line" in
+                "Would reformat: "*)
+                  file="${line#Would reformat: }"
+                  echo "::error file=${file}::Ruff formatter would reformat this file"
+                  ;;
+              esac
+            done <<< "$output"
+            exit "$status"
+          fi
 
       - name: Compile Python sources
         run: python -m compileall -q custom_components/thessla_green_modbus tests tools
@@ -66,6 +81,8 @@ jobs:
       - name: Maintainability gate
         run: python tools/check_maintainability.py
 
+      - name: Validate agent checkpoint
+        run: python tools/agents/checkpoint.py docs/agents/tasks/TASK-20260810-ha-integration-hardening.md --require-checkpoint
 
   tests:
     name: Tests

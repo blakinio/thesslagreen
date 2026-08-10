@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from custom_components.thessla_green_modbus.fan import ThesslaGreenFan
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from pymodbus.exceptions import ConnectionException
 
 
@@ -43,7 +44,7 @@ def test_fan_turn_on_modbus_failure(mock_coordinator):
     """Ensure connection errors during turn on are raised."""
     fan = ThesslaGreenFan(mock_coordinator)
     mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("fail"))
-    with pytest.raises(ConnectionException):
+    with pytest.raises(HomeAssistantError):
         asyncio.run(fan.async_turn_on(percentage=40))
 
 
@@ -52,7 +53,7 @@ def test_fan_set_percentage_failure(mock_coordinator):
     mock_coordinator.data["mode"] = 1  # manual mode to force write
     fan = ThesslaGreenFan(mock_coordinator)
     mock_coordinator.async_write_register = AsyncMock(return_value=False)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(HomeAssistantError):
         asyncio.run(fan.async_set_percentage(60))
 
 
@@ -165,10 +166,10 @@ def test_fan_turn_off_via_airflow_register(mock_coordinator):
 
 
 def test_fan_turn_off_exception_reraise(mock_coordinator):
-    """async_turn_off re-raises ConnectionException (lines 208-210)."""
+    """async_turn_off surfaces ConnectionException as HomeAssistantError (lines 208-210)."""
     mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("fail"))
     fan = ThesslaGreenFan(mock_coordinator)
-    with pytest.raises(ConnectionException):
+    with pytest.raises(HomeAssistantError):
         asyncio.run(fan.async_turn_off())
 
 
@@ -176,7 +177,8 @@ def test_fan_set_percentage_negative_rejected(mock_coordinator):
     """Negative percentage is rejected without writing anything (lines 215-217)."""
     mock_coordinator.async_write_register = AsyncMock(return_value=True)
     fan = ThesslaGreenFan(mock_coordinator)
-    asyncio.run(fan.async_set_percentage(-1))
+    with pytest.raises(ServiceValidationError):
+        asyncio.run(fan.async_set_percentage(-1))
     mock_coordinator.async_write_register.assert_not_called()
 
 
@@ -192,11 +194,11 @@ def test_fan_set_percentage_zero_calls_turn_off(mock_coordinator):
 
 
 def test_fan_set_percentage_temporary_fail_raises(mock_coordinator):
-    """Temporary airflow write failure raises RuntimeError (line 248)."""
+    """Temporary airflow write failure raises HomeAssistantError (line 248)."""
     mock_coordinator.data["mode"] = 2  # temporary mode
     mock_coordinator.async_write_temporary_airflow = AsyncMock(return_value=False)
     fan = ThesslaGreenFan(mock_coordinator)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(HomeAssistantError):
         asyncio.run(fan.async_set_percentage(70))
 
 
@@ -237,20 +239,59 @@ def test_fan_get_current_mode_none_when_absent(mock_coordinator):
 
 
 def test_fan_write_register_invalid_raises(mock_coordinator):
-    """_write_register raises ValueError for unknown register names (line 278)."""
+    """_write_register rejects unknown register names as invalid HA actions."""
     fan = ThesslaGreenFan(mock_coordinator)
-    with pytest.raises(ValueError):
+    with pytest.raises(ServiceValidationError):
         asyncio.run(fan._write_register("nonexistent_xyz_register_99", 1))
 
 
-def test_fan_write_register_not_in_available_skips(mock_coordinator):
-    """_write_register skips write when register not in available_registers (lines 281-283)."""
+def test_fan_write_register_not_in_available_raises(mock_coordinator):
+    """_write_register rejects a known register that the device did not expose."""
     mock_coordinator.device_client.available_registers["holding_registers"].discard(
         "air_flow_rate_manual"
     )
     mock_coordinator.async_write_register = AsyncMock(return_value=True)
     fan = ThesslaGreenFan(mock_coordinator)
-    asyncio.run(fan._write_register("air_flow_rate_manual", 50))
+    with pytest.raises(ServiceValidationError):
+        asyncio.run(fan._write_register("air_flow_rate_manual", 50))
+    mock_coordinator.async_write_register.assert_not_called()
+
+
+def test_fan_manual_speed_requires_setpoint_register(mock_coordinator):
+    """Manual speed requests cannot succeed after only changing mode."""
+    mock_coordinator.data["mode"] = 1
+    mock_coordinator.device_client.available_registers["holding_registers"].discard(
+        "air_flow_rate_manual"
+    )
+    mock_coordinator.async_write_register = AsyncMock(return_value=True)
+    fan = ThesslaGreenFan(mock_coordinator)
+    with pytest.raises(ServiceValidationError):
+        asyncio.run(fan.async_set_percentage(60))
+    mock_coordinator.async_write_register.assert_not_called()
+
+
+def test_fan_turn_off_requires_write_path(mock_coordinator):
+    """Turn-off cannot report success when neither power nor airflow is writable."""
+    available = mock_coordinator.device_client.available_registers["holding_registers"]
+    available.discard("on_off_panel_mode")
+    available.discard("air_flow_rate_manual")
+    mock_coordinator.data["mode"] = 1
+    mock_coordinator.async_write_register = AsyncMock(return_value=True)
+    fan = ThesslaGreenFan(mock_coordinator)
+    with pytest.raises(ServiceValidationError):
+        asyncio.run(fan.async_turn_off())
+    mock_coordinator.async_write_register.assert_not_called()
+
+
+def test_fan_turn_on_validates_speed_path_before_power_write(mock_coordinator):
+    """Turn-on validates the speed path before energising the panel."""
+    available = mock_coordinator.device_client.available_registers["holding_registers"]
+    available.discard("air_flow_rate_manual")
+    mock_coordinator.data["mode"] = 1
+    mock_coordinator.async_write_register = AsyncMock(return_value=True)
+    fan = ThesslaGreenFan(mock_coordinator)
+    with pytest.raises(ServiceValidationError):
+        asyncio.run(fan.async_turn_on(percentage=60))
     mock_coordinator.async_write_register.assert_not_called()
 
 
@@ -465,7 +506,7 @@ def test_fan_pending_percentage_not_set_on_write_failure(mock_coordinator):
     mock_coordinator.async_write_register = AsyncMock(return_value=False)
     fan = ThesslaGreenFan(mock_coordinator)
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(HomeAssistantError):
         asyncio.run(fan.async_set_percentage(80))
 
     assert fan._pending_percentage is None  # nosec B101
@@ -720,7 +761,7 @@ async def test_fan_manual_write_failure_skips_refresh_and_pending(mock_coordinat
     mock_coordinator.async_write_register = AsyncMock(return_value=False)
     fan = ThesslaGreenFan(mock_coordinator)
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(HomeAssistantError):
         await fan.async_set_percentage(80)
 
     assert fan._pending_percentage is None  # nosec B101
@@ -737,7 +778,7 @@ async def test_fan_temporary_write_failure_skips_refresh_and_pending(mock_coordi
     mock_coordinator.async_request_refresh = AsyncMock()
     fan = ThesslaGreenFan(mock_coordinator)
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(HomeAssistantError):
         await fan.async_set_percentage(70)
 
     assert fan._pending_percentage is None  # nosec B101
