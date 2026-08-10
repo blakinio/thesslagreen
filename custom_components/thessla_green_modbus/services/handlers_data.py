@@ -138,9 +138,6 @@ async def _read_known_registers_safe(
                         continue
 
                     faults.append({"start": start, "count": group_count, "error": batch_error})
-                    # Retry each known address individually to isolate an
-                    # explicit unsupported-address response from transport
-                    # failures or ambiguous empty responses.
                     for i in range(group_count):
                         addr = start + i
                         if addr not in addr_to_name:
@@ -217,7 +214,7 @@ async def _scan_with_polling_paused(
             return await scanner.scan_device()
         except asyncio.CancelledError:
             raise
-        except Exception as err:  # noqa: BLE001 - service boundary translation
+        except Exception as err:
             raise HomeAssistantError(f"Register scan failed: {err}") from err
         finally:
             if scanner is not None:
@@ -229,7 +226,7 @@ async def _scan_with_polling_paused(
                 await dc.async_ensure_connected()
             except asyncio.CancelledError:
                 raise
-            except Exception as err:  # noqa: BLE001 - primary connection must be restored
+            except Exception as err:
                 raise HomeAssistantError(
                     f"Register scan finished but the primary Modbus connection could not be restored: {err}"
                 ) from err
