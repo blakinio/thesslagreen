@@ -11,6 +11,7 @@ from custom_components.thessla_green_modbus.registers.loader import get_register
 from custom_components.thessla_green_modbus.services import (
     async_setup_services,
 )
+from homeassistant.exceptions import HomeAssistantError
 from pymodbus.exceptions import (
     ModbusException,
 )
@@ -119,27 +120,29 @@ async def test_set_special_mode_with_duration(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_set_special_mode_write_failure(monkeypatch):
-    """set_special_mode stops if write fails."""
+    """set_special_mode surfaces a rejected write to Home Assistant."""
     coord = _Coordinator(write_result=False)
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_special_mode", coord, monkeypatch)
 
     call = _make_call({"entity_id": ["climate.dev"], "mode": "boost", "duration": 0})
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
 
     coord.async_request_refresh.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_set_special_mode_modbus_exception(monkeypatch):
-    """_write_register logs error on ModbusException."""
+    """set_special_mode surfaces Modbus failures to Home Assistant."""
     coord = _Coordinator()
     coord.async_write_register.side_effect = ModbusException("fail")
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_special_mode", coord, monkeypatch)
 
     call = _make_call({"entity_id": ["climate.dev"], "mode": "boost", "duration": 0})
-    await handler(call)  # should not raise
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
     coord.async_request_refresh.assert_not_awaited()
 
 
@@ -150,16 +153,17 @@ async def test_set_special_mode_modbus_exception(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_set_special_mode_duration_write_failure(monkeypatch):
-    """set_special_mode continues when duration register write fails."""
+    """set_special_mode surfaces a rejected duration write."""
     coord = _Coordinator()
-    # First write (special_mode) succeeds; second (duration) fails
+    # First write (special_mode) succeeds; second (duration) fails.
     coord.async_write_register = AsyncMock(side_effect=[True, False])
     coord.device_client.available_registers = {"holding_registers": {"boost_duration"}}
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_special_mode", coord, monkeypatch)
 
     call = _make_call({"entity_id": ["climate.dev"], "mode": "boost", "duration": 30})
-    await handler(call)
+    with pytest.raises(HomeAssistantError):
+        await handler(call)
 
     coord.async_request_refresh.assert_not_awaited()
 
