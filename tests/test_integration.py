@@ -3,7 +3,11 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from custom_components.thessla_green_modbus import async_setup, async_setup_entry, async_unload_entry
+from custom_components.thessla_green_modbus import (
+    async_setup,
+    async_setup_entry,
+    async_unload_entry,
+)
 from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
