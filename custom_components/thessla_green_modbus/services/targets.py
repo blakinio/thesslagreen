@@ -56,10 +56,7 @@ async def iter_target_coordinators(
     call: ServiceCall,
     *,
     coordinator_getter: Callable[[HomeAssistant, str], Any | None],
-    entity_id_extractor: Callable[
-        [HomeAssistant, ServiceCall], Awaitable[set[str]]
-    ]
-    | None = None,
+    entity_id_extractor: Callable[[HomeAssistant, ServiceCall], Awaitable[set[str]]] | None = None,
 ) -> list[tuple[str, Any]]:
     """Resolve service targets to loaded ThesslaGreen coordinators.
 
