@@ -5,20 +5,16 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, cast
 
+from homeassistant.const import CONF_NAME
+from homeassistant.helpers import config_validation as cv
+
 from .const import DEFAULT_NAME, DOMAIN
 from .const import PLATFORMS as PLATFORM_DOMAINS
 
-try:
-    from homeassistant.const import CONF_NAME
-    from homeassistant.helpers import config_validation as cv
-except ModuleNotFoundError:  # pragma: no cover - allows local tooling without HA installed
-    CONF_NAME = "name"
-    CONFIG_SCHEMA = None
-else:
-    # The integration is configured exclusively through config entries.  Since
-    # async_setup() exists for process-lifetime service registration, Home
-    # Assistant expects an explicit YAML/config schema declaration.
-    CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+# ThesslaGreen is configured exclusively through config entries.  The explicit
+# module-level assignment is intentionally visible to Home Assistant/hassfest
+# because async_setup() exists for process-lifetime service registration.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.config_entries import ConfigEntry
