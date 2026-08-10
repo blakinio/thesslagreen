@@ -271,9 +271,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             if hvac_mode not in HVAC_MODE_REVERSE_MAP:
                 raise ServiceValidationError(f"Unsupported HVAC mode: {hvac_mode}")
             await self._write_register("on_off_panel_mode", 1, refresh=False)
-            await self._write_register(
-                "mode", HVAC_MODE_REVERSE_MAP[hvac_mode], refresh=False
-            )
+            await self._write_register("mode", HVAC_MODE_REVERSE_MAP[hvac_mode], refresh=False)
         self._set_optimistic("hvac_mode", hvac_mode)
         await self.coordinator.async_request_refresh()
 
@@ -321,9 +319,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             raise ServiceValidationError(f"Invalid fan mode: {fan_mode!r}") from err
         min_pct, max_pct = self._percentage_limits()
         if not min_pct <= airflow <= max_pct:
-            raise ServiceValidationError(
-                f"Fan mode must be between {min_pct}% and {max_pct}%."
-            )
+            raise ServiceValidationError(f"Fan mode must be between {min_pct}% and {max_pct}%.")
         await self._write_register("air_flow_rate_manual", airflow, refresh=False)
         self._set_optimistic("fan_mode", f"{airflow}%")
         await self.coordinator.async_request_refresh()
