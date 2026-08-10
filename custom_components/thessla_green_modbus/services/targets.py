@@ -29,11 +29,7 @@ async def extract_entity_ids(hass: HomeAssistant, call: ServiceCall) -> set[str]
     """
     from homeassistant.helpers.service import async_extract_entity_ids
 
-    return await extract_entity_ids_with_extractor(
-        hass,
-        call,
-        extractor=async_extract_entity_ids,
-    )
+    return await extract_entity_ids_with_extractor(hass, call, extractor=async_extract_entity_ids)
 
 
 async def extract_entity_ids_with_extractor(
@@ -76,9 +72,7 @@ async def iter_target_coordinators(
         targets.append((entity_id, coordinator))
 
     if not targets:
-        raise ServiceValidationError(
-            "No loaded ThesslaGreen entity matched the selected target."
-        )
+        raise ServiceValidationError("No loaded ThesslaGreen entity matched the selected target.")
     return targets
 
 
