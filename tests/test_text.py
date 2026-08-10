@@ -13,6 +13,7 @@ from custom_components.thessla_green_modbus.registers.loader import (
     get_registers_by_function,
 )
 from custom_components.thessla_green_modbus.text import ThesslaGreenText
+from homeassistant.exceptions import HomeAssistantError
 from pymodbus.exceptions import ConnectionException
 
 HOLDING_REGISTERS = {r.name: r.address for r in get_registers_by_function("03")}
@@ -110,7 +111,7 @@ def test_text_set_value(mock_coordinator):
 
 
 def test_text_set_value_write_failure(mock_coordinator):
-    """async_set_value logs an error when write returns False."""
+    """async_set_value surfaces a rejected write to Home Assistant."""
     mock_coordinator.async_write_register = AsyncMock(return_value=False)
     entity = ThesslaGreenText(
         mock_coordinator,
@@ -118,12 +119,13 @@ def test_text_set_value_write_failure(mock_coordinator):
         HOLDING_REGISTERS["device_name"],
         TEXT_ENTITY_MAPPINGS["device_name"],
     )
-    asyncio.run(entity.async_set_value("BadName"))
+    with pytest.raises(HomeAssistantError, match="Failed to set device_name"):
+        asyncio.run(entity.async_set_value("BadName"))
     mock_coordinator.async_request_refresh.assert_not_awaited()
 
 
 def test_text_set_value_modbus_error(mock_coordinator):
-    """async_set_value swallows ModbusException and does not refresh."""
+    """async_set_value surfaces Modbus errors and does not report success."""
     from pymodbus.exceptions import ModbusException
 
     mock_coordinator.async_write_register = AsyncMock(side_effect=ModbusException("fail"))
@@ -133,12 +135,13 @@ def test_text_set_value_modbus_error(mock_coordinator):
         HOLDING_REGISTERS["device_name"],
         TEXT_ENTITY_MAPPINGS["device_name"],
     )
-    asyncio.run(entity.async_set_value("Crash"))
+    with pytest.raises(HomeAssistantError, match="Failed to set device_name"):
+        asyncio.run(entity.async_set_value("Crash"))
     mock_coordinator.async_request_refresh.assert_not_awaited()
 
 
 def test_text_set_value_connection_error(mock_coordinator):
-    """async_set_value swallows ConnectionException and does not refresh."""
+    """async_set_value surfaces connection errors and does not report success."""
     mock_coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("conn fail"))
     entity = ThesslaGreenText(
         mock_coordinator,
@@ -146,7 +149,8 @@ def test_text_set_value_connection_error(mock_coordinator):
         HOLDING_REGISTERS["device_name"],
         TEXT_ENTITY_MAPPINGS["device_name"],
     )
-    asyncio.run(entity.async_set_value("Crash"))
+    with pytest.raises(HomeAssistantError, match="Failed to set device_name"):
+        asyncio.run(entity.async_set_value("Crash"))
     mock_coordinator.async_request_refresh.assert_not_awaited()
 
 
