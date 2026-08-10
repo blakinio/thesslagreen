@@ -6,12 +6,11 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from pymodbus.exceptions import ConnectionException
-
 from custom_components.thessla_green_modbus.services.handlers_data import (
     _read_known_registers_safe,
     _scan_with_polling_paused,
 )
+from pymodbus.exceptions import ConnectionException
 
 
 class _AsyncLock:
