@@ -23,10 +23,10 @@ jobs:
         ha-version: ["2026.2.3"]
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -69,6 +69,9 @@ jobs:
       - name: Compile Python sources
         run: python -m compileall -q custom_components/thessla_green_modbus tests tools
 
+      - name: Mypy
+        run: mypy custom_components/thessla_green_modbus
+
       - name: Compare registers with vendor reference
         run: python tools/compare_registers_with_reference.py --show-renames
 
@@ -81,8 +84,11 @@ jobs:
       - name: Maintainability gate
         run: python tools/check_maintainability.py
 
-      - name: Validate agent checkpoint
+      - name: Validate hardening checkpoint
         run: python tools/agents/checkpoint.py docs/agents/tasks/TASK-20260810-ha-integration-hardening.md --require-checkpoint
+
+      - name: Validate follow-up checkpoint
+        run: python tools/agents/checkpoint.py docs/agents/tasks/TASK-20260810-ha-integration-10of10-followup.md --require-checkpoint
 
   tests:
     name: Tests
@@ -94,10 +100,10 @@ jobs:
         ha-version: ["2026.2.3"]
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -122,11 +128,50 @@ jobs:
       - name: Upload coverage
         # CODECOV_TOKEN secret is optional; upload failure does not block CI.
         # Add CODECOV_TOKEN to repository secrets to enable authenticated uploads.
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         with:
           files: ./coverage.xml
           disable_search: true
           fail_ci_if_error: false
+
+  minimum-ha:
+    name: Minimum HA API contracts
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
+
+      - name: Install minimum supported Home Assistant
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest pytest-asyncio
+          python -m pip install -e .
+          python -m pip install homeassistant==2026.1.0
+
+      - name: Verify config-entry-only schema
+        run: |
+          python - <<'PY'
+          from custom_components.thessla_green_modbus import CONFIG_SCHEMA
+          assert CONFIG_SCHEMA is not None
+          PY
+
+      - name: Run minimum-version framework contracts
+        run: |
+          pytest -q \
+            tests/test_service_target_contract.py \
+            tests/test_integration_service_lifecycle.py \
+            tests/test_repairs.py \
+            tests/test_write_repair_lifecycle.py
 
   entity-mappings:
     name: Entity mappings validation
@@ -138,10 +183,10 @@ jobs:
         ha-version: ["2026.2.3"]
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -165,19 +210,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Run hassfest
-        uses: home-assistant/actions/hassfest@master
+        uses: home-assistant/actions/hassfest@a7c616ce81ccda50150bf1595786c71b1883fabb
 
   hacs:
     name: HACS validation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Run HACS validation
-        uses: hacs/action@main
+        uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa
         with:
           category: integration
