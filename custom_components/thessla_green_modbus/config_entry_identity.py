@@ -32,7 +32,7 @@ def migrate_config_entry_unique_id(
         return False
 
     stable_unique_id = build_stable_unique_id(device_info)
-    if stable_unique_id is None or entry.unique_id == stable_unique_id:
+    if stable_unique_id is None or getattr(entry, "unique_id", None) == stable_unique_id:
         return False
 
     existing = hass.config_entries.async_entry_for_domain_unique_id(DOMAIN, stable_unique_id)
