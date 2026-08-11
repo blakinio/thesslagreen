@@ -109,7 +109,9 @@ def _apply_firmware_version_to_device(
             details = "missing " + ", ".join(missing_regs) if missing_regs else "patch unavailable"
             if firmware_err is not None:
                 details += f"; {firmware_err}"
-            _LOGGER.debug("Firmware patch unavailable; using partial version %s: %s", device.firmware, details)
+            _LOGGER.debug(
+                "Firmware patch unavailable; using partial version %s: %s", device.firmware, details
+            )
         return
 
     details: list[str] = []
