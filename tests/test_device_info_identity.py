@@ -2,14 +2,14 @@
 
 from types import SimpleNamespace
 
-from custom_components.thessla_green_modbus.coordinator.diagnostics import (
-    _stable_device_identifier,
-    get_device_info,
-)
 from custom_components.thessla_green_modbus.const import (
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
     DOMAIN,
+)
+from custom_components.thessla_green_modbus.coordinator.diagnostics import (
+    _stable_device_identifier,
+    get_device_info,
 )
 
 
