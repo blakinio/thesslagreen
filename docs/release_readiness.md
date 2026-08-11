@@ -42,7 +42,7 @@ The GitHub Actions run for `main@62e3cb1` passed all nine current checks:
 
 The full suite reported **90.78%** total coverage against the configured 80% repository minimum. The current Home Assistant Silver quality-scale coverage rule is stricter: every integration module must be above 95%, so a Silver claim is not currently justified by coverage evidence.
 
-The 2026-08-11 audit found that the otherwise-green Tests job was not actually uploading `coverage.xml` to Codecov because no valid upload authentication was available. The audit cleanup switches that step to GitHub OIDC authentication and keeps the upload non-blocking; acceptance requires inspecting the pull-request CI log and confirming the upload succeeds.
+The 2026-08-11 audit verified that Codecov was not a functioning release signal. The baseline non-blocking upload failed without authentication; an OIDC-authenticated retry successfully obtained a short-lived token but Codecov returned `Repository not found`. The repository-side cleanup therefore removes the non-blocking Codecov upload. Coverage remains a blocking local pytest gate with module-level reporting in the CI log. Reintroducing external coverage reporting requires explicit Codecov repository onboarding/authorization and a separately verified upload.
 
 ## Real-device readiness
 
@@ -64,7 +64,7 @@ Recommended release gate for hardware-sensitive changes:
 
 CI and release workflows use immutable commit SHAs for third-party GitHub Actions. Version comments may be kept next to the SHA for readability. Moving `@main`, `@master`, or mutable major-version refs are not accepted in the release-ready state.
 
-Coverage upload authentication uses GitHub OIDC, avoiding a long-lived Codecov upload secret. The Tests job grants only the additional `id-token: write` permission required to mint the short-lived OIDC token, while retaining `contents: read` for checkout.
+External Codecov upload is deliberately not part of the current release gate because the repository is not yet available to the Codecov uploader. No extra OIDC permission or long-lived Codecov secret is retained merely to keep a non-blocking, non-functional step green.
 
 ## Documentation readiness
 
