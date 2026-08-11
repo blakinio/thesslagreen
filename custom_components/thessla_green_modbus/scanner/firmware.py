@@ -106,11 +106,15 @@ def _apply_firmware_version_to_device(
         device.firmware = f"{major}.{minor}" if patch is None else f"{major}.{minor}.{patch}"
         device.firmware_available = True
         if patch is None:
-            details = "missing " + ", ".join(missing_regs) if missing_regs else "patch unavailable"
+            partial_details = (
+                "missing " + ", ".join(missing_regs) if missing_regs else "patch unavailable"
+            )
             if firmware_err is not None:
-                details += f"; {firmware_err}"
+                partial_details += f"; {firmware_err}"
             _LOGGER.debug(
-                "Firmware patch unavailable; using partial version %s: %s", device.firmware, details
+                "Firmware patch unavailable; using partial version %s: %s",
+                device.firmware,
+                partial_details,
             )
         return
 
