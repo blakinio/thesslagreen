@@ -151,7 +151,11 @@ def _resolve_sw_version(coordinator: Any) -> str:
 
 def _device_serial(coordinator: Any) -> str | None:
     """Return a normalized, usable device serial or None for placeholders."""
-    serial = coordinator.device_client.device_info.get("serial_number")
+    device_client = getattr(coordinator, "device_client", None)
+    device_info = getattr(device_client, "device_info", {})
+    if not isinstance(device_info, dict):
+        return None
+    serial = device_info.get("serial_number")
     if not isinstance(serial, str):
         return None
     normalized = serial.strip()
