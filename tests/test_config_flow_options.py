@@ -40,7 +40,6 @@ class AbortFlow(Exception):
 
 
 @pytest.mark.asyncio
-@pytest.mark.asyncio
 async def test_config_flow_max_registers_per_request_validated():
     """Config flow validates max registers per request."""
     flow = ConfigFlow()
@@ -57,8 +56,8 @@ async def test_config_flow_max_registers_per_request_validated():
     for value in (1, MAX_BATCH_REGISTERS):
         flow = ConfigFlow()
         flow.hass = SimpleNamespace(
-        config_entries=SimpleNamespace(async_entries=lambda _domain: [])
-    )
+            config_entries=SimpleNamespace(async_entries=lambda _domain: [])
+        )
         with (
             patch(
                 "custom_components.thessla_green_modbus._config_flow.validate_input",
@@ -123,7 +122,10 @@ async def test_config_flow_max_registers_per_request_validated():
 
 @pytest.mark.asyncio
 async def test_options_flow_max_registers_per_request_validation():
-    """Options flow validates max registers per request within range."""
+    """Options flow validation entry point remains awaitable."""
+    flow = OptionsFlow(SimpleNamespace(options={}))
+    result = await flow.async_step_init()
+    assert result["type"] == "form"
 
 
 @pytest.mark.asyncio
@@ -138,20 +140,17 @@ async def test_options_flow_max_registers_per_request_validated():
     }
     assert CONF_MAX_REGISTERS_PER_REQUEST in schema_keys
 
-    # Accept values within range
     for value in (1, MAX_BATCH_REGISTERS):
         flow = OptionsFlow(SimpleNamespace(options={}))
         result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: value})
         assert result["type"] == "create_entry"
         assert result["data"][CONF_MAX_REGISTERS_PER_REQUEST] == value
 
-    # Reject values below range
     flow = OptionsFlow(SimpleNamespace(options={}))
     result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: 0})
     assert result["type"] == "form"
     assert result["errors"][CONF_MAX_REGISTERS_PER_REQUEST] == "max_registers_range"
 
-    # Reject values above range
     flow = OptionsFlow(SimpleNamespace(options={}))
     result = await flow.async_step_init({CONF_MAX_REGISTERS_PER_REQUEST: 20})
     assert result["type"] == "form"
