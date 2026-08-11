@@ -53,6 +53,7 @@ from .payloads import caps_to_dict as _caps_to_dict_impl
 from .payloads import normalize_connection_type as _normalize_connection_type_impl
 from .reauth import process_reauth_submission as _process_reauth_submission_impl
 from .reauth_confirm import apply_reauth_update as _apply_reauth_update_impl
+from .reconfigure import build_reconfigure_updates as _build_reconfigure_updates_impl
 from .runtime import TIMEOUT_EXCEPTIONS
 from .runtime import (
     call_with_optional_timeout as _call_with_optional_timeout_impl,
@@ -225,19 +226,14 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Validate and update host/port/slave_id without recreating the entry."""
+        """Validate and update endpoint settings without recreating the entry."""
         entry = self._get_reconfigure_entry()
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            data_updates = _build_reconfigure_updates_impl(entry.data, user_input)
             candidate = dict(entry.data)
-            candidate.update(
-                {
-                    CONF_HOST: user_input[CONF_HOST],
-                    CONF_PORT: user_input[CONF_PORT],
-                    CONF_SLAVE_ID: user_input.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID),
-                }
-            )
+            candidate.update(data_updates)
             info, submit_errors = await _process_user_submission_impl(
                 candidate,
                 validate_input=validate_input,
@@ -255,11 +251,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
                 return self.async_update_and_abort(
                     entry,
                     unique_id=updated_unique_id,
-                    data_updates={
-                        CONF_HOST: candidate[CONF_HOST],
-                        CONF_PORT: candidate[CONF_PORT],
-                        CONF_SLAVE_ID: candidate[CONF_SLAVE_ID],
-                    },
+                    data_updates=data_updates,
                 )
             errors.update(submit_errors)
 
