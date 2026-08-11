@@ -43,7 +43,9 @@ class AbortFlow(Exception):
 async def test_config_flow_max_registers_per_request_validated():
     """Config flow validates max registers per request."""
     flow = ConfigFlow()
-    flow.hass = SimpleNamespace(config_entries=SimpleNamespace(async_entries=lambda _domain: []))
+    flow.hass = SimpleNamespace(
+        config_entries=SimpleNamespace(async_entries=lambda _domain, include_ignore=False: [])
+    )
     result = await flow.async_step_user()
     schema_keys = {
         key.schema if hasattr(key, "schema") else key for key in result["data_schema"].schema
@@ -54,7 +56,9 @@ async def test_config_flow_max_registers_per_request_validated():
     for value in (1, MAX_BATCH_REGISTERS):
         flow = ConfigFlow()
         flow.hass = SimpleNamespace(
-            config_entries=SimpleNamespace(async_entries=lambda _domain: [])
+            config_entries=SimpleNamespace(
+                async_entries=lambda _domain, include_ignore=False: []
+            )
         )
         with (
             patch(
@@ -80,7 +84,9 @@ async def test_config_flow_max_registers_per_request_validated():
             assert result["step_id"] == "confirm"
 
     flow = ConfigFlow()
-    flow.hass = SimpleNamespace(config_entries=SimpleNamespace(async_entries=lambda _domain: []))
+    flow.hass = SimpleNamespace(
+        config_entries=SimpleNamespace(async_entries=lambda _domain, include_ignore=False: [])
+    )
     with patch(
         "custom_components.thessla_green_modbus._config_flow.validate_input"
     ) as mock_validate:
@@ -97,7 +103,9 @@ async def test_config_flow_max_registers_per_request_validated():
         mock_validate.assert_not_called()
 
     flow = ConfigFlow()
-    flow.hass = SimpleNamespace(config_entries=SimpleNamespace(async_entries=lambda _domain: []))
+    flow.hass = SimpleNamespace(
+        config_entries=SimpleNamespace(async_entries=lambda _domain, include_ignore=False: [])
+    )
     with patch(
         "custom_components.thessla_green_modbus._config_flow.validate_input"
     ) as mock_validate:
