@@ -34,7 +34,7 @@ def test_manifest_pymodbus_has_upper_bound() -> None:
     assert pymodbus_req is not None, "pymodbus not found in manifest requirements"
     assert "<4" in pymodbus_req or "<4.0" in pymodbus_req, (
         f"manifest.json pymodbus requirement lacks upper bound: {pymodbus_req!r}. "
-        "Should be 'pymodbus>=3.6.0,<4.0' to match pyproject.toml."
+        "Should be 'pymodbus>=3.6.1,<4.0' to match pyproject.toml."
     )
 
 

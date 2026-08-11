@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 
@@ -10,7 +12,7 @@ from .schema import SET_AIRFLOW_SCHEDULE_SCHEMA
 
 
 def _resolve_schedule_temperature_byte(
-    coordinator: object, setting_register: str, temperature: float | None
+    coordinator: Any, setting_register: str, temperature: float | None
 ) -> int:
     if temperature is not None:
         return max(0, min(39, round((temperature - 16.0) * 2)))

@@ -1,199 +1,127 @@
 # Release Process
 
-Maintainer checklist for publishing a HACS-friendly release of ThesslaGreen Modbus.
+Maintainer checklist for publishing a HACS-friendly ThesslaGreen Modbus release.
 
----
+**Current published release as of 2026-08-10:** `v2.8.3`.
 
-## How HACS shows update information
+## Version and compatibility sources
 
-HACS reads the following to display version and update data to users:
-
-| HACS UI element | Source |
+| Item | Canonical source |
 |---|---|
-| Installed version | `custom_components/thessla_green_modbus/manifest.json` → `version` |
-| Latest version | Latest GitHub Release tag (must match `manifest.json` `version`) |
-| "What's new" / release notes | GitHub Release body text |
-| Minimum HA version | `hacs.json` → `homeassistant` and `manifest.json` → `homeassistant` |
-| Integration name | `hacs.json` → `name` |
+| Integration/package version | `custom_components/thessla_green_modbus/manifest.json` and `pyproject.toml` — must match |
+| Minimum Home Assistant version for HACS | `hacs.json` → `homeassistant` |
+| Modbus runtime dependency | `manifest.json` and `pyproject.toml` dependency declarations |
+| User-facing change history | `CHANGELOG.md` and GitHub Release body |
+| HACS latest version | latest published GitHub Release/tag |
 
-No GitHub Release tag → HACS shows **no update available**, regardless of what is in `manifest.json`.
+Do **not** add a `homeassistant` key to `manifest.json`; the repository's minimum Home Assistant declaration for HACS lives in `hacs.json`.
 
----
+## 1. Decide the next version
 
-## Release checklist
+Use Semantic Versioning and consider user-visible behavior, not the number of commits:
 
-### 1. Decide the next version
-
-Follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html):
-
-| Change type | Version bump |
+| Change type | Typical bump |
 |---|---|
-| Bug fix, non-breaking improvement | Patch — `X.Y.Z+1` |
-| New entity, service, or behavior | Minor — `X.Y+1.0` |
-| Breaking change (entity IDs, service IDs, config format) | Major — `X+1.0.0` |
+| Bug fix / non-breaking hardening | patch |
+| New entities/actions/capabilities | minor |
+| Breaking entity/action/config contract | major |
 
-### 2. Update `manifest.json`
+The repository currently uses `2.8.3`. Development work after that release does not automatically imply a specific next version.
 
-```json
-"version": "X.Y.Z"
-```
+## 2. Update version metadata
 
-File: `custom_components/thessla_green_modbus/manifest.json`
+Set the same `X.Y.Z` in:
 
-Also verify these fields are present and correct:
+- `custom_components/thessla_green_modbus/manifest.json` → `version`;
+- `pyproject.toml` → `version`.
 
-```json
-"homeassistant": "2026.1.0",
-"documentation": "https://github.com/blakinio/thesslagreen",
-"issue_tracker": "https://github.com/blakinio/thesslagreen/issues"
-```
+Also verify:
 
-### 3. Update `pyproject.toml`
+- `hacs.json` → `homeassistant` reflects the oldest version actually covered by the minimum-version CI contract;
+- pymodbus bounds are consistent across manifest/package/requirements metadata;
+- `CHANGELOG.md` has an `## [X.Y.Z] - YYYY-MM-DD` section.
 
-```toml
-version = "X.Y.Z"
-```
+## 3. Run release gates
 
-Both `manifest.json` and `pyproject.toml` must always carry the same version string.
+The candidate commit must pass the repository CI. The current CI contract includes:
 
-### 4. Update `CHANGELOG.md`
+- Ruff;
+- import-order validation;
+- Ruff format;
+- compileall;
+- mypy;
+- vendor register comparison;
+- AirPack 4 vendor coverage;
+- translation validation;
+- maintainability gate;
+- durable task/checkpoint validation when applicable;
+- full pytest suite with coverage;
+- entity mapping validation;
+- minimum supported Home Assistant API-contract tests;
+- Hassfest;
+- HACS validation.
 
-- Rename `## [Unreleased]` → `## [X.Y.Z] - YYYY-MM-DD`.
-- Add a new empty `## [Unreleased]` section at the top.
-- Update the `[Unreleased]` link reference at the bottom of the file:
-  ```
-  [Unreleased]: https://github.com/blakinio/thesslagreen/compare/vX.Y.Z...HEAD
-  [X.Y.Z]: https://github.com/blakinio/thesslagreen/releases/tag/vX.Y.Z
-  ```
+For hardware-sensitive changes also follow [`docs/real_device_validation.md`](real_device_validation.md). CI cannot replace a physical Modbus soak/reconnect test.
 
-### 5. Commit the version bump
+## 4. Update release documentation
+
+Before changing the version, update at least:
+
+- `CHANGELOG.md`;
+- `README.md` / `README_en.md` when compatibility or user-facing behavior changed;
+- `docs/quality/STATUS.md`;
+- `docs/release_readiness.md`;
+- `docs/real_device_validation.md` when new hardware evidence exists.
+
+Never rewrite old hardware evidence as if it were measured on the new candidate. Add a new dated evidence block instead.
+
+## 5. Merge the release commit to `main`
+
+Use the normal protected PR path and require all mandatory checks to pass. Do not tag a red or unreviewed candidate.
+
+## 6. Automated GitHub Release workflow
+
+`.github/workflows/release.yaml` is triggered by:
+
+- `workflow_dispatch`; or
+- a push to `main` that changes `manifest.json` or `CHANGELOG.md`.
+
+The workflow:
+
+1. reads `manifest.json` → `version`;
+2. validates the version format;
+3. extracts the matching section from `CHANGELOG.md` when available;
+4. checks whether `vX.Y.Z` already exists;
+5. if the tag does not exist, creates the GitHub Release with `tag_name: vX.Y.Z` targeted at the triggering `main` commit.
+
+The release action and checkout action are pinned to immutable commit SHAs. Keep them pinned when upgrading; update the SHA intentionally after reviewing the upstream release/tag.
+
+## 7. Manual fallback
+
+If release automation is deliberately disabled or fails for a reason unrelated to the candidate code, the equivalent manual sequence is:
 
 ```bash
-git add custom_components/thessla_green_modbus/manifest.json pyproject.toml CHANGELOG.md
-git commit -m "chore: bump version to X.Y.Z"
-git push origin main
-```
-
-### 6. Create the git tag
-
-```bash
+git checkout main
+git pull --ff-only origin main
 git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-The tag **must** be prefixed with `v` and must exactly match `manifest.json` `version`
-(e.g. `v2.8.0` for `"version": "2.8.0"`). HACS requires this format.
+Then create a GitHub Release from that exact tag and use the matching `CHANGELOG.md` section as the release notes. Do not use the manual path to bypass failed CI.
 
-### 7. Create the GitHub Release
+## 8. Post-release verification
 
-Go to **https://github.com/blakinio/thesslagreen/releases/new** and:
+Verify all of the following:
 
-1. **Tag**: select the tag you just pushed (`vX.Y.Z`).
-2. **Release title**: `vX.Y.Z — <short headline>` (e.g. `v2.9.0 — Fan fixes & real-device validation`).
-3. **Release body**: use the template at `.github/RELEASE_TEMPLATE.md` as a starting point.
-   Copy the relevant section from `CHANGELOG.md` and expand it with:
-   - A 1–3 sentence summary of what changed and why it matters.
-   - A **Breaking changes** block if applicable.
-   - A **What's Changed** list of notable fixes and additions.
-   - A **Full Changelog** compare link (generated automatically from the link refs in CHANGELOG.md).
-4. Check **Set as the latest release**.
-5. Click **Publish release**.
+- GitHub shows `vX.Y.Z` as the intended release;
+- the release points to the intended `main` commit;
+- HACS discovers the new release;
+- a clean HACS install reports the expected version;
+- `manifest.json`, `pyproject.toml`, release tag, release title, and changelog agree;
+- no documentation still advertises an older version as current.
 
-After publishing, HACS will discover the release within minutes (on the next HACS backend refresh cycle).
+When a release contains transport/write/scanner changes, record a post-release physical-device smoke test separately from CI evidence.
 
----
+## Current release history note
 
-## Release notes format
-
-Use the `.github/RELEASE_TEMPLATE.md` template. Key sections:
-
-```markdown
-## Summary
-1–3 sentences: what changed and why users should update.
-
-## Breaking changes
-(omit section if none)
-
-## What's Changed
-- **Fix:** short description (#PR)
-- **Add:** short description (#PR)
-- **Change:** short description (#PR)
-
-## Full Changelog
-https://github.com/blakinio/thesslagreen/compare/vPREV...vNEXT
-```
-
-Keep entries concise — one line per change, linking to the PR where relevant.
-Users read this in the HACS update dialog on their phone or desktop.
-
----
-
-## Version source of truth
-
-| File | Field | Role |
-|---|---|---|
-| `custom_components/thessla_green_modbus/manifest.json` | `version` | HA + HACS installed-version display |
-| `pyproject.toml` | `version` | Python package metadata |
-| Git tag | `vX.Y.Z` | HACS latest-version detection |
-| GitHub Release | title / body | HACS update dialog content |
-| `CHANGELOG.md` | `## [X.Y.Z]` section | Human-readable history |
-
-All five must be consistent before a release is considered complete.
-
----
-
-## Validation before tagging
-
-Run these locally (requires Python 3.13):
-
-```bash
-python -m compileall -q custom_components/thessla_green_modbus tests tools
-ruff check custom_components tests tools
-ruff check --select I custom_components tests tools
-ruff format --check custom_components tests tools
-python tools/check_maintainability.py
-python tools/validate_entity_mappings.py
-python tools/check_translations.py
-```
-
-CI (GitHub Actions) must also be green on the release commit before tagging.
-
----
-
-## Automated release creation
-
-`.github/workflows/release.yaml` runs automatically on every `v*.*.*` tag push:
-
-1. Checks out the tagged commit.
-2. Extracts the `## [X.Y.Z]` section from `CHANGELOG.md` as release notes.
-3. Calls `gh release create` to publish the GitHub Release.
-
-No manual steps are needed beyond pushing the tag.
-
----
-
-## Bootstrapping v2.8.0 (one-time, after PR merge)
-
-v2.8.0 code is merged to `main` but has no GitHub Release yet.
-Run these commands **after** this PR is merged:
-
-```bash
-git checkout main
-git pull origin main
-git tag v2.8.0
-git push origin v2.8.0
-```
-
-The `release.yaml` workflow will automatically create the GitHub Release from
-the `## [2.8.0]` section in `CHANGELOG.md`.
-
-HACS will detect the release within minutes of it being published.
-
----
-
-## Post-release
-
-- Verify the new release appears in **https://github.com/blakinio/thesslagreen/releases**.
-- Install a test instance via HACS and confirm the version badge shows `X.Y.Z`.
-- If HACS does not pick up the release within 30 minutes, trigger a manual HACS refresh.
-- Open a `docs/releases/vX.Y.x.md` draft file for the next release cycle.
+The previous one-time `v2.8.0` bootstrap instructions are obsolete. Releases `v2.8.1`, `v2.8.2`, and `v2.8.3` already exist; do not recreate or move those tags.

@@ -108,7 +108,7 @@ def _initialize_device_state(coordinator: Any, *, entry: ConfigEntry | None) -> 
         "holding_registers": set(),
         "coil_registers": set(),
         "discrete_inputs": set(),
-        "calculated": {"estimated_power", "total_energy"},
+        "calculated": set(),
     }
 
     coordinator.device_client._register_maps = {
@@ -156,10 +156,6 @@ def _initialize_scan_state(coordinator: Any) -> None:
     }
 
     coordinator.device_client.last_scan = None
-    from ..utils import utcnow
-
-    coordinator.device_client._last_power_timestamp = utcnow()
-    coordinator.device_client._total_energy = 0.0
 
 
 def initialize_runtime_state(coordinator: Any, *, entry: ConfigEntry | None) -> None:

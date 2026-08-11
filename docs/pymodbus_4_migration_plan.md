@@ -11,7 +11,7 @@
 ### Manifest requirement
 
 ```json
-"requirements": ["pymodbus>=3.6.0,<4.0"]
+"requirements": ["pymodbus>=3.6.1,<4.0"]
 ```
 
 ### Why `<4.0` is intentionally pinned
@@ -168,7 +168,7 @@ Do NOT touch `main` until the migration is complete and validated.
 
 In `manifest.json`:
 ```json
-"requirements": ["pymodbus>=3.6.0,<5.0"]
+"requirements": ["pymodbus>=3.6.1,<5.0"]
 ```
 
 Or, to target 4.x explicitly during migration testing:

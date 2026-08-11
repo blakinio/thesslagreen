@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from ..const import DOMAIN, MANUFACTURER, UNKNOWN_MODEL
+from homeassistant.helpers.device_registry import DeviceInfo
+
+from ..const import CONNECTION_TYPE_TCP, DOMAIN, MANUFACTURER, UNKNOWN_MODEL
 from ..register_map import REGISTER_MAP_VERSION
 from ..registers.loader import get_all_registers
 from ..utils import utcnow
@@ -120,15 +122,15 @@ def get_diagnostic_data(coordinator: Any) -> dict[str, Any]:
 def _resolve_sw_version(coordinator: Any) -> str:
     """Build a human-readable sw_version string.
 
-    Prefers the firmware string from the device scan result.  When that is
+    Prefers the firmware string from the device scan result. When that is
     absent or 'Unknown', falls back to assembling a version string from the
     version_major / version_minor / cf_version registers that were read from
-    the device.  Format: ``<major>.<minor> CF<cf>`` (e.g. ``3.11 CF13``).
+    the device. Format: ``<major>.<minor> CF<cf>`` (e.g. ``3.11 CF13``).
     """
     dc = coordinator.device_client
     firmware = dc.device_info.get("firmware", "Unknown")
     if firmware and firmware != "Unknown":
-        return firmware
+        return str(firmware)
 
     data: dict[str, Any] = getattr(coordinator, "data", {}) or {}
     major = data.get("version_major")
@@ -147,8 +149,39 @@ def _resolve_sw_version(coordinator: Any) -> str:
     return " ".join(parts) if parts else "Unknown"
 
 
+def _device_serial(coordinator: Any) -> str | None:
+    """Return a normalized, usable device serial or None for placeholders."""
+    device_client = getattr(coordinator, "device_client", None)
+    device_info = getattr(device_client, "device_info", {})
+    if not isinstance(device_info, dict):
+        return None
+    serial = device_info.get("serial_number")
+    if not isinstance(serial, str):
+        return None
+    normalized = serial.strip()
+    if not normalized or normalized.lower() in {"unknown", "n/a", "0"}:
+        return None
+    return normalized
+
+
+def _stable_device_identifier(coordinator: Any) -> str:
+    """Return an endpoint-independent device-registry identifier."""
+    dc = coordinator.device_client
+    serial = _device_serial(coordinator)
+    if serial is not None:
+        return f"serial:{serial.lower()}"
+
+    entry_id = getattr(getattr(coordinator, "entry", None), "entry_id", None)
+    if isinstance(entry_id, str) and entry_id:
+        return f"entry:{entry_id}"
+
+    # Runtime coordinators always have a config entry. Keep a deterministic
+    # fallback for isolated tests and pre-entry development helpers only.
+    return f"endpoint:{dc.config.host}:{dc.config.port}:{dc.config.slave_id}"
+
+
 def get_device_info(coordinator: Any) -> dict[str, Any]:
-    """Return device info mapping for the connected unit."""
+    """Return native Home Assistant device info with stable identity."""
     dc = coordinator.device_client
     model = dc.device_info.get("model")
     if not model or model == UNKNOWN_MODEL:
@@ -171,26 +204,17 @@ def get_device_info(coordinator: Any) -> dict[str, Any]:
         model = UNKNOWN_MODEL
     dc.device_info["model"] = model
 
-    class _CompatDeviceInfo(dict):
-        def __getattr__(self, item: str) -> Any:
-            try:
-                return self[item]
-            except KeyError as exc:
-                raise AttributeError(item) from exc
-
-    return _CompatDeviceInfo(
-        identifiers={
-            (
-                DOMAIN,
-                f"{dc.config.host}:{dc.config.port}:{dc.config.slave_id}",
-            )
-        },
+    info: dict[str, Any] = DeviceInfo(
+        identifiers={(DOMAIN, _stable_device_identifier(coordinator))},
         name=device_name(coordinator),
         manufacturer=MANUFACTURER,
         model=model,
+        serial_number=_device_serial(coordinator),
         sw_version=_resolve_sw_version(coordinator),
-        configuration_url=f"http://{dc.config.host}",
     )
+    if dc.config.connection_type == CONNECTION_TYPE_TCP and dc.config.host:
+        info["configuration_url"] = f"http://{dc.config.host}"
+    return info
 
 
 def device_name(coordinator: Any) -> str:

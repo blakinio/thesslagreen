@@ -1,8 +1,5 @@
 """Coordinator post-processing and power estimation tests."""
 
-from datetime import datetime, timedelta
-from unittest.mock import patch
-
 import pytest
 
 
@@ -16,24 +13,18 @@ def test_post_process_data(coordinator):
         "dac_supply": 5.0,
         "dac_exhaust": 4.0,
     }
-    fake_now = datetime(2024, 1, 1, 12, 0, 0)
-    coordinator.device_client._last_power_timestamp = fake_now - timedelta(hours=1)
-    with patch(
-        "custom_components.thessla_green_modbus.coordinator.coordinator.dt_util.utcnow",
-        return_value=fake_now,
-    ):
-        processed_data = coordinator._post_process_data(raw_data)
+    processed_data = coordinator._post_process_data(raw_data)
 
     assert "calculated_efficiency" in processed_data
     assert isinstance(processed_data["calculated_efficiency"], int | float)
     assert 0 <= processed_data["calculated_efficiency"] <= 100
     assert processed_data["flow_balance"] == 10
     assert processed_data["flow_balance_status"] == "supply_dominant"
-    assert processed_data["estimated_power"] > 0
-    assert processed_data["total_energy"] > 0
     assert processed_data["heat_recovery_efficiency"] == processed_data["calculated_efficiency"]
     assert processed_data["heat_recovery_power"] >= 0
-    assert processed_data["electrical_power"] == processed_data["estimated_power"]
+    assert processed_data["electrical_power"] > 0
+    assert "estimated_power" not in processed_data
+    assert "total_energy" not in processed_data
 
 
 def test_lookup_model_power_exact(coordinator):

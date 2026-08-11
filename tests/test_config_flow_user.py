@@ -4,9 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from custom_components.thessla_green_modbus.config_flow import (
-    ConfigFlow,
-)
+from custom_components.thessla_green_modbus.config_flow import ConfigFlow
 from custom_components.thessla_green_modbus.const import (
     CONF_BAUD_RATE,
     CONF_CONNECTION_MODE,
@@ -41,7 +39,6 @@ class AbortFlow(Exception):
         self.reason = reason
 
 
-@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_form_user():
     """Test we get the initial form."""
@@ -91,7 +88,10 @@ async def test_form_user_invalid_ipv6():
 async def test_form_user_valid_ipv6():
     """Test IPv6 addresses are accepted."""
     flow = ConfigFlow()
-    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+    flow.hass = SimpleNamespace(
+        config=SimpleNamespace(language="en"),
+        config_entries=SimpleNamespace(async_entries=lambda _domain, include_ignore=False: []),
+    )
 
     validation_result = {
         "title": "ThesslaGreen fe80::1",
@@ -131,7 +131,10 @@ async def test_form_user_valid_ipv6():
 async def test_form_user_valid_domain():
     """Test domain names are accepted."""
     flow = ConfigFlow()
-    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+    flow.hass = SimpleNamespace(
+        config=SimpleNamespace(language="en"),
+        config_entries=SimpleNamespace(async_entries=lambda _domain, include_ignore=False: []),
+    )
 
     validation_result = {
         "title": "ThesslaGreen example.com",
@@ -171,7 +174,10 @@ async def test_form_user_valid_domain():
 async def test_form_user_success():
     """Test successful configuration with confirm step."""
     flow = ConfigFlow()
-    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
+    flow.hass = SimpleNamespace(
+        config=SimpleNamespace(language="en"),
+        config_entries=SimpleNamespace(async_entries=lambda _domain, include_ignore=False: []),
+    )
 
     translations = {
         "auto_detected_note_success": "Auto-detection successful!",
@@ -239,10 +245,13 @@ async def test_form_user_success():
 
 
 @pytest.mark.asyncio
-async def test_unique_id_sanitized():
-    """Ensure unique ID replaces colons in host with hyphens."""
+async def test_host_is_not_used_as_unique_id():
+    """Mutable host/IP data is duplicate-match data, never persistent identity."""
     flow = ConfigFlow()
-    flow.hass = None
+    flow.hass = SimpleNamespace(
+        config=SimpleNamespace(language="en"),
+        config_entries=SimpleNamespace(async_entries=lambda _domain, include_ignore=False: []),
+    )
 
     validation_result = {
         "title": "ThesslaGreen fe80::1",
@@ -256,20 +265,34 @@ async def test_unique_id_sanitized():
             return_value=validation_result,
         ),
         patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
-            "_abort_if_unique_id_configured",
-        ),
-        patch(
             "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
         ) as mock_set_unique_id,
+        patch(
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow._async_abort_entries_match"
+        ) as mock_match,
+        patch(
+            "homeassistant.helpers.translation.async_get_translations",
+            new=AsyncMock(return_value={}),
+        ),
     ):
-        await flow.async_step_user(
+        result = await flow.async_step_user(
             {
+                CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
                 CONF_HOST: "fe80::1",
                 CONF_PORT: 502,
-                "slave_id": 10,
+                CONF_SLAVE_ID: 10,
                 CONF_NAME: "My Device",
             }
         )
 
-    mock_set_unique_id.assert_called_once_with("fe80--1:502:10")
+    assert result["type"] == "form"
+    assert result["step_id"] == "confirm"
+    mock_set_unique_id.assert_not_called()
+    mock_match.assert_called_once_with(
+        {
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+            CONF_HOST: "fe80::1",
+            CONF_PORT: 502,
+            CONF_SLAVE_ID: 10,
+        }
+    )

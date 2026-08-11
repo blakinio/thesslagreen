@@ -1,175 +1,86 @@
-# Release Readiness Audit
+# Release Readiness
 
-Date: 2026-05-11 (follow-up validation pass — fixed stale `dev` reference in `docs/refactor_status.md`)
-Branch: `main`
+**Status date:** 2026-08-10  
+**Current published release:** `v2.8.3`  
+**Current manifest/package version:** `2.8.3`  
+**Canonical quality status:** [`docs/quality/STATUS.md`](quality/STATUS.md)
 
----
+This file describes readiness for the **next** release. The old May 2026 `v2.8.0` pre-release checklist is obsolete: `v2.8.3` is already published.
 
-## 1. Version
+## Current version sources
 
-| Source | Value |
-|--------|-------|
-| `custom_components/thessla_green_modbus/manifest.json` → `version` | `2.8.0` |
-| `pyproject.toml` → `version` | `2.8.0` |
-| Versions consistent | ✅ |
+| Source | Current value |
+|---|---|
+| `custom_components/thessla_green_modbus/manifest.json` | `2.8.3` |
+| `pyproject.toml` | `2.8.3` |
+| `hacs.json` minimum Home Assistant | `2026.1.0` |
+| runtime pymodbus constraint | `>=3.6.0,<4.0` |
+| repository quality declaration | `bronze` |
 
----
+Version metadata was synchronized by PR #1762. Do not increment it merely because development commits exist; select the next semantic version intentionally at release time.
 
-## 2. Branch State
+## Automated readiness
 
-| Check | Result |
-|-------|--------|
-| Source branch | `main` |
-| No stale `dev` target references in code/docs/CI | ✅ |
-| No active instructions targeting `dev` | ✅ |
-| CI triggers: `main`, `master`, `pull_request`, `workflow_dispatch` | ✅ |
+PR #1762 merged to `main` as `088677385a179a0a02c14ddae3dd96d20c2534e0`. Canonical CI #1146 passed:
 
----
+- Ruff and import order;
+- Ruff format;
+- compileall;
+- vendor register comparison;
+- AirPack 4 vendor coverage;
+- translation validation;
+- maintainability gate;
+- checkpoint validation;
+- full pytest suite;
+- entity mapping validation;
+- Hassfest;
+- HACS validation.
 
-## 3. Brand Assets
+The full test suite reported 90.68% coverage, above the configured 80% minimum.
 
-| Asset | Status |
-|-------|--------|
-| `custom_components/thessla_green_modbus/brand/icon.png` | ✅ PNG 256×256 RGB |
-| `custom_components/thessla_green_modbus/brand/logo.png` | ✅ PNG 512×256 RGB |
-| Both ≥ 256 px each dimension | ✅ |
+The 2026-08-10 follow-up hardening additionally requires a green final run with:
 
----
+- `mypy` as a blocking gate;
+- focused API-contract tests on minimum Home Assistant `2026.1.0`;
+- immutable commit SHAs for external GitHub Actions;
+- Hassfest with the config-entry-only schema warning removed;
+- Repairs write-failure lifecycle regression tests;
+- tests proving the removed volatile `total_energy` state does not return.
 
-## 4. Manifest / HACS / hassfest Readiness
+Until that follow-up CI is green, those additions are `PENDING`, not assumed.
 
-| Check | Result |
-|-------|--------|
-| `domain` | `thessla_green_modbus` ✅ |
-| `name` | `ThesslaGreen Modbus` ✅ |
-| `version` | `2.8.0` ✅ |
-| `iot_class` | `local_polling` ✅ |
-| `integration_type` | `hub` ✅ |
-| `quality_scale` | `bronze` (lowered from `silver`; see §8) |
-| `requirements` | `["pymodbus>=3.6.0"]` ✅ |
-| No unsupported `homeassistant` key | ✅ (removed in prior PR) |
-| No unsupported `files` key | ✅ (removed in prior PR) |
-| `hacs.json` present and valid | ✅ |
-| `hacs.json` → `content_in_root` | `false` ✅ |
-| Translations JSON valid | ✅ all four files |
-| strings.json valid | ✅ |
+## Real-device readiness
 
----
+**Status: PARTIAL / external gate.**
 
-## 5. Full Local Validation Gate Results
+Historical evidence exists for an AirPack 4 over Modbus TCP, but it predates the 2026-08-10 hardening changes. The next release should not claim post-hardening hardware validation until the checks in [`docs/real_device_validation.md`](real_device_validation.md) are performed.
 
-All gates run with Python 3.13.12.
+Recommended release gate for hardware-sensitive changes:
 
-| Gate | Command | Result |
-|------|---------|--------|
-| ruff check | `ruff check custom_components tests tools` | ✅ PASS — All checks passed |
-| ruff import-order | `ruff check --select I custom_components tests tools` | ✅ PASS |
-| ruff format | `ruff format --check custom_components tests tools` | ✅ PASS — 431 files already formatted |
-| compileall | `python3.13 -m compileall -q custom_components/thessla_green_modbus tests tools` | ✅ PASS |
-| compare_registers | `python3.13 tools/compare_registers_with_reference.py` | ✅ PASS (62 extras are expected integration extensions) |
-| check_maintainability | `python3.13 tools/check_maintainability.py` | ✅ PASS |
-| validate_entity_mappings | `python3.13 tools/validate_entity_mappings.py` | ✅ PASS — 366 entities validated |
-| check_translations | `python3.13 tools/check_translations.py` | ✅ PASS — All translation keys present |
-| pytest | Requires Python 3.13 + `pytest-homeassistant-custom-component` | ⚠️ Not runnable in this environment (Python 3.11 system default; `pytest-homeassistant-custom-component>=0.13.309` requires Python ≥3.12). GitHub Actions CI uses Python 3.13 where the full suite passes. |
+1. Load the candidate build on a physical AirPack.
+2. Verify initial discovery and normal polling.
+3. Exercise representative safe writes and read-back.
+4. Verify a network interruption and automatic reconnect.
+5. If RTU is claimed for the release, validate with a stable `/dev/serial/by-id/...` path.
+6. Run a 24–72 hour soak and inspect connection/read/write statistics and logs.
+7. Record exact integration commit, Home Assistant version, device model, firmware, and transport.
 
-**Note on pytest local run:** The local environment has Python 3.11 as the system default
-and Python 3.13.12 available as `python3.13`. The `pytest-homeassistant-custom-component`
-package requires Python ≥3.12. GitHub Actions uses `python-version: "3.13"`,
-where the full test suite passes (1948 passed, 4 skipped as of last CI run on `main`).
+## Supply-chain readiness
 
----
+CI and release workflows must use immutable commit SHAs for third-party GitHub Actions. Version comments may be kept next to the SHA for readability. Moving `@main`, `@master`, or mutable major-version refs are not accepted in the final follow-up state.
 
-## 6. Fix Applied in This Pass
+## Documentation readiness
 
-**`tools/validate_entity_mappings.py` — missing stubs for HA component modules**
+Before tagging the next release verify that all of these describe the candidate, not an old branch/version:
 
-The tool's `_ensure_homeassistant_importable()` function had a stub `_Platform` class
-missing `BUTTON`, and no stubs for `homeassistant.components.binary_sensor`,
-`homeassistant.components.sensor`, `homeassistant.core`, or the HA unit/device-class enums.
-These gaps caused `AttributeError`/`ModuleNotFoundError` when running the tool without a
-full HA installation, even though the integration code itself handles missing HA modules
-correctly via its own fallback in `const.py`.
+- `README.md` and `README_en.md`;
+- `CHANGELOG.md`;
+- `docs/quality/STATUS.md`;
+- `docs/ha_quality_scale_audit.md`;
+- `docs/real_device_validation.md`;
+- this file;
+- `docs/release_process.md`.
 
-Fix: added `BUTTON` to the `_Platform` stub and added complete stubs for:
-- `homeassistant.components.binary_sensor.BinarySensorDeviceClass`
-- `homeassistant.components.sensor.SensorDeviceClass` / `SensorStateClass`
-- `homeassistant.core.HomeAssistant`
-- `UnitOfTemperature`, `UnitOfVolumeFlowRate`, `UnitOfElectricPotential`, `UnitOfPower`, `UnitOfTime`
+## Release decision
 
-No entity IDs, service IDs, register names, or unique IDs were changed.
-
----
-
-## 7. CI Jobs
-
-| Job | Description | Blocking? |
-|-----|-------------|-----------|
-| `lint` | ruff check, compileall, compare_registers, maintainability gate | ✅ blocking |
-| `tests` | pytest with coverage | ✅ blocking |
-| `entity-mappings` | validate_entity_mappings.py | ✅ blocking |
-| `ruff-adoption-signal` | ruff import-order + format drift | non-blocking (`continue-on-error: true`) |
-| `hassfest` | `home-assistant/actions/hassfest@master` | ✅ blocking |
-| `hacs` | `hacs/action@main` | ✅ blocking |
-
----
-
-## 8. quality_scale Decision
-
-`manifest.json` declares `quality_scale: "bronze"` (lowered from `silver`).
-
-Silver requires documented real-device validation. No completed on-device evidence
-exists in this repository (see §9 and `docs/real_device_validation.md`). The scale
-was therefore lowered to `bronze` until `docs/real_device_validation.md` §5 Evidence
-Record is filled by a named tester with a physical ThesslaGreen AirPack device and
-committed to the repository. At that point `quality_scale` may be raised back to
-`silver` provided all silver criteria are met.
-
----
-
-## 9. Real-Device Validation Status
-
-**Status: TEMPLATE / PENDING**
-
-See `docs/real_device_validation.md` for the full checklist and evidence record.
-
-No completed evidence of on-device testing exists in the repository. The checklist
-template is available and must be filled by a human tester with a physical device before
-real-device validation can be marked complete.
-
-This remains **open release blocker B4**.
-
----
-
-## 10. Remaining Release Blockers
-
-| # | Blocker | Status |
-|---|---------|--------|
-| **B1** | Hassfest CI | ✅ Expected to pass — `files` key removed in prior PR; manifest structure is correct |
-| **B2** | HACS CI | ✅ Expected to pass — `hacs.json` valid; `files` key removed |
-| **B3** | GitHub release tag `v2.8.0` | ⛔ OPEN — Tag and GitHub release not yet created |
-| **B4** | Real-device validation | ⛔ OPEN — Checklist template at `docs/real_device_validation.md`; evidence record pending. `quality_scale` lowered to `bronze` until evidence is provided. |
-
----
-
-## 11. Non-Blocking Future Work
-
-| # | Item |
-|---|------|
-| N1 | ~~Remove remaining compatibility shims after one or more stable releases~~ — `coordinator/io.py` and `coordinator/capabilities.py` removed in `refactor/remove-final-shims` |
-| N2 | Deeper coordinator-to-core migration |
-| N3 | Test fixture consolidation |
-| N4 | Optional entity visibility tuning (schedule/harmonogram entity group hiding) |
-| N5 | Harmonogram entity cleanup |
-| N6 | `airing_coef` range: vendor confirmation needed for values outside 100–150 |
-
----
-
-## 12. Confirmations
-
-- PR targets `main`, not `dev`.
-- No entity IDs, service IDs, register names, or unique IDs changed.
-- CI not weakened; hassfest and HACS jobs remain intact and blocking.
-- Tests not skipped, xfailed, or deleted.
-- No broad refactoring performed.
-- No new binary brand assets added or replaced (existing assets validated only).
-- `quality_scale` lowered from `silver` to `bronze`; real-device evidence required before restoring `silver`.
+A new GitHub release is **not** created by this audit follow-up. The repository owner should choose the next version after deciding how much real-device validation is required for that release. The existing release workflow reads the version from `manifest.json` and will skip creation when the corresponding tag already exists.

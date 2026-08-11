@@ -92,12 +92,12 @@ def _resolve_legacy_entity_parts(
     """Return base_uid by resolving a legacy uid against register maps, or None."""
     reverse_by_address: dict[tuple[int, int | None], str] = {}
     register_to_key: dict[str, str] = {}
-    for key, (reg_name, reg_type, bit) in lookup.items():
-        register_to_key.setdefault(reg_name, key)
+    for entity_key, (reg_name, reg_type, bit) in lookup.items():
+        register_to_key.setdefault(reg_name, entity_key)
         address = get_address(reg_name, reg_type)
         if address is not None:
             bit_idx = bit.bit_length() - 1 if bit is not None else None
-            reverse_by_address.setdefault((address, bit_idx), key)
+            reverse_by_address.setdefault((address, bit_idx), entity_key)
 
     match = re.match(rf".*_{slave_id}_(.+)", uid_no_domain)
     if not match:
@@ -108,10 +108,12 @@ def _resolve_legacy_entity_parts(
     if addr_match:
         address = int(addr_match.group(1))
         bit_idx = int(addr_match.group(2)) if addr_match.group(2) else None
-        key = reverse_by_address.get((address, bit_idx)) or reverse_by_address.get((address, None))
-        if key:
+        resolved_key = reverse_by_address.get((address, bit_idx)) or reverse_by_address.get(
+            (address, None)
+        )
+        if resolved_key:
             bit_suffix = f"_bit{bit_idx}" if bit_idx is not None else ""
-            return f"{slave_id}_{key}_{address}{bit_suffix}"
+            return f"{slave_id}_{resolved_key}_{address}{bit_suffix}"
         return None
 
     return _resolve_legacy_register_name(remainder, lookup, register_to_key, get_address, slave_id)

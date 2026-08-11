@@ -133,6 +133,7 @@ class ThesslaGreenModbusCoordinator(
     state via ``coordinator.device_client.X``.
     """
 
+    _device_client: ThesslaGreenDeviceClient
     _reauth_scheduled: bool
     _shutting_down: bool
     _stop_listener: Callable[..., Any] | None

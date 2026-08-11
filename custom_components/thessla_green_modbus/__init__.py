@@ -5,19 +5,22 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, cast
 
-try:
-    from homeassistant.const import CONF_NAME
-except ModuleNotFoundError:  # pragma: no cover - allows local tooling without HA installed
-    CONF_NAME = "name"
+from homeassistant.const import CONF_NAME
+from homeassistant.helpers import config_validation as cv
+
+from .const import DEFAULT_NAME, DOMAIN
+from .const import PLATFORMS as PLATFORM_DOMAINS
+
+# ThesslaGreen is configured exclusively through config entries. The explicit
+# module-level assignment is intentionally visible to Home Assistant/hassfest
+# because async_setup() exists for process-lifetime service registration.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
     from .coordinator import ThesslaGreenModbusCoordinator
-
-from .const import DEFAULT_NAME
-from .const import PLATFORMS as PLATFORM_DOMAINS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,6 +64,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async_setup_platforms,
         async_start_coordinator,
     )
+    from .config_entry_identity import migrate_config_entry_unique_id
+    from .device_registry_migration import migrate_device_identifier
 
     coordinator = await async_create_coordinator(hass, entry)
     if not await async_start_coordinator(hass, entry, coordinator):
@@ -68,14 +73,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.runtime_data = coordinator
 
     await async_setup_mappings(hass)
+    migrate_config_entry_unique_id(hass, entry, coordinator)
+    migrate_device_identifier(hass, entry, coordinator)
     await async_migrate_entity_unique_ids(hass, entry, coordinator)
     await async_setup_platforms(hass, entry, PLATFORM_DOMAINS)
 
     from .clock_sync import ClockSyncManager
 
-    _clock_sync_manager = ClockSyncManager(hass, coordinator, entry)
-    _clock_sync_manager.attach()
-    coordinator._clock_sync_manager = _clock_sync_manager
+    clock_sync_manager = ClockSyncManager(hass, coordinator, entry)
+    clock_sync_manager.attach()
+    coordinator._clock_sync_manager = clock_sync_manager
 
     entry.async_on_unload(entry.add_update_listener(async_update_options))
     _LOGGER.info("ThesslaGreen Modbus integration setup completed successfully")

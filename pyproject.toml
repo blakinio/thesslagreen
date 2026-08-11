@@ -22,7 +22,7 @@ classifiers = [
     "Topic :: Home Automation",
 ]
 requires-python = ">=3.13"
-dependencies = ["pymodbus>=3.6.0,<4.0", "voluptuous>=0.13"]
+dependencies = ["pydantic>=2,<3", "pymodbus>=3.6.1,<4.0", "voluptuous>=0.13"]
 
 [project.optional-dependencies]
 dev = [
@@ -137,10 +137,6 @@ module = [
     "voluptuous.*",
 ]
 ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["tests.*"]
-ignore_errors = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

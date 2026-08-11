@@ -27,17 +27,16 @@ DEFAULT_USER_INPUT = {
 class AbortFlow(Exception):
     """Mock AbortFlow to simulate Home Assistant aborts."""
 
-    def __init__(self, reason: str) -> None:  # pragma: no cover - simple container
+    def __init__(self, reason: str) -> None:
         super().__init__(reason)
         self.reason = reason
 
 
 @pytest.mark.asyncio
-async def test_duplicate_entry_aborts():
-    """Attempting to add a duplicate entry should abort the flow."""
+async def test_duplicate_connection_entry_aborts_during_user_step():
+    """A device without serial identity is deduplicated by connection data."""
     flow = ConfigFlow()
     flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
-
     validation_result = {
         "title": "ThesslaGreen 192.168.1.100",
         "device_info": {},
@@ -49,25 +48,22 @@ async def test_duplicate_entry_aborts():
             "custom_components.thessla_green_modbus._config_flow.validate_input",
             return_value=validation_result,
         ),
-        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
         patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
-            "_abort_if_unique_id_configured",
-            side_effect=[None, AbortFlow("already_configured")],
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow._async_abort_entries_match",
+            side_effect=AbortFlow("already_configured"),
         ),
+        pytest.raises(AbortFlow) as err,
     ):
         await flow.async_step_user(DEFAULT_USER_INPUT)
 
-        with pytest.raises(AbortFlow):
-            await flow.async_step_confirm({})
+    assert err.value.reason == "already_configured"
 
 
 @pytest.mark.asyncio
 async def test_user_step_duplicate_entry_aborts_silently(caplog):
-    """Duplicate device during user step should abort without logging errors."""
+    """Duplicate device during user step aborts without logging an error."""
     flow = ConfigFlow()
     flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
-
     validation_result = {
         "title": "ThesslaGreen 192.168.1.100",
         "device_info": {},
@@ -79,10 +75,8 @@ async def test_user_step_duplicate_entry_aborts_silently(caplog):
             "custom_components.thessla_green_modbus._config_flow.validate_input",
             return_value=validation_result,
         ),
-        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
         patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
-            "_abort_if_unique_id_configured",
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow._async_abort_entries_match",
             side_effect=AbortFlow("already_configured"),
         ),
         caplog.at_level(logging.ERROR),

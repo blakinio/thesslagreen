@@ -144,6 +144,8 @@ async def _safe_request_refresh(coordinator: Any) -> None:
 class _CoordinatorScheduleMixin:
     """Write-path and schedule helpers for the coordinator."""
 
+    _device_client: Any
+    data: dict[str, Any] | None
     _transport: BaseModbusTransport | None
     client: Any | None
     slave_id: int
@@ -152,6 +154,11 @@ class _CoordinatorScheduleMixin:
     _write_lock: asyncio.Lock
 
     async def _ensure_connection(self) -> None: ...
+
+    if TYPE_CHECKING:
+
+        def async_set_updated_data(self, data: dict[str, Any]) -> None: ...
+
     async def _disconnect(self) -> None: ...
     async def _safe_request_refresh(self) -> None:
         """Request refresh and ignore mock-context TypeError in tests."""

@@ -92,6 +92,12 @@ class ThesslaGreenDeviceScanner(
     _transport: Any | None
     _reported_invalid: set[str]
     _sensor_unavailable_checks: dict[str, Any]
+    _known_missing_registers: dict[str, set[str]]
+    _input_register_map: dict[str, int]
+    _holding_register_map: dict[str, int]
+    _coil_register_map: dict[str, int]
+    _discrete_input_register_map: dict[str, int]
+    _multi_register_sizes: dict[str, int]
 
     def __init__(
         self,

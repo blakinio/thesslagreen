@@ -3,6 +3,9 @@
 # Core Home Assistant provided by host environment
 # (minimum supported Home Assistant is validated in CI)
 
+# Register schema validation
+pydantic>=2,<3
+
 # Modbus communication library
-pymodbus>=3.6.0,<4.0
+pymodbus>=3.6.1,<4.0
 voluptuous>=0.13

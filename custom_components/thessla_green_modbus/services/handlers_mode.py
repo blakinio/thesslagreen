@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 
@@ -12,7 +14,7 @@ _DURATION_MODES = frozenset({"boost", "fireplace", "hood", "party", "bathroom"})
 
 
 async def _refresh_and_log_mode_success(
-    coordinator: object, deps: ServiceHandlerDeps, mode: str, entity_id: str
+    coordinator: Any, deps: ServiceHandlerDeps, mode: str, entity_id: str
 ) -> None:
     await coordinator.async_request_refresh()
     deps.logger.info("Set special mode %s for %s", mode, entity_id)

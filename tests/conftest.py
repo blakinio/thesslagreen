@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import os
 import sys
 import warnings
@@ -12,20 +11,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-# Temporarily convert unawaited-coroutine RuntimeWarning into a hard error so
-# the exact failing test shows up in CI logs with a full traceback.
+# Treat unawaited coroutines as hard test failures. A green CI run must not hide
+# asynchronous programming errors behind RuntimeWarning output.
 warnings.filterwarnings("error", message="coroutine.*was never awaited", category=RuntimeWarning)
 
 pytest_plugins = ("tests.helpers_register_loader", "tests.helpers_coordinator")
 
 
 def _ensure_current_event_loop() -> asyncio.AbstractEventLoop:
-    """Ensure a main-thread event loop exists for PHCC/pytest-asyncio startup.
-
-    On Python 3.13, pytest-asyncio may begin with no current loop in MainThread,
-    while pytest-homeassistant-custom-component's debug fixture still calls
-    ``asyncio.get_event_loop()`` during setup.
-    """
+    """Ensure a main-thread event loop exists for PHCC/pytest-asyncio startup."""
     try:
         return asyncio.get_event_loop()
     except RuntimeError:
@@ -38,19 +32,6 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-# HA 2024.3 doesn't accept config_entry in DataUpdateCoordinator.__init__.
-# Shim it away so tests run against the installed HA without changing production code.
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator as _DUC
-
-if "config_entry" not in inspect.signature(_DUC.__init__).parameters:
-    _duc_orig_init = _DUC.__init__
-
-    def _duc_compat_init(self, *args, **kwargs):
-        kwargs.pop("config_entry", None)
-        _duc_orig_init(self, *args, **kwargs)
-
-    _DUC.__init__ = _duc_compat_init
-
 from custom_components.thessla_green_modbus.const import DOMAIN
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -58,11 +39,10 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 # ensure the main-thread loop exists before plugin fixtures request it.
 _ensure_current_event_loop()
 
-# Populate entity mappings before test modules are collected.  Some test-module-
-# level code (e.g. test_translations.py) reads NUMBER_ENTITY_MAPPINGS at import
-# time; without this call those dicts would be empty because the module-level
-# _run_build_entity_mappings() call was removed to eliminate blocking file I/O
-# from the HA event-loop import path.
+# Populate entity mappings before test modules are collected. Some test-module-
+# level code reads entity mappings at import time; without this call those dicts
+# would be empty because mapping construction is intentionally kept off the HA
+# event-loop import path.
 import custom_components.thessla_green_modbus.mappings as _thessla_mappings
 
 _thessla_mappings._run_build_entity_mappings()
@@ -96,11 +76,15 @@ def enable_event_loop_debug():
     loop = _ensure_current_event_loop()
     loop.set_debug(True)
     yield
+    # Some plugin teardown paths clear the current loop. Re-establish one so
+    # subsequent fixture teardown/setup does not emit the Python 3.13
+    # "There is no current event loop" deprecation warning.
+    _ensure_current_event_loop()
 
 
 @pytest.fixture
 def mock_coordinator():
-    """Return a mock coordinator using MagicMock(spec=ThesslaGreenModbusCoordinator)."""
+    """Return a coordinator-shaped mock with current device-domain state."""
     from custom_components.thessla_green_modbus.registers.maps import (
         coil_registers,
         discrete_input_registers,
@@ -121,15 +105,14 @@ def mock_coordinator():
         "on_off_panel_mode": 1,
         "supply_percentage": 50,
     }
-    _device_info = {
+    device_info = {
         "device_name": "ThesslaGreen AirPack",
         "firmware": "4.85.0",
         "serial_number": "S/N: 1234 5678 9abc",
     }
-    # Set on both coordinator and device_client so proxy and direct access work.
-    coordinator.device_client.device_info = _device_info
-    coordinator.device_client.device_info = _device_info
-    _capabilities = MagicMock(
+    coordinator.device_info = device_info
+    coordinator.device_client.device_info = device_info
+    capabilities = MagicMock(
         constant_flow=True,
         gwc_system=True,
         bypass_system=True,
@@ -145,22 +128,29 @@ def mock_coordinator():
         sensor_ambient_temperature=True,
         sensor_heating_temperature=True,
     )
-    coordinator.device_client.capabilities = _capabilities
-    _available_registers = {
+    coordinator.device_client.capabilities = capabilities
+    available_registers = {
         "input_registers": {"outside_temperature", "supply_temperature", "exhaust_temperature"},
         "holding_registers": {"mode", "on_off_panel_mode", "air_flow_rate_manual"},
         "coil_registers": {"power_supply_fans", "bypass"},
         "discrete_inputs": {"expansion", "contamination_sensor"},
-        "calculated": {"estimated_power", "total_energy"},
+        "calculated": {
+            "device_clock",
+            "heat_recovery_efficiency",
+            "heat_recovery_power",
+            "electrical_power",
+        },
     }
-    coordinator.device_client.available_registers = _available_registers
-    _register_maps = {
+    coordinator.device_client.available_registers = available_registers
+    register_maps = {
         "input_registers": input_registers().copy(),
         "holding_registers": holding_registers().copy(),
         "coil_registers": coil_registers().copy(),
         "discrete_inputs": discrete_input_registers().copy(),
     }
-    coordinator.device_client.get_register_map = lambda rt: _register_maps.get(rt, {})
+    coordinator.device_client.get_register_map = lambda register_type: register_maps.get(
+        register_type, {}
+    )
     coordinator.device_client.force_full_register_list = False
     coordinator.device_client.device_scan_result = None
     coordinator.device_client.statistics = {

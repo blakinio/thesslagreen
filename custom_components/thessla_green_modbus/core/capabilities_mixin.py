@@ -9,16 +9,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import Any, ClassVar
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _utcnow() -> datetime:
-    """Return timezone-aware UTC now."""
-    return datetime.now(UTC)
 
 
 def _clamp_percentage(value: float) -> float:
@@ -47,8 +41,7 @@ class _CoordinatorCapabilitiesMixin:
     """Capability and derived-value logic shared by DeviceClient and coordinator."""
 
     device_info: dict[str, Any]
-    _last_power_timestamp: datetime | None
-    _total_energy: float
+    device_client: Any
 
     _STANDBY_POWER_W: float = 10.0
     _MODEL_POWER_DATA: ClassVar[Mapping[int, tuple[float, float]]] = MappingProxyType(
@@ -135,18 +128,22 @@ class _CoordinatorCapabilitiesMixin:
         raw_ddtt = data.get("date_time_ddtt")
         raw_ggmm = data.get("date_time_ggmm")
         raw_sscc = data.get("date_time_sscc")
-        if any(v is None for v in (raw_yymm, raw_ddtt, raw_ggmm, raw_sscc)):
+        if raw_yymm is None or raw_ddtt is None or raw_ggmm is None or raw_sscc is None:
             return None
 
         def _bcd(b: int) -> int:
             return ((b >> 4) & 0xF) * 10 + (b & 0xF)
 
-        yy = _bcd((raw_yymm >> 8) & 0xFF)
-        mm = _bcd(raw_yymm & 0xFF)
-        dd = _bcd((raw_ddtt >> 8) & 0xFF)
-        hh = _bcd((raw_ggmm >> 8) & 0xFF)
-        mi = _bcd(raw_ggmm & 0xFF)
-        ss = _bcd((raw_sscc >> 8) & 0xFF)
+        yymm = int(raw_yymm)
+        ddtt = int(raw_ddtt)
+        ggmm = int(raw_ggmm)
+        sscc = int(raw_sscc)
+        yy = _bcd((yymm >> 8) & 0xFF)
+        mm = _bcd(yymm & 0xFF)
+        dd = _bcd((ddtt >> 8) & 0xFF)
+        hh = _bcd((ggmm >> 8) & 0xFF)
+        mi = _bcd(ggmm & 0xFF)
+        ss = _bcd((sscc >> 8) & 0xFF)
         year = 2000 + yy
         if 1 <= mm <= 12 and 1 <= dd <= 31 and hh <= 23 and mi <= 59 and ss <= 59:
             return f"{year:04d}-{mm:02d}-{dd:02d}T{hh:02d}:{mi:02d}:{ss:02d}"
@@ -166,15 +163,16 @@ class _CoordinatorCapabilitiesMixin:
         return best[1] if best is not None else None
 
     def calculate_power_consumption(self, data: dict[str, Any]) -> float | None:
-        """Calculate electrical power consumption.
+        """Calculate estimated instantaneous electrical power consumption.
 
         When the device's nominal airflow is recognised the calculation uses
         the fan affinity law applied to the *measured* supply and exhaust flow
         rates together with model-specific max-power values taken from the
-        official datasheet / nameplate.  This gives ±10-15 % accuracy.
+        official datasheet / nameplate.  This gives an estimate rather than a
+        metered energy measurement.
 
         For an unknown model the method falls back to a cubic estimate based
-        on the DAC output voltages (previous behaviour, ±40-50 % accuracy).
+        on the DAC output voltages.
         """
         nominal_raw = data.get("nominal_supply_air_flow")
         supply_flow = data.get("supply_flow_rate")
@@ -188,11 +186,9 @@ class _CoordinatorCapabilitiesMixin:
                 specs = self._lookup_model_power(nominal)
                 if specs is not None and nominal > 0:
                     fan_total_max, heater_max = specs
-                    # Fan affinity law: P ∝ Q³, split equally between both fans.
                     fan_per = fan_total_max / 2.0
                     p_fans = fan_per * (q_s / nominal) ** 3 + fan_per * (q_e / nominal) ** 3
 
-                    # Heater: PWM-controlled resistive element → linear with DAC voltage.
                     dac_h = float(data.get("dac_heater", 0) or 0)
                     dac_h = max(0.0, min(10.0, dac_h))
                     p_heater = heater_max * (dac_h / 10.0)
@@ -201,7 +197,6 @@ class _CoordinatorCapabilitiesMixin:
             except (TypeError, ValueError) as exc:
                 _LOGGER.debug("Power calculation via flow/DAC unavailable: %s", exc)
 
-        # Fallback: DAC-voltage cubic estimate (model unknown or flow unavailable).
         try:
             v_s = float(data["dac_supply"])
             v_e = float(data["dac_exhaust"])
@@ -225,49 +220,31 @@ class _CoordinatorCapabilitiesMixin:
         """Post-process data to calculate derived values."""
         self._apply_serial_number_state(data)
         self._apply_post_process_derived_values(data)
-        self._apply_power_and_energy_estimates(data)
+        self._apply_power_estimate(data)
         self._apply_device_clock(data)
         return data
 
     def _apply_serial_number_state(self, data: dict[str, Any]) -> None:
         """Expose known device serial number in coordinator data."""
-        # Expose the full serial number (assembled from 6 registers by the scanner)
-        # as a sensor value so the serial_number entity has a meaningful state.
         device_serial = (self.device_client.device_info or {}).get("serial_number")
         if device_serial and device_serial != "Unknown":
             data["serial_number"] = device_serial
 
-    def _apply_power_and_energy_estimates(self, data: dict[str, Any]) -> None:
-        """Apply power estimate and accumulate total energy."""
+    def _apply_power_estimate(self, data: dict[str, Any]) -> None:
+        """Expose only the instantaneous electrical-power estimate.
+
+        A previous implementation accumulated ``total_energy`` in process memory.
+        That value reset whenever Home Assistant or the integration restarted and
+        therefore could not satisfy Home Assistant's durable energy semantics.  It
+        is intentionally not emitted until a persistent computed-energy design is
+        implemented and validated.
+        """
         power = self.calculate_power_consumption(data)
-        if power is None:
-            return
-        data["estimated_power"] = power
-        data["electrical_power"] = power
-        now = _utcnow()
-        device_client = self.device_client
-        last_ts = device_client._last_power_timestamp
-        if not isinstance(last_ts, datetime):
-            elapsed = 0.0
-        else:
-            if (
-                getattr(now, "tzinfo", None) is not None
-                and getattr(last_ts, "tzinfo", None) is None
-            ):
-                last_ts = last_ts.replace(tzinfo=UTC)
-            elif (
-                getattr(now, "tzinfo", None) is None
-                and getattr(last_ts, "tzinfo", None) is not None
-            ):
-                now = now.replace(tzinfo=UTC)
-            elapsed = (now - last_ts).total_seconds()
-        device_client._total_energy += power * elapsed / 3600000.0
-        data["total_energy"] = device_client._total_energy
-        device_client._last_power_timestamp = now
+        if power is not None:
+            data["electrical_power"] = power
 
     def _apply_device_clock(self, data: dict[str, Any]) -> None:
         """Decode and store device clock when valid."""
-        # Decode device clock from BCD registers 0-3
         try:
             device_clock = self._decode_device_clock(data)
             if device_clock is not None:

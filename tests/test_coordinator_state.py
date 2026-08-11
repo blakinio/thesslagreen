@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from custom_components.thessla_green_modbus.const import (
     DEFAULT_BAUD_RATE,
@@ -20,10 +20,6 @@ from custom_components.thessla_green_modbus.coordinator.state import (
     normalize_serial_settings,
     resolve_effective_batch,
 )
-
-# ---------------------------------------------------------------------------
-# normalize_serial_settings
-# ---------------------------------------------------------------------------
 
 
 def test_normalize_serial_normal_values():
@@ -52,11 +48,6 @@ def test_normalize_serial_unknown_parity_uses_default():
 def test_normalize_serial_stop_bits_two():
     _, _, _, stop = normalize_serial_settings("/dev/tty", 9600, "n", 2)
     assert stop == 2
-
-
-# ---------------------------------------------------------------------------
-# resolve_effective_batch
-# ---------------------------------------------------------------------------
 
 
 def test_resolve_effective_batch_no_entry_uses_param():
@@ -88,11 +79,6 @@ def test_resolve_effective_batch_bad_entry_option_uses_max():
     assert result == MAX_REGS_PER_REQUEST
 
 
-# ---------------------------------------------------------------------------
-# _initialize_runtime_flags
-# ---------------------------------------------------------------------------
-
-
 def _make_coord():
     coord = MagicMock()
     coord.device_client = SimpleNamespace(offline_state=None)
@@ -119,11 +105,6 @@ def test_initialize_runtime_flags_reads_option_from_entry():
     assert coord.enable_device_scan is True
 
 
-# ---------------------------------------------------------------------------
-# _initialize_connection_state
-# ---------------------------------------------------------------------------
-
-
 def test_initialize_connection_state_resets_client():
     coord = _make_coord()
     coord.device_client.client = MagicMock()
@@ -143,11 +124,6 @@ def test_initialize_connection_state_creates_locks():
     assert isinstance(coord.device_client._write_lock, asyncio.Lock)
 
 
-# ---------------------------------------------------------------------------
-# _initialize_device_state
-# ---------------------------------------------------------------------------
-
-
 def test_initialize_device_state_resets_device_info():
     coord = _make_coord()
     _initialize_device_state(coord, entry=None)
@@ -165,11 +141,10 @@ def test_initialize_device_state_available_registers_has_all_types():
     assert "calculated" in ar
 
 
-def test_initialize_device_state_calculated_prepopulated():
+def test_initialize_device_state_calculated_has_no_stale_energy_aliases():
     coord = _make_coord()
     _initialize_device_state(coord, entry=None)
-    assert "estimated_power" in coord.device_client.available_registers["calculated"]
-    assert "total_energy" in coord.device_client.available_registers["calculated"]
+    assert coord.device_client.available_registers["calculated"] == set()
 
 
 def test_initialize_device_state_loads_capabilities_from_entry():
@@ -192,15 +167,9 @@ def test_initialize_device_state_bad_capabilities_falls_back():
     assert isinstance(coord.device_client.capabilities, DeviceCapabilities)
 
 
-# ---------------------------------------------------------------------------
-# _initialize_scan_state
-# ---------------------------------------------------------------------------
-
-
 def test_initialize_scan_state_zeroes_statistics():
     coord = _make_coord()
-    with patch("custom_components.thessla_green_modbus.utils.utcnow"):
-        _initialize_scan_state(coord)
+    _initialize_scan_state(coord)
     stats = coord.device_client.statistics
     assert stats["successful_reads"] == 0
     assert stats["failed_reads"] == 0
@@ -211,27 +180,20 @@ def test_initialize_scan_state_zeroes_statistics():
 def test_initialize_scan_state_resets_scan_result():
     coord = _make_coord()
     coord.device_client.device_scan_result = {"something": True}
-    with patch("custom_components.thessla_green_modbus.utils.utcnow"):
-        _initialize_scan_state(coord)
+    _initialize_scan_state(coord)
     assert coord.device_client.device_scan_result is None
 
 
-def test_initialize_scan_state_resets_energy():
+def test_initialize_scan_state_does_not_create_volatile_energy_state():
     coord = _make_coord()
-    with patch("custom_components.thessla_green_modbus.utils.utcnow"):
-        _initialize_scan_state(coord)
-    assert coord.device_client._total_energy == 0.0
-
-
-# ---------------------------------------------------------------------------
-# initialize_runtime_state (integration)
-# ---------------------------------------------------------------------------
+    _initialize_scan_state(coord)
+    assert not hasattr(coord.device_client, "_total_energy")
+    assert not hasattr(coord.device_client, "_last_power_timestamp")
 
 
 def test_initialize_runtime_state_calls_all_sub_functions():
     coord = _make_coord()
-    with patch("custom_components.thessla_green_modbus.utils.utcnow"):
-        initialize_runtime_state(coord, entry=None)
+    initialize_runtime_state(coord, entry=None)
     assert coord._reauth_scheduled is False
     assert coord.device_client.client is None
     assert coord.device_client.device_info == {}

@@ -1,235 +1,85 @@
-# 🚀 Quick Start Guide - ThesslaGreen Modbus Integration
+# ThesslaGreen Modbus — Quick Start
 
-Get your ThesslaGreen AirPack connected to Home Assistant in just a few minutes!
+## Requirements
 
-## ⚡ 5-Minute Setup
+- Home Assistant **2026.1.0+**
+- ThesslaGreen AirPack with Modbus enabled
+- HACS for the recommended installation path, or access to `/config/custom_components`
 
-### Step 1: Prerequisites Check ✅
+The integration supports Modbus TCP, raw RTU-over-TCP, and Modbus RTU/USB. The actual slave ID, port, baud rate, parity, and stop bits must match the AirPack/gateway configuration.
 
-Before starting, make sure you have:
-- [ ] Home Assistant 2023.4.0 or newer
-- [ ] ThesslaGreen AirPack with Modbus TCP enabled
-- [ ] Network connection between HA and your AirPack
-- [ ] HACS installed (recommended) or manual installation capability
+## Install with HACS
 
-### Step 2: Enable Modbus on Your AirPack 🔧
+1. Open **HACS → Integrations → ⋮ → Custom repositories**.
+2. Add `https://github.com/blakinio/thesslagreen` as an **Integration** repository.
+3. Install **ThesslaGreen Modbus**.
+4. Restart Home Assistant.
+5. Open **Settings → Devices & Services → Add Integration** and select **ThesslaGreen Modbus**.
 
-1. **Access your AirPack panel**
-2. **Navigate to:** Menu → Communication → Modbus TCP
-3. **Set:** Enable = YES, Port = 502, Device ID = 10
-4. **Note your AirPack's IP address** (e.g., 192.168.1.100)
+## Manual installation
 
-### Step 3: Install the Integration 📦
+Copy `custom_components/thessla_green_modbus` into the Home Assistant configuration directory:
 
-#### Option A: HACS (Recommended)
-```
-1. Open HACS → Integrations
-2. Click ⋮ → Custom repositories
-3. Add: https://github.com/thesslagreen/thessla-green-modbus-ha
-4. Category: Integration
-5. Click ADD → Install "ThesslaGreen Modbus"
-6. Restart Home Assistant
+```text
+/config/custom_components/thessla_green_modbus
 ```
 
-#### Option B: Manual Installation
-```bash
-1. Download latest release from GitHub
-2. Extract to: config/custom_components/thessla_green_modbus/
-3. Restart Home Assistant
+Restart Home Assistant and add the integration from **Settings → Devices & Services**.
+
+## TCP setup
+
+Enter the AirPack/gateway host, port, and Modbus slave ID configured on the device. Do not assume port `502` or slave ID `10` if the installation uses different settings.
+
+**Security:** Modbus TCP and raw RTU-over-TCP have no application-layer authentication or encryption. Keep the endpoint on a trusted LAN, restrict it with firewall/VLAN rules, and never port-forward it directly to the public Internet. See [`SECURITY.md`](SECURITY.md).
+
+## RTU / USB setup
+
+Prefer a persistent device path such as:
+
+```text
+/dev/serial/by-id/usb-...
 ```
 
-### Step 4: Add Integration ➕
+instead of `/dev/ttyUSB0`, because USB enumeration can change after a reboot or reconnect. Configure baud rate, parity, stop bits, and slave ID to match the AirPack/controller.
 
-1. **Go to:** Settings → Devices & Services
-2. **Click:** + ADD INTEGRATION
-3. **Search:** "ThesslaGreen Modbus"
-4. **Enter:**
-   - **IP Address:** 192.168.1.100 (your AirPack IP)
-   - **Port:** 502
-   - **Device ID:** 10 (will auto-detect if wrong)
-5. **Click:** SUBMIT
+## First setup
 
-🎉 **Done!** Your AirPack should now be connected.
+During configuration the integration validates the connection and discovers supported registers/capabilities. Normal operation creates only entities supported by the detected device.
 
-6. *(Optional)* In the integration options you can enable **Full register list (no scan)** to skip scanning and load every predefined entity. Unsupported registers may appear as unavailable or cause errors.
+The advanced `force_full_register_list` option can expose predefined entities without normal availability filtering. Use it only for diagnostics/development because unsupported definitions can remain unavailable.
 
----
+## Normal operation
 
-## 📊 What You'll Get
+The coordinator performs the initial refresh before entity platforms are created, then polls at the configured interval. The default interval is 30 seconds; avoid aggressive polling without real-device validation.
 
-After successful setup, you'll see these entities in Home Assistant:
+Writable entities/actions report final Modbus failures to Home Assistant instead of silently succeeding. A persistent final write failure also creates a Home Assistant Repairs issue; the next confirmed successful write clears it.
 
-### 🌡️ **Climate Control**
-- `climate.thessla_rekuperator` - Main climate entity with preset modes
+## Register diagnostics
 
-### 🌡️ **Temperature Sensors**
-- Outside temperature
-- Supply air temperature
-- Exhaust air temperature
-- FPX temperature (if available)
+Use `thessla_green_modbus.validate_known_registers` for normal register classification. It distinguishes:
 
-### 💨 **Ventilation Control**
-- `fan.thessla_wentylator` - Fan speed control
-- `select.thessla_mode` - Operating mode (Auto/Manual/Temporary)
-- `number.thessla_air_flow_rate_manual` - Intensity control
+- supported registers;
+- explicitly unsupported registers;
+- indeterminate results caused by transport/network failure.
 
-### ⚙️ **System Status**
-- `binary_sensor.thessla_device_status_smart` - Device on/off status
-- Power supply status
-- Constant Flow status (if available)
+`thessla_green_modbus.scan_all_registers` is an advanced diagnostic operation. It serializes normal integration I/O, temporarily disconnects the primary transport, performs the scan with the configured transport type, restores the normal connection, and should not be used as a recurring automation.
 
-### 🔧 **Advanced Features** (if available)
-- GWC system controls
-- Bypass controls
-- Special functions (OKAP, KOMINEK, WIETRZENIE)
+## Troubleshooting
 
----
+Enable integration debug logging when needed:
 
-## 🎮 Quick Actions
-
-### Basic Climate Control
 ```yaml
-# Turn on with eco mode
-service: climate.set_preset_mode
-target:
-  entity_id: climate.thessla_rekuperator
-data:
-  preset_mode: "eco"
-
-# Set to boost mode
-service: climate.set_preset_mode
-target:
-  entity_id: climate.thessla_rekuperator
-data:
-  preset_mode: "boost"
+logger:
+  logs:
+    custom_components.thessla_green_modbus: debug
 ```
 
-### Manual Intensity Control
-```yaml
-# Set 60% intensity
-service: number.set_value
-target:
-  entity_id: number.thessla_air_flow_rate_manual
-data:
-  value: 60
-```
+Then check:
 
-### Special Functions
-```yaml
-# Enable kitchen hood mode
-service: select.select_option
-target:
-  entity_id: select.thessla_special_function
-data:
-  option: "OKAP"
-```
+- **Settings → System → Logs**;
+- **Settings → Devices & Services → ThesslaGreen Modbus → Download diagnostics**;
+- the Home Assistant **Repairs** dashboard after write failures;
+- network reachability or RTU adapter/serial parameters;
+- whether another Modbus client is concurrently using the same controller/gateway.
 
----
-
-## 📱 Dashboard Quick Setup
-
-### Simple Control Card
-```yaml
-type: entities
-entities:
-  - climate.thessla_rekuperator
-  - sensor.thessla_outside_temperature
-  - sensor.thessla_supply_temperature
-  - select.thessla_mode
-title: ThesslaGreen Control
-```
-
-### Temperature History
-```yaml
-type: history-graph
-entities:
-  - sensor.thessla_outside_temperature
-  - sensor.thessla_supply_temperature
-  - sensor.thessla_exhaust_temperature
-hours_to_show: 24
-title: Temperature Trends
-```
-
----
-
-## 🔧 Troubleshooting Quick Fixes
-
-### ❌ "Cannot connect to device"
-**Solutions:**
-1. **Check IP address** - Ping your AirPack: `ping 192.168.1.100`
-2. **Check Modbus settings** - Ensure TCP is enabled, port 502
-3. **Try different Device IDs** - Integration auto-detects 1, 10, 247
-4. **Check firewall** - Ensure port 502 is open
-
-### ❌ "No entities created"
-**Solutions:**
-1. **Wait 30 seconds** - Initial scan takes time
-2. **Check logs** - Look for errors in HA logs
-3. **Restart integration** - Remove and re-add integration
-4. **Check device model** - Ensure your AirPack supports Modbus
-
-### ❌ "Entities unavailable"
-**Solutions:**
-1. **Check network connection** - Device might have lost connection
-2. **Restart AirPack** - Power cycle your unit
-3. **Check entity states** - Some entities only appear when active
-
----
-
-## ⚡ Performance Tips
-
-### Optimize Update Speed
-1. **Ethernet connection** - Use wired connection for best performance
-2. **Stable IP** - Set static IP for your AirPack
-3. **Close proximity** - Keep HA and AirPack on same network segment
-
-### Reduce Network Load
-- The integration is already optimized with batch reading
-- Default 30-second updates are efficient for HVAC systems
-- Avoid setting scan interval below 15 seconds
-
----
-
-## 🎯 Next Steps
-
-### 1. Create Automations
-```yaml
-# Example: Auto boost when cooking
-automation:
-  - alias: "Kitchen boost mode"
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.kitchen_motion
-        to: 'on'
-    action:
-      - service: climate.set_preset_mode
-        target:
-          entity_id: climate.thessla_rekuperator
-        data:
-          preset_mode: "boost"
-```
-
-### 2. Add to Energy Dashboard
-- Monitor power consumption estimates
-- Track ventilation efficiency (`sensor.calculated_efficiency`)
-- Compare seasonal performance
-
-### 3. Advanced Configuration
-- Set up schedules for different times of day
-- Create scenes for different home modes
-- Integrate with presence detection
-
----
-
-## 📚 Learn More
-
-- 📖 **[Full Documentation](README.md)** - Complete setup guide
-- 🔧 **[Advanced Configuration](DEPLOYMENT.md)** - Detailed configuration options
-- 🤝 **[Get Help](https://github.com/thesslagreen/thessla-green-modbus-ha/discussions)** - Community support
-- 🐛 **[Report Issues](https://github.com/thesslagreen/thessla-green-modbus-ha/issues)** - Bug reports
-
----
-
-**🎉 Congratulations!** Your ThesslaGreen AirPack is now smart home ready!
-
-Enjoy better air quality with intelligent automation! 🏠💨
+For current quality and physical-device validation status see [`docs/quality/STATUS.md`](docs/quality/STATUS.md) and [`docs/real_device_validation.md`](docs/real_device_validation.md).

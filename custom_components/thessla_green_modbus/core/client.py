@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from ..registers.maps import (
     coil_registers,
@@ -24,7 +24,6 @@ from ..registers.maps import (
 )
 from ..scanner import DeviceCapabilities
 from ..transport.base import BaseModbusTransport
-from ..utils import utcnow as _utcnow
 from .capabilities_mixin import _CoordinatorCapabilitiesMixin
 from .client_connection import _DeviceClientConnectionMixin
 from .client_registers import _DeviceClientRegistersMixin
@@ -120,7 +119,7 @@ class ThesslaGreenDeviceClient(
             "holding_registers": set(),
             "coil_registers": set(),
             "discrete_inputs": set(),
-            "calculated": {"estimated_power", "total_energy"},
+            "calculated": set(),
         }
         self._register_maps: dict[str, dict[str, int]] = {
             "input_registers": input_registers().copy(),
@@ -159,10 +158,6 @@ class ThesslaGreenDeviceClient(
         self._consecutive_failures: int = 0
         self._max_failures: int = 5
 
-        # Post-processing state (used by _CoordinatorCapabilitiesMixin).
-        self._last_power_timestamp = _utcnow()
-        self._total_energy: float = 0.0
-
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -177,7 +172,7 @@ class ThesslaGreenDeviceClient(
 
     def get_register_map(self, register_type: str) -> dict[str, int]:
         """Return the register map for the given register type."""
-        return cast(dict[str, int], self._register_maps.get(register_type, {}))
+        return self._register_maps.get(register_type, {})
 
     @property
     def device_name(self) -> str:
