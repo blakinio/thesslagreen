@@ -1,6 +1,6 @@
 ---
 task_id: TASK-20260810-ha-integration-10of10-followup
-status: implementing
+status: validating
 branch: fix/ha-integration-10of10-followup-20260810
 base_branch: main
 created: 2026-08-10
@@ -40,11 +40,11 @@ optional_reads:
 
 ```yaml
 checkpoint_version: 1
-updated_at: 2026-08-11T06:54:00Z
-head: 8fb1094af585a7220f4a5d58c861f998d218421c
+updated_at: 2026-08-11T06:58:00Z
+head: 9a580ed06bdcc7fce867d8bc579257657da2a57c
 branch: fix/ha-integration-10of10-followup-20260810
 pr: 1763
-status: implementing
+status: validating
 context_routes:
   - AGENTS.md
   - docs/agents/CONTEXT_HANDOFF.md
@@ -81,7 +81,7 @@ unknown:
 conflicts: []
 first_failure:
   marker: pending-final-ci
-  evidence: final CI has not yet completed on the current user-authored head
+  evidence: canonical CI has not yet completed on the checkpoint-valid branch state
 rejected_hypotheses:
   - All documentation was updated by PR #1762.
   - Real-device validation can be inferred from GitHub CI.
@@ -101,13 +101,13 @@ changed_paths:
 validation:
   - command: strict mypy remediation
     result: PASS
-    evidence: earlier focused validation reduced 93 mypy errors to 0 before final config-flow staging
+    evidence: canonical CI #1201 passed mypy on the final config-flow implementation
   - command: inspect Home Assistant current stable package
     result: PASS
-    evidence: PyPI current stable is 2026.7.3; CI tests 2026.1.0 and 2026.7.3
+    evidence: CI matrix targets declared minimum 2026.1.0 and current 2026.7.3
   - command: final full CI
-    result: PENDING
-    evidence: user-authored checkpoint commit triggers canonical CI on final branch state
+    result: NOT_RUN
+    evidence: checkpoint-validation correction triggers a fresh canonical CI run
 blockers: []
-next_action: Resolve any final CI failure on PR #1763, then mark checkpoint ready and merge only after all canonical jobs pass.
+next_action: Run canonical CI on the checkpoint-valid head; fix any failure, then mark ready and merge PR #1763.
 ```
