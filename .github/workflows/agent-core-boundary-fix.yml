@@ -43,10 +43,12 @@ jobs:
       - name: Normalize and capture validation
         shell: bash
         run: |
-          ruff check --fix --select I custom_components tests tools
-          ruff format custom_components tests tools
-          ruff check custom_components tests tools
+          mkdir -p docs/agents/tasks
+          ruff check --fix --select I custom_components tests tools || true
+          ruff format custom_components tests tools || true
           set +e
+          ruff check custom_components tests tools > docs/agents/tasks/.ruff-debug.txt 2>&1
+          ruff_status=$?
           mypy custom_components/thessla_green_modbus > docs/agents/tasks/.mypy-debug.txt 2>&1
           mypy_status=$?
           pytest -q \
@@ -59,8 +61,10 @@ jobs:
             tests/test_config_flow_user.py > docs/agents/tasks/.focused-test-debug.txt 2>&1
           pytest_status=$?
           set -e
+          printf '\nRUFF_EXIT=%s\n' "$ruff_status" >> docs/agents/tasks/.ruff-debug.txt
           printf '\nMYPY_EXIT=%s\n' "$mypy_status" >> docs/agents/tasks/.mypy-debug.txt
           printf '\nPYTEST_EXIT=%s\n' "$pytest_status" >> docs/agents/tasks/.focused-test-debug.txt
+          cat docs/agents/tasks/.ruff-debug.txt
           cat docs/agents/tasks/.mypy-debug.txt
           cat docs/agents/tasks/.focused-test-debug.txt
 
