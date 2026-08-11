@@ -35,7 +35,8 @@ from .confirm import (
     build_confirmation_placeholders as _build_confirmation_placeholders,
 )
 from .device_validation import validate_input_impl as _validate_input_impl
-from .entry import build_unique_id as _build_unique_id_impl
+from .entry import build_connection_match as _build_connection_match_impl
+from .entry import build_stable_unique_id as _build_stable_unique_id_impl
 from .entry import prepare_entry_payload as _prepare_entry_payload_impl
 from .errors import classify_os_error as _classify_os_error_impl
 from .errors import (
@@ -224,22 +225,48 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Allow user to update host/port/slave_id without removing the entry."""
+        """Validate and update host/port/slave_id without recreating the entry."""
         entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
 
         if user_input is not None:
-            return self.async_update_reload_and_abort(
-                entry,
-                data_updates={
+            candidate = dict(entry.data)
+            candidate.update(
+                {
                     CONF_HOST: user_input[CONF_HOST],
                     CONF_PORT: user_input[CONF_PORT],
                     CONF_SLAVE_ID: user_input.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID),
-                },
+                }
             )
+            info, submit_errors = await _process_user_submission_impl(
+                candidate,
+                validate_input=validate_input,
+                hass=self.hass,
+                logger=_LOGGER,
+            )
+            if info is not None:
+                self._device_info, self._scan_result = _extract_discovered_state_impl(info)
+                stable_unique_id = self._build_stable_unique_id(self._device_info)
+                updated_unique_id = entry.unique_id
+                if stable_unique_id and stable_unique_id != entry.unique_id:
+                    await self.async_set_unique_id(stable_unique_id)
+                    self._abort_if_unique_id_configured()
+                    updated_unique_id = stable_unique_id
+                return self.async_update_and_abort(
+                    entry,
+                    unique_id=updated_unique_id,
+                    data_updates={
+                        CONF_HOST: candidate[CONF_HOST],
+                        CONF_PORT: candidate[CONF_PORT],
+                        CONF_SLAVE_ID: candidate[CONF_SLAVE_ID],
+                    },
+                )
+            errors.update(submit_errors)
 
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=_build_reconfigure_schema_impl(entry.data),
+            errors=errors,
         )
 
     def _build_connection_schema(self, defaults: dict[str, Any]) -> vol.Schema:
@@ -253,9 +280,23 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
         )
 
     @staticmethod
-    def _build_unique_id(data: dict[str, Any]) -> str:
-        """Generate a unique identifier for the config entry."""
-        return _build_unique_id_impl(data)
+    def _build_stable_unique_id(device_info: dict[str, Any]) -> str | None:
+        """Return a stable device-derived config-entry unique ID when available."""
+        return _build_stable_unique_id_impl(device_info)
+
+    @staticmethod
+    def _build_connection_match(data: dict[str, Any]) -> dict[str, Any]:
+        """Return connection fields used only for duplicate-entry matching."""
+        return _build_connection_match_impl(data)
+
+    async def _async_apply_validated_identity(self, data: dict[str, Any]) -> None:
+        """Apply stable device identity or fall back to connection duplicate matching."""
+        stable_unique_id = self._build_stable_unique_id(self._device_info)
+        if stable_unique_id:
+            await self.async_set_unique_id(stable_unique_id)
+            self._abort_if_unique_id_configured()
+            return
+        self._async_abort_entries_match(self._build_connection_match(data))
 
     async def async_step_confirm(
         self, user_input: dict[str, Any] | None = None
@@ -265,8 +306,6 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
         cap_cls = DeviceCapabilities or module.DeviceCapabilities
 
         if user_input is not None:
-            await self.async_set_unique_id(self._build_unique_id(self._data))
-            self._abort_if_unique_id_configured()
             entry_data, options = self._prepare_entry_payload(cap_cls)
 
             return self.async_create_entry(
@@ -305,9 +344,8 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
         return await self.async_step_user()
 
     async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo) -> ConfigFlowResult:
-        """Handle Zeroconf discovery of AirPack device."""
-        await self.async_set_unique_id(discovery_info.host)
-        self._abort_if_unique_id_configured(updates={CONF_HOST: discovery_info.host})
+        """Handle Zeroconf discovery without treating a hostname as stable identity."""
+        self._async_abort_entries_match({CONF_HOST: discovery_info.host})
         self._discovered_host = discovery_info.host
         return await self.async_step_user()
 
@@ -326,8 +364,7 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
                 self._data = user_input
                 self._device_info, self._scan_result = _extract_discovered_state_impl(info)
 
-                await self.async_set_unique_id(self._build_unique_id(user_input))
-                self._abort_if_unique_id_configured()
+                await self._async_apply_validated_identity(user_input)
                 return await self.async_step_confirm()
             errors.update(submit_errors)
 
