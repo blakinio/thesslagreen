@@ -1,6 +1,6 @@
 ---
 task_id: TASK-20260811-firmware-coverage
-status: implementing
+status: validating
 owner: codex
 scope: improve firmware identity semantics and scanner coverage without changing Modbus transport contracts
 ---
@@ -11,11 +11,11 @@ scope: improve firmware identity semantics and scanner coverage without changing
 
 ```yaml
 checkpoint_version: 1
-updated_at: 2026-08-11T14:49:00Z
-head: ae3cdd7195088f207f5e87c74c519bb799676233
+updated_at: 2026-08-11T15:10:00Z
+head: 8eb38e7875bc554ae7aa9045c32de985924c3331
 branch: feat/firmware-coverage-20260811
-pr: null
-status: implementing
+pr: 1767
+status: validating
 context_routes:
   - AGENTS.md
   - docs/agents/CONTEXT_HANDOFF.md
@@ -27,31 +27,44 @@ owned_paths:
   - docs/agents/tasks/TASK-20260811-firmware-coverage.md
 proven:
   - main baseline is ae3cdd7195088f207f5e87c74c519bb799676233 and post-merge CI run 31503102829 passed all mandatory jobs.
-  - scanner/firmware.py treats a missing version_patch as expected on some older firmware but still leaves firmware Unknown and firmware_available false.
-  - tests/test_device_scanner_firmware.py covers fully unavailable, full fallback, and partial bulk fallback cases but not the expected older-device case where major and minor exist and patch is absent.
-  - the prior audit measured scanner/firmware.py among the lowest-covered integration modules.
+  - scanner/firmware.py previously collapsed a missing version_patch to Unknown even though that register is absent on some older firmware.
+  - PR #1767 preserves verified major.minor identity when patch is unavailable while missing major or minor remains an unavailable firmware condition.
+  - PR #1767 does not change Modbus addresses, transport behavior, writes, entity IDs, services, or polling policy.
+  - tests/test_device_scanner_firmware.py now contains 8 focused tests covering unavailable firmware, full and partial fallback, partial major.minor identity, probe-error context, missing major/minor, legacy read signature fallback, serial parsing, and ASCII device-name parsing.
+  - CI run 31505010765 on head 8eb38e7875bc554ae7aa9045c32de985924c3331 passed HACS, Hassfest, Lint including mypy/checkpoint validation, entity mappings, pymodbus 3.6.1, pymodbus 3.14.0, minimum HA 2026.1.0, and the full Tests job.
+  - Tests job 93824694593 completed successfully with total coverage 90.82 percent and scanner/firmware.py coverage 83 percent, up from about 68 percent in the prior audit baseline.
+  - the Current HA 2026.8.1 job 93824694371 in run 31505010765 is stuck in GitHub as in_progress with a runner assigned but zero steps and no downloadable log.
 derived:
   - major and minor together provide useful verified firmware identity when patch is genuinely unavailable on an older unit.
-  - a conservative partial-version representation can improve identity without altering Modbus addresses, transport behavior, write semantics, entity IDs, or services.
+  - the bounded scanner change materially improves risk-focused firmware coverage but does not by itself satisfy Home Assistant Silver per-module coverage expectations.
+  - the zero-step Current HA job state is runner/workflow infrastructure evidence, not a passing or failing code result, so a fresh complete run is required.
 unknown:
-  - exact physical AirPack behavior of the newest main candidate; no live Home Assistant connector is currently exposed in this session.
-  - whether repository-wide coverage will reach Silver thresholds from this bounded task alone.
+  - whether a fresh complete CI run passes the Current HA 2026.8.1 contract job on the final candidate.
+  - exact physical AirPack behavior of the newest candidate; no live Home Assistant connector is currently exposed in this session.
+  - post-hardening reconnect and 24-72 hour physical soak behavior.
 conflicts: []
 first_failure:
-  marker: firmware-partial-version-semantics
-  evidence: _apply_firmware_version_to_device logs missing patch at DEBUG as expected hardware behavior but sets firmware_available false and leaves firmware Unknown.
+  marker: candidate-ci-hygiene
+  evidence: CI #1282 first failed Ruff formatting only; CI #1283 then passed formatting but failed mypy because one local variable name was reused with incompatible str and list[str] types. Both issues were corrected without expanding runtime scope.
 rejected_hypotheses:
   - missing version_patch always indicates a communication failure.
+  - the first two red CI runs proved a runtime scanner regression; they failed formatter/type gates before functional validation.
+  - the zero-step Current HA job can be counted as PASS.
   - hardware-sensitive polling or restart-scan defaults should be changed without new physical-device measurements.
 changed_paths:
+  - custom_components/thessla_green_modbus/scanner/firmware.py
+  - tests/test_device_scanner_firmware.py
   - docs/agents/tasks/TASK-20260811-firmware-coverage.md
 validation:
-  - command: GitHub inspection of main and post-merge CI 31503102829
+  - command: GitHub Actions run 31505010765 - HACS, Hassfest, Lint, entity mappings, pymodbus bounds, minimum HA and Tests
     result: PASS
-    evidence: baseline main and all mandatory CI jobs are green before this task.
-  - command: focused firmware tests after implementation
+    evidence: all listed jobs completed successfully on head 8eb38e7875bc554ae7aa9045c32de985924c3331; Tests job 93824694593 reports total coverage 90.82 percent and scanner/firmware.py 83 percent.
+  - command: GitHub Actions run 31505010765 - Current HA API contracts 2026.8.1
     result: NOT_RUN
-    evidence: implementation not yet committed.
+    evidence: job 93824694371 remains in_progress with zero steps and no log, so it cannot be treated as executed evidence.
+  - command: fresh complete GitHub Actions matrix after this checkpoint commit
+    result: NOT_RUN
+    evidence: required to replace the unusable zero-step Current HA job with exact final-head evidence.
 blockers: []
-next_action: Implement and test explicit major.minor partial firmware identity, then run the complete GitHub Actions matrix before merge.
+next_action: Run the complete GitHub Actions matrix on the checkpointed candidate, fix only evidenced failures, mark ready only after every mandatory job including Current HA 2026.8.1 passes, then merge PR #1767 and verify post-merge main CI.
 ```
