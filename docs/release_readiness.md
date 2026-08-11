@@ -1,8 +1,8 @@
 # Release Readiness
 
-**Status date:** 2026-08-10  
+**Status date:** 2026-08-11  
 **Current published release:** `v2.8.3`  
-**Current manifest/package version:** `2.8.3`  
+**Current `main` manifest/package version:** `2.8.3`  
 **Canonical quality status:** [`docs/quality/STATUS.md`](quality/STATUS.md)
 
 This file describes readiness for the **next** release. The old May 2026 `v2.8.0` pre-release checklist is obsolete: `v2.8.3` is already published.
@@ -11,49 +11,44 @@ This file describes readiness for the **next** release. The old May 2026 `v2.8.0
 
 | Source | Current value |
 |---|---|
-| `custom_components/thessla_green_modbus/manifest.json` | `2.8.3` |
-| `pyproject.toml` | `2.8.3` |
+| published tag `v2.8.3` manifest | version `2.8.3`, `pymodbus>=3.6.0,<4.0` |
+| `main` `custom_components/thessla_green_modbus/manifest.json` | version `2.8.3`, `pymodbus>=3.6.1,<4.0` |
+| `main` `pyproject.toml` | version `2.8.3`, `pymodbus>=3.6.1,<4.0` |
 | `hacs.json` minimum Home Assistant | `2026.1.0` |
-| runtime pymodbus constraint | `>=3.6.0,<4.0` |
 | repository quality declaration | `bronze` |
 
-Version metadata was synchronized by PR #1762. Do not increment it merely because development commits exist; select the next semantic version intentionally at release time.
+The identical `2.8.3` version string on the published tag and the post-release `main` branch is development-state metadata, not evidence that the published release contains the hardening changes. The next release must intentionally select and apply a new semantic version before tagging.
 
 ## Automated readiness
 
-PR #1762 merged to `main` as `088677385a179a0a02c14ddae3dd96d20c2534e0`. Canonical CI #1146 passed:
+The 2026-08-10 hardening sequence is complete: PR #1762 merged the primary hardening and PR #1763 merged the final follow-up. The durable follow-up checkpoint was finalized on `main` as `62e3cb10894767671c7aeb33a5e62b24c82c07ff`.
+
+The GitHub Actions run for `main@62e3cb1` passed all nine current checks:
 
 - Ruff and import order;
 - Ruff format;
 - compileall;
-- vendor register comparison;
-- AirPack 4 vendor coverage;
-- translation validation;
-- maintainability gate;
-- checkpoint validation;
-- full pytest suite;
+- `mypy`;
+- vendor register comparison and AirPack 4 vendor coverage;
+- translation and maintainability validation;
+- durable checkpoint validation;
+- full pytest suite on Home Assistant `2026.2.3`;
+- API-contract tests on minimum Home Assistant `2026.1.0`;
+- API-contract tests on current Home Assistant `2026.8.1` / Python `3.14`;
+- `pymodbus` `3.6.1` and `3.14.0` compatibility suites;
 - entity mapping validation;
 - Hassfest;
 - HACS validation.
 
-The full test suite reported 90.68% coverage, above the configured 80% minimum.
+The full suite reported **90.78%** total coverage against the configured 80% repository minimum. The current Home Assistant Silver quality-scale coverage rule is stricter: every integration module must be above 95%, so a Silver claim is not currently justified by coverage evidence.
 
-The 2026-08-10 follow-up hardening additionally requires a green final run with:
-
-- `mypy` as a blocking gate;
-- focused API-contract tests on minimum Home Assistant `2026.1.0`;
-- immutable commit SHAs for external GitHub Actions;
-- Hassfest with the config-entry-only schema warning removed;
-- Repairs write-failure lifecycle regression tests;
-- tests proving the removed volatile `total_energy` state does not return.
-
-Until that follow-up CI is green, those additions are `PENDING`, not assumed.
+The 2026-08-11 audit verified that Codecov was not a functioning release signal. The baseline non-blocking upload failed without authentication; an OIDC-authenticated retry successfully obtained a short-lived token but Codecov returned `Repository not found`. The repository-side cleanup therefore removes the non-blocking Codecov upload. Coverage remains a blocking local pytest gate with module-level reporting in the CI log. Reintroducing external coverage reporting requires explicit Codecov repository onboarding/authorization and a separately verified upload.
 
 ## Real-device readiness
 
 **Status: PARTIAL / external gate.**
 
-Historical evidence exists for an AirPack 4 over Modbus TCP, but it predates the 2026-08-10 hardening changes. The next release should not claim post-hardening hardware validation until the checks in [`docs/real_device_validation.md`](real_device_validation.md) are performed.
+Historical evidence exists for an AirPack 4 over Modbus TCP, but it predates the 2026-08-10 hardening changes. The next release should not claim post-hardening hardware validation until the checks in [`docs/real_device_validation.md`](real_device_validation.md) are performed against the actual post-hardening candidate.
 
 Recommended release gate for hardware-sensitive changes:
 
@@ -67,7 +62,9 @@ Recommended release gate for hardware-sensitive changes:
 
 ## Supply-chain readiness
 
-CI and release workflows must use immutable commit SHAs for third-party GitHub Actions. Version comments may be kept next to the SHA for readability. Moving `@main`, `@master`, or mutable major-version refs are not accepted in the final follow-up state.
+CI and release workflows use immutable commit SHAs for third-party GitHub Actions. Version comments may be kept next to the SHA for readability. Moving `@main`, `@master`, or mutable major-version refs are not accepted in the release-ready state.
+
+External Codecov upload is deliberately not part of the current release gate because the repository is not yet available to the Codecov uploader. No extra OIDC permission or long-lived Codecov secret is retained merely to keep a non-blocking, non-functional step green.
 
 ## Documentation readiness
 
@@ -83,4 +80,4 @@ Before tagging the next release verify that all of these describe the candidate,
 
 ## Release decision
 
-A new GitHub release is **not** created by this audit follow-up. The repository owner should choose the next version after deciding how much real-device validation is required for that release. The existing release workflow reads the version from `manifest.json` and will skip creation when the corresponding tag already exists.
+A new GitHub release is **not** created by this audit cleanup. Select the next version only when the post-hardening candidate and the required real-device acceptance level are ready; then synchronize `manifest.json`, `pyproject.toml`, release notes, and tag metadata before publishing.
