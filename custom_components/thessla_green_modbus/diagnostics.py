@@ -207,7 +207,11 @@ def _redact_sensitive_data(data: dict[str, Any]) -> dict[str, Any]:
         for error in safe_data["recent_errors"]:
             if "message" in error:
                 message = error["message"]
-                if connection_host and _HOSTNAME_RE.fullmatch(connection_host):
+                if (
+                    connection_host
+                    and mask_ip(connection_host) == connection_host
+                    and _HOSTNAME_RE.fullmatch(connection_host)
+                ):
                     message = message.replace(connection_host, "<redacted-host>")
                 message = re.sub(
                     r"\b(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f:]+)\b",
