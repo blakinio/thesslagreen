@@ -40,9 +40,17 @@ def migrate_device_identifier(
     legitimate host/port reconfigure look like a new physical device. Migrate
     that identifier before entity platforms register their current DeviceInfo.
     """
-    registry = dr.async_get(hass)
     dc = coordinator.device_client
-    stable = (DOMAIN, _stable_device_identifier(coordinator))
+    stable_identifier = _stable_device_identifier(coordinator)
+
+    # ``endpoint:...`` exists only as a deterministic fallback for isolated
+    # helpers/tests. It is not a stable physical-device identity, so it must
+    # never rewrite the Home Assistant device registry.
+    if stable_identifier.startswith("endpoint:"):
+        return
+
+    registry = dr.async_get(hass)
+    stable = (DOMAIN, stable_identifier)
     legacy = (DOMAIN, f"{dc.config.host}:{dc.config.port}:{dc.config.slave_id}")
 
     stable_device = registry.async_get_device(identifiers={stable})
