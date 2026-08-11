@@ -98,25 +98,30 @@ def _apply_firmware_version_to_device(
             if missing_value is None and name in INPUT_REGISTERS:
                 missing_regs.append(f"{name} ({INPUT_REGISTERS[name]})")
 
-    if None not in (major, minor, patch):
-        device.firmware = f"{major}.{minor}.{patch}"
-    else:
-        details: list[str] = []
-        if missing_regs:
-            details.append("missing " + ", ".join(missing_regs))
-        if firmware_err is not None:
-            details.append(str(firmware_err))
-        msg = "Failed to read firmware version registers"
-        if details:
-            msg += ": " + "; ".join(details)
-        # version_patch (input register 4) is absent on some older firmware —
-        # that is expected.  Only escalate to WARNING when major or minor is
-        # also missing, which indicates a real communication problem.
-        if patch is None and major is not None and minor is not None:
-            _LOGGER.debug(msg)
-        else:
-            _LOGGER.warning(msg)
-        device.firmware_available = False
+    if major is not None and minor is not None:
+        # version_patch (input register 4) is absent on some older firmware.
+        # Preserve the verified major.minor identity rather than collapsing the
+        # whole firmware value to Unknown.  Callers can still distinguish the
+        # partial form because it contains two components instead of three.
+        device.firmware = f"{major}.{minor}" if patch is None else f"{major}.{minor}.{patch}"
+        device.firmware_available = True
+        if patch is None:
+            details = "missing " + ", ".join(missing_regs) if missing_regs else "patch unavailable"
+            if firmware_err is not None:
+                details += f"; {firmware_err}"
+            _LOGGER.debug("Firmware patch unavailable; using partial version %s: %s", device.firmware, details)
+        return
+
+    details: list[str] = []
+    if missing_regs:
+        details.append("missing " + ", ".join(missing_regs))
+    if firmware_err is not None:
+        details.append(str(firmware_err))
+    msg = "Failed to read firmware version registers"
+    if details:
+        msg += ": " + "; ".join(details)
+    _LOGGER.warning(msg)
+    device.firmware_available = False
 
 
 async def scan_firmware_info(scanner: Any, info_regs: list[int], device: ScannerDeviceInfo) -> None:
