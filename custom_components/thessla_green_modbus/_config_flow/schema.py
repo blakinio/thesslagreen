@@ -214,8 +214,38 @@ def _build_serial_defaults_and_validators(
 
 
 def build_reconfigure_schema(entry_data: dict[str, Any]) -> vol.Schema:
-    """Return schema for the reconfigure step (host / port / slave_id only)."""
+    """Return a transport-aware schema for reconfiguring the active endpoint."""
     data = entry_data or {}
+    slave_field = {
+        vol.Required(
+            CONF_SLAVE_ID,
+            default=data.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID),
+        ): vol.All(vol.Coerce(int), vol.Range(min=0, max=247))
+    }
+
+    if data.get(CONF_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE) == CONNECTION_TYPE_RTU:
+        return vol.Schema(
+            {
+                vol.Required(
+                    CONF_SERIAL_PORT,
+                    default=data.get(CONF_SERIAL_PORT, DEFAULT_SERIAL_PORT),
+                ): str,
+                vol.Required(
+                    CONF_BAUD_RATE,
+                    default=data.get(CONF_BAUD_RATE, DEFAULT_BAUD_RATE),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1200, max=230400)),
+                vol.Required(
+                    CONF_PARITY,
+                    default=data.get(CONF_PARITY, DEFAULT_PARITY),
+                ): vol.In(["none", "even", "odd"]),
+                vol.Required(
+                    CONF_STOP_BITS,
+                    default=data.get(CONF_STOP_BITS, DEFAULT_STOP_BITS),
+                ): vol.All(vol.Coerce(int), vol.In([1, 2])),
+                **slave_field,
+            }
+        )
+
     return vol.Schema(
         {
             vol.Required(CONF_HOST, default=data.get(CONF_HOST, "")): str,
@@ -223,10 +253,7 @@ def build_reconfigure_schema(entry_data: dict[str, Any]) -> vol.Schema:
                 CONF_PORT,
                 default=data.get(CONF_PORT, DEFAULT_PORT),
             ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
-            vol.Required(
-                CONF_SLAVE_ID,
-                default=data.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID),
-            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=247)),
+            **slave_field,
         }
     )
 
