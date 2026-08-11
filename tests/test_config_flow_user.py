@@ -4,9 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from custom_components.thessla_green_modbus.config_flow import (
-    ConfigFlow,
-)
+from custom_components.thessla_green_modbus.config_flow import ConfigFlow
 from custom_components.thessla_green_modbus.const import (
     CONF_BAUD_RATE,
     CONF_CONNECTION_MODE,
@@ -41,7 +39,6 @@ class AbortFlow(Exception):
         self.reason = reason
 
 
-@pytest.mark.asyncio
 @pytest.mark.asyncio
 async def test_form_user():
     """Test we get the initial form."""
