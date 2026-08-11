@@ -65,13 +65,15 @@ Read-only diagnostics from the running Home Assistant instance showed:
 
 ### A3 — Sensor platform startup warning and redundant translation loads
 
-**FACT:** the running Home Assistant log contains `Setup of sensor platform thessla_green_modbus is taking over 10 seconds.`
+**FACT:** the audit-time Home Assistant log contained `Setup of sensor platform thessla_green_modbus is taking over 10 seconds.`
 
-**FACT:** `sensor.py::async_setup_entry` loads translations once. `ThesslaGreenActiveErrorsSensor.async_added_to_hass` loads translations again, while the inspected entity logic uses `_error_status_description` for its state/attributes. The stored `_translations` values in `ThesslaGreenErrorCodesSensor` / `ThesslaGreenActiveErrorsSensor` are not used by the inspected class logic.
+**FACT:** before the post-audit closure, `sensor.py::async_setup_entry` loaded translations once and `ThesslaGreenActiveErrorsSensor.async_added_to_hass` loaded them again, while the inspected entity logic used `_error_status_description` for state attributes and never consumed either stored translation mapping.
 
-**INFERENCE:** removing the redundant translation calls is a safe cleanup candidate and may reduce platform setup overhead, but it cannot by itself explain or guarantee elimination of the full >10 s warning because device I/O/startup work is also expensive.
+**ACTION:** PR #1766 removes both unused translation fetch/storage paths and adds focused regression coverage requiring sensor setup not to call Home Assistant's translation loader. This is a repository-local cleanup only; CI validation and merge evidence are recorded in `TASK-20260811-post-audit-closure.md`.
 
-**RECOMMENDATION:** remove the unused translation fetch/storage under a focused test, then remeasure platform setup time. Do not claim the warning fixed until the real HA log confirms it.
+**UNKNOWN:** whether this cleanup removes the historical >10 second platform warning on a physical AirPack candidate. Device I/O and restart-time scanning remain much larger startup costs and can only be separated by remeasurement after deployment.
+
+**RECOMMENDATION:** remeasure platform setup time and the Home Assistant log on the exact post-hardening candidate. Do not claim the warning fixed until that real runtime evidence is recorded.
 
 ### A4 — Device identity remains incomplete
 
@@ -125,8 +127,8 @@ These checks require the physical device and are the correct gate before high-ri
 
 ## Recommended execution order
 
-1. Merge the audit/CI/documentation cleanup after all PR checks are green.
-2. Remove redundant sensor translation loads with a focused regression test; remeasure the live setup warning.
+1. Merge the post-audit repository cleanup only after its complete PR checks are green.
+2. Remeasure sensor-platform setup time and the historical >10 second warning on the exact merged candidate.
 3. Build a benchmark/evidence harness for request count, polling-cycle duration, startup scan duration, and reconnect/write behavior.
 4. Design fast/slow/on-demand polling from measurements and implement it behind tests, then validate on the physical AirPack.
 5. Introduce a versioned/TTL device-scan cache only with explicit invalidation and force-rescan behavior.
