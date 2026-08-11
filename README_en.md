@@ -145,7 +145,7 @@ If Modbus errors occur:
 | Current published release | `v2.8.3` |
 | Minimum Home Assistant | `2026.1.0` |
 | Python | `3.13+` |
-| pymodbus | `>=3.6.0,<4.0` |
+| pymodbus | `>=3.6.1,<4.0` |
 | Manifest quality declaration | `bronze` |
 | Automated hardening CI | PR #1762 / CI #1146 passed |
 | Physical-device validation | partial; post-hardening revalidation pending |
@@ -156,7 +156,7 @@ The repository does **not** infer physical-device correctness from CI. Existing 
 
 ## Development
 
-Use Python 3.13.
+Use Python 3.13 or newer.
 
 ```bash
 pip install -r requirements-dev.txt
@@ -196,7 +196,7 @@ Scanner / register definitions
 Transport TCP / RTU-over-TCP / RTU
 ```
 
-`core/`, `transport/`, `registers/`, and `scanner/` are kept free of Home Assistant imports by repository architecture rules.
+`transport/`, `registers/`, and `scanner/` are Home Assistant-free. `core/` has no runtime Home Assistant import dependency, but the current client/model boundary still retains narrow type/adaptation seams for Home Assistant objects. Removing those seams together with any broader central-client/read-path restructuring is deliberately hardware-gated by the repository's consolidation plan and must not be represented as completed before real-device validation passes.
 
 Further broad read-path/mixin consolidation is deliberately deferred until longer physical-device validation. See [`docs/core_consolidation_plan.md`](docs/core_consolidation_plan.md).
 
