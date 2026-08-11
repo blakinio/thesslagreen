@@ -106,7 +106,7 @@ logger:
 
 ## Rozwój i testy
 
-**Python 3.13 jest wymagany** (zgodnie z Home Assistant 2026.1+ i `pyproject.toml`).
+**Python 3.13 lub nowszy jest wymagany** (zgodnie z Home Assistant 2026.1+ i `pyproject.toml`).
 
 ```bash
 pip install -r requirements-dev.txt
@@ -130,4 +130,4 @@ python tools/validate_registers.py
 
 To sprawdzenie jest również uruchamiane przez `pre-commit` (hook `validate-registers`).
 
-> **Refactor constraints (must keep):** no legacy modules, no compatibility/re-export/proxy shims; `core/`, `transport/`, `registers/`, and `scanner/` must not import Home Assistant; coordinator package migration is completed (`coordinator/` is canonical, top-level `coordinator.py` removed). Further broad read-path consolidation is deliberately deferred until longer real-device validation; see [`docs/core_consolidation_plan.md`](docs/core_consolidation_plan.md).
+> **Ograniczenia refaktoryzacji:** brak legacy modules oraz compatibility/re-export/proxy shims. `transport/`, `registers/` i `scanner/` pozostają niezależne od Home Assistanta. `core/` nie ma runtime dependency na Home Assistanta, ale obecna granica klient/model zachowuje wąskie type/adaptation seams dla obiektów HA. Ich usunięcie wraz z szerszą przebudową centralnego klienta/read-path jest świadomie zablokowane do czasu PASS walidacji na fizycznym urządzeniu; zobacz [`docs/core_consolidation_plan.md`](docs/core_consolidation_plan.md). Migracja pakietu koordynatora jest zakończona (`coordinator/` jest kanoniczny, top-level `coordinator.py` usunięty).
