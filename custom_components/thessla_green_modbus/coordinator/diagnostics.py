@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from ..const import DOMAIN, MANUFACTURER, UNKNOWN_MODEL
+from ..const import CONNECTION_TYPE_TCP, DOMAIN, MANUFACTURER, UNKNOWN_MODEL
 from ..register_map import REGISTER_MAP_VERSION
 from ..registers.loader import get_all_registers
 from ..utils import utcnow
@@ -149,14 +149,23 @@ def _resolve_sw_version(coordinator: Any) -> str:
     return " ".join(parts) if parts else "Unknown"
 
 
+def _device_serial(coordinator: Any) -> str | None:
+    """Return a normalized, usable device serial or None for placeholders."""
+    serial = coordinator.device_client.device_info.get("serial_number")
+    if not isinstance(serial, str):
+        return None
+    normalized = serial.strip()
+    if not normalized or normalized.lower() in {"unknown", "n/a", "0"}:
+        return None
+    return normalized
+
+
 def _stable_device_identifier(coordinator: Any) -> str:
     """Return an endpoint-independent device-registry identifier."""
     dc = coordinator.device_client
-    serial = dc.device_info.get("serial_number")
-    if isinstance(serial, str):
-        normalized = serial.strip().lower()
-        if normalized and normalized not in {"unknown", "n/a", "0"}:
-            return f"serial:{normalized}"
+    serial = _device_serial(coordinator)
+    if serial is not None:
+        return f"serial:{serial.lower()}"
 
     entry_id = getattr(getattr(coordinator, "entry", None), "entry_id", None)
     if isinstance(entry_id, str) and entry_id:
@@ -191,19 +200,17 @@ def get_device_info(coordinator: Any) -> DeviceInfo:
         model = UNKNOWN_MODEL
     dc.device_info["model"] = model
 
-    return DeviceInfo(
+    info = DeviceInfo(
         identifiers={(DOMAIN, _stable_device_identifier(coordinator))},
         name=device_name(coordinator),
         manufacturer=MANUFACTURER,
         model=model,
-        serial_number=(
-            str(dc.device_info["serial_number"])
-            if dc.device_info.get("serial_number") not in (None, "")
-            else None
-        ),
+        serial_number=_device_serial(coordinator),
         sw_version=_resolve_sw_version(coordinator),
-        configuration_url=f"http://{dc.config.host}",
     )
+    if dc.config.connection_type == CONNECTION_TYPE_TCP and dc.config.host:
+        info["configuration_url"] = f"http://{dc.config.host}"
+    return info
 
 
 def device_name(coordinator: Any) -> str:
