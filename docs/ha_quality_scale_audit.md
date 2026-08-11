@@ -1,6 +1,6 @@
 # Home Assistant Quality Scale Audit
 
-**Audit date:** 2026-08-10  
+**Audit date:** 2026-08-11  
 **Current released version:** `2.8.3`  
 **Integration:** `thessla_green_modbus`  
 **Canonical current status:** [`docs/quality/STATUS.md`](quality/STATUS.md)
@@ -15,21 +15,23 @@ The integration is a local-polling HACS custom integration for ThesslaGreen AirP
 
 ## Verified automated evidence
 
-PR #1762 merged to `main` as `088677385a179a0a02c14ddae3dd96d20c2534e0` after canonical CI #1146 completed successfully. That run verified:
+The 2026-08-10 hardening sequence is complete. PR #1762 merged the primary hardening work and PR #1763 merged the final follow-up. The durable follow-up checkpoint was finalized on `main` as `62e3cb10894767671c7aeb33a5e62b24c82c07ff`.
 
-- Ruff and import-order checks;
-- Ruff formatting;
-- Python compilation;
+The GitHub Actions run for `main@62e3cb1` completed all nine current checks successfully. It verifies:
+
+- Ruff/import-order/format and Python compilation;
 - vendor register comparison and AirPack 4 coverage;
-- translations;
-- repository maintainability gate;
-- durable agent checkpoint validation;
-- Hassfest;
-- HACS validation;
+- translations and maintainability;
+- durable checkpoint validation;
+- blocking `mypy` validation;
+- Hassfest and HACS validation;
 - entity mapping validation;
-- full pytest suite with 90.68% coverage against an 80% minimum.
+- full pytest on Home Assistant `2026.2.3`;
+- focused API contracts on minimum Home Assistant `2026.1.0`;
+- focused API contracts on current Home Assistant `2026.8.1` / Python `3.14`;
+- `pymodbus` compatibility suites for `3.6.1` and `3.14.0`.
 
-The follow-up hardening task adds mandatory mypy, declared-minimum Home Assistant API tests, immutable GitHub Action refs, repair-issue lifecycle, and cleanup of stale process-memory energy state. Those items are only marked verified after the follow-up PR's final CI run is green.
+The full suite reports **90.78%** total coverage against an 80% repository minimum.
 
 ## Quality-scale-oriented assessment
 
@@ -39,29 +41,23 @@ The follow-up hardening task adds mandatory mypy, declared-minimum Home Assistan
 
 Key evidence includes config flow, unique config entries, runtime data, entity unique IDs, integration-wide service registration from `async_setup()`, config-entry unloading, polling ownership through the coordinator/device client, and automated config-flow coverage.
 
-After PR #1762, service action schemas no longer depend on a loaded config entry. The follow-up also declares `CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)` because `async_setup()` exists only for process-lifetime service registration and YAML configuration is not supported.
+Service action schemas do not depend on a loaded config entry. `CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)` makes explicit that `async_setup()` exists for process-lifetime service registration while YAML configuration is not supported.
 
 ### Silver-oriented requirements
 
-**Status: substantially implemented, but not declared as the repository tier.**
+**Status: not fully satisfied by current evidence.**
 
-Evidence includes:
+The current Home Assistant Quality Scale `test-coverage` rule at Silver requires above 95% test coverage for **all integration modules**. The repository's current 90.78% aggregate coverage and several modules below 95% mean that rule is not met today, regardless of the repository's lower 80% CI threshold.
 
-- config-entry unload support;
-- translated/re-raised action failures (`HomeAssistantError` / `ServiceValidationError`);
-- unavailable-state/error handling;
-- reauthentication/reconfiguration support;
-- parallel-update limits;
-- test coverage above the repository threshold;
-- local polling and reconnect behavior covered by automated tests.
+Other Silver-oriented evidence is strong: config-entry unload support, translated/re-raised action failures (`HomeAssistantError` / `ServiceValidationError`), unavailable-state/error handling, reauthentication/reconfiguration support, explicit parallel-update limits, and local polling/reconnect test coverage.
 
-A higher declared tier should only be considered after the owner intentionally reviews the complete current Home Assistant Quality Scale checklist against this custom integration.
+A Silver declaration should only be considered after the complete current checklist is audited and every unmet rule, especially per-module test coverage, is closed.
 
 ### Gold-oriented requirements
 
 **Status: partial.**
 
-Implemented pieces include diagnostics with redaction, translated entities, device information, entity categories, disabled-by-default diagnostics/risky configuration entities, documented limitations, and Repairs support for actionable final Modbus write failures.
+Implemented pieces include diagnostics with redaction, translated entities, device information plumbing, entity categories, disabled-by-default diagnostics/risky configuration entities, documented limitations, and Repairs support for actionable final Modbus write failures.
 
 The principal unproven area is physical-device validation across the supported transport/model matrix. Existing AirPack 4 evidence predates the 2026-08-10 hardening changes.
 
@@ -69,7 +65,7 @@ The principal unproven area is physical-device validation across the supported t
 
 **Status: not claimed.**
 
-The follow-up adds strict typing as a blocking CI gate, but a Platinum claim would require an intentional audit of every current Platinum rule, not only successful mypy execution.
+Strict typing is a blocking CI gate, but a Platinum claim requires an intentional audit of every current Platinum rule, not only successful mypy execution.
 
 ## Safety-sensitive implementation notes
 
@@ -91,7 +87,7 @@ Final transport/write failures create an actionable Repairs issue scoped to the 
 
 ## External validation boundary
 
-GitHub CI cannot prove physical Modbus behavior. The following remain explicit external acceptance checks:
+GitHub CI cannot prove physical Modbus behavior. The following remain explicit external acceptance checks against the actual post-hardening candidate:
 
 - AirPack post-hardening smoke test;
 - RTU/USB validation using a stable `/dev/serial/by-id/...` path;
