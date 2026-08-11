@@ -9,13 +9,12 @@ from typing import TYPE_CHECKING, Any
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
-from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
+from homeassistant.const import CONF_HOST, CONF_NAME
 from homeassistant.core import HomeAssistant
 from pymodbus.exceptions import ModbusIOException
 from voluptuous import Invalid as VOL_INVALID
 
 from ..const import (
-    CONF_SLAVE_ID,
     CONF_TIMEOUT,
     CONNECTION_TYPE_TCP,
     DEFAULT_DEEP_SCAN,
@@ -23,7 +22,6 @@ from ..const import (
     DEFAULT_PARITY,
     DEFAULT_PORT,
     DEFAULT_RETRY,
-    DEFAULT_SLAVE_ID,
     DEFAULT_STOP_BITS,
     DEFAULT_TIMEOUT,
     DOMAIN,
