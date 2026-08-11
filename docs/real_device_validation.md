@@ -3,7 +3,7 @@
 **Status:** `PARTIAL`  
 **Last historical physical evidence:** 2026-07-08  
 **Post-hardening validation:** `PENDING`  
-**Current code baseline requiring revalidation:** PR #1762 / `088677385a179a0a02c14ddae3dd96d20c2534e0` plus the 2026-08-10 follow-up when merged.
+**Current code baseline requiring revalidation:** current `main`; every physical validation session must record the exact tested commit before execution.
 
 This document is the source of truth for physical ThesslaGreen validation. Automated CI results must not be recorded as physical-device evidence.
 
@@ -51,7 +51,7 @@ PR #1762 hardened behavior that directly affects hardware validation:
 - safe classification of transport failures as `indeterminate` rather than unsupported;
 - removal of redundant entity initial reads.
 
-The follow-up task additionally removes the volatile process-memory energy accumulator and adds a Repairs issue lifecycle for final Modbus write failures.
+PR #1763 added the bounded hardening follow-up, including removal of the volatile process-memory energy accumulator and a Repairs issue lifecycle for final Modbus write failures. Subsequent `main` changes also remain outside the historical hardware evidence unless their exact candidate commit is explicitly tested and recorded below.
 
 Because these changes touch runtime behavior, old hardware evidence remains historical evidence only.
 
