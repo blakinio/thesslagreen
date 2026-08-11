@@ -22,7 +22,7 @@ classifiers = [
     "Topic :: Home Automation",
 ]
 requires-python = ">=3.13"
-dependencies = ["pymodbus>=3.6.1,<4.0", "voluptuous>=0.13"]
+dependencies = ["pydantic>=2,<3", "pymodbus>=3.6.1,<4.0", "voluptuous>=0.13"]
 
 [project.optional-dependencies]
 dev = [
