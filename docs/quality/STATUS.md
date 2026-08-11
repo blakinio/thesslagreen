@@ -1,27 +1,32 @@
 # ThesslaGreen Modbus quality status
 
-**Status date:** 2026-08-10  
+**Status date:** 2026-08-11  
 **Current released version:** `2.8.3`  
 **Repository quality declaration:** Home Assistant `bronze`  
 **Minimum Home Assistant:** `2026.1.0`  
-**Runtime Modbus dependency:** `pymodbus>=3.6.1,<4.0`
+**Current `main` Modbus dependency:** `pymodbus>=3.6.1,<4.0`
 
 This file is the canonical snapshot for current quality, validation, and release-readiness status. Historical audit documents may describe older commits and must not be interpreted as the current state unless explicitly marked current.
 
 ## Automated verification
 
-The hardening change merged as PR #1762 (`088677385a179a0a02c14ddae3dd96d20c2534e0`). Its final canonical CI run #1146 passed all repository jobs: lint/format, compilation, vendor register coverage, translations, maintainability, checkpoint validation, Hassfest, HACS, entity mappings, and the full pytest suite. The full suite reported 90.68% coverage against the repository's 80% minimum.
+The 2026-08-10 hardening sequence is complete. PR #1762 merged the primary hardening work and PR #1763 merged the final follow-up. The follow-up checkpoint was finalized on `main` as `62e3cb10894767671c7aeb33a5e62b24c82c07ff`.
 
-The follow-up hardening task adds:
+The GitHub Actions run for `main@62e3cb1` completed all nine current checks successfully, including:
 
-- mandatory `mypy` validation using the repository's strict typing configuration;
-- a focused compatibility gate against the declared minimum Home Assistant `2026.1.0`;
-- commit-SHA pinning for third-party GitHub Actions used by CI and release workflows;
-- an explicit config-entry-only schema for the process-level `async_setup()` hook;
-- runtime Repairs issue lifecycle for final Modbus write failures;
-- removal of volatile in-memory `total_energy` accumulation and stale `estimated_power` aliases.
+- Ruff/import-order/format, compilation, vendor register coverage, translations, maintainability and checkpoint validation;
+- blocking `mypy` validation;
+- the full pytest suite on Home Assistant `2026.2.3`;
+- focused API-contract tests on the declared minimum Home Assistant `2026.1.0`;
+- focused API-contract tests on current Home Assistant `2026.8.1` / Python `3.14`;
+- `pymodbus` compatibility checks for `3.6.1` and `3.14.0`;
+- entity mapping validation;
+- Hassfest;
+- HACS validation.
 
-These follow-up items are considered complete only after the follow-up PR's final CI run is green.
+The full suite reported **90.78%** total coverage against the repository's configured 80% minimum. This is a useful repository gate, but it is not sufficient by itself for Home Assistant's current Silver `test-coverage` rule, which requires above 95% coverage for every integration module.
+
+The 2026-08-11 audit also corrected the coverage-upload workflow to authenticate Codecov with GitHub OIDC rather than relying on an absent long-lived upload secret. This change must be considered verified only when its pull-request CI log confirms a successful upload.
 
 ## Real-device evidence
 
@@ -35,7 +40,7 @@ Required external acceptance still includes:
 - safe write/read-back verification;
 - 24–72 hour polling soak with no transport desynchronization.
 
-GitHub CI cannot prove these hardware conditions. They must stay explicitly `PENDING` until measured on a real unit.
+GitHub CI cannot prove these hardware conditions. They must stay explicitly `PENDING` until measured on a real unit running the post-hardening candidate.
 
 ## Deliberately deferred work
 
@@ -43,4 +48,4 @@ Broad read-path/mixin/module consolidation is deliberately deferred. `docs/core_
 
 ## Release status
 
-`v2.8.3` is the current published GitHub release. The hardening work merged after that release and therefore belongs to a future version/release; no new release tag should be created until the repository owner intentionally selects the next version and the real-device acceptance level required for that release.
+`v2.8.3` is the current published GitHub release. Its tagged manifest declares `pymodbus>=3.6.0,<4.0`. Current `main` contains post-release hardening and declares `pymodbus>=3.6.1,<4.0` while the package version is still `2.8.3`; the next release must therefore select and apply a new version before tagging. No new release tag should be created until the repository owner intentionally selects that version and the real-device acceptance level required for the release.
