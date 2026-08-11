@@ -150,6 +150,12 @@ async def _setup_entities(force: bool) -> set[str]:
             "custom_components.thessla_green_modbus.services.async_setup_services",
             AsyncMock(),
         ),
+        patch(
+            "custom_components.thessla_green_modbus.config_entry_identity.migrate_config_entry_unique_id"
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_registry_migration.migrate_device_identifier"
+        ),
     ):
         await async_setup_entry(hass, entry)
         added: list = []
