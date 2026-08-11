@@ -1,7 +1,6 @@
 """Focused confirm-step config flow user tests."""
 
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -636,39 +635,15 @@ async def test_confirm_normal_scan_no_errors_shows_dash():
 
 
 @pytest.mark.asyncio
-async def test_confirm_step_aborts_on_existing_entry():
-    """Ensure confirming a second flow aborts if unique ID already configured."""
-
+async def test_user_step_aborts_on_existing_serial_identity():
+    """Stable serial identity is deduplicated before the confirm step."""
     flow = ConfigFlow()
-    flow.hass = None
-
-    user_input = dict(DEFAULT_USER_INPUT)
-
+    flow.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
     validation_result = {
-        "title": "Device",
-        "device_info": {},
+        "title": "ThesslaGreen AirPack",
+        "device_info": {"serial_number": "AP4-DUPLICATE"},
         "scan_result": {},
     }
-
-    # First pass through user step to store data
-    validation_result = {
-        "title": "ThesslaGreen 192.168.1.100",
-        "device_info": {},
-        "scan_result": {},
-    }
-
-    class AbortFlow(Exception):
-        def __init__(self, reason: str) -> None:
-            self.reason = reason
-
-    entries: set[str] = set()
-
-    async def async_set_unique_id(self, unique_id: str, **_: Any) -> None:
-        self._unique_id = unique_id
-
-    def abort_if_unique_id_configured(self) -> None:
-        if getattr(self, "_unique_id", None) in entries:
-            raise AbortFlow("already_configured")
 
     with (
         patch(
@@ -676,55 +651,14 @@ async def test_confirm_step_aborts_on_existing_entry():
             return_value=validation_result,
         ),
         patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id",
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
         ),
         patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
-            "_abort_if_unique_id_configured",
+            "custom_components.thessla_green_modbus.config_flow.ConfigFlow._abort_if_unique_id_configured",
+            side_effect=AbortFlow("already_configured"),
         ),
+        pytest.raises(AbortFlow) as err,
     ):
-        await flow.async_step_user(user_input)
+        await flow.async_step_user(dict(DEFAULT_USER_INPUT))
 
-    # Attempt to confirm after a duplicate has been configured elsewhere
-    with (
-        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
-        patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow."
-            "_abort_if_unique_id_configured",
-            side_effect=RuntimeError("already_configured"),
-        ),
-        pytest.raises(RuntimeError),
-    ):
-        await flow.async_step_confirm({})
-
-    with (
-        patch(
-            "custom_components.thessla_green_modbus._config_flow.validate_input",
-            return_value=validation_result,
-        ),
-        patch(
-            "homeassistant.helpers.translation.async_get_translations",
-            new=AsyncMock(return_value={}),
-        ),
-        patch.object(ConfigFlow, "async_set_unique_id", async_set_unique_id),
-        patch.object(
-            ConfigFlow,
-            "_abort_if_unique_id_configured",
-            abort_if_unique_id_configured,
-        ),
-    ):
-        flow1 = ConfigFlow()
-        flow1.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
-        flow2 = ConfigFlow()
-        flow2.hass = SimpleNamespace(config=SimpleNamespace(language="en"))
-
-        await flow1.async_step_user(user_input)
-        await flow2.async_step_user(user_input)
-
-        result1 = await flow1.async_step_confirm({})
-        assert result1["type"] == "create_entry"
-        entries.add(f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}:{user_input['slave_id']}")
-
-        with pytest.raises(AbortFlow) as err:
-            await flow2.async_step_confirm({})
-        assert err.value.reason == "already_configured"
+    assert err.value.reason == "already_configured"

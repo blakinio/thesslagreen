@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from unittest.mock import patch
 
 from custom_components.thessla_green_modbus.core.capabilities_mixin import (
     _clamp_percentage,
@@ -143,22 +141,24 @@ def test_post_process_data_flow_balance_string_values():
 
 
 def test_post_process_data_power_calculation():
-    """Power is estimated and energy accumulated when DAC values provided."""
+    """Only instantaneous electrical power is exposed from DAC values."""
     coord = _make_coordinator()
     data = {"dac_supply": 5.0, "dac_exhaust": 5.0}
     result = coord._post_process_data(data)
-    assert "estimated_power" in result
-    assert "total_energy" in result
+    assert result["electrical_power"] == 20.0
+    assert "estimated_power" not in result
+    assert "total_energy" not in result
 
 
-def test_post_process_data_timezone_aware_timestamp():
-    """Timezone-aware last timestamp is handled correctly (lines 1916-1919)."""
+def test_post_process_data_legacy_power_timestamp_is_ignored():
+    """Legacy accumulator timestamps cannot recreate volatile energy state."""
     coord = _make_coordinator()
-    # Set a timezone-aware last timestamp
-    coord.device_client._last_power_timestamp = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
+    coord.device_client._last_power_timestamp = "legacy-state"
     data = {"dac_supply": 3.0, "dac_exhaust": 3.0}
     result = coord._post_process_data(data)
-    assert "estimated_power" in result
+    assert result["electrical_power"] == 4.3
+    assert "estimated_power" not in result
+    assert "total_energy" not in result
 
 
 # ---------------------------------------------------------------------------

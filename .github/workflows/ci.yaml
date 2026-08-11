@@ -170,7 +170,7 @@ jobs:
 
       - name: Run minimum-version framework contracts
         run: |
-          pytest -q \
+          pytest --noconftest -q \
             tests/test_service_target_contract.py \
             tests/test_integration_service_lifecycle.py \
             tests/test_repairs.py \
@@ -202,7 +202,7 @@ jobs:
 
       - name: Run current-version framework contracts
         run: |
-          pytest -q \
+          pytest --noconftest -q \
             tests/test_service_target_contract.py \
             tests/test_integration_service_lifecycle.py \
             tests/test_repairs.py \
@@ -242,7 +242,7 @@ jobs:
 
       - name: Run transport contract tests
         run: |
-          pytest -q \
+          pytest --noconftest -q \
             tests/test_modbus_transport_tcp.py \
             tests/test_modbus_transport_rtu.py \
             tests/test_modbus_transport_raw.py
