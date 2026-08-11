@@ -64,6 +64,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async_setup_platforms,
         async_start_coordinator,
     )
+    from .config_entry_identity import migrate_config_entry_unique_id
     from .device_registry_migration import migrate_device_identifier
 
     coordinator = await async_create_coordinator(hass, entry)
@@ -72,6 +73,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.runtime_data = coordinator
 
     await async_setup_mappings(hass)
+    migrate_config_entry_unique_id(hass, entry, coordinator)
     migrate_device_identifier(hass, entry, coordinator)
     await async_migrate_entity_unique_ids(hass, entry, coordinator)
     await async_setup_platforms(hass, entry, PLATFORM_DOMAINS)
