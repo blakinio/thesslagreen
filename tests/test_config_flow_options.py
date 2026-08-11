@@ -56,9 +56,7 @@ async def test_config_flow_max_registers_per_request_validated():
     for value in (1, MAX_BATCH_REGISTERS):
         flow = ConfigFlow()
         flow.hass = SimpleNamespace(
-            config_entries=SimpleNamespace(
-                async_entries=lambda _domain, include_ignore=False: []
-            )
+            config_entries=SimpleNamespace(async_entries=lambda _domain, include_ignore=False: [])
         )
         with (
             patch(
