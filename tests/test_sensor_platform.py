@@ -1,7 +1,6 @@
 """Tests for ThesslaGreen sensor platform setup."""
 
 import asyncio
-import types
 from unittest.mock import MagicMock, patch
 
 import custom_components.thessla_green_modbus.select as select_module
@@ -84,8 +83,8 @@ def test_sensors_have_native_units(mock_coordinator, mock_config_entry):
     asyncio.run(run_test())
 
 
-def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_config_entry):
-    """Error sensor returns translated active codes."""
+def test_error_codes_sensor_setup_does_not_load_translations(mock_coordinator, mock_config_entry):
+    """Error sensor setup does not fetch unused translation dictionaries."""
 
     async def run_test() -> None:
         hass = MagicMock()
@@ -98,11 +97,9 @@ def test_error_codes_sensor_translates_active_registers(mock_coordinator, mock_c
             "holding_registers", set()
         ).add("s_2")
         add_entities = MagicMock()
-        with patch(
-            "custom_components.thessla_green_modbus.sensor.translation.async_get_translations",
-            return_value={"entity.sensor.error_codes.state.s_2": "Device status S 2"},
-        ):
+        with patch("homeassistant.helpers.translation.async_get_translations") as get_translations:
             await async_setup_entry(hass, mock_config_entry, add_entities)
+        get_translations.assert_not_called()
         entities = add_entities.call_args[0][0]
         sensor = next(e for e in entities if isinstance(e, ThesslaGreenErrorCodesSensor))
         assert sensor.native_value == "S2"  # nosec B101
@@ -304,14 +301,12 @@ def test_select_and_sensor_share_register(mock_coordinator, mock_config_entry):
 
 
 def test_active_errors_sensor(mock_coordinator, mock_config_entry):
-    """Sensor aggregates active error and status codes with translations."""
+    """Sensor aggregates active error and status codes with register descriptions."""
 
     async def run_test() -> None:
         hass = MagicMock()
         hass.data = {DOMAIN: {mock_config_entry.entry_id: mock_coordinator}}
         mock_config_entry.runtime_data = mock_coordinator
-
-        hass.config = types.SimpleNamespace(language="en")
 
         mock_coordinator.device_client.available_registers = {
             "input_registers": set(),
@@ -320,23 +315,15 @@ def test_active_errors_sensor(mock_coordinator, mock_config_entry):
         mock_coordinator.data["e_100"] = 1
 
         add_entities = MagicMock()
-        with patch(
-            "homeassistant.helpers.translation.async_get_translations",
-            return_value={"entity.sensor.error_codes.state.e_100": "Outside temp sensor missing"},
-        ):
-            await async_setup_entry(hass, mock_config_entry, add_entities)
-            entities = add_entities.call_args[0][0]
-            assert any(isinstance(ent, ThesslaGreenActiveErrorsSensor) for ent in entities)
-            sensor = next(
-                ent for ent in entities if isinstance(ent, ThesslaGreenActiveErrorsSensor)
-            )
-            sensor.hass = hass
-            await sensor.async_added_to_hass()
-            assert sensor.native_value == "E100"
-            assert sensor.extra_state_attributes["errors"] == {
-                "E100": "No reading from outdoor air temperature sensor – air intake (TZ1)"
-            }
-            assert sensor.extra_state_attributes["codes"] == ["E100"]
+        await async_setup_entry(hass, mock_config_entry, add_entities)
+        entities = add_entities.call_args[0][0]
+        assert any(isinstance(ent, ThesslaGreenActiveErrorsSensor) for ent in entities)
+        sensor = next(ent for ent in entities if isinstance(ent, ThesslaGreenActiveErrorsSensor))
+        assert sensor.native_value == "E100"
+        assert sensor.extra_state_attributes["errors"] == {
+            "E100": "No reading from outdoor air temperature sensor – air intake (TZ1)"
+        }
+        assert sensor.extra_state_attributes["codes"] == ["E100"]
 
     asyncio.run(run_test())
 
