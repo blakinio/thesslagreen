@@ -29,9 +29,7 @@ def test_migrates_legacy_endpoint_unique_id_to_serial() -> None:
     hass.config_entries.async_entry_for_domain_unique_id.assert_called_once_with(
         DOMAIN, "serial:sn-123"
     )
-    hass.config_entries.async_update_entry.assert_called_once_with(
-        entry, unique_id="serial:sn-123"
-    )
+    hass.config_entries.async_update_entry.assert_called_once_with(entry, unique_id="serial:sn-123")
 
 
 def test_does_not_migrate_without_usable_serial() -> None:
