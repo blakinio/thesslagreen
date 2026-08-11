@@ -177,7 +177,7 @@ jobs:
             tests/test_write_repair_lifecycle.py
 
   current-ha:
-    name: Current HA API contracts (2026.7.3)
+    name: Current HA API contracts (2026.8.1)
     runs-on: ubuntu-latest
     needs: lint
     steps:
@@ -198,7 +198,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pytest pytest-asyncio
           python -m pip install -e .
-          python -m pip install homeassistant==2026.7.3
+          python -m pip install homeassistant==2026.8.1
 
       - name: Run current-version framework contracts
         run: |
