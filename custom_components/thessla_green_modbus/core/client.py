@@ -13,8 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from contextlib import suppress
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from ..registers.maps import (
     coil_registers,
@@ -30,10 +29,6 @@ from .client_registers import _DeviceClientRegistersMixin
 from .client_scanner import _DeviceClientScannerMixin
 from .io_mixin import _ModbusIOMixin
 from .models import CoordinatorConfig
-
-if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -71,16 +66,13 @@ class ThesslaGreenDeviceClient(
         self,
         config: CoordinatorConfig,
         *,
-        hass: HomeAssistant,
         effective_batch: int,
         resolved_connection_mode: str | None,
         backoff: float,
         backoff_jitter: float | tuple[float, float] | None,
-        entry: ConfigEntry | None = None,
     ) -> None:
-        """Initialize device client from coordinator config."""
+        """Initialize device client from normalized domain configuration."""
         self.config = config
-        self.hass = hass
 
         # Convenience aliases for frequently-accessed config fields.
         self.slave_id = config.slave_id
@@ -108,9 +100,6 @@ class ThesslaGreenDeviceClient(
 
         # Device state.
         self.capabilities = DeviceCapabilities()
-        if entry is not None and isinstance(entry.data.get("capabilities"), dict):
-            with suppress(TypeError, ValueError):
-                self.capabilities = DeviceCapabilities(**entry.data["capabilities"])
         self.device_info: dict[str, Any] = {}
 
         # Register availability and mappings.
