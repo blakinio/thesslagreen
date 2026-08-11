@@ -4,9 +4,8 @@ from unittest.mock import MagicMock
 
 import pytest
 from custom_components.thessla_green_modbus import async_migrate_entry
-from custom_components.thessla_green_modbus.const import CONF_SLAVE_ID
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_HOST
 
 
 @pytest.mark.asyncio
@@ -58,22 +57,16 @@ async def test_migrate_entry_v3_returns_false():
 
 
 @pytest.mark.asyncio
-async def test_migrate_entry_v4_updates_unique_id():
-    """v4 migration replaces colons in host for unique_id."""
+async def test_migrate_current_entry_is_noop():
+    """Current entries must not have stable identity replaced by endpoint data."""
     hass = MagicMock()
     hass.config_entries.async_update_entry = MagicMock()
 
     config_entry = MagicMock(spec=ConfigEntry)
     config_entry.version = 4
-    config_entry.data = {
-        CONF_HOST: "fe80::1",
-        CONF_PORT: 1234,
-        CONF_SLAVE_ID: 5,
-    }
-    config_entry.options = {}
-    config_entry.unique_id = "fe80::1:1234:5"
+    config_entry.unique_id = "serial:sn-123"
 
     result = await async_migrate_entry(hass, config_entry)
 
     assert result is True
-    assert hass.config_entries.async_update_entry.call_args.kwargs["unique_id"] == "fe80--1:1234:5"
+    hass.config_entries.async_update_entry.assert_not_called()
