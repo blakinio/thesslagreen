@@ -40,12 +40,15 @@ jobs:
           python -m pip install -e .
           python -m pip install homeassistant==2026.2.3 hacs
 
-      - name: Normalize and validate
+      - name: Normalize and capture validation
+        shell: bash
         run: |
           ruff check --fix --select I custom_components tests tools
           ruff format custom_components tests tools
           ruff check custom_components tests tools
-          mypy custom_components/thessla_green_modbus
+          set +e
+          mypy custom_components/thessla_green_modbus > docs/agents/tasks/.mypy-debug.txt 2>&1
+          mypy_status=$?
           pytest -q \
             tests/test_domain_layer_boundaries.py \
             tests/test_device_client.py \
@@ -53,9 +56,15 @@ jobs:
             tests/test_config_flow_stable_identity.py \
             tests/test_config_flow_user_duplicates.py \
             tests/test_config_flow_confirm.py \
-            tests/test_config_flow_user.py
+            tests/test_config_flow_user.py > docs/agents/tasks/.focused-test-debug.txt 2>&1
+          pytest_status=$?
+          set -e
+          printf '\nMYPY_EXIT=%s\n' "$mypy_status" >> docs/agents/tasks/.mypy-debug.txt
+          printf '\nPYTEST_EXIT=%s\n' "$pytest_status" >> docs/agents/tasks/.focused-test-debug.txt
+          cat docs/agents/tasks/.mypy-debug.txt
+          cat docs/agents/tasks/.focused-test-debug.txt
 
-      - name: Commit verified cleanup
+      - name: Commit transformed workspace and diagnostics
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
