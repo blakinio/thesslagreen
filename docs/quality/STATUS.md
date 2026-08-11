@@ -26,7 +26,7 @@ The GitHub Actions run for `main@62e3cb1` completed all nine current checks succ
 
 The full suite reported **90.78%** total coverage against the repository's configured 80% minimum. This is a useful repository gate, but it is not sufficient by itself for Home Assistant's current Silver `test-coverage` rule, which requires above 95% coverage for every integration module.
 
-The 2026-08-11 audit also corrected the coverage-upload workflow to authenticate Codecov with GitHub OIDC rather than relying on an absent long-lived upload secret. This change must be considered verified only when its pull-request CI log confirms a successful upload.
+The 2026-08-11 audit verified two successive Codecov failure modes in otherwise-successful Tests jobs: the baseline upload lacked authentication, and an OIDC-authenticated retry obtained a valid short-lived token but Codecov returned `Repository not found`. Because Codecov repository onboarding/authorization is external to this repository and the upload was non-blocking, the broken upload step is removed rather than kept as a false-green signal. Pytest continues to enforce the local 80% coverage gate and print module-level coverage in CI. Codecov can be reintroduced later only after the repository is explicitly configured in Codecov and the upload is made a meaningful verified signal.
 
 ## Real-device evidence
 
