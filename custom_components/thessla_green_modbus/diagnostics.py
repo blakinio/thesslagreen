@@ -23,6 +23,10 @@ from .registers.cache import registers_sha256
 from .registers.loader import get_all_registers, get_registers_path
 
 _LOGGER = logging.getLogger(__name__)
+_HOSTNAME_RE = re.compile(
+    r"^(?=.{1,253}\.?$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)*"
+    r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.?$"
+)
 
 
 def _setdefault_bulk(target: dict[str, Any], defaults: dict[str, Any]) -> None:
@@ -184,8 +188,15 @@ def _redact_sensitive_data(data: dict[str, Any]) -> dict[str, Any]:
         segments = ip.exploded.split(":")
         return ":".join([segments[0]] + ["xxxx"] * 6 + [segments[-1]])
 
-    if "connection" in safe_data and "host" in safe_data["connection"]:
-        safe_data["connection"]["host"] = mask_ip(safe_data["connection"]["host"])
+    connection_host: str | None = None
+    if "connection" in safe_data and isinstance(safe_data["connection"], dict):
+        raw_host = safe_data["connection"].get("host")
+        if isinstance(raw_host, str):
+            connection_host = raw_host
+            masked = mask_ip(raw_host)
+            if masked == raw_host and _HOSTNAME_RE.fullmatch(raw_host):
+                masked = "<redacted-host>"
+            safe_data["connection"]["host"] = masked
 
     if "device_info" in safe_data and "serial_number" in safe_data["device_info"]:
         serial = safe_data["device_info"]["serial_number"]
@@ -196,6 +207,8 @@ def _redact_sensitive_data(data: dict[str, Any]) -> dict[str, Any]:
         for error in safe_data["recent_errors"]:
             if "message" in error:
                 message = error["message"]
+                if connection_host and _HOSTNAME_RE.fullmatch(connection_host):
+                    message = message.replace(connection_host, "<redacted-host>")
                 message = re.sub(
                     r"\b(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f:]+)\b",
                     lambda m: mask_ip(m.group(0)),
