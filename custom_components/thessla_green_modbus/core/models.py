@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
 
 from ..const import (
     CONF_BACKOFF,
@@ -74,10 +76,10 @@ class CoordinatorConfig:
     stop_bits: int = DEFAULT_STOP_BITS
 
     @classmethod
-    def from_mappings(
-        cls, data: Mapping[str, Any], options: Mapping[str, Any]
-    ) -> CoordinatorConfig:
-        """Build normalized device configuration from plain mappings."""
+    def from_entry(cls, entry: ConfigEntry | Any) -> CoordinatorConfig:
+        """Build a CoordinatorConfig from a Home Assistant config entry."""
+        data = entry.data
+        options = entry.options
         return cls(
             host=str(data.get("host", "")),
             port=int(data.get("port", DEFAULT_PORT)),
