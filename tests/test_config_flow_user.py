@@ -90,7 +90,9 @@ async def test_form_user_valid_ipv6():
     flow = ConfigFlow()
     flow.hass = SimpleNamespace(
         config=SimpleNamespace(language="en"),
-        config_entries=SimpleNamespace(async_entries=lambda _domain: []),
+        config_entries=SimpleNamespace(
+            async_entries=lambda _domain, include_ignore=False: []
+        ),
     )
 
     validation_result = {
@@ -133,7 +135,9 @@ async def test_form_user_valid_domain():
     flow = ConfigFlow()
     flow.hass = SimpleNamespace(
         config=SimpleNamespace(language="en"),
-        config_entries=SimpleNamespace(async_entries=lambda _domain: []),
+        config_entries=SimpleNamespace(
+            async_entries=lambda _domain, include_ignore=False: []
+        ),
     )
 
     validation_result = {
@@ -176,7 +180,9 @@ async def test_form_user_success():
     flow = ConfigFlow()
     flow.hass = SimpleNamespace(
         config=SimpleNamespace(language="en"),
-        config_entries=SimpleNamespace(async_entries=lambda _domain: []),
+        config_entries=SimpleNamespace(
+            async_entries=lambda _domain, include_ignore=False: []
+        ),
     )
 
     translations = {
@@ -250,7 +256,9 @@ async def test_host_is_not_used_as_unique_id():
     flow = ConfigFlow()
     flow.hass = SimpleNamespace(
         config=SimpleNamespace(language="en"),
-        config_entries=SimpleNamespace(async_entries=lambda _domain: []),
+        config_entries=SimpleNamespace(
+            async_entries=lambda _domain, include_ignore=False: []
+        ),
     )
 
     validation_result = {
