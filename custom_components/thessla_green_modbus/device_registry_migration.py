@@ -28,7 +28,7 @@ def _belongs_to_entry(device: Any, entry_id: str) -> bool:
         return False
 
 
-async def async_migrate_device_identifier(
+def migrate_device_identifier(
     hass: HomeAssistant,
     entry: ConfigEntry,
     coordinator: Any,
