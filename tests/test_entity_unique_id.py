@@ -179,8 +179,12 @@ async def test_migrate_entity_unique_ids(hass):
         patch(
             "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
         ) as mock_coordinator_class,
-        patch("custom_components.thessla_green_modbus.config_entry_identity.migrate_config_entry_unique_id"),
-        patch("custom_components.thessla_green_modbus.device_registry_migration.migrate_device_identifier"),
+        patch(
+            "custom_components.thessla_green_modbus.config_entry_identity.migrate_config_entry_unique_id"
+        ),
+        patch(
+            "custom_components.thessla_green_modbus.device_registry_migration.migrate_device_identifier"
+        ),
     ):
         coordinator = MagicMock()
         coordinator.async_config_entry_first_refresh = AsyncMock()
