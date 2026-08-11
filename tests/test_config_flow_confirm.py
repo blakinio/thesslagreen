@@ -650,9 +650,7 @@ async def test_user_step_aborts_on_existing_serial_identity():
             "custom_components.thessla_green_modbus._config_flow.validate_input",
             return_value=validation_result,
         ),
-        patch(
-            "custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"
-        ),
+        patch("custom_components.thessla_green_modbus.config_flow.ConfigFlow.async_set_unique_id"),
         patch(
             "custom_components.thessla_green_modbus.config_flow.ConfigFlow._abort_if_unique_id_configured",
             side_effect=AbortFlow("already_configured"),

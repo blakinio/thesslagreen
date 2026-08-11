@@ -13,9 +13,7 @@ def test_redact_internal_hostname_and_error_message() -> None:
     redacted = _redact_sensitive_data(data)
 
     assert redacted["connection"]["host"] == "<redacted-host>"
-    assert redacted["recent_errors"][0]["message"] == (
-        "Connection to <redacted-host> timed out"
-    )
+    assert redacted["recent_errors"][0]["message"] == ("Connection to <redacted-host> timed out")
 
 
 def test_redact_single_label_hostname() -> None:

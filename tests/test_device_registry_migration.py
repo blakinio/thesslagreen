@@ -74,9 +74,7 @@ def test_migrates_no_serial_device_to_config_entry_identity() -> None:
             _coordinator(serial=None),
         )
 
-    registry.async_update_device.assert_called_once_with(
-        "device-1", new_identifiers={stable}
-    )
+    registry.async_update_device.assert_called_once_with("device-1", new_identifiers={stable})
 
 
 def test_stable_device_requires_no_registry_update() -> None:
