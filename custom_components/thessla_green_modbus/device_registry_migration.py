@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Collection
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers import device_registry as dr
@@ -21,7 +22,7 @@ def _belongs_to_entry(device: Any, entry_id: str) -> bool:
     """Return whether a device belongs to the config entry across supported HA APIs."""
     if getattr(device, "config_entry_id", None) == entry_id:
         return True
-    config_entries = getattr(device, "config_entries", set())
+    config_entries: Collection[str] = getattr(device, "config_entries", set())
     try:
         return entry_id in config_entries
     except TypeError:
