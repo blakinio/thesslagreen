@@ -8,7 +8,6 @@ Design:
 - Adds missing HA component stubs that conftest does not provide (fan, switch,
   number, select, and the missing BinarySensorEntity on binary_sensor).
 - Patches ``capability_block_reason`` to always return ``None`` (allow).
-- Patches ``translation.async_get_translations`` (sensor platform).
 - Sets ``force_full_register_list = True`` for register-driven platforms.
 - Adds ``basic_control = True`` to capabilities for the climate platform.
 - Ensures ``air_flow_rate_manual`` is in holding_registers for the fan.
@@ -17,7 +16,7 @@ Design:
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from custom_components.thessla_green_modbus.const import DOMAIN
@@ -61,13 +60,9 @@ def _make_full_capabilities() -> SimpleNamespace:
 
 
 def _all_patches():
-    """Return a list of patch objects covering all 5 capability-filtered platforms."""
+    """Return patch objects covering all 5 capability-filtered platforms."""
     _cap = "custom_components.thessla_green_modbus.{mod}.capability_block_reason"
     return [
-        patch(
-            "custom_components.thessla_green_modbus.sensor.translation.async_get_translations",
-            new=AsyncMock(return_value={}),
-        ),
         patch(_cap.format(mod="sensor"), return_value=None),
         patch(_cap.format(mod="binary_sensor"), return_value=None),
         patch(_cap.format(mod="switch"), return_value=None),
@@ -126,7 +121,7 @@ async def test_all_platforms_create_at_least_one_entity(
     results: dict[str, list] = {}
 
     patches = _all_patches()
-    with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
+    with patches[0], patches[1], patches[2], patches[3], patches[4]:
         for platform_name, platform_module in platforms:
             add_entities = MagicMock()
             await platform_module.async_setup_entry(hass, mock_config_entry, add_entities)
@@ -211,7 +206,7 @@ async def test_entity_counts_per_platform(
 
     counts: dict[str, int] = {}
     patches = _all_patches()
-    with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
+    with patches[0], patches[1], patches[2], patches[3], patches[4]:
         for platform_name, platform_module in platforms:
             add_entities = MagicMock()
             await platform_module.async_setup_entry(hass, mock_config_entry, add_entities)

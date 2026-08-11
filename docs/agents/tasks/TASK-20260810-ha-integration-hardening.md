@@ -116,5 +116,5 @@ validation:
     result: PASS
     evidence: GitHub Actions run 31435299678 (#1145); lint, Hassfest, HACS, entity mappings, full pytest and 90.68% coverage all passed
 blockers: []
-next_action: Verify the checkpoint-only finalization CI, mark PR #1762 ready, and merge if all mandatory gates remain green.
+next_action: PR #1762 is merged; before any broad core/read-path consolidation, execute the physical AirPack soak/reconnect plan in docs/real_device_validation.md and record the hardware evidence.
 ```

@@ -13,7 +13,6 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import translation
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -23,7 +22,6 @@ from .const import (
     AIRFLOW_UNIT_PERCENTAGE,
     CONF_AIRFLOW_UNIT,
     DEFAULT_AIRFLOW_UNIT,
-    DOMAIN,
     ERROR_REGISTER_PREFIX,
     SENSOR_UNAVAILABLE,
     STATUS_REGISTER_PREFIX,
@@ -65,7 +63,7 @@ def _error_status_description(key: str) -> str:
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
+    _hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
@@ -114,14 +112,7 @@ async def async_setup_entry(
         elif is_temp:
             temp_skipped += 1
 
-    try:
-        translations = await translation.async_get_translations(
-            hass, hass.config.language, f"component.{DOMAIN}"
-        )
-    except (KeyError, RuntimeError, AttributeError):
-        _LOGGER.debug("Translations unavailable during sensor setup; using empty mapping")
-        translations = {}
-    entities.append(ThesslaGreenErrorCodesSensor(coordinator, translations))
+    entities.append(ThesslaGreenErrorCodesSensor(coordinator))
 
     error_registers = [
         key
@@ -295,14 +286,9 @@ class ThesslaGreenErrorCodesSensor(ThesslaGreenEntity, SensorEntity):
     _attr_icon = "mdi:alert-circle"
     _register_name = "error_codes"
 
-    def __init__(
-        self,
-        coordinator: ThesslaGreenModbusCoordinator,
-        translations: dict[str, str],
-    ) -> None:
+    def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the aggregated error/status sensor."""
         super().__init__(coordinator, self._register_name, -2)
-        self._translations = translations
         self._attr_translation_key = self._register_name
 
     @property
@@ -340,13 +326,6 @@ class ThesslaGreenActiveErrorsSensor(ThesslaGreenEntity, SensorEntity):
     def __init__(self, coordinator: ThesslaGreenModbusCoordinator) -> None:
         """Initialize the active errors sensor."""
         super().__init__(coordinator, "active_errors", -3)
-        self._translations: dict[str, str] = {}
-
-    async def async_added_to_hass(self) -> None:
-        """Load translations when entity is added to Home Assistant."""
-        self._translations = await translation.async_get_translations(
-            self.hass, self.hass.config.language, f"component.{DOMAIN}"
-        )
 
     @property
     def available(self) -> bool:
