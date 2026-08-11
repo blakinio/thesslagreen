@@ -176,7 +176,7 @@ def _stable_device_identifier(coordinator: Any) -> str:
     return f"endpoint:{dc.config.host}:{dc.config.port}:{dc.config.slave_id}"
 
 
-def get_device_info(coordinator: Any) -> DeviceInfo:
+def get_device_info(coordinator: Any) -> dict[str, Any]:
     """Return native Home Assistant device info with stable identity."""
     dc = coordinator.device_client
     model = dc.device_info.get("model")
@@ -200,7 +200,7 @@ def get_device_info(coordinator: Any) -> DeviceInfo:
         model = UNKNOWN_MODEL
     dc.device_info["model"] = model
 
-    info = DeviceInfo(
+    info: dict[str, Any] = DeviceInfo(
         identifiers={(DOMAIN, _stable_device_identifier(coordinator))},
         name=device_name(coordinator),
         manufacturer=MANUFACTURER,
