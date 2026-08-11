@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from homeassistant.helpers.device_registry import DeviceInfo
+
 from ..const import DOMAIN, MANUFACTURER, UNKNOWN_MODEL
 from ..register_map import REGISTER_MAP_VERSION
 from ..registers.loader import get_all_registers
@@ -120,10 +122,10 @@ def get_diagnostic_data(coordinator: Any) -> dict[str, Any]:
 def _resolve_sw_version(coordinator: Any) -> str:
     """Build a human-readable sw_version string.
 
-    Prefers the firmware string from the device scan result.  When that is
+    Prefers the firmware string from the device scan result. When that is
     absent or 'Unknown', falls back to assembling a version string from the
     version_major / version_minor / cf_version registers that were read from
-    the device.  Format: ``<major>.<minor> CF<cf>`` (e.g. ``3.11 CF13``).
+    the device. Format: ``<major>.<minor> CF<cf>`` (e.g. ``3.11 CF13``).
     """
     dc = coordinator.device_client
     firmware = dc.device_info.get("firmware", "Unknown")
@@ -147,8 +149,26 @@ def _resolve_sw_version(coordinator: Any) -> str:
     return " ".join(parts) if parts else "Unknown"
 
 
-def get_device_info(coordinator: Any) -> dict[str, Any]:
-    """Return device info mapping for the connected unit."""
+def _stable_device_identifier(coordinator: Any) -> str:
+    """Return an endpoint-independent device-registry identifier."""
+    dc = coordinator.device_client
+    serial = dc.device_info.get("serial_number")
+    if isinstance(serial, str):
+        normalized = serial.strip().lower()
+        if normalized and normalized not in {"unknown", "n/a", "0"}:
+            return f"serial:{normalized}"
+
+    entry_id = getattr(getattr(coordinator, "entry", None), "entry_id", None)
+    if isinstance(entry_id, str) and entry_id:
+        return f"entry:{entry_id}"
+
+    # Runtime coordinators always have a config entry. Keep a deterministic
+    # fallback for isolated tests and pre-entry development helpers only.
+    return f"endpoint:{dc.config.host}:{dc.config.port}:{dc.config.slave_id}"
+
+
+def get_device_info(coordinator: Any) -> DeviceInfo:
+    """Return native Home Assistant device info with stable identity."""
     dc = coordinator.device_client
     model = dc.device_info.get("model")
     if not model or model == UNKNOWN_MODEL:
@@ -171,23 +191,16 @@ def get_device_info(coordinator: Any) -> dict[str, Any]:
         model = UNKNOWN_MODEL
     dc.device_info["model"] = model
 
-    class _CompatDeviceInfo(dict):
-        def __getattr__(self, item: str) -> Any:
-            try:
-                return self[item]
-            except KeyError as exc:
-                raise AttributeError(item) from exc
-
-    return _CompatDeviceInfo(
-        identifiers={
-            (
-                DOMAIN,
-                f"{dc.config.host}:{dc.config.port}:{dc.config.slave_id}",
-            )
-        },
+    return DeviceInfo(
+        identifiers={(DOMAIN, _stable_device_identifier(coordinator))},
         name=device_name(coordinator),
         manufacturer=MANUFACTURER,
         model=model,
+        serial_number=(
+            str(dc.device_info["serial_number"])
+            if dc.device_info.get("serial_number") not in (None, "")
+            else None
+        ),
         sw_version=_resolve_sw_version(coordinator),
         configuration_url=f"http://{dc.config.host}",
     )
