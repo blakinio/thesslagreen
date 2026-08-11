@@ -3,11 +3,9 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from custom_components.thessla_green_modbus.const import DOMAIN
 from custom_components.thessla_green_modbus.device_registry_migration import (
-    async_migrate_device_identifier,
+    migrate_device_identifier,
 )
 
 
@@ -22,8 +20,7 @@ def _coordinator(*, host: str = "192.168.1.20", serial: str | None = "AP4-42"):
     )
 
 
-@pytest.mark.asyncio
-async def test_migrates_legacy_endpoint_identifier_to_serial() -> None:
+def test_migrates_legacy_endpoint_identifier_to_serial() -> None:
     """Existing endpoint-keyed devices gain only the stable integration identifier."""
     legacy = (DOMAIN, "192.168.1.20:8899:10")
     stable = (DOMAIN, "serial:ap4-42")
@@ -41,7 +38,7 @@ async def test_migrates_legacy_endpoint_identifier_to_serial() -> None:
         "custom_components.thessla_green_modbus.device_registry_migration.dr.async_get",
         return_value=registry,
     ):
-        await async_migrate_device_identifier(
+        migrate_device_identifier(
             SimpleNamespace(),
             SimpleNamespace(entry_id="entry-123"),
             _coordinator(),
@@ -53,8 +50,7 @@ async def test_migrates_legacy_endpoint_identifier_to_serial() -> None:
     )
 
 
-@pytest.mark.asyncio
-async def test_migrates_no_serial_device_to_config_entry_identity() -> None:
+def test_migrates_no_serial_device_to_config_entry_identity() -> None:
     """No-serial devices use config-entry identity rather than mutable endpoint data."""
     legacy = (DOMAIN, "192.168.1.20:8899:10")
     stable = (DOMAIN, "entry:entry-123")
@@ -72,7 +68,7 @@ async def test_migrates_no_serial_device_to_config_entry_identity() -> None:
         "custom_components.thessla_green_modbus.device_registry_migration.dr.async_get",
         return_value=registry,
     ):
-        await async_migrate_device_identifier(
+        migrate_device_identifier(
             SimpleNamespace(),
             SimpleNamespace(entry_id="entry-123"),
             _coordinator(serial=None),
@@ -83,8 +79,7 @@ async def test_migrates_no_serial_device_to_config_entry_identity() -> None:
     )
 
 
-@pytest.mark.asyncio
-async def test_stable_device_requires_no_registry_update() -> None:
+def test_stable_device_requires_no_registry_update() -> None:
     """An already migrated device remains untouched."""
     stable = (DOMAIN, "serial:ap4-42")
     device = SimpleNamespace(
@@ -101,7 +96,7 @@ async def test_stable_device_requires_no_registry_update() -> None:
         "custom_components.thessla_green_modbus.device_registry_migration.dr.async_get",
         return_value=registry,
     ):
-        await async_migrate_device_identifier(
+        migrate_device_identifier(
             SimpleNamespace(),
             SimpleNamespace(entry_id="entry-123"),
             _coordinator(),
