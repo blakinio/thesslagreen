@@ -166,6 +166,12 @@ def test_force_full_register_list_integration():
                 "custom_components.thessla_green_modbus.services.async_setup_services",
                 AsyncMock(),
             ),
+            patch(
+                "custom_components.thessla_green_modbus.config_entry_identity.migrate_config_entry_unique_id"
+            ),
+            patch(
+                "custom_components.thessla_green_modbus.device_registry_migration.migrate_device_identifier"
+            ),
         ):
             await async_setup_entry(hass, entry)
 
@@ -207,6 +213,12 @@ def test_force_full_register_list_integration():
             patch(
                 "custom_components.thessla_green_modbus.services.async_setup_services",
                 AsyncMock(),
+            ),
+            patch(
+                "custom_components.thessla_green_modbus.config_entry_identity.migrate_config_entry_unique_id"
+            ),
+            patch(
+                "custom_components.thessla_green_modbus.device_registry_migration.migrate_device_identifier"
             ),
         ):
             await async_setup_entry(hass, entry_force)
