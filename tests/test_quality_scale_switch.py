@@ -7,11 +7,10 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from homeassistant.helpers.entity import EntityCategory
-
 from custom_components.thessla_green_modbus import switch as switch_module
 from custom_components.thessla_green_modbus.entity import ThesslaGreenEntity
 from custom_components.thessla_green_modbus.switch import ThesslaGreenSwitch
+from homeassistant.helpers.entity import EntityCategory
 
 
 def _cfg(
