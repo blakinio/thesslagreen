@@ -9,10 +9,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
 
-from custom_components.thessla_green_modbus.core import register_groups
-from custom_components.thessla_green_modbus.core import retry as core_retry
-from custom_components.thessla_green_modbus.scanner import capabilities
-from custom_components.thessla_green_modbus.scanner import firmware
+from custom_components.thessla_green_modbus.core import register_groups, retry as core_retry
+from custom_components.thessla_green_modbus.scanner import capabilities, firmware
 from custom_components.thessla_green_modbus.scanner.device_info import (
     DeviceCapabilities,
     ScannerDeviceInfo,
