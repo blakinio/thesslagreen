@@ -212,7 +212,11 @@ async def test_scan_device_custom_scan_connect_failure_type_validation_and_close
     scanner = SimpleNamespace(close=AsyncMock())
     with (
         patch.object(orchestration.scanner_custom_scan, "uses_custom_scan_impl", return_value=True),
-        patch.object(orchestration.scanner_custom_scan, "run_custom_scan", new=AsyncMock(return_value={"ok": 1})),
+        patch.object(
+            orchestration.scanner_custom_scan,
+            "run_custom_scan",
+            new=AsyncMock(return_value={"ok": 1}),
+        ),
     ):
         assert await orchestration.scan_device(scanner) == {"ok": 1}
     scanner.close.assert_awaited_once()
@@ -221,13 +225,17 @@ async def test_scan_device_custom_scan_connect_failure_type_validation_and_close
         host="host",
         port=502,
         timeout=1,
-        _transport=SimpleNamespace(ensure_connected=AsyncMock(side_effect=TimeoutError()), client=None),
+        _transport=SimpleNamespace(
+            ensure_connected=AsyncMock(side_effect=TimeoutError()), client=None
+        ),
         _client=None,
         close=AsyncMock(),
         scan=AsyncMock(),
     )
     with (
-        patch.object(orchestration.scanner_custom_scan, "uses_custom_scan_impl", return_value=False),
+        patch.object(
+            orchestration.scanner_custom_scan, "uses_custom_scan_impl", return_value=False
+        ),
         patch.object(orchestration, "_prepare_scan_transport", new=AsyncMock()),
     ):
         with pytest.raises(ConnectionException, match="Failed to connect"):
@@ -238,7 +246,9 @@ async def test_scan_device_custom_scan_connect_failure_type_validation_and_close
     scanner.close.reset_mock()
     scanner.scan = AsyncMock(return_value="not-a-dict")
     with (
-        patch.object(orchestration.scanner_custom_scan, "uses_custom_scan_impl", return_value=False),
+        patch.object(
+            orchestration.scanner_custom_scan, "uses_custom_scan_impl", return_value=False
+        ),
         patch.object(orchestration, "_prepare_scan_transport", new=AsyncMock()),
     ):
         with pytest.raises(TypeError, match="must return a dict"):
