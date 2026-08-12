@@ -1,4 +1,8 @@
+from types import SimpleNamespace
+from unittest.mock import Mock
+
 from custom_components.thessla_green_modbus.const import MAX_BATCH_REGISTERS
+from custom_components.thessla_green_modbus.core.register_groups import compute_register_groups
 from custom_components.thessla_green_modbus.registers.loader import (
     RegisterDef as Register,
 )
@@ -96,3 +100,39 @@ def test_plan_group_reads_handles_gaps_and_block_size(monkeypatch):
     plans = [p for p in plan_group_reads(max_block_size=MAX_BATCH_REGISTERS) if p.function == 4]
 
     assert [(p.address, p.length) for p in plans] == expected
+
+
+def test_compute_register_groups_falls_back_on_unexpected_definition_errors() -> None:
+    """Unexpected definition failures use one-register reads in both scan modes."""
+
+    def fail_definition(_name: str) -> None:
+        raise RuntimeError("definition unavailable")
+
+    boundaries = frozenset({101})
+    for safe_scan in (True, False):
+        client = SimpleNamespace(
+            _register_groups={"stale": [(1, 1)]},
+            available_registers={"holding_registers": {"broken"}},
+            _register_maps={"holding_registers": {"broken": 100}},
+            safe_scan=safe_scan,
+            effective_batch=8,
+        )
+        grouped = Mock(return_value=[(100, 1)])
+
+        compute_register_groups(
+            client,
+            get_register_definition=fail_definition,
+            group_reads=grouped,
+            holding_batch_boundaries=boundaries,
+        )
+
+        assert client._register_groups["holding_registers"] == [(100, 1)]
+        assert "stale" not in client._register_groups
+        if safe_scan:
+            grouped.assert_not_called()
+        else:
+            grouped.assert_called_once_with(
+                [100],
+                max_block_size=8,
+                boundaries=boundaries,
+            )
