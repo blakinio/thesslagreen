@@ -7,11 +7,10 @@ from datetime import time as dt_time
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from homeassistant.exceptions import HomeAssistantError
-from pymodbus.exceptions import ModbusException
-
 from custom_components.thessla_green_modbus import time as time_module
 from custom_components.thessla_green_modbus.time import ThesslaGreenTime
+from homeassistant.exceptions import HomeAssistantError
+from pymodbus.exceptions import ModbusException
 
 
 def _definition() -> dict[str, str]:
