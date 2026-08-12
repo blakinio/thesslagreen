@@ -111,7 +111,9 @@ async def test_scan_device_identity_serial_and_device_name_success() -> None:
 async def test_scan_device_identity_expected_and_unexpected_error_paths() -> None:
     device = ScannerDeviceInfo()
     scanner = SimpleNamespace(_read_holding_block=AsyncMock(side_effect=RuntimeError("name")))
-    with patch.object(firmware, "INPUT_REGISTERS", {**firmware.INPUT_REGISTERS, "serial_number": "bad"}):
+    with patch.object(
+        firmware, "INPUT_REGISTERS", {**firmware.INPUT_REGISTERS, "serial_number": "bad"}
+    ):
         await firmware.scan_device_identity(scanner, [], device)
     assert device.serial_number == "Unknown"
 
