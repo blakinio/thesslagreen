@@ -7,15 +7,15 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
-
-from custom_components.thessla_green_modbus.core import register_groups, retry as core_retry
+from custom_components.thessla_green_modbus.core import register_groups
+from custom_components.thessla_green_modbus.core import retry as core_retry
 from custom_components.thessla_green_modbus.scanner import capabilities, firmware
 from custom_components.thessla_green_modbus.scanner.device_info import (
     DeviceCapabilities,
     ScannerDeviceInfo,
 )
 from custom_components.thessla_green_modbus.transport import retry as transport_retry
+from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
 
 
 def test_transport_retry_decision_equality_hash_and_jitter_paths() -> None:
