@@ -1,6 +1,6 @@
 ---
 task_id: TASK-20260812-quality-scale-closeout
-status: validating
+status: ready
 branch: test/quality-scale-coverage-20260812
 base_branch: main
 created: 2026-08-12
@@ -30,11 +30,11 @@ optional_reads: []
 
 ```yaml
 checkpoint_version: 1
-updated_at: 2026-08-12T20:20:00Z
-head: ea61639645a42052b630b7a3075f53c10fda69bc
+updated_at: 2026-08-12T20:28:00Z
+head: 26fce1e3f9480e318efb7c47445b41b43ea7f5aa
 branch: test/quality-scale-coverage-20260812
 pr: 1769
-status: validating
+status: ready
 context_routes:
   - AGENTS.md
   - docs/agents/CONTEXT_HANDOFF.md
@@ -52,27 +52,26 @@ owned_paths:
 proven:
   - Current main baseline for this validation round is c3f2b81002d984086a31ab2b98c27514bc3b56fe; its change from the original task base is governance-only and does not overlap the owned implementation paths.
   - PR #1769 is the only open pull request, remains mergeable and draft, and has no reviews or unresolved review threads at the latest inspection.
-  - Exact PR integrated CI run 31636262371 completed successfully for branch head b6144eeaed2abbc1bc63fc89c49e5f3330a14831 and merge candidate a100e78f377876d9437de376d28b64310bc86371.
-  - Tests job 94247656487 reports total coverage 98.21 percent and quality-scale module gaps=0.
-  - Every config-flow Python module, including config_flow.py and _config_flow/**, reports 100 percent coverage in job 94247656487.
-  - Every other Python module under custom_components/thessla_green_modbus is strictly above 95 percent according to the raw coverage.json threshold evaluation in job 94247656487.
-  - core/io_mixin.py and core/register_groups.py now report 100 percent coverage; no pragma/omit suppression was introduced for this closeout.
-  - Coverage artifact 9157182138 records the zero-gap proof for merge candidate a100e78f377876d9437de376d28b64310bc86371; uploaded zip SHA-256 is ff909afd47577a7f25075b52cffe3010152a0d17431656a098622dc378f8967a.
+  - Exact PR integrated CI run 31637012046 completed successfully for branch head 26fce1e3f9480e318efb7c47445b41b43ea7f5aa and merge candidate 6cbc8debc776f66c87e3c483b6f9a4d3937062d1 against current main c3f2b81002d984086a31ab2b98c27514bc3b56fe.
+  - Tests job 94250471076 reports total coverage 98.21 percent and the enforcing quality-scale evaluator reports module gaps=0.
+  - Every config-flow Python module, including config_flow.py and _config_flow/**, reports 100 percent coverage in job 94250471076.
+  - Every other Python module under custom_components/thessla_green_modbus is strictly above 95 percent according to the raw coverage.json threshold evaluation in job 94250471076.
+  - core/io_mixin.py and core/register_groups.py report 100 percent coverage; no pragma/omit suppression was introduced for this closeout.
+  - Coverage artifact 9157472635 records the zero-gap proof for merge candidate 6cbc8debc776f66c87e3c483b6f9a4d3937062d1; uploaded zip SHA-256 is 12f9748f31c1bea1fc20654e1c2029fdcb8067dc66dbcacd6a55d2614f24cbd7.
   - After zero-gap proof existed, commit ea61639645a42052b630b7a3075f53c10fda69bc converted the diagnostics-only step into an enforcing regression gate: config-flow must stay at 100 percent and all other integration modules must stay above 95 percent.
   - release.yaml is SHA-pinned and now requires both the exact triggering commit to still be current main and a successful push-triggered CI run for that exact SHA before publication; no release or version bump has been performed.
   - Existing Modbus addresses/names, entity IDs, unique IDs, services, write safety, polling policy and scan policy were not intentionally changed by this closeout.
 derived:
-  - The repository now has measured evidence for the intended Home Assistant quality-scale coverage thresholds rather than a global-percentage proxy.
-  - Enabling the regression gate only after run 31636262371 proved zero gaps avoids introducing an aspirational failing gate.
+  - The repository now has measured and enforced evidence for the intended Home Assistant quality-scale coverage thresholds rather than a global-percentage proxy.
+  - Enabling the regression gate only after zero-gap proof avoided introducing an aspirational failing gate.
   - Repository-only validation cannot prove physical AirPack startup, reconnect, safe write/read-back or soak behavior.
 unknown:
-  - Exact-head CI result for the checkpoint/gate commit sequence after ea61639645a42052b630b7a3075f53c10fda69bc.
   - Physical AirPack behavior of the post-hardening candidate because no Home Assistant/AirPack connector is exposed in this session.
   - Physical firmware major.minor reporting on a device where patch is unavailable.
 conflicts: []
 first_failure:
-  marker: final-exact-head-validation-pending
-  evidence: The enforcing gate was added after the successful zero-gap proof and requires one fresh exact-head CI pass together with this refreshed checkpoint before PR readiness.
+  marker: physical-airpack-acceptance-unavailable
+  evidence: Repository gates are green, but no Home Assistant/AirPack connector is exposed in this session, so physical acceptance cannot be executed here.
 rejected_hypotheses:
   - global coverage above 90 percent is sufficient for the current Home Assistant quality-scale test rule.
   - pragma no cover or coverage omission is an acceptable substitute for exercising reachable logic.
@@ -105,16 +104,19 @@ changed_paths:
   - docs/agents/tasks/TASK-20260812-quality-scale-closeout.md
   - docs/audits/deep_audit_2026-08-11.md
 validation:
-  - command: GitHub Actions run 31636262371 on PR branch head b6144eeaed2abbc1bc63fc89c49e5f3330a14831 / integrated merge candidate a100e78f377876d9437de376d28b64310bc86371
+  - command: GitHub Actions run 31637012046 on PR branch head 26fce1e3f9480e318efb7c47445b41b43ea7f5aa / integrated merge candidate 6cbc8debc776f66c87e3c483b6f9a4d3937062d1
     result: PASS
-    evidence: All CI jobs succeeded; Tests job 94247656487 reports 98.21 percent total coverage and zero quality-scale module gaps.
-  - command: quality-scale coverage evaluator in Tests job 94247656487
+    evidence: All CI jobs succeeded against current main c3f2b81002d984086a31ab2b98c27514bc3b56fe; Tests job 94250471076 reports 98.21 percent total coverage and zero quality-scale module gaps.
+  - command: enforcing quality-scale coverage evaluator in Tests job 94250471076
     result: PASS
     evidence: config-flow threshold 100 percent and all other integration modules strictly above 95 percent; zero gaps.
+  - command: checkpoint validation in Lint job 94249961477
+    result: PASS
+    evidence: Validate agent checkpoints completed successfully on the integrated PR candidate.
   - command: release workflow structural inspection at branch state ea61639645a42052b630b7a3075f53c10fda69bc
     result: PASS
     evidence: exact current-main SHA check plus exact-SHA successful push CI requirement are present; release actions remain immutable-SHA pinned.
 blockers:
   - Live Home Assistant/AirPack connector is not exposed in the current session, so physical acceptance cannot be executed here.
-next_action: Run fresh exact-head CI with the enforcing coverage gate and refreshed checkpoint; if it is fully green, mark PR #1769 ready and complete the protected merge while preserving the physical AirPack acceptance boundary.
+next_action: Require fresh exact-head CI for this checkpoint-ready commit; if fully green with unchanged head and clean review state, mark PR #1769 ready and squash-merge it, then verify post-merge main CI while preserving the physical AirPack acceptance boundary.
 ```
