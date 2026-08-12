@@ -153,7 +153,9 @@ async def test_get_translations_expected_errors_return_empty(error) -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("error", [TypeError("bad api"), AttributeError("bad api"), RuntimeError("bad api")])
+@pytest.mark.parametrize(
+    "error", [TypeError("bad api"), AttributeError("bad api"), RuntimeError("bad api")]
+)
 async def test_get_translations_unexpected_errors_return_empty(error) -> None:
     hass = SimpleNamespace(config=SimpleNamespace(language="pl"))
     with patch(
