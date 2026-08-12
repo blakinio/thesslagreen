@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+import voluptuous as vol
 from custom_components.thessla_green_modbus._config_flow.errors import classify_os_error
 from custom_components.thessla_green_modbus._config_flow.options_form import (
     build_transport_description,
@@ -14,15 +16,28 @@ from custom_components.thessla_green_modbus._config_flow.reauth_confirm import (
     apply_reauth_update,
 )
 from custom_components.thessla_green_modbus._config_flow.runtime import run_with_retry
+from custom_components.thessla_green_modbus._config_flow.schema import (
+    _build_serial_defaults_and_validators,
+    _option_default,
+)
 from custom_components.thessla_green_modbus._config_flow.steps import resolve_reauth_entry
+from custom_components.thessla_green_modbus._config_flow.validation import (
+    process_scan_capabilities,
+    validate_tcp_config,
+)
 from custom_components.thessla_green_modbus.const import (
+    CONF_BAUD_RATE,
     CONF_CONNECTION_MODE,
     CONF_CONNECTION_TYPE,
+    CONF_PARITY,
+    CONF_STOP_BITS,
     CONNECTION_MODE_AUTO,
     CONNECTION_MODE_TCP_RTU,
     CONNECTION_TYPE_RTU,
     CONNECTION_TYPE_TCP,
+    DOMAIN,
 )
+from custom_components.thessla_green_modbus.errors import CannotConnect
 
 
 def _transport_values() -> dict[str, object]:
@@ -40,6 +55,11 @@ def _transport_values() -> dict[str, object]:
 def test_classify_os_error_connection_refused() -> None:
     """Connection-refused errors have their dedicated config-flow reason."""
     assert classify_os_error(ConnectionRefusedError()) == "connection_refused"
+
+
+def test_classify_os_error_generic() -> None:
+    """Generic OS errors use the conservative connection failure reason."""
+    assert classify_os_error(OSError()) == "cannot_connect"
 
 
 def test_build_transport_description_rtu() -> None:
@@ -73,6 +93,119 @@ def test_build_transport_description_auto() -> None:
         return_value=(CONNECTION_TYPE_TCP, CONNECTION_MODE_AUTO),
     ):
         assert build_transport_description(values) == ("Modbus TCP (Auto)", "")
+
+
+def test_build_transport_description_plain_tcp() -> None:
+    """Plain TCP mode retains the default transport label."""
+    values = _transport_values()
+    with patch(
+        "custom_components.thessla_green_modbus._config_flow.options_form.resolve_connection_settings",
+        return_value=(CONNECTION_TYPE_TCP, None),
+    ):
+        assert build_transport_description(values) == ("Modbus TCP", "")
+
+
+def test_option_default_prefers_matching_translation_token() -> None:
+    """Schema defaults retain a reviewed option when its token is available."""
+    token = f"{DOMAIN}.modbus_baud_rate_9600"
+    assert _option_default("modbus_baud_rate_", [token], 9600, 19200) == token
+
+
+def test_option_default_falls_back_to_first_available_option() -> None:
+    """Schema defaults select the first valid option when the current value is absent."""
+    token = f"{DOMAIN}.modbus_baud_rate_9600"
+    assert _option_default("modbus_baud_rate_", [token], 19200, 38400) == token
+
+
+def test_serial_defaults_use_nonempty_selector_validators() -> None:
+    """Non-empty serial selector lists produce token validators and defaults."""
+    baud = f"{DOMAIN}.modbus_baud_rate_9600"
+    parity = f"{DOMAIN}.modbus_parity_even"
+    stop_bits = f"{DOMAIN}.modbus_stop_bits_1"
+
+    result = _build_serial_defaults_and_validators(
+        {
+            CONF_BAUD_RATE: 9600,
+            CONF_PARITY: "even",
+            CONF_STOP_BITS: 1,
+        },
+        baud_options=[baud],
+        parity_options=[parity],
+        stop_bits_options=[stop_bits],
+    )
+
+    assert result["baud_default"] == baud
+    assert result["parity_default"] == parity
+    assert result["stop_bits_default"] == stop_bits
+    assert result["baud_validator"](baud) == baud
+    assert result["parity_validator"](parity) == parity
+    assert result["stop_bits_validator"](stop_bits) == stop_bits
+
+
+def test_validate_tcp_config_rejects_hostname_rejected_by_ha() -> None:
+    """A hostname-shaped value must still pass Home Assistant host validation."""
+    data = {"host": "airpack.local", "port": 502}
+    with (
+        patch(
+            "custom_components.thessla_green_modbus._config_flow.validation.is_host_valid",
+            return_value=False,
+        ),
+        pytest.raises(vol.Invalid),
+    ):
+        validate_tcp_config(data, looks_like_hostname=lambda _host: True)
+
+
+def test_process_scan_capabilities_maps_serializer_failure() -> None:
+    """Dataclass serialization failures become a stable config-flow error."""
+
+    @dataclass
+    class Caps:
+        enabled: bool = True
+
+    with pytest.raises(CannotConnect):
+        process_scan_capabilities(
+            {"capabilities": Caps()},
+            capabilities_cls=Caps,
+            caps_to_dict=Mock(side_effect=TypeError("bad capabilities")),
+            logger=Mock(),
+        )
+
+
+def test_process_scan_capabilities_accepts_foreign_dataclass() -> None:
+    """A serializable dataclass need not be the active capabilities class."""
+
+    @dataclass
+    class ForeignCaps:
+        enabled: bool = True
+
+    @dataclass
+    class ActiveCaps:
+        enabled: bool = False
+
+    assert process_scan_capabilities(
+        {"capabilities": ForeignCaps()},
+        capabilities_cls=ActiveCaps,
+        caps_to_dict=Mock(return_value={"enabled": True}),
+        logger=Mock(),
+    ) == {"enabled": True}
+
+
+def test_process_scan_capabilities_rejects_missing_required_fields() -> None:
+    """Capabilities of the active dataclass type must include every public field."""
+
+    @dataclass
+    class Caps:
+        enabled: bool = True
+
+    logger = Mock()
+    with pytest.raises(CannotConnect):
+        process_scan_capabilities(
+            {"capabilities": Caps()},
+            capabilities_cls=Caps,
+            caps_to_dict=Mock(return_value={}),
+            logger=logger,
+        )
+    logger.error.assert_called_once()
 
 
 @pytest.mark.asyncio
