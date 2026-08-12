@@ -159,9 +159,7 @@ def test_register_groups_unexpected_definition_errors_fall_back_to_single_word()
         group_reads=group_reads,
         holding_batch_boundaries=frozenset({20}),
     )
-    group_reads.assert_called_once_with(
-        [10], max_block_size=4, boundaries=frozenset({20})
-    )
+    group_reads.assert_called_once_with([10], max_block_size=4, boundaries=frozenset({20}))
     assert client._register_groups["holding_registers"] == [(10, 1)]
 
 
