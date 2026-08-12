@@ -18,9 +18,7 @@ def _config(**extra) -> dict:
 
 
 @pytest.mark.asyncio
-async def test_setup_filters_capability_missing_and_force_creates(
-    monkeypatch, mock_coordinator
-):
+async def test_setup_filters_capability_missing_and_force_creates(monkeypatch, mock_coordinator):
     monkeypatch.setitem(
         number_module.ENTITY_MAPPINGS,
         "number",
