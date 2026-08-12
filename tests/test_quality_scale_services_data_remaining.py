@@ -22,9 +22,12 @@ def test_modbus_response_helpers_all_shapes() -> None:
     assert handlers_data._response_is_modbus_error(None) is False
     assert handlers_data._response_is_modbus_error(SimpleNamespace()) is False
     assert handlers_data._response_is_modbus_error(SimpleNamespace(isError=lambda: True)) is True
-    assert handlers_data._response_is_modbus_error(
-        SimpleNamespace(isError=lambda: (_ for _ in ()).throw(TypeError("bad")))
-    ) is False
+    assert (
+        handlers_data._response_is_modbus_error(
+            SimpleNamespace(isError=lambda: (_ for _ in ()).throw(TypeError("bad")))
+        )
+        is False
+    )
 
 
 @pytest.mark.asyncio
@@ -73,9 +76,13 @@ async def test_known_register_validation_classifies_batch_and_individual_outcome
             ),
         ),
     ):
-        available, missing, indeterminate, faults, retried = (
-            await handlers_data._read_known_registers_safe(coordinator, 4, 0)
-        )
+        (
+            available,
+            missing,
+            indeterminate,
+            faults,
+            retried,
+        ) = await handlers_data._read_known_registers_safe(coordinator, 4, 0)
     assert available["input_registers"] == {"a"}
     assert missing["input_registers"] == {"b"}
     assert indeterminate["input_registers"] == {"c", "d"}
@@ -94,7 +101,9 @@ async def test_known_register_validation_batch_success_and_delay() -> None:
     response = SimpleNamespace(registers=[1], bits=[], isError=lambda: False)
     with (
         patch.object(handlers_data, "group_reads", return_value=[(10, 1)]),
-        patch.object(handlers_data, "_read_batch_via_existing_client", new=AsyncMock(return_value=response)),
+        patch.object(
+            handlers_data, "_read_batch_via_existing_client", new=AsyncMock(return_value=response)
+        ),
         patch.object(handlers_data.asyncio, "sleep", new=AsyncMock()) as sleep,
     ):
         available, *_ = await handlers_data._read_known_registers_safe(coordinator, 1, 1)
@@ -105,8 +114,15 @@ async def test_known_register_validation_batch_success_and_delay() -> None:
 @pytest.mark.asyncio
 async def test_isolated_scan_success_scan_failure_close_failure_and_restore_failure() -> None:
     cfg = SimpleNamespace(
-        host="host", port=502, slave_id=10, connection_type="tcp", connection_mode="tcp",
-        serial_port="", baud_rate=9600, parity="none", stop_bits=1,
+        host="host",
+        port=502,
+        slave_id=10,
+        connection_type="tcp",
+        connection_mode="tcp",
+        serial_port="",
+        baud_rate=9600,
+        parity="none",
+        stop_bits=1,
     )
     dc = SimpleNamespace(
         config=cfg,
@@ -147,16 +163,29 @@ async def test_isolated_scan_success_scan_failure_close_failure_and_restore_fail
 @pytest.mark.asyncio
 async def test_isolated_scan_cancellation_propagates_through_scan_and_restore() -> None:
     cfg = SimpleNamespace(
-        host="host", port=502, slave_id=10, connection_type="tcp", connection_mode="tcp",
-        serial_port="", baud_rate=9600, parity="none", stop_bits=1,
+        host="host",
+        port=502,
+        slave_id=10,
+        connection_type="tcp",
+        connection_mode="tcp",
+        serial_port="",
+        baud_rate=9600,
+        parity="none",
+        stop_bits=1,
     )
     dc = SimpleNamespace(
         config=cfg,
-        _write_lock=asyncio.Lock(), timeout=1, retry=1, scan_uart_settings=False,
-        async_disconnect=AsyncMock(), async_ensure_connected=AsyncMock(),
+        _write_lock=asyncio.Lock(),
+        timeout=1,
+        retry=1,
+        scan_uart_settings=False,
+        async_disconnect=AsyncMock(),
+        async_ensure_connected=AsyncMock(),
     )
     coordinator = SimpleNamespace(device_client=dc)
-    scanner = SimpleNamespace(scan_device=AsyncMock(side_effect=asyncio.CancelledError()), close=AsyncMock())
+    scanner = SimpleNamespace(
+        scan_device=AsyncMock(side_effect=asyncio.CancelledError()), close=AsyncMock()
+    )
     deps = SimpleNamespace(scanner_create=AsyncMock(return_value=scanner))
     with pytest.raises(asyncio.CancelledError):
         await handlers_data._scan_with_polling_paused(
