@@ -46,7 +46,12 @@ jobs:
           python -m pip install homeassistant==${{ matrix.ha-version }} hacs
 
       - name: Ruff
-        run: ruff check --output-format=github custom_components tests tools
+        run: |
+          ruff check --select I --diff \
+            tests/test_quality_scale_connection_helpers.py \
+            tests/test_quality_scale_scanner_retry_helpers.py \
+            tests/test_quality_scale_small_modules.py || true
+          ruff check --output-format=github custom_components tests tools
 
       - name: Ruff import order
         run: ruff check --select I --output-format=github custom_components tests tools
