@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -161,7 +161,7 @@ async def test_fan_write_register_offset_exception_rejection_and_refresh(mock_co
 
 
 def test_fan_extra_attributes_all_optional_status_paths(mock_coordinator) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     mock_coordinator.data = {
         "supply_flow_rate": 100,
         "exhaust_flow_rate": 90,

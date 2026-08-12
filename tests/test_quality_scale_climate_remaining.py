@@ -97,7 +97,7 @@ def test_climate_hvac_action_all_runtime_states() -> None:
 
 
 def test_climate_extra_attributes_include_optional_values() -> None:
-    climate, coordinator = _make_climate(
+    climate, _coordinator = _make_climate(
         {
             "bypass": True,
             "gwc": True,
@@ -186,7 +186,7 @@ async def test_climate_temperature_writes_optional_comfort_then_required() -> No
 
 @pytest.mark.asyncio
 async def test_climate_fan_and_preset_validation_and_commands() -> None:
-    climate, coordinator = _make_climate({"min_percentage": 20, "max_percentage": 80})
+    climate, _coordinator = _make_climate({"min_percentage": 20, "max_percentage": 80})
     with pytest.raises(ServiceValidationError, match="Invalid fan mode"):
         await climate.async_set_fan_mode("invalid")
     with pytest.raises(ServiceValidationError, match="between"):

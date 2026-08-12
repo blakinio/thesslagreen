@@ -44,7 +44,7 @@ async def test_probe_missing_version_parts_expected_and_unexpected_errors() -> N
         _client=None,
         _read_input=AsyncMock(side_effect=[ValueError("bad"), RuntimeError("boom"), [3]]),
     )
-    major, minor, patch_value, err = await firmware._probe_missing_version_parts(
+    _major, _minor, patch_value, err = await firmware._probe_missing_version_parts(
         scanner, None, None, None, None
     )
     assert patch_value == 3

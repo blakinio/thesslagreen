@@ -79,6 +79,7 @@ def test_mapping_classification_covers_all_whitelist_routes() -> None:
     ) == (None, None)
     bucket, payload = classification.classify_enum_mapping(
         "mode", {0: "off", 1: "auto", 2: "boost"}, "R", set(), set(), set()
+    )
     assert bucket == "sensor"
     assert payload["translation_key"] == "mode"
 

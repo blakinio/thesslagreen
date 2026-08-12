@@ -7,9 +7,9 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from custom_components.thessla_green_modbus.core.capabilities_mixin import (
-    _CoordinatorCapabilitiesMixin,
     _clamp_percentage,
     _coerce_bypass_open,
+    _CoordinatorCapabilitiesMixin,
     _flow_balance_status,
     _normalise_capability_flag,
 )

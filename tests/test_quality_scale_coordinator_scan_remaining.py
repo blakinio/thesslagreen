@@ -7,8 +7,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from custom_components.thessla_green_modbus.coordinator import scan
 from custom_components.thessla_green_modbus.const import CONNECTION_MODE_AUTO
+from custom_components.thessla_green_modbus.coordinator import scan
 
 
 def _coordinator():
