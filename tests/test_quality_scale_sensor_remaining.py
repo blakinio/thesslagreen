@@ -29,7 +29,9 @@ def test_error_status_description_fallback_and_preferred_description() -> None:
 
 
 @pytest.mark.asyncio
-async def test_sensor_setup_capability_calculated_missing_address_and_serial_paths(mock_coordinator) -> None:
+async def test_sensor_setup_capability_calculated_missing_address_and_serial_paths(
+    mock_coordinator,
+) -> None:
     definitions = {
         "blocked_temp": {
             "register_type": "input_registers",
@@ -79,11 +81,16 @@ async def test_sensor_setup_capability_calculated_missing_address_and_serial_pat
         )
 
     entities = add.call_args.args[0]
-    assert any(isinstance(entity, ThesslaGreenSensor) and entity._register_name == "calc" for entity in entities)
+    assert any(
+        isinstance(entity, ThesslaGreenSensor) and entity._register_name == "calc"
+        for entity in entities
+    )
     assert any(isinstance(entity, ThesslaGreenSerialNumberSensor) for entity in entities)
     assert any(isinstance(entity, ThesslaGreenErrorCodesSensor) for entity in entities)
     assert any(isinstance(entity, ThesslaGreenActiveErrorsSensor) for entity in entities)
-    assert not any(getattr(entity, "_register_name", None) == "missing_address" for entity in entities)
+    assert not any(
+        getattr(entity, "_register_name", None) == "missing_address" for entity in entities
+    )
 
 
 def test_sensor_constructor_category_and_precision_paths(mock_coordinator) -> None:
@@ -119,7 +126,9 @@ def test_sensor_native_value_time_percentage_mapping_and_unavailable(mock_coordi
     prefix = TIME_REGISTER_PREFIXES[0]
     time_key = f"{prefix}quality_scale"
     timed = ThesslaGreenSensor(
-        mock_coordinator, time_key, 1,
+        mock_coordinator,
+        time_key,
+        1,
         {"register_type": "holding_registers", "translation_key": time_key},
     )
     mock_coordinator.data[time_key] = 125
@@ -130,7 +139,9 @@ def test_sensor_native_value_time_percentage_mapping_and_unavailable(mock_coordi
     assert timed.native_value is None
     assert timed.available is True
 
-    mock_coordinator.entry = SimpleNamespace(options={sensor_module.CONF_AIRFLOW_UNIT: sensor_module.AIRFLOW_UNIT_PERCENTAGE})
+    mock_coordinator.entry = SimpleNamespace(
+        options={sensor_module.CONF_AIRFLOW_UNIT: sensor_module.AIRFLOW_UNIT_PERCENTAGE}
+    )
     percent = ThesslaGreenSensor(
         mock_coordinator,
         "supply_flow_rate",
@@ -230,7 +241,9 @@ def test_error_code_aggregate_sensors_cover_empty_active_and_descriptions(mock_c
     active = ThesslaGreenActiveErrorsSensor(mock_coordinator)
     assert active.available is True
     assert active.native_value == "E7, S2"
-    with patch.object(sensor_module, "_error_status_description", side_effect=lambda key: f"desc:{key}"):
+    with patch.object(
+        sensor_module, "_error_status_description", side_effect=lambda key: f"desc:{key}"
+    ):
         attrs = active.extra_state_attributes
     assert attrs["codes"] == ["E7", "S2"]
     assert attrs["errors"] == {"E7": "desc:e_7", "S2": "desc:s_2"}
