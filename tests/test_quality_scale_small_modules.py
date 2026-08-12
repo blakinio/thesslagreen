@@ -72,9 +72,7 @@ async def test_button_setup_delegates_entity_creation() -> None:
     entity = object()
     entry = SimpleNamespace(runtime_data=coordinator)
     add_entities = Mock()
-    with patch.object(
-        button_module, "SyncDeviceClockButton", return_value=entity
-    ) as button_cls:
+    with patch.object(button_module, "SyncDeviceClockButton", return_value=entity) as button_cls:
         await button_module.async_setup_entry(object(), entry, add_entities)
     button_cls.assert_called_once_with(coordinator, entry)
     add_entities.assert_called_once_with([entity])
@@ -84,9 +82,9 @@ def test_error_contract_all_kinds_and_retry_log_details() -> None:
     assert error_contract.classify_error(TimeoutError("slow")) == error_contract.ErrorContract(
         "transient", "timeout"
     )
-    assert error_contract.classify_error(
-        asyncio.CancelledError()
-    ) == error_contract.ErrorContract("transient", "cancelled")
+    assert error_contract.classify_error(asyncio.CancelledError()) == error_contract.ErrorContract(
+        "transient", "cancelled"
+    )
     assert error_contract.classify_error(
         ModbusException("illegal data address")
     ) == error_contract.ErrorContract("permanent", "illegal_data_address")
@@ -118,9 +116,7 @@ def test_register_definitions_cache_clear_reloads_source() -> None:
     one = SimpleNamespace(name="one")
     two = SimpleNamespace(name="two")
     register_defs_cache.clear_register_definitions_cache()
-    with patch.object(
-        register_defs_cache, "get_all_registers", return_value=[one, two]
-    ) as loader:
+    with patch.object(register_defs_cache, "get_all_registers", return_value=[one, two]) as loader:
         assert register_defs_cache.get_register_definitions() == {"one": one, "two": two}
         assert register_defs_cache.get_register_definitions() == {"one": one, "two": two}
         loader.assert_called_once_with()
@@ -212,17 +208,11 @@ async def test_scanner_read_facade_delegates_all_helpers() -> None:
         patch.object(io, "track_input_failure") as input_failure,
         patch.object(io, "track_holding_failure") as holding_failure,
         patch.object(io, "read_input", new=AsyncMock(return_value=[1])) as read_input,
-        patch.object(
-            io, "read_register_block", new=AsyncMock(return_value=[2])
-        ) as read_block,
+        patch.object(io, "read_register_block", new=AsyncMock(return_value=[2])) as read_block,
         patch.object(io, "read_holding", new=AsyncMock(return_value=[3])) as read_holding,
-        patch.object(
-            io, "read_bit_registers", new=AsyncMock(return_value=[True])
-        ) as read_bits,
+        patch.object(io, "read_bit_registers", new=AsyncMock(return_value=[True])) as read_bits,
         patch.object(io, "read_coil", new=AsyncMock(return_value=[False])) as read_coil,
-        patch.object(
-            io, "read_discrete", new=AsyncMock(return_value=[True])
-        ) as read_discrete,
+        patch.object(io, "read_discrete", new=AsyncMock(return_value=[True])) as read_discrete,
     ):
         assert facade._unpack_read_args(1, 2, None) == (None, 1, 2)
         assert facade._resolve_transport_and_client(None) == ("transport", "client")
@@ -231,12 +221,7 @@ async def test_scanner_read_facade_delegates_all_helpers() -> None:
         assert await facade._read_input(10, 2, skip_cache=True) == [1]
         assert await facade._read_register_block("fn", 10, 2) == [2]
         assert await facade._read_holding(10, 2, skip_cache=True) == [3]
-        assert (
-            await facade._read_bit_registers(
-                "read_coils", "failed", "coils", 10, 2
-            )
-            == [True]
-        )
+        assert await facade._read_bit_registers("read_coils", "failed", "coils", 10, 2) == [True]
         assert await facade._read_coil(10, 2) == [False]
         assert await facade._read_discrete(10, 2) == [True]
 
@@ -258,13 +243,9 @@ async def test_register_map_cache_and_facades_delegate_all_paths() -> None:
     with (
         patch.object(maps, "_build_register_maps_from") as build_from,
         patch.object(maps, "_build_register_maps") as build,
-        patch.object(
-            maps, "_async_build_register_maps", new=AsyncMock()
-        ) as async_build,
+        patch.object(maps, "_async_build_register_maps", new=AsyncMock()) as async_build,
         patch.object(maps, "_ensure_register_maps") as ensure,
-        patch.object(
-            maps, "_async_ensure_register_maps", new=AsyncMock()
-        ) as async_ensure,
+        patch.object(maps, "_async_ensure_register_maps", new=AsyncMock()) as async_ensure,
     ):
         maps.REGISTER_HASH = "hash-a"
         assert register_map_cache.sync_register_hash_from_maps() == "hash-a"
@@ -283,13 +264,9 @@ async def test_register_map_cache_and_facades_delegate_all_paths() -> None:
     with (
         patch.object(cache, "build_register_maps_from") as build_from,
         patch.object(cache, "build_register_maps") as build,
-        patch.object(
-            cache, "async_build_register_maps", new=AsyncMock()
-        ) as async_build,
+        patch.object(cache, "async_build_register_maps", new=AsyncMock()) as async_build,
         patch.object(cache, "ensure_register_maps") as ensure,
-        patch.object(
-            cache, "async_ensure_register_maps", new=AsyncMock()
-        ) as async_ensure,
+        patch.object(cache, "async_ensure_register_maps", new=AsyncMock()) as async_ensure,
         patch.object(
             cache,
             "sync_register_hash_from_maps",
@@ -300,10 +277,7 @@ async def test_register_map_cache_and_facades_delegate_all_paths() -> None:
         assert register_map_facade.build_register_maps() == "b"
         assert await register_map_facade.async_build_register_maps("hass") == "c"
         assert register_map_facade.ensure_register_maps("old") == "d"
-        assert (
-            await register_map_facade.async_ensure_register_maps("old2", "hass")
-            == "e"
-        )
+        assert await register_map_facade.async_ensure_register_maps("old2", "hass") == "e"
     build_from.assert_called_once_with(["reg"], "old")
     build.assert_called_once_with()
     async_build.assert_awaited_once_with("hass")
@@ -312,9 +286,7 @@ async def test_register_map_cache_and_facades_delegate_all_paths() -> None:
 
     facade = register_map_runtime._register_map_facade
     with (
-        patch.object(
-            facade, "build_register_maps_from", return_value="from"
-        ) as build_from,
+        patch.object(facade, "build_register_maps_from", return_value="from") as build_from,
         patch.object(facade, "build_register_maps", return_value="build") as build,
         patch.object(
             facade,
@@ -337,8 +309,7 @@ async def test_register_map_cache_and_facades_delegate_all_paths() -> None:
         assert await register_map_runtime.async_build_register_maps("hass") == "async-build"
         assert register_map_runtime.ensure_register_maps("hash") == "ensure"
         assert (
-            await register_map_runtime.async_ensure_register_maps("hash", "hass")
-            == "async-ensure"
+            await register_map_runtime.async_ensure_register_maps("hash", "hass") == "async-ensure"
         )
     build_from.assert_called_once_with(["reg"], "hash")
     build.assert_called_once_with()
