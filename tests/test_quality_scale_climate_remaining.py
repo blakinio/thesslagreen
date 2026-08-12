@@ -166,9 +166,7 @@ async def test_climate_temperature_validation_and_temporary_failures() -> None:
     with pytest.raises(HomeAssistantError, match="did not confirm"):
         await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 22})
 
-    coordinator.async_write_temporary_temperature = AsyncMock(
-        side_effect=asyncio.CancelledError()
-    )
+    coordinator.async_write_temporary_temperature = AsyncMock(side_effect=asyncio.CancelledError())
     with pytest.raises(asyncio.CancelledError):
         await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 22})
 
