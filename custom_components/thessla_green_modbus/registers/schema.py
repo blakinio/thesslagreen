@@ -1,19 +1,9 @@
 """Pydantic models describing register definitions.
 
 This module validates the raw JSON register description bundled with the
-integration.  The previous implementation had become a little tangled due to
-multiple rounds of feature additions.  The file is rewritten here to add a few
-new capabilities while keeping the validation logic focused and explicit.
-
-Key features implemented:
-
-* ``function`` accepts integers or strings and is normalised to the canonical
-  integer form (``1`` … ``4``).
-* ``address_dec`` may be provided as either an integer or string.
-* ``length`` accepts ``count`` as an alias.
-* A top level ``type`` field is supported.  It accepts shorthand identifiers
-  (``u16``, ``i16`` … ``f64``, ``string``, ``bitmask``) and the expected
-  register count is enforced or defaulted.
+integration. Supported runtime dependencies require Pydantic 2, so validation
+uses the Pydantic 2 API directly rather than retaining unreachable Pydantic 1
+compatibility branches.
 """
 
 from __future__ import annotations
@@ -23,15 +13,18 @@ import re
 from enum import StrEnum
 from typing import Any, Literal, cast
 
-import pydantic
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    RootModel,
+    field_validator,
+    model_validator,
+)
 
 from ..utils import _normalise_name
 
 _LOGGER = logging.getLogger(__name__)
-
-RootModel = pydantic.RootModel
-model_validator = pydantic.model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -40,13 +33,7 @@ model_validator = pydantic.model_validator
 
 
 def _normalise_function(fn: int | str) -> int:
-    """Return canonical integer Modbus function code.
-
-    String aliases like ``"coil_registers"`` or zero‑padded values are mapped
-    to their numeric equivalents.  Values outside the ``1``–``4`` range raise a
-    ``ValueError``.
-    """
-
+    """Return canonical integer Modbus function code."""
     mapping = {
         "coil": 1,
         "coils": 1,
@@ -98,7 +85,6 @@ class RegisterType(StrEnum):
     BITMASK = "bitmask"
 
 
-# Expected register counts for the shorthand types above
 _TYPE_LENGTHS: dict[str, int | None] = {
     "u16": 1,
     "i16": 1,
@@ -109,7 +95,7 @@ _TYPE_LENGTHS: dict[str, int | None] = {
     "u64": 4,
     "i64": 4,
     "f64": 4,
-    "string": None,  # variable length
+    "string": None,
 }
 
 
@@ -176,22 +162,24 @@ def _validate_type_length(typ: Any, length: int | None) -> int | None:
 
 
 def _validate_enum_mapping(enum: dict[str, Any] | None) -> None:
+    """Validate register enum metadata."""
     if enum is None:
         return
     if not isinstance(enum, dict):
         raise ValueError("enum must be a mapping")
-    for k, v in enum.items():
+    for key, value in enum.items():
         try:
-            int(k)
+            int(key)
         except (TypeError, ValueError):
             raise ValueError("enum keys must be numeric") from None
-        if not isinstance(v, str):
+        if not isinstance(value, str):
             raise ValueError("enum values must be strings")
 
 
 def _validate_numeric_bounds(
     min_val: float | None, max_val: float | None, default: float | None
 ) -> None:
+    """Validate numeric min/max/default consistency."""
     if min_val is not None and max_val is not None and min_val > max_val:
         raise ValueError("min greater than max")
     if default is not None:
@@ -202,6 +190,7 @@ def _validate_numeric_bounds(
 
 
 def _validate_bits_and_mask(bits: list[Any] | None, extra: dict[str, Any] | None) -> None:
+    """Validate bit definitions and optional bitmask width."""
     seen_indices: set[int] = set()
     if bits is not None:
         if len(bits) > 16:
@@ -239,6 +228,8 @@ def _validate_bits_and_mask(bits: list[Any] | None, extra: dict[str, Any] | None
 class RegisterDefinition(BaseModel):
     """Schema describing a raw register definition from JSON."""
 
+    model_config = ConfigDict(extra="allow")
+
     function: int
     address_dec: int
     name: str
@@ -260,36 +251,20 @@ class RegisterDefinition(BaseModel):
     bits: list[Any] | None = None
     type: RegisterType | None = None
 
-    if hasattr(pydantic, "field_validator"):
-        model_config = ConfigDict(extra="allow")
-    else:
-
-        class Config:
-            extra = "allow"
-
-    # ------------------------------------------------------------------
-    # Normalisation helpers
-    # ------------------------------------------------------------------
-
     @model_validator(mode="before")
     @classmethod
     def _normalise_fields(cls, data: dict[str, Any]) -> dict[str, Any]:
         """Normalise raw input from JSON."""
-
         if "length" not in data and "count" in data:
             data["length"] = data["count"]
 
-        # Normalise function code -> canonical integer
         if "function" in data:
-            fn_int = _normalise_function(data["function"])
-            data["function"] = fn_int
+            data["function"] = _normalise_function(data["function"])
 
-        # Normalise access values to canonical form
         access = data.get("access")
         if access is not None:
             data["access"] = _normalise_access(access)
 
-        # Normalise address_dec (decimal-only in manufacturer register specification)
         addr_dec = data.get("address_dec")
         if addr_dec is not None:
             data["address_dec"] = _normalise_address_dec(addr_dec)
@@ -299,162 +274,70 @@ class RegisterDefinition(BaseModel):
         if expected_len is not None:
             data["length"] = expected_len
         _validate_scaling_metadata(data)
-
         return data
 
-    if hasattr(pydantic, "field_validator"):
+    @field_validator("function")
+    @classmethod
+    def _check_function(cls, value: int) -> int:
+        """Validate the normalized Modbus function code."""
+        if value not in {1, 2, 3, 4}:
+            raise ValueError("function code must be between 1 and 4")
+        return value
 
-        @pydantic.field_validator("function")
-        @classmethod
-        def _check_function(cls, v: int) -> int:
-            if v not in {1, 2, 3, 4}:
-                raise ValueError("function code must be between 1 and 4")
-            return v
+    @model_validator(mode="after")
+    def _check_access(self) -> RegisterDefinition:
+        """Enforce read-only access for coil/discrete functions."""
+        if self.function in {1, 2} and self.access != "R":
+            raise ValueError("read-only functions must have R access")
+        return self
 
-    else:
+    @model_validator(mode="after")
+    def check_consistency(self) -> RegisterDefinition:
+        """Validate type, enum, bit, and numeric metadata consistency."""
+        if self.type is not None:
+            reg_enum = RegisterType(self.type)
+            expected = _TYPE_LENGTHS.get(reg_enum.value)
+            if expected is None:
+                if self.length is None or self.length < 1:
+                    raise ValueError("string type requires length >= 1")
+            elif self.length != expected:
+                raise ValueError("length does not match type")
 
-        @pydantic.validator("function")
-        def _check_function(cls, v: int) -> int:
-            if v not in {1, 2, 3, 4}:
-                raise ValueError("function code must be between 1 and 4")
-            return v
+        _validate_enum_mapping(self.enum)
+        _validate_bits_and_mask(self.bits, self.extra)
+        _validate_numeric_bounds(self.min, self.max, self.default)
+        return self
 
-    if hasattr(pydantic, "model_validator"):
-
-        @model_validator(mode="after")
-        def _check_access(self) -> RegisterDefinition:
-            if self.function in {1, 2} and self.access != "R":
-                raise ValueError("read-only functions must have R access")
-            return self
-
-    else:
-
-        @pydantic.root_validator
-        def _check_access(cls, values: dict[str, Any]) -> dict[str, Any]:
-            function = values.get("function")
-            access = values.get("access")
-            if function in {1, 2} and access != "R":
-                raise ValueError("read-only functions must have R access")
-            return values
-
-    # ------------------------------------------------------------------
-    # Additional consistency checks
-    # ------------------------------------------------------------------
-
-    if hasattr(pydantic, "model_validator"):
-
-        @model_validator(mode="after")
-        def check_consistency(self) -> RegisterDefinition:
-            if self.type is not None:
-                try:
-                    reg_enum = RegisterType(self.type)
-                except ValueError as err:
-                    raise ValueError(f"unsupported type: {self.type}") from err
-                expected = _TYPE_LENGTHS.get(reg_enum.value)
-                if expected is None:
-                    if self.length is None or self.length < 1:
-                        raise ValueError("string type requires length >= 1")
-                elif self.length != expected:
-                    raise ValueError("length does not match type")
-
-            _validate_enum_mapping(self.enum)
-            _validate_bits_and_mask(self.bits, self.extra)
-            _validate_numeric_bounds(self.min, self.max, self.default)
-            return self
-
-    else:
-
-        @pydantic.root_validator
-        def check_consistency(cls, values: dict[str, Any]) -> dict[str, Any]:
-            reg_type = values.get("type")
-            length = values.get("length")
-            if reg_type is not None:
-                try:
-                    reg_enum = RegisterType(reg_type)
-                except ValueError as err:
-                    raise ValueError(f"unsupported type: {reg_type}") from err
-                expected = _TYPE_LENGTHS.get(reg_enum.value)
-                if expected is None:
-                    if length is None or length < 1:
-                        raise ValueError("string type requires length >= 1")
-                elif length != expected:
-                    raise ValueError("length does not match type")
-
-            _validate_enum_mapping(values.get("enum"))
-            _validate_bits_and_mask(values.get("bits"), values.get("extra"))
-            _validate_numeric_bounds(values.get("min"), values.get("max"), values.get("default"))
-            return values
-
-    if hasattr(pydantic, "field_validator"):
-
-        @pydantic.field_validator("name")
-        @classmethod
-        def name_is_snake(cls, v: str) -> str:
-            if not re.fullmatch(r"[a-z0-9_]+", v):
-                raise ValueError("name must be snake_case")
-            return v
-
-    else:
-
-        @pydantic.validator("name")
-        def name_is_snake(cls, v: str) -> str:
-            if not re.fullmatch(r"[a-z0-9_]+", v):
-                raise ValueError("name must be snake_case")
-            return v
+    @field_validator("name")
+    @classmethod
+    def name_is_snake(cls, value: str) -> str:
+        """Require canonical snake_case register names."""
+        if not re.fullmatch(r"[a-z0-9_]+", value):
+            raise ValueError("name must be snake_case")
+        return value
 
 
-if hasattr(pydantic, "RootModel"):
+class RegisterList(RootModel[list[RegisterDefinition]]):
+    """Container model to validate a list of registers."""
 
-    class RegisterList(RootModel[list[RegisterDefinition]]):  # type: ignore[valid-type,misc]
-        """Container model to validate a list of registers."""
+    @property
+    def registers(self) -> list[RegisterDefinition]:
+        """Return validated registers."""
+        return cast(list[RegisterDefinition], self.root)
 
-        @property
-        def registers(self) -> list[RegisterDefinition]:
-            return cast(list[RegisterDefinition], self.root)
-
-        if hasattr(pydantic, "model_validator"):
-
-            @model_validator(mode="after")
-            def unique(self) -> RegisterList:
-                registers = self.registers
-                seen_pairs: set[tuple[int, int]] = set()
-                seen_names: set[str] = set()
-                for reg in registers:
-                    fn = _normalise_function(reg.function)
-                    name = _normalise_name(reg.name)
-                    pair = (fn, reg.address_dec)
-                    if pair in seen_pairs:
-                        raise ValueError(f"duplicate register pair: {pair}")
-                    if name in seen_names:
-                        raise ValueError(f"duplicate register name: {name}")
-                    seen_pairs.add(pair)
-                    seen_names.add(name)
-                return self
-
-else:
-
-    class RegisterList(RootModel):  # type: ignore[no-redef,valid-type,misc]
-        """Container model to validate a list of registers."""
-
-        __root__: list[RegisterDefinition]
-
-        @property
-        def registers(self) -> list[RegisterDefinition]:
-            return self.__root__
-
-        @pydantic.root_validator
-        def unique(cls, values: dict[str, Any]) -> dict[str, Any]:
-            registers = values.get("__root__", [])
-            seen_pairs: set[tuple[int, int]] = set()
-            seen_names: set[str] = set()
-            for reg in registers:
-                fn = _normalise_function(reg.function)
-                name = _normalise_name(reg.name)
-                pair = (fn, reg.address_dec)
-                if pair in seen_pairs:
-                    raise ValueError(f"duplicate register pair: {pair}")
-                if name in seen_names:
-                    raise ValueError(f"duplicate register name: {name}")
-                seen_pairs.add(pair)
-                seen_names.add(name)
-            return values
+    @model_validator(mode="after")
+    def unique(self) -> RegisterList:
+        """Require unique function/address pairs and names."""
+        seen_pairs: set[tuple[int, int]] = set()
+        seen_names: set[str] = set()
+        for reg in self.registers:
+            fn = _normalise_function(reg.function)
+            name = _normalise_name(reg.name)
+            pair = (fn, reg.address_dec)
+            if pair in seen_pairs:
+                raise ValueError(f"duplicate register pair: {pair}")
+            if name in seen_names:
+                raise ValueError(f"duplicate register name: {name}")
+            seen_pairs.add(pair)
+            seen_names.add(name)
+        return self
