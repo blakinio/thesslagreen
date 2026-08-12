@@ -43,9 +43,10 @@ def test_bcd_clock_payload_and_registration_helpers() -> None:
     handlers = maintenance._maintenance_handlers(
         handler, handler, handler, handler, handler, handler, handler
     )
-    assert [service for service, _schema, _handler in maintenance._iter_maintenance_service_bindings(handlers)] == [
-        service for service, _schema in registrations
-    ]
+    assert [
+        service
+        for service, _schema, _handler in maintenance._iter_maintenance_service_bindings(handlers)
+    ] == [service for service, _schema in registrations]
 
 
 @pytest.mark.asyncio
@@ -116,7 +117,9 @@ async def test_modbus_parameter_mapping_failure_and_success() -> None:
     with (
         patch.object(maintenance, "normalize_modbus_options", return_value=(1, "9600", "none", 1)),
         patch.object(maintenance, "iter_modbus_parameter_writes", return_value=writes),
-        patch.object(maintenance, "write_mapped_optional_register", new=AsyncMock(return_value=False)),
+        patch.object(
+            maintenance, "write_mapped_optional_register", new=AsyncMock(return_value=False)
+        ),
     ):
         with pytest.raises(HomeAssistantError, match="did not confirm Modbus parameter"):
             await handler(call)
@@ -124,7 +127,9 @@ async def test_modbus_parameter_mapping_failure_and_success() -> None:
     with (
         patch.object(maintenance, "normalize_modbus_options", return_value=(1, "9600", "none", 1)),
         patch.object(maintenance, "iter_modbus_parameter_writes", return_value=writes),
-        patch.object(maintenance, "write_mapped_optional_register", new=AsyncMock(return_value=True)),
+        patch.object(
+            maintenance, "write_mapped_optional_register", new=AsyncMock(return_value=True)
+        ),
         patch.object(maintenance, "refresh_and_log_success", new=AsyncMock()) as refresh,
     ):
         await handler(call)
@@ -147,7 +152,9 @@ async def test_device_name_long_short_success_exception_and_unconfirmed() -> Non
 
     coordinator.async_write_register.reset_mock()
     with (
-        patch.object(maintenance, "write_device_name_chunks", new=AsyncMock(return_value=True)) as chunks,
+        patch.object(
+            maintenance, "write_device_name_chunks", new=AsyncMock(return_value=True)
+        ) as chunks,
         patch.object(maintenance, "refresh_and_log_success", new=AsyncMock()),
     ):
         await handler(SimpleNamespace(data={"device_name": "short"}))
@@ -197,11 +204,11 @@ async def test_sync_device_clock_options_success_homeassistant_generic_and_false
     )
     deps = _deps(coordinator)
     handler = maintenance._build_sync_device_clock_handler(object(), deps)
-    with patch.object(maintenance, "async_perform_clock_sync", new=AsyncMock(return_value=True)) as sync:
+    with patch.object(
+        maintenance, "async_perform_clock_sync", new=AsyncMock(return_value=True)
+    ) as sync:
         await handler(SimpleNamespace(data={"force": True}))
-    sync.assert_awaited_once_with(
-        coordinator, force=True, max_drift_seconds=12, logger=deps.logger
-    )
+    sync.assert_awaited_once_with(coordinator, force=True, max_drift_seconds=12, logger=deps.logger)
 
     coordinator.entry = None
     handler = maintenance._build_sync_device_clock_handler(object(), deps)
