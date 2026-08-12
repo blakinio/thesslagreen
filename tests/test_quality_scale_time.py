@@ -25,9 +25,7 @@ def _definition() -> dict[str, str]:
 async def test_time_setup_skips_capability_blocked_entity(monkeypatch, mock_coordinator):
     monkeypatch.setitem(time_module.ENTITY_MAPPINGS, "time", {"blocked_time": _definition()})
     mock_coordinator.device_client.get_register_map = Mock(return_value={"blocked_time": 10})
-    mock_coordinator.device_client.available_registers = {
-        "holding_registers": {"blocked_time"}
-    }
+    mock_coordinator.device_client.available_registers = {"holding_registers": {"blocked_time"}}
     monkeypatch.setattr(
         time_module,
         "capability_block_reason",
@@ -45,9 +43,7 @@ async def test_time_setup_skips_capability_blocked_entity(monkeypatch, mock_coor
 async def test_time_setup_skips_available_entity_without_address(monkeypatch, mock_coordinator):
     monkeypatch.setitem(time_module.ENTITY_MAPPINGS, "time", {"missing_time": _definition()})
     mock_coordinator.device_client.get_register_map = Mock(return_value={})
-    mock_coordinator.device_client.available_registers = {
-        "holding_registers": {"missing_time"}
-    }
+    mock_coordinator.device_client.available_registers = {"holding_registers": {"missing_time"}}
     monkeypatch.setattr(time_module, "capability_block_reason", Mock(return_value=None))
     add_entities = Mock()
     config_entry = Mock(runtime_data=mock_coordinator)
