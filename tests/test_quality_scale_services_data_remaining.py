@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from custom_components.thessla_green_modbus.services import handlers_data
 from homeassistant.exceptions import HomeAssistantError
-from pymodbus.exceptions import ConnectionException, ModbusException
+from pymodbus.exceptions import ConnectionException
 
 
 def test_modbus_response_helpers_all_shapes() -> None:
