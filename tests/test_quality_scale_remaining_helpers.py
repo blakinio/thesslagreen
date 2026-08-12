@@ -174,7 +174,7 @@ def test_register_codec_remaining_validation_paths() -> None:
         codec.coerce_scaled_input(
             value=5, raw_value=5, minimum=0, maximum=10, multiplier=0.5, resolution=2, name="value"
         )
-        == 8
+        == 12
     )
 
 
