@@ -45,18 +45,24 @@ def test_efficiency_early_returns_flow_paths_and_error_fallbacks() -> None:
     owner = _owner()
     assert owner._calculate_heat_recovery_efficiency({"bypass_mode": 1}) is None
     assert owner._calculate_heat_recovery_efficiency({}) is None
-    assert owner._calculate_heat_recovery_efficiency(
-        {"outside_temperature": 10, "supply_temperature": 15, "exhaust_temperature": 14}
-    ) is None
-    assert owner._calculate_heat_recovery_efficiency(
-        {
-            "outside_temperature": 0,
-            "supply_temperature": 10,
-            "exhaust_temperature": 20,
-            "supply_flow_rate": 0,
-            "exhaust_flow_rate": 10,
-        }
-    ) == 50
+    assert (
+        owner._calculate_heat_recovery_efficiency(
+            {"outside_temperature": 10, "supply_temperature": 15, "exhaust_temperature": 14}
+        )
+        is None
+    )
+    assert (
+        owner._calculate_heat_recovery_efficiency(
+            {
+                "outside_temperature": 0,
+                "supply_temperature": 10,
+                "exhaust_temperature": 20,
+                "supply_flow_rate": 0,
+                "exhaust_flow_rate": 10,
+            }
+        )
+        == 50
+    )
 
     data = {
         "outside_temperature": "bad",
@@ -80,12 +86,28 @@ def test_efficiency_early_returns_flow_paths_and_error_fallbacks() -> None:
 def test_device_clock_missing_invalid_and_valid_paths() -> None:
     owner = _owner()
     assert owner._decode_device_clock({}) is None
-    assert owner._decode_device_clock(
-        {"date_time": 0x2600, "date_time_ddtt": 0x0000, "date_time_ggmm": 0x2500, "date_time_sscc": 0}
-    ) is None
-    assert owner._decode_device_clock(
-        {"date_time": 0x2608, "date_time_ddtt": 0x1200, "date_time_ggmm": 0x1930, "date_time_sscc": 0x4500}
-    ) == "2026-08-12T19:30:45"
+    assert (
+        owner._decode_device_clock(
+            {
+                "date_time": 0x2600,
+                "date_time_ddtt": 0x0000,
+                "date_time_ggmm": 0x2500,
+                "date_time_sscc": 0,
+            }
+        )
+        is None
+    )
+    assert (
+        owner._decode_device_clock(
+            {
+                "date_time": 0x2608,
+                "date_time_ddtt": 0x1200,
+                "date_time_ggmm": 0x1930,
+                "date_time_sscc": 0x4500,
+            }
+        )
+        == "2026-08-12T19:30:45"
+    )
 
 
 def test_model_lookup_power_flow_fallback_and_dac_paths() -> None:
@@ -93,26 +115,32 @@ def test_model_lookup_power_flow_fallback_and_dac_paths() -> None:
     assert owner._lookup_model_power(300) is not None
     assert owner._lookup_model_power(999) is None
 
-    assert owner.calculate_power_consumption(
-        {
-            "nominal_supply_air_flow": 300,
-            "supply_flow_rate": 150,
-            "exhaust_flow_rate": 150,
-            "dac_heater": 5,
-        }
-    ) is not None
+    assert (
+        owner.calculate_power_consumption(
+            {
+                "nominal_supply_air_flow": 300,
+                "supply_flow_rate": 150,
+                "exhaust_flow_rate": 150,
+                "dac_heater": 5,
+            }
+        )
+        is not None
+    )
 
-    assert owner.calculate_power_consumption(
-        {
-            "nominal_supply_air_flow": "bad",
-            "supply_flow_rate": 100,
-            "exhaust_flow_rate": 100,
-            "dac_supply": 5,
-            "dac_exhaust": 5,
-            "dac_heater": 5,
-            "dac_cooler": 5,
-        }
-    ) is not None
+    assert (
+        owner.calculate_power_consumption(
+            {
+                "nominal_supply_air_flow": "bad",
+                "supply_flow_rate": 100,
+                "exhaust_flow_rate": 100,
+                "dac_supply": 5,
+                "dac_exhaust": 5,
+                "dac_heater": 5,
+                "dac_cooler": 5,
+            }
+        )
+        is not None
+    )
     assert owner.calculate_power_consumption({}) is None
 
 
