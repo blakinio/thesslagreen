@@ -61,7 +61,7 @@ def test_abort_classifier_and_bit_request_normalization() -> None:
     assert io_read._should_abort_input_exception(cancelled) is True
     assert io_read._should_abort_input_exception(TimeoutError()) is True
     assert io_read._should_abort_input_exception(OSError()) is True
-    assert io_read._should_abort_input_exception(ModbusException()) is False
+    assert io_read._should_abort_input_exception(ModbusException("generic")) is False
 
     scanner = _scanner()
     assert io_read._normalize_bit_read_request(scanner, 10, 3, None) == (
