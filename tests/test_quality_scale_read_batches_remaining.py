@@ -72,21 +72,15 @@ async def test_input_batch_shortcuts_and_error_classes() -> None:
 
     owner._failed_registers = set()
     owner._read_with_retry = AsyncMock(side_effect=_PermanentModbusError("permanent"))
-    await read_batches._read_input_register_batch(
-        owner, "read", 10, 2, ["r1", "r2"], {}, set()
-    )
+    await read_batches._read_input_register_batch(owner, "read", 10, 2, ["r1", "r2"], {}, set())
     owner._mark_registers_failed.assert_called()
 
     owner._read_with_retry = AsyncMock(side_effect=ConnectionException("offline"))
     with pytest.raises(ConnectionException):
-        await read_batches._read_input_register_batch(
-            owner, "read", 10, 2, ["r1", "r2"], {}, set()
-        )
+        await read_batches._read_input_register_batch(owner, "read", 10, 2, ["r1", "r2"], {}, set())
 
     owner._read_with_retry = AsyncMock(side_effect=ValueError("bad"))
-    await read_batches._read_input_register_batch(
-        owner, "read", 10, 2, ["r1", "r2"], {}, set()
-    )
+    await read_batches._read_input_register_batch(owner, "read", 10, 2, ["r1", "r2"], {}, set())
 
 
 @pytest.mark.asyncio
@@ -94,7 +88,9 @@ async def test_input_optimized_no_groups_transport_client_and_disconnected_paths
     owner = _owner()
     assert await read_batches.read_input_registers_optimized(owner) == {}
 
-    transport = SimpleNamespace(is_connected=Mock(return_value=True), read_input_registers=AsyncMock())
+    transport = SimpleNamespace(
+        is_connected=Mock(return_value=True), read_input_registers=AsyncMock()
+    )
     owner.device_client._transport = transport
     owner.device_client._register_groups = {"input_registers": [(10, 1)]}
     owner._find_register_name = Mock(return_value="r1")
@@ -105,7 +101,9 @@ async def test_input_optimized_no_groups_transport_client_and_disconnected_paths
     client = SimpleNamespace(connected=True, read_input_registers=AsyncMock())
     owner.device_client.client = client
     owner._call_modbus = AsyncMock(return_value=SimpleNamespace(registers=[8]))
-    owner._read_with_retry = AsyncMock(side_effect=lambda method, *_args, **_kwargs: method(10, 10, count=1))
+    owner._read_with_retry = AsyncMock(
+        side_effect=lambda method, *_args, **_kwargs: method(10, 10, count=1)
+    )
     assert await read_batches.read_input_registers_optimized(owner) == {"r1": 8}
 
     owner.device_client.client = None
@@ -142,7 +140,9 @@ async def test_holding_optimized_no_group_disconnected_partial_and_failures() ->
     owner._find_register_name = Mock(side_effect=lambda _kind, addr: {20: "h1", 21: "h2"}.get(addr))
     assert await read_batches.read_holding_registers_optimized(owner) == {}
 
-    transport = SimpleNamespace(is_connected=Mock(return_value=True), read_holding_registers=AsyncMock())
+    transport = SimpleNamespace(
+        is_connected=Mock(return_value=True), read_holding_registers=AsyncMock()
+    )
     owner.device_client._transport = transport
     owner._read_with_retry = AsyncMock(return_value=SimpleNamespace(registers=[3]))
     owner._read_holding_individually = AsyncMock()
@@ -178,8 +178,12 @@ def test_error_response_classifier_non_error_illegal_and_transient() -> None:
 
     illegal = SimpleNamespace(isError=lambda: True, exception_code=2)
     with pytest.raises(_PermanentModbusError):
-        read_batches.raise_for_error_response(object(), illegal, register_type="input", start_address=1)
+        read_batches.raise_for_error_response(
+            object(), illegal, register_type="input", start_address=1
+        )
 
     transient = SimpleNamespace(isError=lambda: True, exception_code=4)
     with pytest.raises(ModbusException):
-        read_batches.raise_for_error_response(object(), transient, register_type="input", start_address=1)
+        read_batches.raise_for_error_response(
+            object(), transient, register_type="input", start_address=1
+        )
