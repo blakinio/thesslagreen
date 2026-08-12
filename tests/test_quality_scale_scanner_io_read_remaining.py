@@ -45,9 +45,7 @@ def _scanner():
 
 def test_error_response_marks_input_and_holding_paths() -> None:
     scanner = _scanner()
-    io_read._handle_error_response(
-        scanner, register_type="input_registers", start=1, end=2, code=2
-    )
+    io_read._handle_error_response(scanner, register_type="input_registers", start=1, end=2, code=2)
     assert scanner._failed_input == {1, 2}
     scanner._mark_input_unsupported.assert_called_once_with(1, 2, 2)
 
@@ -131,8 +129,10 @@ def test_register_error_response_all_classification_paths() -> None:
 
     scanner._holding_failures[20] = scanner.retry - 1
     with patch.object(io_read, "track_holding_failure") as track:
+
         def fail_now(_scanner, _count, address):
             scanner._failed_holding.add(address)
+
         track.side_effect = fail_now
         assert io_read._handle_register_error_response(
             scanner,
@@ -300,7 +300,11 @@ def test_input_exception_handler_all_expected_categories() -> None:
 @pytest.mark.asyncio
 async def test_word_attempt_transport_client_cancel_and_exception_paths() -> None:
     scanner = _scanner()
-    transport = SimpleNamespace(read_input_registers=AsyncMock(return_value=SimpleNamespace(isError=lambda: False, registers=[1])))
+    transport = SimpleNamespace(
+        read_input_registers=AsyncMock(
+            return_value=SimpleNamespace(isError=lambda: False, registers=[1])
+        )
+    )
     result = await io_read._execute_word_read_attempt(
         scanner,
         transport=transport,
@@ -313,7 +317,9 @@ async def test_word_attempt_transport_client_cancel_and_exception_paths() -> Non
     assert result.registers == [1]
 
     handler = Mock(return_value=(True, True))
-    with patch.object(io_read, "_execute_word_read_attempt", new=AsyncMock(side_effect=TimeoutError())):
+    with patch.object(
+        io_read, "_execute_word_read_attempt", new=AsyncMock(side_effect=TimeoutError())
+    ):
         assert await io_read._run_word_read_single_attempt(
             scanner,
             transport=None,
@@ -330,7 +336,11 @@ async def test_word_attempt_transport_client_cancel_and_exception_paths() -> Non
             attempt=1,
         ) == (False, True, True, None)
 
-    with patch.object(io_read, "_execute_word_read_attempt", new=AsyncMock(side_effect=asyncio.CancelledError())):
+    with patch.object(
+        io_read,
+        "_execute_word_read_attempt",
+        new=AsyncMock(side_effect=asyncio.CancelledError()),
+    ):
         with pytest.raises(asyncio.CancelledError):
             await io_read._run_word_read_single_attempt(
                 scanner,
@@ -394,7 +404,9 @@ def test_holding_exception_handler_all_categories() -> None:
 async def test_bit_reads_timeout_reconnect_oserror_cancel_and_failure_bucket() -> None:
     scanner = _scanner()
     scanner.retry = 1
-    with patch.object(io_read, "_call_modbus_with_fallback", new=AsyncMock(side_effect=TimeoutError())):
+    with patch.object(
+        io_read, "_call_modbus_with_fallback", new=AsyncMock(side_effect=TimeoutError())
+    ):
         assert await io_read.read_coil(scanner, 10, 2) is None
     assert scanner.failed_addresses["modbus_exceptions"]["coil_registers"] == {10, 11}
 
@@ -407,16 +419,26 @@ async def test_bit_reads_timeout_reconnect_oserror_cancel_and_failure_bucket() -
             "_call_modbus_with_fallback",
             new=AsyncMock(side_effect=[ConnectionException("offline"), good]),
         ),
-        patch.object(io_read, "_attempt_bit_reconnect", new=AsyncMock(return_value=scanner._client)) as reconnect,
+        patch.object(
+            io_read,
+            "_attempt_bit_reconnect",
+            new=AsyncMock(return_value=scanner._client),
+        ) as reconnect,
         patch.object(io_read, "_sleep_retry_backoff", new=AsyncMock()),
     ):
         assert await io_read.read_discrete(scanner, 20, 2) == [True, False]
     reconnect.assert_awaited_once()
 
     scanner.retry = 1
-    with patch.object(io_read, "_call_modbus_with_fallback", new=AsyncMock(side_effect=OSError("os"))):
+    with patch.object(
+        io_read, "_call_modbus_with_fallback", new=AsyncMock(side_effect=OSError("os"))
+    ):
         assert await io_read.read_coil(scanner, 30, 1) is None
 
-    with patch.object(io_read, "_call_modbus_with_fallback", new=AsyncMock(side_effect=asyncio.CancelledError())):
+    with patch.object(
+        io_read,
+        "_call_modbus_with_fallback",
+        new=AsyncMock(side_effect=asyncio.CancelledError()),
+    ):
         with pytest.raises(asyncio.CancelledError):
             await io_read.read_coil(scanner, 40, 1)
