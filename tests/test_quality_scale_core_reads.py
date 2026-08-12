@@ -21,7 +21,6 @@ from custom_components.thessla_green_modbus.core.retry import _PermanentModbusEr
 from custom_components.thessla_green_modbus.core.transport_select import select_auto_transport
 from pymodbus.exceptions import ConnectionException, ModbusException
 
-
 _BIT_READ_CASES = (
     (read_coil_registers_optimized, "coil_registers", "_read_coils_transport", "coil"),
     (
