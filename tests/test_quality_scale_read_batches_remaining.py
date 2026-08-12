@@ -101,9 +101,11 @@ async def test_input_optimized_no_groups_transport_client_and_disconnected_paths
     client = SimpleNamespace(connected=True, read_input_registers=AsyncMock())
     owner.device_client.client = client
     owner._call_modbus = AsyncMock(return_value=SimpleNamespace(registers=[8]))
-    owner._read_with_retry = AsyncMock(
-        side_effect=lambda method, *_args, **_kwargs: method(10, 10, count=1)
-    )
+
+    async def invoke_read(method, *_args, **_kwargs):
+        return await method(10, 10, count=1)
+
+    owner._read_with_retry = AsyncMock(side_effect=invoke_read)
     assert await read_batches.read_input_registers_optimized(owner) == {"r1": 8}
 
     owner.device_client.client = None
