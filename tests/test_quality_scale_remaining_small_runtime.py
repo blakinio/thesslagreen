@@ -68,8 +68,15 @@ async def test_io_mixin_disconnected_bit_reads_fail_closed_and_delegate() -> Non
 async def test_device_client_connection_aliases_and_direct_client_paths() -> None:
     owner = client_connection._DeviceClientConnectionMixin()
     owner.config = SimpleNamespace(
-        host="host", port=502, slave_id=10, parity="none", stop_bits=1,
-        connection_type="tcp", connection_mode="tcp", serial_port="", baud_rate=9600,
+        host="host",
+        port=502,
+        slave_id=10,
+        parity="none",
+        stop_bits=1,
+        connection_type="tcp",
+        connection_mode="tcp",
+        serial_port="",
+        baud_rate=9600,
     )
     owner._write_lock = asyncio.Lock()
     owner._transport = object()
@@ -125,9 +132,12 @@ async def test_retry_disconnect_success_restore_and_connection_error_logging() -
         owner.device_client.client = None
 
     owner._disconnect = AsyncMock(side_effect=disconnect_and_clear)
-    assert await retry._safe_disconnect_for_retry(
-        owner, register_type="holding", start_address=1, attempt=1, restore_client=True
-    ) is None
+    assert (
+        await retry._safe_disconnect_for_retry(
+            owner, register_type="holding", start_address=1, attempt=1, restore_client=True
+        )
+        is None
+    )
     assert owner.device_client.client is previous
 
     exc = ConnectionException("offline")
@@ -152,9 +162,12 @@ async def test_retry_reconnect_failure_is_returned() -> None:
         _ensure_connection=AsyncMock(side_effect=reconnect_error),
         backoff=0,
     )
-    assert await retry.disconnect_and_reconnect_for_retry(
-        owner, register_type="input", start_address=2, attempt=1
-    ) is reconnect_error
+    assert (
+        await retry.disconnect_and_reconnect_for_retry(
+            owner, register_type="input", start_address=2, attempt=1
+        )
+        is reconnect_error
+    )
 
 
 def test_write_repair_helpers_are_best_effort() -> None:
@@ -229,11 +242,16 @@ async def test_schedule_rejects_unsupported_end_time_before_device_access() -> N
     hass = SimpleNamespace(services=_Services())
     deps = _schedule_deps(coordinator)
     handlers_schedule.register_schedule_services(hass, deps)
-    call = SimpleNamespace(data={
-        "day": "monday", "period": 1, "season": "summer",
-        "start_time": time(8, 0), "end_time": time(9, 0),
-        "airflow_rate": 50,
-    })
+    call = SimpleNamespace(
+        data={
+            "day": "monday",
+            "period": 1,
+            "season": "summer",
+            "start_time": time(8, 0),
+            "end_time": time(9, 0),
+            "airflow_rate": 50,
+        }
+    )
     with pytest.raises(ServiceValidationError, match="end_time cannot be written"):
         await hass.services.handlers["set_airflow_schedule"](call)
 
@@ -247,10 +265,15 @@ async def test_schedule_rejects_missing_required_registers() -> None:
     hass = SimpleNamespace(services=_Services())
     deps = _schedule_deps(coordinator)
     handlers_schedule.register_schedule_services(hass, deps)
-    call = SimpleNamespace(data={
-        "day": "monday", "period": 1, "season": "summer",
-        "start_time": time(8, 0), "airflow_rate": 50,
-    })
+    call = SimpleNamespace(
+        data={
+            "day": "monday",
+            "period": 1,
+            "season": "summer",
+            "start_time": time(8, 0),
+            "airflow_rate": 50,
+        }
+    )
     with pytest.raises(ServiceValidationError, match="required schedule registers"):
         await hass.services.handlers["set_airflow_schedule"](call)
     deps.write_register.assert_not_awaited()
