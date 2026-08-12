@@ -60,7 +60,9 @@ async def test_reconfigure_success_without_new_stable_id_keeps_existing_identity
     flow._get_reconfigure_entry = MagicMock(return_value=entry)
     flow._build_stable_unique_id = MagicMock(return_value=None)
     flow.async_set_unique_id = AsyncMock()
-    flow.async_update_and_abort = MagicMock(return_value={"type": "abort", "reason": "reconfigure_successful"})
+    flow.async_update_and_abort = MagicMock(
+        return_value={"type": "abort", "reason": "reconfigure_successful"}
+    )
 
     info = {"device_info": {"firmware": "4.85"}, "scan_result": {"register_count": 1}}
     with (
