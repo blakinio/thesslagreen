@@ -36,36 +36,40 @@ def test_transport_retry_decision_equality_hash_and_jitter_paths() -> None:
 
     assert transport_retry.should_retry(decision, 1, 2) is True
     assert transport_retry.should_retry(decision, 2, 2) is False
-    assert (
-        transport_retry.should_retry(transport_retry.ErrorKind.PERMANENT, 1, 2)
-        is False
-    )
+    assert transport_retry.should_retry(transport_retry.ErrorKind.PERMANENT, 1, 2) is False
 
     with patch.object(transport_retry.random, "uniform", return_value=0.25) as uniform:
-        assert transport_retry.calculate_backoff(
-            attempt=2,
-            base=1.0,
-            jitter=(0.1, 0.5),
-        ) == 2.25
+        assert (
+            transport_retry.calculate_backoff(
+                attempt=2,
+                base=1.0,
+                jitter=(0.1, 0.5),
+            )
+            == 2.25
+        )
     uniform.assert_called_once_with(0.1, 0.5)
 
     with patch.object(transport_retry.random, "uniform", return_value=-5.0):
-        assert transport_retry.calculate_backoff(
-            attempt=1,
+        assert (
+            transport_retry.calculate_backoff(
+                attempt=1,
+                base=1.0,
+                jitter=5.0,
+            )
+            == 0.0
+        )
+    assert (
+        transport_retry.calculate_backoff(
+            attempt=4,
             base=1.0,
-            jitter=5.0,
-        ) == 0.0
-    assert transport_retry.calculate_backoff(
-        attempt=4,
-        base=1.0,
-        max_backoff=3.0,
-    ) == 3.0
+            max_backoff=3.0,
+        )
+        == 3.0
+    )
 
 
 def test_transport_error_classification_remaining_modbus_shapes() -> None:
-    cancelled_io = transport_retry.classify_transport_error(
-        ModbusIOException("request cancelled")
-    )
+    cancelled_io = transport_retry.classify_transport_error(ModbusIOException("request cancelled"))
     assert cancelled_io.reason == "cancelled"
     assert cancelled_io.kind is transport_retry.ErrorKind.TRANSIENT
 
@@ -192,9 +196,7 @@ def test_firmware_parse_unexpected_value_errors_are_recorded() -> None:
         {"version_major": 0, "version_minor": 1, "version_patch": 2},
         clear=False,
     ):
-        major, minor, patch_version, error = firmware._parse_version_from_info_regs(
-            _BadInfoRegs()
-        )
+        major, minor, patch_version, error = firmware._parse_version_from_info_regs(_BadInfoRegs())
     assert (major, minor, patch_version) == (None, None, None)
     assert isinstance(error, RuntimeError)
 
@@ -208,9 +210,7 @@ async def test_firmware_probe_missing_parts_signature_fallback_and_errors() -> N
         {"version_major": 0, "version_minor": 1, "version_patch": 2},
         clear=False,
     ):
-        result = await firmware._probe_missing_version_parts(
-            scanner, None, None, None, None
-        )
+        result = await firmware._probe_missing_version_parts(scanner, None, None, None, None)
     assert result[:3] == (4, 85, 7)
 
     scanner = SimpleNamespace(_client=None, _read_input=AsyncMock(side_effect=ValueError("bad")))
@@ -219,9 +219,7 @@ async def test_firmware_probe_missing_parts_signature_fallback_and_errors() -> N
         {"version_major": 0, "version_minor": 1, "version_patch": 2},
         clear=False,
     ):
-        result = await firmware._probe_missing_version_parts(
-            scanner, None, None, None, None
-        )
+        result = await firmware._probe_missing_version_parts(scanner, None, None, None, None)
     assert isinstance(result[3], ValueError)
 
     scanner = SimpleNamespace(_client=None, _read_input=AsyncMock(side_effect=RuntimeError("bad")))
@@ -230,9 +228,7 @@ async def test_firmware_probe_missing_parts_signature_fallback_and_errors() -> N
         {"version_major": 0, "version_minor": 1, "version_patch": 2},
         clear=False,
     ):
-        result = await firmware._probe_missing_version_parts(
-            scanner, None, None, None, None
-        )
+        result = await firmware._probe_missing_version_parts(scanner, None, None, None, None)
     assert isinstance(result[3], RuntimeError)
 
 
