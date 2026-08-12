@@ -25,9 +25,7 @@ def _definition(
 
 
 @pytest.mark.asyncio
-async def test_setup_filters_stale_blocked_missing_and_force_creates(
-    monkeypatch, mock_coordinator
-):
+async def test_setup_filters_stale_blocked_missing_and_force_creates(monkeypatch, mock_coordinator):
     monkeypatch.setattr(
         binary_module,
         "BINARY_SENSOR_DEFINITIONS",
