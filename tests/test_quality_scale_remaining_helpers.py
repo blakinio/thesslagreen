@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import importlib
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 from custom_components.thessla_green_modbus import const as const_module
@@ -15,7 +15,6 @@ from custom_components.thessla_green_modbus.mappings import (
 )
 from custom_components.thessla_green_modbus.registers import codec
 from custom_components.thessla_green_modbus.scanner import capabilities_facade, io_runtime
-from custom_components.thessla_green_modbus.transport import base as base_module
 from custom_components.thessla_green_modbus.transport import rtu as rtu_module
 from custom_components.thessla_green_modbus.transport import tcp as tcp_module
 from pymodbus.exceptions import ConnectionException
