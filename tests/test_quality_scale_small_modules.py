@@ -11,6 +11,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from pymodbus.exceptions import ModbusException
+
 from custom_components.thessla_green_modbus import button as button_module
 from custom_components.thessla_green_modbus import error_contract
 from custom_components.thessla_green_modbus import protocols
@@ -23,7 +25,6 @@ from custom_components.thessla_green_modbus.scanner import register_map_cache
 from custom_components.thessla_green_modbus.scanner import register_map_facade
 from custom_components.thessla_green_modbus.scanner import register_map_runtime
 from custom_components.thessla_green_modbus.services import schema as service_schema
-from pymodbus.exceptions import ModbusException
 
 
 @pytest.mark.asyncio
