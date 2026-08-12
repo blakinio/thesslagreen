@@ -23,7 +23,8 @@ async def test_fan_setup_cancelled_add_retries_without_initial_state() -> None:
                 "holding_registers": {"air_flow_rate_manual"},
                 "input_registers": set(),
             }
-        )
+        ),
+        get_device_info=Mock(return_value={}),
     )
     entry = SimpleNamespace(runtime_data=coordinator)
     add = Mock(side_effect=[asyncio.CancelledError(), None])
