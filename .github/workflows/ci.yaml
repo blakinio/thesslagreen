@@ -125,7 +125,7 @@ jobs:
       - name: Pytest with coverage
         run: pytest tests/ -q --tb=long --cov --cov-report=term --cov-report=json:coverage.json
 
-      - name: Report quality-scale coverage gaps
+      - name: Enforce quality-scale coverage
         if: always() && hashFiles('coverage.json') != ''
         shell: bash
         run: |
@@ -174,6 +174,10 @@ jobs:
               print(
                   f"::warning file=pyproject.toml::coverage diagnostics truncated: "
                   f"showing 45 of {len(gaps)} module gaps"
+              )
+          if gaps:
+              raise SystemExit(
+                  f"Quality-scale coverage gate failed: {len(gaps)} module(s) below target"
               )
           PY
 
