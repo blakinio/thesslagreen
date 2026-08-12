@@ -177,6 +177,15 @@ jobs:
               )
           PY
 
+      - name: Upload temporary coverage diagnostics
+        if: always() && hashFiles('coverage.json') != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: quality-scale-coverage-${{ github.sha }}
+          path: coverage.json
+          if-no-files-found: error
+          retention-days: 1
+
   minimum-ha:
     name: Minimum HA API contracts (2026.1.0)
     runs-on: ubuntu-latest
