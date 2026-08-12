@@ -37,9 +37,7 @@ def _coordinator():
 
 def test_scan_cache_access_and_full_list_known_missing() -> None:
     assert scan.get_scan_cache_from_entry(None) == {}
-    assert (
-        scan.get_scan_cache_from_entry(SimpleNamespace(options={"device_scan_cache": []})) == {}
-    )
+    assert scan.get_scan_cache_from_entry(SimpleNamespace(options={"device_scan_cache": []})) == {}
     assert scan.get_scan_cache_from_entry(
         SimpleNamespace(options={"device_scan_cache": {"x": 1}})
     ) == {"x": 1}
@@ -97,10 +95,13 @@ def test_apply_scan_cache_uses_shared_normalizer_when_no_hook() -> None:
         "normalise_available_registers",
         return_value={"input_registers": {"i"}},
     ) as normalise:
-        assert scan.apply_scan_cache(
-            coordinator,
-            {"available_registers": {"input_registers": ["i"]}, "device_info": []},
-        ) is True
+        assert (
+            scan.apply_scan_cache(
+                coordinator,
+                {"available_registers": {"input_registers": ["i"]}, "device_info": []},
+            )
+            is True
+        )
     normalise.assert_called_once()
     assert coordinator.device_client.device_info == {}
 
@@ -124,9 +125,7 @@ def test_store_and_consume_scan_cache_paths() -> None:
     assert scan.consume_config_flow_scan_cache(coordinator) == {}
     coordinator.entry = SimpleNamespace(options={"config_flow_scan_cache": []})
     assert scan.consume_config_flow_scan_cache(coordinator) == {}
-    coordinator.entry = SimpleNamespace(
-        options={"keep": 1, "config_flow_scan_cache": {"x": 1}}
-    )
+    coordinator.entry = SimpleNamespace(options={"keep": 1, "config_flow_scan_cache": {"x": 1}})
     coordinator.hass.config_entries.async_update_entry.reset_mock()
     assert scan.consume_config_flow_scan_cache(coordinator) == {"x": 1}
     assert coordinator.hass.config_entries.async_update_entry.call_args.kwargs["options"] == {
