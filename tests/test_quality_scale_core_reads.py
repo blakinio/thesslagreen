@@ -54,9 +54,7 @@ def _bit_owner(
         _mark_registers_failed=Mock(),
         _clear_register_failure=Mock(),
         _read_with_retry=AsyncMock(
-            return_value=SimpleNamespace(
-                bits=bits if bits is not None else [True, False, True]
-            )
+            return_value=SimpleNamespace(bits=bits if bits is not None else [True, False, True])
         ),
     )
     setattr(owner, transport_attr, AsyncMock())
@@ -145,9 +143,7 @@ async def test_bit_reader_ignores_detected_name_not_in_available_set(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("reader,group,transport_attr,register_type", _BIT_READ_CASES)
-async def test_bit_reader_rejects_empty_response(
-    reader, group, transport_attr, register_type
-):
+async def test_bit_reader_rejects_empty_response(reader, group, transport_attr, register_type):
     owner = _bit_owner(group=group, transport_attr=transport_attr, bits=[])
 
     with pytest.raises(ModbusException, match="No bits returned"):
@@ -185,9 +181,7 @@ async def test_bit_reader_transient_error_marks_chunk_and_reraises(
 class _FakeTransport:
     def __init__(self) -> None:
         self.ensure_connected = AsyncMock()
-        self.read_holding_registers = AsyncMock(
-            return_value=SimpleNamespace(registers=[1, 2])
-        )
+        self.read_holding_registers = AsyncMock(return_value=SimpleNamespace(registers=[1, 2]))
         self.close = AsyncMock()
 
 
@@ -249,9 +243,7 @@ async def test_auto_transport_default_port_prefers_tcp():
     assert transport is transports[CONNECTION_MODE_TCP]
     assert mode == CONNECTION_MODE_TCP
     assert build_calls == [CONNECTION_MODE_TCP]
-    transports[CONNECTION_MODE_TCP].read_holding_registers.assert_awaited_once_with(
-        1, 0, count=2
-    )
+    transports[CONNECTION_MODE_TCP].read_holding_registers.assert_awaited_once_with(1, 0, count=2)
 
 
 @pytest.mark.asyncio
@@ -280,8 +272,7 @@ async def test_auto_transport_direct_error_falls_back_and_protocol_error_is_vali
     assert mode == CONNECTION_MODE_TCP
     assert build_calls == [CONNECTION_MODE_TCP]
     assert any(
-        "Direct client connect attempt failed" in record.message
-        for record in caplog.records
+        "Direct client connect attempt failed" in record.message for record in caplog.records
     )
     assert any("valid protocol" in record.message for record in caplog.records)
 
