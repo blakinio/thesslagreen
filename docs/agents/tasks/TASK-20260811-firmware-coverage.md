@@ -11,9 +11,9 @@ scope: improve firmware identity semantics and scanner coverage without changing
 
 ```yaml
 checkpoint_version: 1
-updated_at: 2026-08-11T15:16:00Z
-head: 8305b482de0868698338737107f7af2d397e7e6f
-branch: feat/firmware-coverage-20260811
+updated_at: 2026-08-12T10:03:00Z
+head: 60ca43a2ad4f7b2cb594131d43eef295a5032ad4
+branch: main
 pr: 1767
 status: ready
 context_routes:
@@ -25,46 +25,47 @@ owned_paths:
   - custom_components/thessla_green_modbus/scanner/firmware.py
   - tests/test_device_scanner_firmware.py
   - docs/agents/tasks/TASK-20260811-firmware-coverage.md
+  - docs/audits/deep_audit_2026-08-11.md
 proven:
-  - main baseline is ae3cdd7195088f207f5e87c74c519bb799676233 and post-merge CI run 31503102829 passed all mandatory jobs.
   - scanner/firmware.py previously collapsed a missing version_patch to Unknown even though that register is absent on some older firmware.
   - PR #1767 preserves verified major.minor identity when patch is unavailable while missing major or minor remains an unavailable firmware condition.
   - PR #1767 does not change Modbus addresses, transport behavior, writes, entity IDs, services, or polling policy.
-  - tests/test_device_scanner_firmware.py now contains 8 focused tests covering unavailable firmware, full and partial fallback, partial major.minor identity, probe-error context, missing major/minor, legacy read signature fallback, serial parsing, and ASCII device-name parsing.
-  - CI run 31505010765 passed every completed mandatory job on head 8eb38e7875bc554ae7aa9045c32de985924c3331; its first Current HA job was an unusable zero-step runner state and was not counted as PASS.
-  - Tests job 93824694593 in run 31505010765 completed successfully with total coverage 90.82 percent and scanner/firmware.py coverage 83 percent, up from about 68 percent in the prior audit baseline.
-  - fresh CI run 31505638599 on checkpointed head 8305b482de0868698338737107f7af2d397e7e6f completed with conclusion success.
-  - CI run 31505638599 passed Lint including Ruff, format, compile, mypy and checkpoint validation, Hassfest, HACS, full Tests, entity mappings, minimum HA 2026.1.0, current HA 2026.8.1, pymodbus 3.6.1, and pymodbus 3.14.0.
+  - tests/test_device_scanner_firmware.py contains 8 focused tests covering unavailable firmware, full and partial fallback, partial major.minor identity, probe-error context, missing major/minor, legacy read signature fallback, serial parsing, and ASCII device-name parsing.
+  - Tests job 93824694593 reported total coverage 90.82 percent and scanner/firmware.py coverage 83 percent, up from about 68 percent in the audit baseline.
+  - final PR CI run 31506176043 on head ab105b57804382c595326c415de9d0cfddb23026 completed with conclusion success on rerun attempt 2.
+  - PR #1767 merged to main as 60ca43a2ad4f7b2cb594131d43eef295a5032ad4.
+  - post-merge CI run 31513767565 on main@60ca43a2ad4f7b2cb594131d43eef295a5032ad4 completed with conclusion success.
 derived:
   - major and minor together provide useful verified firmware identity when patch is genuinely unavailable on an older unit.
   - the bounded scanner change materially improves risk-focused firmware coverage but does not by itself satisfy Home Assistant Silver per-module coverage expectations.
-  - the earlier zero-step Current HA state was transient GitHub Actions runner behavior because the fresh run executed the same contract job successfully.
+  - repository-local implementation and merge validation are complete; remaining acceptance is hardware/runtime evidence rather than unfinished repository work.
 unknown:
-  - exact physical AirPack behavior of the newest candidate; no live Home Assistant connector is currently exposed in this session.
+  - whether a physical AirPack that lacks version_patch reports the expected major.minor value on merged main.
   - post-hardening reconnect and 24-72 hour physical soak behavior.
 conflicts: []
 first_failure:
   marker: candidate-ci-hygiene
-  evidence: CI #1282 first failed Ruff formatting only; CI #1283 then passed formatting but failed mypy because one local variable name was reused with incompatible str and list[str] types. Both issues were corrected without expanding runtime scope.
+  evidence: CI #1282 first failed Ruff formatting and CI #1283 then failed mypy; both were corrected without expanding runtime scope. Final CI #1286 succeeded on attempt 2 after an infrastructure-only Minimum HA installation failure in attempt 1.
 rejected_hypotheses:
   - missing version_patch always indicates a communication failure.
-  - the first two red CI runs proved a runtime scanner regression; they failed formatter/type gates before functional validation.
-  - the zero-step Current HA job can be counted as PASS.
-  - hardware-sensitive polling or restart-scan defaults should be changed without new physical-device measurements.
+  - early red CI runs proved a runtime scanner regression.
+  - a failed dependency-install job without executed tests can be treated as a product-code failure.
+  - hardware-sensitive polling or restart-scan defaults should be changed without physical-device measurements.
 changed_paths:
   - custom_components/thessla_green_modbus/scanner/firmware.py
   - tests/test_device_scanner_firmware.py
   - docs/agents/tasks/TASK-20260811-firmware-coverage.md
+  - docs/audits/deep_audit_2026-08-11.md
 validation:
-  - command: GitHub Actions run 31505010765 - completed mandatory jobs and coverage
+  - command: GitHub Actions run 31506176043 - final PR matrix
     result: PASS
-    evidence: HACS, Hassfest, Lint, entity mappings, pymodbus bounds, minimum HA and Tests passed on 8eb38e7875bc554ae7aa9045c32de985924c3331; Tests job 93824694593 reports total coverage 90.82 percent and scanner/firmware.py 83 percent.
-  - command: GitHub Actions run 31505638599 - complete matrix
+    evidence: run attempt 2 completed successfully on exact head ab105b57804382c595326c415de9d0cfddb23026, including minimum/current HA contracts, pymodbus bounds, full Tests, Lint, Hassfest, HACS and entity mappings.
+  - command: GitHub merge verification for PR #1767
     result: PASS
-    evidence: workflow conclusion success on 8305b482de0868698338737107f7af2d397e7e6f including executed Current HA 2026.8.1 contracts.
-  - command: complete GitHub Actions matrix after this ready checkpoint commit
-    result: NOT_RUN
-    evidence: required because this ready checkpoint changes the PR head.
+    evidence: PR merged as 60ca43a2ad4f7b2cb594131d43eef295a5032ad4.
+  - command: GitHub Actions run 31513767565 - post-merge main CI
+    result: PASS
+    evidence: CI completed successfully on main@60ca43a2ad4f7b2cb594131d43eef295a5032ad4.
 blockers: []
-next_action: Run the complete GitHub Actions matrix on the final ready-checkpoint head, merge PR #1767 only if every mandatory job passes, then verify the resulting main commit and post-merge CI.
+next_action: Validate merged main on the physical AirPack, confirming major.minor reporting when version_patch is absent and recording reconnect plus 24-72 hour soak evidence before polling/cache redesign.
 ```
