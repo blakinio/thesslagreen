@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from custom_components.thessla_green_modbus.scanner import io_read
-from custom_components.thessla_green_modbus.transport.retry import ErrorKind
 from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
 
 
