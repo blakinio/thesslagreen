@@ -136,3 +136,38 @@ def test_compute_register_groups_falls_back_on_unexpected_definition_errors() ->
                 max_block_size=8,
                 boundaries=boundaries,
             )
+
+
+def test_compute_register_groups_falls_back_on_missing_definitions() -> None:
+    """Missing definitions use one-register reads in both scan modes."""
+
+    def missing_definition(_name: str) -> None:
+        raise KeyError("missing definition")
+
+    boundaries = frozenset({101})
+    for safe_scan in (True, False):
+        client = SimpleNamespace(
+            _register_groups={},
+            available_registers={"holding_registers": {"missing"}},
+            _register_maps={"holding_registers": {"missing": 100}},
+            safe_scan=safe_scan,
+            effective_batch=8,
+        )
+        grouped = Mock(return_value=[(100, 1)])
+
+        compute_register_groups(
+            client,
+            get_register_definition=missing_definition,
+            group_reads=grouped,
+            holding_batch_boundaries=boundaries,
+        )
+
+        assert client._register_groups["holding_registers"] == [(100, 1)]
+        if safe_scan:
+            grouped.assert_not_called()
+        else:
+            grouped.assert_called_once_with(
+                [100],
+                max_block_size=8,
+                boundaries=boundaries,
+            )
