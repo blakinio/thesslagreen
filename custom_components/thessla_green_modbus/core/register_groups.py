@@ -35,7 +35,7 @@ def compute_register_groups(
                 except (KeyError, AttributeError, TypeError) as err:
                     _LOGGER.debug("Missing definition for %s: %s", reg, err)
                     length = 1
-                except (ValueError, OSError, RuntimeError) as err:  # pragma: no cover - unexpected
+                except (ValueError, OSError, RuntimeError) as err:
                     _LOGGER.exception(
                         "Unexpected error getting definition for %s: %s",
                         reg,
@@ -57,7 +57,7 @@ def compute_register_groups(
             except (KeyError, AttributeError, TypeError) as err:
                 _LOGGER.debug("Missing definition for %s: %s", reg, err)
                 length = 1
-            except (ValueError, OSError, RuntimeError) as err:  # pragma: no cover - unexpected
+            except (ValueError, OSError, RuntimeError) as err:
                 _LOGGER.exception(
                     "Unexpected error getting definition for %s: %s",
                     reg,
