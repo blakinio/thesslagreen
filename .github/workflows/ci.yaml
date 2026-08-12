@@ -123,7 +123,59 @@ jobs:
         run: pytest --collect-only -q
 
       - name: Pytest with coverage
-        run: pytest tests/ -q --tb=long --cov --cov-report=term
+        run: pytest tests/ -q --tb=long --cov --cov-report=term --cov-report=json:coverage.json
+
+      - name: Report quality-scale coverage gaps
+        if: always() && hashFiles('coverage.json') != ''
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = "custom_components/thessla_green_modbus/"
+          report = json.loads(Path("coverage.json").read_text(encoding="utf-8"))
+          gaps = []
+
+          for path, record in sorted(report["files"].items()):
+              if not path.startswith(root) or not path.endswith(".py"):
+                  continue
+              summary = record["summary"]
+              percent = float(summary["percent_covered"])
+              config_flow = path == f"{root}config_flow.py" or path.startswith(
+                  f"{root}_config_flow/"
+              )
+              below_target = percent < 100.0 if config_flow else percent <= 95.0
+              if not below_target:
+                  continue
+              gaps.append(
+                  (
+                      percent,
+                      path,
+                      "100%" if config_flow else ">95%",
+                      record.get("missing_lines", []),
+                      record.get("missing_branches", []),
+                  )
+              )
+
+          total = report["totals"]["percent_covered"]
+          print(
+              f"::notice file=pyproject.toml::coverage total={total:.2f}%; "
+              f"quality-scale module gaps={len(gaps)}"
+          )
+          for percent, path, required, missing_lines, missing_branches in sorted(gaps)[:45]:
+              lines = ",".join(str(line) for line in missing_lines[:60]) or "none"
+              branches = json.dumps(missing_branches[:40], separators=(",", ":"))
+              print(
+                  f"::warning file={path}::coverage={percent:.2f}% required={required}; "
+                  f"missing_lines={lines}; missing_branches={branches}"
+              )
+          if len(gaps) > 45:
+              print(
+                  f"::warning file=pyproject.toml::coverage diagnostics truncated: "
+                  f"showing 45 of {len(gaps)} module gaps"
+              )
+          PY
 
   minimum-ha:
     name: Minimum HA API contracts (2026.1.0)
