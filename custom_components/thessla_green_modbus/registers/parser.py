@@ -14,15 +14,15 @@ from .schema import RegisterList, _normalise_function, _normalise_name
 _LOGGER = logging.getLogger(__name__)
 _SPECIAL_MODES_PATH = Path(__file__).resolve().parents[1] / "options" / "special_modes.json"
 _SPECIAL_MODES_ENUM: dict[int, str] = {}
-try:  # pragma: no cover
+try:
     _SPECIAL_MODES_ENUM = {
         idx: key.split("_")[-1]
         for idx, key in enumerate(json.loads(_SPECIAL_MODES_PATH.read_text()))
     }
-except (OSError, json.JSONDecodeError, ValueError) as err:  # pragma: no cover
+except (OSError, json.JSONDecodeError, ValueError) as err:
     _LOGGER.debug("Failed to load special modes: %s", err)
     _SPECIAL_MODES_ENUM = {}
-except (AttributeError, TypeError) as err:  # pragma: no cover
+except (AttributeError, TypeError) as err:
     _LOGGER.exception("Unexpected error loading special modes: %s", err)
     _SPECIAL_MODES_ENUM = {}
 
@@ -33,15 +33,15 @@ def parse_registers(raw: Any) -> list[RegisterDef]:
 
 
 def _parse_schema_items(raw: Any) -> list[Any]:
+    """Validate raw register schema items with the declared Pydantic 2 API."""
     items = raw.get("registers", raw) if isinstance(raw, dict) else raw
-    if hasattr(RegisterList, "model_validate"):
-        return cast(list[Any], RegisterList.model_validate(items).registers)
-    return cast(list[Any], RegisterList.parse_obj(items).registers)  # pragma: no cover
+    return cast(list[Any], RegisterList.model_validate(items).registers)
 
 
 def normalise_enum_map(
     name: str, enum_map: dict[int | str, Any] | None
 ) -> dict[int | str, Any] | None:
+    """Normalize enum maps while preserving non-numeric mappings."""
     if name == "special_mode":
         return cast(dict[int | str, Any], _SPECIAL_MODES_ENUM)
     if not enum_map:
