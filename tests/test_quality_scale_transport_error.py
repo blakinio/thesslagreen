@@ -8,10 +8,12 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from pymodbus.exceptions import ModbusIOException
-
-from custom_components.thessla_green_modbus.const import CONNECTION_MODE_TCP, CONNECTION_MODE_TCP_RTU
+from custom_components.thessla_green_modbus.const import (
+    CONNECTION_MODE_TCP,
+    CONNECTION_MODE_TCP_RTU,
+)
 from custom_components.thessla_green_modbus.core.transport_select import select_auto_transport
+from pymodbus.exceptions import ModbusIOException
 
 
 class _ProbeTransport:
