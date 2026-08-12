@@ -85,7 +85,7 @@ async def _safe_disconnect_for_retry(
 
     previous_client = owner.device_client.client if restore_client else None
     try:
-        await disconnect_cb()  # pragma: no cover
+        await disconnect_cb()
     except DISCONNECT_EXCEPTIONS as disconnect_error:
         return _log_disconnect_failure(
             register_type=register_type,
@@ -213,7 +213,6 @@ async def read_with_retry(
     register_type: str,
 ) -> Any:
     """Read registers with retry/backoff on transient transport errors."""
-    last_error: Exception | None = None
     for attempt in range(1, owner.device_client.retry + 1):
         try:
             response = await owner._execute_read_call(
@@ -235,7 +234,7 @@ async def read_with_retry(
         except _PermanentModbusError:
             raise
         except TimeoutError as exc:
-            last_error = await _handle_retry_exception(
+            await _handle_retry_exception(
                 owner,
                 register_type=register_type,
                 start_address=start_address,
@@ -245,7 +244,7 @@ async def read_with_retry(
                 timeout=True,
             )
         except (ModbusIOException, ConnectionException, OSError) as exc:
-            last_error = await _handle_retry_exception(
+            await _handle_retry_exception(
                 owner,
                 register_type=register_type,
                 start_address=start_address,
@@ -254,7 +253,7 @@ async def read_with_retry(
                 reconnect=True,
             )
         except ModbusException as exc:
-            last_error = await _handle_retry_exception(
+            await _handle_retry_exception(
                 owner,
                 register_type=register_type,
                 start_address=start_address,
@@ -262,8 +261,6 @@ async def read_with_retry(
                 exc=exc,
                 reconnect=False,
             )
-    if last_error is not None:  # pragma: no cover
-        raise last_error  # pragma: no cover
-    raise ModbusException(
-        f"Failed to read {register_type} registers at {start_address}"
-    )  # pragma: no cover
+    # A zero retry count is invalid for normal runtime configuration but keep a
+    # deterministic fail-closed outcome for defensive direct callers.
+    raise ModbusException(f"Failed to read {register_type} registers at {start_address}")
