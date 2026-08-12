@@ -92,25 +92,21 @@ def test_mapping_classification_covers_all_whitelist_routes() -> None:
         select_keys=set(),
         number_keys=set(),
     )
-    assert classification.classify_min_max_mapping(
-        "missing", "RW", None, 1, **common
-    ) == (None, None)
-    assert classification.classify_min_max_mapping(
-        "switch", "RW", 0, 1, **common
-    ) == (None, None)
-    assert classification.classify_min_max_mapping(
-        "binary", "R", 0, 1, **common
-    ) == (None, None)
+    assert classification.classify_min_max_mapping("missing", "RW", None, 1, **common) == (
+        None,
+        None,
+    )
+    assert classification.classify_min_max_mapping("switch", "RW", 0, 1, **common) == (None, None)
+    assert classification.classify_min_max_mapping("binary", "R", 0, 1, **common) == (None, None)
 
     enum_common = dict(common)
     enum_common["info_text"] = "0 - off; 1 - low; 2 - high"
-    assert classification.classify_min_max_mapping(
-        "select", "RW", 0, 3, **enum_common
-    ) == (None, None)
+    assert classification.classify_min_max_mapping("select", "RW", 0, 3, **enum_common) == (
+        None,
+        None,
+    )
 
-    assert classification.classify_min_max_mapping(
-        "number", "RW", 0, 100, **common
-    ) == (None, None)
+    assert classification.classify_min_max_mapping("number", "RW", 0, 100, **common) == (None, None)
     number_common = dict(common)
     number_common["number_keys"] = {"number"}
     bucket, payload = classification.classify_min_max_mapping(
@@ -119,9 +115,10 @@ def test_mapping_classification_covers_all_whitelist_routes() -> None:
     assert bucket == "number"
     assert payload["min"] == 0
     assert payload["max"] == 100
-    assert classification.classify_min_max_mapping(
-        "readonly", "R", 0, 100, **common
-    ) == (None, None)
+    assert classification.classify_min_max_mapping("readonly", "R", 0, 100, **common) == (
+        None,
+        None,
+    )
 
 
 def test_register_codec_remaining_validation_paths() -> None:
@@ -141,24 +138,44 @@ def test_register_codec_remaining_validation_paths() -> None:
         codec.encode_enum_value(2, {0: "off", 1: "on"}, "mode")
 
     assert codec.apply_output_scaling(10, 0.5, 2) == 4
-    assert codec.coerce_scaled_input(
-        value=object(), raw_value=9, minimum=None, maximum=None,
-        multiplier=None, resolution=None, name="value"
-    ) == 9
+    assert (
+        codec.coerce_scaled_input(
+            value=object(),
+            raw_value=9,
+            minimum=None,
+            maximum=None,
+            multiplier=None,
+            resolution=None,
+            name="value",
+        )
+        == 9
+    )
     with pytest.raises(ValueError, match="below minimum"):
         codec.coerce_scaled_input(
-            value=1, raw_value=1, minimum=2, maximum=None,
-            multiplier=None, resolution=None, name="value"
+            value=1,
+            raw_value=1,
+            minimum=2,
+            maximum=None,
+            multiplier=None,
+            resolution=None,
+            name="value",
         )
     with pytest.raises(ValueError, match="above maximum"):
         codec.coerce_scaled_input(
-            value=9, raw_value=9, minimum=None, maximum=8,
-            multiplier=None, resolution=None, name="value"
+            value=9,
+            raw_value=9,
+            minimum=None,
+            maximum=8,
+            multiplier=None,
+            resolution=None,
+            name="value",
         )
-    assert codec.coerce_scaled_input(
-        value=5, raw_value=5, minimum=0, maximum=10,
-        multiplier=0.5, resolution=2, name="value"
-    ) == 8
+    assert (
+        codec.coerce_scaled_input(
+            value=5, raw_value=5, minimum=0, maximum=10, multiplier=0.5, resolution=2, name="value"
+        )
+        == 8
+    )
 
 
 def test_scanner_capabilities_facade_delegates_every_method() -> None:
@@ -214,17 +231,14 @@ async def test_scanner_io_runtime_sleep_executes_delay_adapter() -> None:
         observed["retry"] = retry
 
     with patch.object(io_runtime._scanner_io_impl, "_sleep_retry_backoff_fn", new=fake_sleep):
-        await io_runtime.sleep_retry_backoff(
-            backoff=0.0, backoff_jitter=None, attempt=2, retry=3
-        )
+        await io_runtime.sleep_retry_backoff(backoff=0.0, backoff_jitter=None, attempt=2, retry=3)
     assert observed == {"delay": 0.0, "retry": 3}
 
 
 @pytest.mark.asyncio
 async def test_base_transport_unexpected_error_marks_offline() -> None:
     transport = tcp_module.TcpModbusTransport(
-        host="127.0.0.1", port=502, max_retries=1,
-        base_backoff=0, max_backoff=0, timeout=1
+        host="127.0.0.1", port=502, max_retries=1, base_backoff=0, max_backoff=0, timeout=1
     )
 
     async def bad_call():
@@ -238,8 +252,7 @@ async def test_base_transport_unexpected_error_marks_offline() -> None:
 @pytest.mark.asyncio
 async def test_tcp_client_missing_and_rtu_over_tcp_unsupported() -> None:
     transport = tcp_module.TcpModbusTransport(
-        host="127.0.0.1", port=502, max_retries=1,
-        base_backoff=0, max_backoff=0, timeout=1
+        host="127.0.0.1", port=502, max_retries=1, base_backoff=0, max_backoff=0, timeout=1
     )
     with pytest.raises(ConnectionException, match="client not initialized"):
         await transport._connect_client(endpoint="127.0.0.1:502")
