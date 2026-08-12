@@ -84,9 +84,7 @@ async def test_dhcp_discovery_applies_mac_identity_and_host() -> None:
 
     assert result == {"type": "form"}
     flow.async_set_unique_id.assert_awaited_once_with("AA:BB:CC:DD:EE:FF")
-    flow._abort_if_unique_id_configured.assert_called_once_with(
-        updates={CONF_HOST: "192.0.2.20"}
-    )
+    flow._abort_if_unique_id_configured.assert_called_once_with(updates={CONF_HOST: "192.0.2.20"})
     assert flow._discovered_host == "192.0.2.20"
     flow.async_step_user.assert_awaited_once_with()
 
