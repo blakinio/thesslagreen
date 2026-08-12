@@ -79,7 +79,7 @@ def test_current_option_optimistic_dict_and_special_availability(mock_coordinato
     entity._optimistic.set_pending("mode_select", 99)
     assert entity.current_option == "off"
 
-    entity._optimistic.clear("mode_select")
+    entity._optimistic.clear_pending("mode_select")
     mock_coordinator.data["mode_select"] = {"airflow_pct": 1}
     assert entity.current_option == "on"
     mock_coordinator.data["mode_select"] = {}
