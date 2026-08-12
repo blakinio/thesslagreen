@@ -201,14 +201,17 @@ def test_mapping_payloads_cover_invalid_and_unclassified_states() -> None:
     assert _mapping_payloads.parse_info_states("bad; x - invalid; 1 - Good Label") == {
         "good_label": 1
     }
-    assert _mapping_payloads.classify_discrete_holding_payload(
-        "binary_only",
-        "R",
-        {"off": 0, "on": 1},
-        set(),
-        {"binary_only"},
-        set(),
-    )[0] == "binary"
+    assert (
+        _mapping_payloads.classify_discrete_holding_payload(
+            "binary_only",
+            "R",
+            {"off": 0, "on": 1},
+            set(),
+            {"binary_only"},
+            set(),
+        )[0]
+        == "binary"
+    )
     assert _mapping_payloads.classify_discrete_holding_payload(
         "unknown",
         "R",
@@ -265,7 +268,9 @@ async def test_register_maps_noop_and_rebuild_paths() -> None:
 
         register_maps.REGISTER_HASH = "same"
         with (
-            patch.object(register_maps, "async_registers_sha256", new=AsyncMock(return_value="same")),
+            patch.object(
+                register_maps, "async_registers_sha256", new=AsyncMock(return_value="same")
+            ),
             patch.object(register_maps, "_async_build_register_maps", new=AsyncMock()) as build,
         ):
             await register_maps._async_ensure_register_maps(None)
@@ -273,7 +278,9 @@ async def test_register_maps_noop_and_rebuild_paths() -> None:
 
         register_maps.REGISTER_HASH = "old"
         with (
-            patch.object(register_maps, "async_registers_sha256", new=AsyncMock(return_value="new")),
+            patch.object(
+                register_maps, "async_registers_sha256", new=AsyncMock(return_value="new")
+            ),
             patch.object(register_maps, "_async_build_register_maps", new=AsyncMock()) as build,
         ):
             await register_maps._async_ensure_register_maps(None)
@@ -287,9 +294,12 @@ async def test_register_maps_noop_and_rebuild_paths() -> None:
 def test_scanner_helper_manual_and_setting_fallbacks() -> None:
     with patch.object(helpers, "_decode_register_time", return_value=None):
         assert helpers._format_register_value("manual_airing_time_to_start", 123) == "123 (invalid)"
-        assert helpers._format_register_value(
-            "manual_airing_time_to_start", helpers.SENSOR_UNAVAILABLE
-        ) is None
+        assert (
+            helpers._format_register_value(
+                "manual_airing_time_to_start", helpers.SENSOR_UNAVAILABLE
+            )
+            is None
+        )
 
     with patch.object(helpers, "_decode_aatt", return_value=None):
         assert helpers._format_register_value("setting_test", 123) == 123
