@@ -10,6 +10,7 @@ on:
       - "CHANGELOG.md"
 
 permissions:
+  actions: read
   contents: write
 
 concurrency:
@@ -26,6 +27,90 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+
+      - name: Require exact current main commit
+        shell: bash
+        run: |
+          git fetch --no-tags origin main
+          MAIN_SHA="$(git rev-parse origin/main)"
+          if [ "$GITHUB_SHA" != "$MAIN_SHA" ]; then
+            echo "Release blocked: triggering SHA $GITHUB_SHA is not current main $MAIN_SHA" >&2
+            exit 1
+          fi
+
+      - name: Require successful CI for exact commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import time
+          from urllib.parse import quote
+          from urllib.request import Request, urlopen
+
+          repository = os.environ["REPOSITORY"]
+          sha = os.environ["SHA"]
+          token = os.environ["GH_TOKEN"]
+          endpoint = (
+              f"https://api.github.com/repos/{repository}/actions/workflows/ci.yaml/runs"
+              f"?head_sha={quote(sha)}&event=push&per_page=100"
+          )
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {token}",
+              "X-GitHub-Api-Version": "2026-03-10",
+              "User-Agent": "thesslagreen-release-gate",
+          }
+          deadline = time.monotonic() + 1200
+
+          while True:
+              request = Request(endpoint, headers=headers)
+              with urlopen(request, timeout=30) as response:
+                  payload = json.load(response)
+
+              runs = [
+                  run
+                  for run in payload.get("workflow_runs", [])
+                  if run.get("head_sha") == sha and run.get("event") == "push"
+              ]
+              successes = [
+                  run
+                  for run in runs
+                  if run.get("status") == "completed" and run.get("conclusion") == "success"
+              ]
+              if successes:
+                  run = max(successes, key=lambda item: item.get("run_attempt", 0))
+                  print(
+                      "Exact-commit CI gate passed: "
+                      f"run {run.get('id')} for {sha} concluded success."
+                  )
+                  break
+
+              active = [run for run in runs if run.get("status") != "completed"]
+              if runs and not active:
+                  conclusions = ", ".join(
+                      f"{run.get('id')}={run.get('conclusion')}" for run in runs
+                  )
+                  print(
+                      f"Release blocked: exact-commit CI has no successful run ({conclusions}).",
+                      file=sys.stderr,
+                  )
+                  raise SystemExit(1)
+
+              if time.monotonic() >= deadline:
+                  print(
+                      "Release blocked: timed out without successful exact-commit CI evidence.",
+                      file=sys.stderr,
+                  )
+                  raise SystemExit(1)
+
+              time.sleep(15)
+          PY
 
       - name: Read integration version
         id: version
