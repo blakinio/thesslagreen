@@ -8,12 +8,13 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from homeassistant.helpers.update_coordinator import UpdateFailed
+from pymodbus.exceptions import ConnectionException, ModbusException
+
 from custom_components.thessla_green_modbus.coordinator import device_info
 from custom_components.thessla_green_modbus.coordinator import update as update_module
 from custom_components.thessla_green_modbus.core import connection
 from custom_components.thessla_green_modbus.core import connection_lifecycle
-from homeassistant.helpers.update_coordinator import UpdateFailed
-from pymodbus.exceptions import ConnectionException, ModbusException
 
 
 class _AsyncCloseScanner:
