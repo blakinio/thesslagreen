@@ -37,7 +37,9 @@ def _coordinator():
 
 def test_scan_cache_access_and_full_list_known_missing() -> None:
     assert scan.get_scan_cache_from_entry(None) == {}
-    assert scan.get_scan_cache_from_entry(SimpleNamespace(options={"device_scan_cache": []})) == {}
+    assert (
+        scan.get_scan_cache_from_entry(SimpleNamespace(options={"device_scan_cache": []})) == {}
+    )
     assert scan.get_scan_cache_from_entry(
         SimpleNamespace(options={"device_scan_cache": {"x": 1}})
     ) == {"x": 1}
@@ -65,11 +67,17 @@ def test_apply_scan_cache_validation_normalization_capability_and_identity_paths
     assert scan.apply_scan_cache(coordinator, cache) is False
 
     coordinator._normalise_available_registers = Mock(
-        return_value={"input_registers": {"i", "version_patch"}, "holding_registers": {"exp_version"}}
+        return_value={
+            "input_registers": {"i", "version_patch"},
+            "holding_registers": {"exp_version"},
+        }
     )
     coordinator.device_client.config.connection_mode = CONNECTION_MODE_AUTO
     cache = {
-        "available_registers": {"input_registers": ["i"], "holding_registers": ["exp_version"]},
+        "available_registers": {
+            "input_registers": ["i"],
+            "holding_registers": ["exp_version"],
+        },
         "device_info": {"serial_number": "ABC", "firmware": "3.11"},
         "capabilities": {"not_a_real_field": True},
         "resolved_connection_mode": "tcp_rtu",
@@ -116,10 +124,14 @@ def test_store_and_consume_scan_cache_paths() -> None:
     assert scan.consume_config_flow_scan_cache(coordinator) == {}
     coordinator.entry = SimpleNamespace(options={"config_flow_scan_cache": []})
     assert scan.consume_config_flow_scan_cache(coordinator) == {}
-    coordinator.entry = SimpleNamespace(options={"keep": 1, "config_flow_scan_cache": {"x": 1}})
+    coordinator.entry = SimpleNamespace(
+        options={"keep": 1, "config_flow_scan_cache": {"x": 1}}
+    )
     coordinator.hass.config_entries.async_update_entry.reset_mock()
     assert scan.consume_config_flow_scan_cache(coordinator) == {"x": 1}
-    assert coordinator.hass.config_entries.async_update_entry.call_args.kwargs["options"] == {"keep": 1}
+    assert coordinator.hass.config_entries.async_update_entry.call_args.kwargs["options"] == {
+        "keep": 1
+    }
 
 
 @pytest.mark.asyncio
