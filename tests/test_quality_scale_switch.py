@@ -60,9 +60,7 @@ async def test_switch_setup_covers_capability_force_full_missing_address_and_emp
     }
     add_entities = Mock()
 
-    await switch_module.async_setup_entry(
-        Mock(), Mock(runtime_data=mock_coordinator), add_entities
-    )
+    await switch_module.async_setup_entry(Mock(), Mock(runtime_data=mock_coordinator), add_entities)
 
     add_entities.assert_called_once()
     entities, update_before_add = add_entities.call_args.args
@@ -90,9 +88,7 @@ async def test_switch_setup_no_available_entities_does_not_add(monkeypatch, mock
     mock_coordinator.device_client.force_full_register_list = False
     add_entities = Mock()
 
-    await switch_module.async_setup_entry(
-        Mock(), Mock(runtime_data=mock_coordinator), add_entities
-    )
+    await switch_module.async_setup_entry(Mock(), Mock(runtime_data=mock_coordinator), add_entities)
 
     add_entities.assert_not_called()
 
@@ -155,22 +151,20 @@ def test_switch_set_optimistic_pushes_state_when_added_to_hass(mock_coordinator)
 
 
 @pytest.mark.asyncio
-async def test_switch_write_register_respects_entity_and_explicit_offsets(mock_coordinator, monkeypatch):
+async def test_switch_write_register_respects_entity_and_explicit_offsets(
+    mock_coordinator, monkeypatch
+):
     config = _cfg("mode", offset=4)
     entity = ThesslaGreenSwitch(mock_coordinator, "mode", 100, config)
     parent_write = AsyncMock()
     monkeypatch.setattr(ThesslaGreenEntity, "_write_register", parent_write)
 
     await entity._write_register("mode", "2", refresh=False)
-    parent_write.assert_awaited_once_with(
-        "mode", 2, offset=4, refresh=False, include_offset=True
-    )
+    parent_write.assert_awaited_once_with("mode", 2, offset=4, refresh=False, include_offset=True)
 
     parent_write.reset_mock()
     await entity._write_register("mode", 3, offset=9, include_offset=False)
-    parent_write.assert_awaited_once_with(
-        "mode", 3, offset=9, refresh=True, include_offset=False
-    )
+    parent_write.assert_awaited_once_with("mode", 3, offset=9, refresh=True, include_offset=False)
 
 
 def test_switch_extra_attributes_special_mode_include_raw_time_and_risk(mock_coordinator):
