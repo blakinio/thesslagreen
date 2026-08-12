@@ -59,7 +59,9 @@ async def test_create_coordinator_transport_label_branches(
             "custom_components.thessla_green_modbus.core.models.CoordinatorConfig.from_entry",
             return_value=config,
         ),
-        patch.object(_setup, "resolve_connection_settings", return_value=(expected_type, connection_mode)),
+        patch.object(
+            _setup, "resolve_connection_settings", return_value=(expected_type, connection_mode)
+        ),
         patch.object(_setup, "_apply_log_level"),
         patch(
             "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator",
@@ -97,7 +99,9 @@ async def test_start_coordinator_setup_and_refresh_error_translation() -> None:
         await _setup.async_start_coordinator(object(), entry, coordinator)
 
     coordinator.async_setup = Mock(return_value=None)
-    coordinator.async_config_entry_first_refresh = AsyncMock(side_effect=UpdateFailed("refresh boom"))
+    coordinator.async_config_entry_first_refresh = AsyncMock(
+        side_effect=UpdateFailed("refresh boom")
+    )
     with pytest.raises(ConfigEntryNotReady, match="Unable to fetch"):
         await _setup.async_start_coordinator(object(), entry, coordinator)
 
@@ -179,7 +183,9 @@ async def test_setup_platforms_preload_errors_sync_forward_and_cancellation() ->
     _setup._get_platforms.cache_clear()
     config_entries = SimpleNamespace(async_forward_entry_setups=Mock(return_value=None))
     hass = SimpleNamespace(
-        async_add_executor_job=AsyncMock(side_effect=[ImportError("missing"), RuntimeError("boom")]),
+        async_add_executor_job=AsyncMock(
+            side_effect=[ImportError("missing"), RuntimeError("boom")]
+        ),
         config_entries=config_entries,
     )
     await _setup.async_setup_platforms(hass, object(), ["sensor", "fan"])
