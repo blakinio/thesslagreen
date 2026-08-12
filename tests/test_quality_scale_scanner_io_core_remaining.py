@@ -13,9 +13,7 @@ def test_ensure_pymodbus_client_module_attaches_client_and_sync_alias() -> None:
     pymodbus_mod = SimpleNamespace()
     async_client = object()
     client_mod = SimpleNamespace(AsyncModbusTcpClient=async_client)
-    with patch.object(
-        io_core.importlib, "import_module", side_effect=[pymodbus_mod, client_mod]
-    ):
+    with patch.object(io_core.importlib, "import_module", side_effect=[pymodbus_mod, client_mod]):
         io_core.ensure_pymodbus_client_module()
     assert pymodbus_mod.client is client_mod
     assert client_mod.ModbusTcpClient is async_client
@@ -26,9 +24,7 @@ def test_ensure_pymodbus_client_module_preserves_existing_aliases() -> None:
     existing_sync = object()
     pymodbus_mod = SimpleNamespace(client=existing_client)
     client_mod = SimpleNamespace(AsyncModbusTcpClient=object(), ModbusTcpClient=existing_sync)
-    with patch.object(
-        io_core.importlib, "import_module", side_effect=[pymodbus_mod, client_mod]
-    ):
+    with patch.object(io_core.importlib, "import_module", side_effect=[pymodbus_mod, client_mod]):
         io_core.ensure_pymodbus_client_module()
     assert pymodbus_mod.client is existing_client
     assert client_mod.ModbusTcpClient is existing_sync
