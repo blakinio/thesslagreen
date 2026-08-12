@@ -163,16 +163,11 @@ markers = [
 [tool.coverage.run]
 source = ["custom_components.thessla_green_modbus"]
 branch = true
-omit = [
-    "custom_components/thessla_green_modbus/_compat.py",
-    "custom_components/thessla_green_modbus/translations/*",
-]
 
 [tool.coverage.report]
 fail_under = 80
 show_missing = true
 exclude_lines = [
-    "pragma: no cover",
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
     "if __name__ == .__main__.:",
