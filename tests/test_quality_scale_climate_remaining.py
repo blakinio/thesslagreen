@@ -79,7 +79,8 @@ def test_climate_confirmed_and_optimistic_state_properties() -> None:
     coordinator.data = {"min_percentage": 0, "max_percentage": -1}
     climate._optimistic = type(climate._optimistic)()
     assert climate._confirmed_fan_mode() is None
-    assert climate.fan_modes is None
+    # Percentage limits are normalized fail-safe to a non-negative singleton.
+    assert climate.fan_modes == ["0%"]
 
 
 def test_climate_hvac_action_all_runtime_states() -> None:
@@ -172,14 +173,15 @@ async def test_climate_temperature_validation_and_temporary_failures() -> None:
 
 
 @pytest.mark.asyncio
-async def test_climate_temperature_writes_optional_comfort_then_required() -> None:
+async def test_climate_temperature_writes_required_when_comfort_not_in_register_map() -> None:
     climate, coordinator = _make_climate({"mode": 0})
     coordinator.device_client.available_registers["holding_registers"].update(
         {"comfort_temperature", "required_temperature"}
     )
     await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 21.5})
     names = [call.args[0] for call in coordinator.async_write_register.await_args_list]
-    assert names == ["comfort_temperature", "required_temperature"]
+    # Availability alone must not invent a register absent from the canonical map.
+    assert names == ["required_temperature"]
 
 
 @pytest.mark.asyncio
