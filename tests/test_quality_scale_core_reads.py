@@ -8,8 +8,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from pymodbus.exceptions import ConnectionException, ModbusException
-
 from custom_components.thessla_green_modbus.const import (
     CONNECTION_MODE_TCP,
     CONNECTION_MODE_TCP_RTU,
@@ -21,6 +19,7 @@ from custom_components.thessla_green_modbus.core.read_bits import (
 )
 from custom_components.thessla_green_modbus.core.retry import _PermanentModbusError
 from custom_components.thessla_green_modbus.core.transport_select import select_auto_transport
+from pymodbus.exceptions import ConnectionException, ModbusException
 
 
 _BIT_READ_CASES = (
@@ -55,7 +54,11 @@ def _bit_owner(
         _find_register_name=Mock(side_effect=lambda _group, address: names.get(address)),
         _mark_registers_failed=Mock(),
         _clear_register_failure=Mock(),
-        _read_with_retry=AsyncMock(return_value=SimpleNamespace(bits=bits if bits is not None else [True, False, True])),
+        _read_with_retry=AsyncMock(
+            return_value=SimpleNamespace(
+                bits=bits if bits is not None else [True, False, True]
+            )
+        ),
     )
     setattr(owner, transport_attr, AsyncMock())
     return owner
@@ -183,7 +186,9 @@ async def test_bit_reader_transient_error_marks_chunk_and_reraises(
 class _FakeTransport:
     def __init__(self) -> None:
         self.ensure_connected = AsyncMock()
-        self.read_holding_registers = AsyncMock(return_value=SimpleNamespace(registers=[1, 2]))
+        self.read_holding_registers = AsyncMock(
+            return_value=SimpleNamespace(registers=[1, 2])
+        )
         self.close = AsyncMock()
 
 
@@ -275,7 +280,10 @@ async def test_auto_transport_direct_error_falls_back_and_protocol_error_is_vali
     assert transport is transports[CONNECTION_MODE_TCP]
     assert mode == CONNECTION_MODE_TCP
     assert build_calls == [CONNECTION_MODE_TCP]
-    assert any("Direct client connect attempt failed" in record.message for record in caplog.records)
+    assert any(
+        "Direct client connect attempt failed" in record.message
+        for record in caplog.records
+    )
     assert any("valid protocol" in record.message for record in caplog.records)
 
 
@@ -300,7 +308,9 @@ async def test_auto_transport_all_candidates_fail_with_last_error_as_cause():
     transports[CONNECTION_MODE_TCP_RTU].ensure_connected.side_effect = first_error
     transports[CONNECTION_MODE_TCP].ensure_connected.side_effect = last_error
 
-    with pytest.raises(ConnectionException, match="Auto-detect Modbus transport failed") as exc_info:
+    with pytest.raises(
+        ConnectionException, match="Auto-detect Modbus transport failed"
+    ) as exc_info:
         await select_auto_transport(**kwargs)
 
     assert build_calls == [CONNECTION_MODE_TCP_RTU, CONNECTION_MODE_TCP]
