@@ -151,3 +151,19 @@ These checks require the physical device and are the correct gate before high-ri
 7. Introduce a versioned/TTL device-scan cache only with explicit invalidation and force-rescan behavior.
 8. Raise low-coverage, high-risk modules above 95% and then re-audit the complete current Home Assistant Quality Scale checklist.
 9. Resolve remaining model identity and tighten release gating/version metadata before the next published release.
+
+## Quality-scale closeout update — 2026-08-12
+
+This section supersedes the historical repository-local status in A5 and A8; the physical-device boundary above remains unchanged.
+
+**FACT — coverage:** PR #1769 integrated CI run `31636262371` completed successfully for branch head `b6144eeaed2abbc1bc63fc89c49e5f3330a14831` and merge candidate `a100e78f377876d9437de376d28b64310bc86371`. Tests job `94247656487` reports **98.21%** total coverage and the raw `coverage.json` evaluator reports `quality-scale module gaps=0`. Every config-flow module is at **100%**, and every other Python module under `custom_components/thessla_green_modbus` is strictly above **95%**. `core/io_mixin.py` and `core/register_groups.py` are both at **100%**. No `pragma: no cover` or omit-based coverage suppression was introduced by this closeout.
+
+**FACT — durable evidence:** coverage artifact `9157182138`, named `quality-scale-coverage-a100e78f377876d9437de376d28b64310bc86371`, was uploaded by the successful Tests job; the artifact zip SHA-256 is `ff909afd47577a7f25075b52cffe3010152a0d17431656a098622dc378f8967a`.
+
+**FACT — regression gate:** only after that zero-gap proof existed, commit `ea61639645a42052b630b7a3075f53c10fda69bc` changed `.github/workflows/ci.yaml` from diagnostics-only reporting to enforcement. The gate fails if any config-flow module drops below 100% or any other integration Python module is at or below 95%.
+
+**FACT — release hygiene:** the PR branch `.github/workflows/release.yaml` now requires the triggering SHA to still be exact current `main` and requires a successful push-triggered `ci.yaml` run for that same SHA before publication. Third-party release actions remain pinned to immutable commit SHAs. No release was published and no version was bumped as part of this closeout.
+
+**FACT — compatibility boundaries:** the closeout did not intentionally change Modbus addresses/names, entity IDs, unique IDs, services, write safety, polling cadence, or scan policy. Hardware-sensitive fast/slow polling and scan-cache changes remain deferred pending measurements.
+
+**UNKNOWN / external acceptance:** the post-hardening candidate has not been validated against the physical AirPack in this session because no Home Assistant/AirPack connector is exposed. Firmware `major.minor` behavior when patch is absent, startup timing, reconnect/restart, a representative pre-authorized safe write plus read-back, and soak evidence therefore remain external acceptance gates. Repository coverage and CI success do not prove those physical behaviors.

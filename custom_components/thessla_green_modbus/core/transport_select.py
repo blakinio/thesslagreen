@@ -77,7 +77,7 @@ async def select_auto_transport(
             TypeError,
             ValueError,
             AttributeError,
-        ) as exc:  # pragma: no cover - network dependent
+        ) as exc:
             last_error = exc
             await transport.close()
             continue
