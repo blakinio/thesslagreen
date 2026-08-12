@@ -224,17 +224,20 @@ async def test_reconnect_client_if_needed_all_runtime_shapes() -> None:
 
 def test_transport_builders_forward_runtime_settings() -> None:
     with patch.object(connection, "RtuModbusTransport", return_value="rtu") as rtu_cls:
-        assert connection.build_rtu_transport(
-            serial_port="/dev/ttyUSB0",
-            baudrate=9600,
-            parity="N",
-            stopbits=1,
-            retry=2,
-            backoff=0.1,
-            max_backoff=1.0,
-            timeout=2.0,
-            offline_state=False,
-        ) == "rtu"
+        assert (
+            connection.build_rtu_transport(
+                serial_port="/dev/ttyUSB0",
+                baudrate=9600,
+                parity="N",
+                stopbits=1,
+                retry=2,
+                backoff=0.1,
+                max_backoff=1.0,
+                timeout=2.0,
+                offline_state=False,
+            )
+            == "rtu"
+        )
     assert rtu_cls.call_args.kwargs["max_retries"] == 2
 
     with (
@@ -360,27 +363,31 @@ async def test_ensure_transport_selected_all_selection_paths() -> None:
         build_tcp_transport_fn=Mock(return_value="tcp-transport"),
         select_auto_transport_fn=AsyncMock(return_value=("auto-transport", "tcp_rtu")),
     )
-    assert await connection.ensure_transport_selected(
-        current_transport=current, **common
-    ) == (current, None)
+    assert await connection.ensure_transport_selected(current_transport=current, **common) == (
+        current,
+        None,
+    )
 
     rtu = dict(common)
     rtu["connection_type"] = "rtu"
-    assert await connection.ensure_transport_selected(
-        current_transport=None, **rtu
-    ) == ("rtu-transport", None)
+    assert await connection.ensure_transport_selected(current_transport=None, **rtu) == (
+        "rtu-transport",
+        None,
+    )
 
     auto = dict(common)
     auto["connection_mode"] = "auto"
-    assert await connection.ensure_transport_selected(
-        current_transport=None, **auto
-    ) == ("auto-transport", "tcp_rtu")
+    assert await connection.ensure_transport_selected(current_transport=None, **auto) == (
+        "auto-transport",
+        "tcp_rtu",
+    )
 
     no_mode = dict(common)
     no_mode["connection_mode"] = None
-    assert await connection.ensure_transport_selected(
-        current_transport=None, **no_mode
-    ) == ("tcp-transport", "tcp")
+    assert await connection.ensure_transport_selected(current_transport=None, **no_mode) == (
+        "tcp-transport",
+        "tcp",
+    )
 
 
 @pytest.mark.asyncio
@@ -473,9 +480,7 @@ async def test_connection_lifecycle_state_close_and_disconnect_paths() -> None:
     setter = Mock()
     statistics = {"connection_errors": 0}
     connection_lifecycle.mark_connection_established(offline_state_setter=setter)
-    connection_lifecycle.mark_connection_failure(
-        statistics=statistics, offline_state_setter=setter
-    )
+    connection_lifecycle.mark_connection_failure(statistics=statistics, offline_state_setter=setter)
     connection_lifecycle.mark_connection_disconnected(offline_state_setter=setter)
     assert statistics["connection_errors"] == 1
     assert setter.call_args_list == [
