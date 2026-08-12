@@ -93,7 +93,18 @@ async def test_switch_setup_no_available_entities_does_not_add(monkeypatch, mock
     add_entities.assert_not_called()
 
 
-def test_switch_category_available_and_special_mode_state(mock_coordinator):
+def test_switch_diagnostic_category_without_risk(mock_coordinator):
+    entity = ThesslaGreenSwitch(
+        mock_coordinator,
+        "diagnostic_switch",
+        54,
+        _cfg("diagnostic_switch", category="diagnostic"),
+    )
+
+    assert entity._attr_entity_category is EntityCategory.DIAGNOSTIC
+
+
+def test_switch_risky_control_is_config_and_special_mode_state(mock_coordinator):
     config = _cfg(
         "special_mode",
         category="diagnostic",
@@ -106,7 +117,7 @@ def test_switch_category_available_and_special_mode_state(mock_coordinator):
     entity = ThesslaGreenSwitch(mock_coordinator, "special_mode_three", 55, config)
     entity._coordinator_connected = Mock(return_value=True)
 
-    assert entity._attr_entity_category is EntityCategory.DIAGNOSTIC
+    assert entity._attr_entity_category is EntityCategory.CONFIG
     assert entity.is_on is True
     mock_coordinator.data["special_mode"] = 2
     assert entity.is_on is False
