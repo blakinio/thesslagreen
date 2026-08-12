@@ -202,5 +202,5 @@ class _ModbusIOMixin:
     async def _read_coil_registers_optimized(self) -> dict[str, Any]:
         return await _read_coil_registers_optimized_impl(self)
 
-    async def _read_discrete_inputs_optimized(self) -> dict[str, Any]:  # pragma: no cover
+    async def _read_discrete_inputs_optimized(self) -> dict[str, Any]:
         return await _read_discrete_inputs_optimized_impl(self)
