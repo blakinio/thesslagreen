@@ -19,7 +19,10 @@ from pymodbus.exceptions import ConnectionException
 async def test_fan_setup_cancelled_add_retries_without_initial_state() -> None:
     coordinator = SimpleNamespace(
         device_client=SimpleNamespace(
-            available_registers={"holding_registers": {"air_flow_rate_manual"}, "input_registers": set()}
+            available_registers={
+                "holding_registers": {"air_flow_rate_manual"},
+                "input_registers": set(),
+            }
         )
     )
     entry = SimpleNamespace(runtime_data=coordinator)
