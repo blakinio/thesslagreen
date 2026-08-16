@@ -1,0 +1,150 @@
+name: AirPack 2.8.4 HA-MCP probe
+
+on:
+  push:
+    branches:
+      - test/airpack-284-acceptance-20260816
+
+permissions:
+  contents: read
+
+jobs:
+  ha-mcp-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HA_MCP_URL_SECRET: ${{ secrets.HA_MCP_URL }}
+      HOME_ASSISTANT_MCP_URL_SECRET: ${{ secrets.HOME_ASSISTANT_MCP_URL }}
+      HA_MCP_URL_VAR: ${{ vars.HA_MCP_URL }}
+      HOME_ASSISTANT_MCP_URL_VAR: ${{ vars.HOME_ASSISTANT_MCP_URL }}
+      HA_MCP_TOKEN: ${{ secrets.HA_MCP_TOKEN }}
+      HOME_ASSISTANT_TOKEN: ${{ secrets.HOME_ASSISTANT_TOKEN }}
+      HA_TOKEN: ${{ secrets.HA_TOKEN }}
+      HASS_TOKEN: ${{ secrets.HASS_TOKEN }}
+      HA_LONG_LIVED_ACCESS_TOKEN: ${{ secrets.HA_LONG_LIVED_ACCESS_TOKEN }}
+      HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN: ${{ secrets.HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN }}
+    steps:
+      - name: Discover configured HA-MCP access without exposing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          url="${HA_MCP_URL_SECRET:-${HOME_ASSISTANT_MCP_URL_SECRET:-${HA_MCP_URL_VAR:-${HOME_ASSISTANT_MCP_URL_VAR:-https://homeassistant.molehill.cloud/api/mcp}}}}"
+          token=""
+          token_source="none"
+          for candidate in \
+            HA_MCP_TOKEN \
+            HOME_ASSISTANT_TOKEN \
+            HA_TOKEN \
+            HASS_TOKEN \
+            HA_LONG_LIVED_ACCESS_TOKEN \
+            HOME_ASSISTANT_LONG_LIVED_ACCESS_TOKEN; do
+            value="${!candidate:-}"
+            if [[ -n "$value" ]]; then
+              token="$value"
+              token_source="$candidate"
+              break
+            fi
+          done
+
+          echo "::add-mask::$url"
+          if [[ -n "$token" ]]; then
+            echo "::add-mask::$token"
+          fi
+
+          webhook_mode=false
+          if [[ "$url" == *"/api/webhook/"* ]]; then
+            webhook_mode=true
+          fi
+
+          if [[ "$webhook_mode" != true && -z "$token" ]]; then
+            echo "HA_MCP_PROBE=BLOCKED_NO_CONFIGURED_SECRET"
+            echo "No supported HA token secret is configured for the repository and no webhook URL was provided."
+            exit 20
+          fi
+
+          auth_args=()
+          if [[ -n "$token" ]]; then
+            auth_args=(-H "Authorization: Bearer $token")
+          fi
+
+          cat > /tmp/mcp-init.json <<'JSON'
+          {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"thesslagreen-airpack-acceptance","version":"1.0"}}}
+          JSON
+
+          curl -fsS --http1.1 \
+            -D /tmp/mcp-init.headers \
+            -o /tmp/mcp-init.body \
+            -X POST "$url" \
+            "${auth_args[@]}" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            --data-binary @/tmp/mcp-init.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          raw = Path('/tmp/mcp-init.body').read_text(encoding='utf-8', errors='replace').strip()
+          if raw.startswith('event:') or '\ndata:' in raw or raw.startswith('data:'):
+              data_lines = [line[5:].strip() for line in raw.splitlines() if line.startswith('data:')]
+              raw = data_lines[-1] if data_lines else ''
+          payload = json.loads(raw)
+          if 'result' not in payload:
+              raise SystemExit(f"HA_MCP_PROBE=INITIALIZE_FAILED code={payload.get('error', {}).get('code')}")
+          result = payload['result']
+          server = result.get('serverInfo', {})
+          print(f"HA_MCP_INITIALIZE=PASS server={server.get('name', 'unknown')} version={server.get('version', 'unknown')}")
+          PY
+
+          session_id="$(awk 'BEGIN{IGNORECASE=1} /^mcp-session-id:/ {gsub("\r", "", $2); print $2}' /tmp/mcp-init.headers | tail -n1)"
+          session_args=()
+          if [[ -n "$session_id" ]]; then
+            echo "::add-mask::$session_id"
+            session_args=(-H "Mcp-Session-Id: $session_id")
+          fi
+
+          cat > /tmp/mcp-initialized.json <<'JSON'
+          {"jsonrpc":"2.0","method":"notifications/initialized"}
+          JSON
+          curl -fsS --http1.1 \
+            -o /dev/null \
+            -X POST "$url" \
+            "${auth_args[@]}" \
+            "${session_args[@]}" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            --data-binary @/tmp/mcp-initialized.json || true
+
+          cat > /tmp/mcp-tools.json <<'JSON'
+          {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+          JSON
+          curl -fsS --http1.1 \
+            -o /tmp/mcp-tools.body \
+            -X POST "$url" \
+            "${auth_args[@]}" \
+            "${session_args[@]}" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            --data-binary @/tmp/mcp-tools.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          raw = Path('/tmp/mcp-tools.body').read_text(encoding='utf-8', errors='replace').strip()
+          if raw.startswith('event:') or '\ndata:' in raw or raw.startswith('data:'):
+              data_lines = [line[5:].strip() for line in raw.splitlines() if line.startswith('data:')]
+              raw = data_lines[-1] if data_lines else ''
+          payload = json.loads(raw)
+          result = payload.get('result') or {}
+          tools = result.get('tools') or []
+          if not tools:
+              raise SystemExit('HA_MCP_PROBE=TOOLS_EMPTY')
+          names = sorted(str(tool.get('name', '')) for tool in tools if tool.get('name'))
+          print(f"HA_MCP_TOOLS=PASS count={len(names)}")
+          for name in names:
+              print(f"HA_MCP_TOOL={name}")
+          PY
+
+          echo "HA_MCP_PROBE=PASS token_source=$token_source webhook_mode=$webhook_mode"
