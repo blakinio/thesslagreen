@@ -54,7 +54,13 @@ async def _read_batch_via_existing_client(
     start: int,
     count: int,
 ) -> Any:
-    """Read a register batch via device_client's active connection without opening a new one."""
+    """Read a register batch through the already-owned Modbus connection.
+
+    Transport wrapper methods already accept ``slave_id`` explicitly and own
+    connection/retry handling. They must therefore be called directly rather
+    than routed back through ``DeviceClient._call_modbus`` (which is intended
+    for raw pymodbus methods and injects the slave ID itself).
+    """
     method_map = {
         "input_registers": "read_input_registers",
         "holding_registers": "read_holding_registers",
@@ -64,7 +70,20 @@ async def _read_batch_via_existing_client(
     fn_name = method_map.get(reg_type)
     if fn_name is None:
         raise ValueError(f"Unknown register type: {reg_type}")
-    fn = device_client._get_client_method(fn_name)
+
+    transport = getattr(device_client, "_transport", None)
+    if transport is not None:
+        transport_fn = getattr(transport, fn_name, None)
+        if callable(transport_fn):
+            return await transport_fn(device_client.slave_id, start, count=count)
+
+    raw_client = getattr(device_client, "client", None)
+    fn = getattr(raw_client, fn_name, None) if raw_client is not None else None
+    if not callable(fn):
+        # Compatibility fallback for legacy/mocked DeviceClient shapes.  At
+        # runtime this resolves a raw client method when no transport wrapper
+        # implements the requested operation (notably coil/discrete reads).
+        fn = device_client._get_client_method(fn_name)
     return await device_client._call_modbus(fn, start, count=count)
 
 
