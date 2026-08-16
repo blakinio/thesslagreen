@@ -1,7 +1,7 @@
 """Optimistic UI state tests for ThesslaGreenClimate command fields."""
 
 import asyncio
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from custom_components.thessla_green_modbus import optimistic
@@ -138,6 +138,60 @@ async def test_preset_mode_pending_before_refresh(mock_coordinator):
 
     mock_coordinator.data["special_mode"] = 1
     assert climate.preset_mode == "boost"
+
+
+def test_coordinator_update_reconciles_pending_state(mock_coordinator):
+    """Coordinator callbacks clear matching optimistic values before parent handling."""
+    climate = _make_climate(
+        mock_coordinator, {"on_off_panel_mode": 1, "mode": 0, "required_temperature": 21.5}
+    )
+    climate._optimistic.set_pending("target_temperature", 21.5)
+
+    with patch(
+        "custom_components.thessla_green_modbus.climate.ThesslaGreenEntity._handle_coordinator_update"
+    ) as parent_update:
+        climate._handle_coordinator_update()
+
+    assert climate._optimistic.get_pending("target_temperature") is None
+    parent_update.assert_called_once()
+
+
+async def test_optimistic_and_reconcile_push_ha_state_when_added(mock_coordinator):
+    """Pending and confirmed transitions notify HA when the entity is attached."""
+    climate = _make_climate(
+        mock_coordinator, {"on_off_panel_mode": 1, "mode": 0, "required_temperature": 18.0}
+    )
+    climate.hass = Mock()
+    climate.async_write_ha_state = Mock()
+
+    climate._set_optimistic("target_temperature", 21.5)
+    assert climate.target_temperature == 21.5
+
+    await climate._refresh_and_reconcile("target_temperature")
+
+    assert climate._optimistic.get_pending("target_temperature") is None
+    assert climate.async_write_ha_state.call_count == 2
+
+
+async def test_reapply_manual_setpoints_skips_invalid_or_unavailable_values(mock_coordinator):
+    """Manual-mode recommit uses only discovered numeric setpoints."""
+    climate = _make_climate(
+        mock_coordinator,
+        {
+            "air_flow_rate_manual": "invalid",
+            "supply_air_temperature_manual": 22.0,
+        },
+    )
+
+    await climate._reapply_manual_setpoints()
+
+    mock_coordinator.async_write_register.assert_awaited_once_with(
+        "supply_air_temperature_manual",
+        22.0,
+        refresh=False,
+        offset=0,
+        targeted_readback=False,
+    )
 
 
 def test_current_temperature_confirmed_only(mock_coordinator):
