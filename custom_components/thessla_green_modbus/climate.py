@@ -184,8 +184,10 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
 
     def _is_available_holding_register(self, register: str) -> bool:
         """Return True when a bundled holding register is discovered on this device."""
-        return register in holding_registers() and register in self.coordinator.device_client.available_registers.get(
-            "holding_registers", set()
+        return (
+            register in holding_registers()
+            and register
+            in self.coordinator.device_client.available_registers.get("holding_registers", set())
         )
 
     async def _reapply_manual_setpoints(self) -> None:
