@@ -14,13 +14,16 @@ from homeassistant.exceptions import HomeAssistantError
 def _make_climate(mock_coordinator, data):
     mock_coordinator.data = dict(data)
     mock_coordinator.device_client.capabilities.basic_control = True
+    mock_coordinator.device_client.available_registers["holding_registers"].add(
+        "supply_air_temperature_manual"
+    )
     mock_coordinator.async_write_register = AsyncMock(return_value=True)
     mock_coordinator.async_request_refresh = AsyncMock()
     return ThesslaGreenClimate(mock_coordinator)
 
 
 async def test_target_temperature_pending_before_refresh(mock_coordinator):
-    """target_temperature shows the requested value while the refresh is blocked."""
+    """target_temperature shows requested value only while full refresh is in flight."""
     climate = _make_climate(
         mock_coordinator, {"on_off_panel_mode": 1, "mode": 0, "required_temperature": 18.0}
     )
@@ -42,9 +45,12 @@ async def test_target_temperature_pending_before_refresh(mock_coordinator):
     release.set()
     await asyncio.wait_for(task, timeout=1)
 
-    mock_coordinator.data["required_temperature"] = 21.5
-    climate._clear_optimistic_if_confirmed()
+    # The completed refresh is authoritative even when it confirms a value
+    # different from the command; stale optimistic state must not mask it.
     assert climate._optimistic.get_pending("target_temperature") is None
+    assert climate.target_temperature == 18.0
+
+    mock_coordinator.data["required_temperature"] = 21.5
     assert climate.target_temperature == 21.5
 
 
@@ -69,9 +75,10 @@ async def test_hvac_mode_pending_before_refresh(mock_coordinator):
     release.set()
     await asyncio.wait_for(task, timeout=1)
 
-    mock_coordinator.data["on_off_panel_mode"] = 1
-    climate._clear_optimistic_if_confirmed()
     assert climate._optimistic.get_pending("hvac_mode") is None
+    assert climate.hvac_mode == HVACMode.OFF
+
+    mock_coordinator.data["on_off_panel_mode"] = 1
     assert climate.hvac_mode == HVACMode.AUTO
 
 
@@ -98,9 +105,10 @@ async def test_fan_mode_pending_before_refresh(mock_coordinator):
     release.set()
     await asyncio.wait_for(task, timeout=1)
 
-    mock_coordinator.data["air_flow_rate_manual"] = 60
-    climate._clear_optimistic_if_confirmed()
     assert climate._optimistic.get_pending("fan_mode") is None
+    assert climate.fan_mode == "30%"
+
+    mock_coordinator.data["air_flow_rate_manual"] = 60
     assert climate.fan_mode == "60%"
 
 
@@ -125,9 +133,10 @@ async def test_preset_mode_pending_before_refresh(mock_coordinator):
     release.set()
     await asyncio.wait_for(task, timeout=1)
 
-    mock_coordinator.data["special_mode"] = 1
-    climate._clear_optimistic_if_confirmed()
     assert climate._optimistic.get_pending("preset_mode") is None
+    assert climate.preset_mode == "none"
+
+    mock_coordinator.data["special_mode"] = 1
     assert climate.preset_mode == "boost"
 
 
@@ -170,14 +179,14 @@ def test_failed_write_does_not_set_pending(mock_coordinator):
 
 
 def test_pending_expires_after_ttl(mock_coordinator, monkeypatch):
-    """Once the TTL elapses the optimistic command field falls back to confirmed."""
+    """A pending command still self-expires if no confirming refresh completes."""
     clock = {"now": 1000.0}
     monkeypatch.setattr(optimistic, "monotonic", lambda: clock["now"])
 
     climate = _make_climate(
         mock_coordinator, {"on_off_panel_mode": 1, "mode": 0, "required_temperature": 18.0}
     )
-    asyncio.run(climate.async_set_temperature(**{ATTR_TEMPERATURE: 21.5}))
+    climate._set_optimistic("target_temperature", 21.5)
     assert climate.target_temperature == 21.5
 
     clock["now"] += optimistic.DEFAULT_OPTIMISTIC_TTL + 1
