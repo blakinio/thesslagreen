@@ -51,7 +51,7 @@ class DummyClient:
 
 @pytest.mark.asyncio
 async def test_set_temperature_scaling():
-    """Ensure temperatures are scaled before writing to Modbus."""
+    """Ensure permanent climate temperature targets use the writable manual setpoint."""
 
     hass = SimpleNamespace()
     coordinator = ThesslaGreenModbusCoordinator.from_params(
@@ -60,7 +60,9 @@ async def test_set_temperature_scaling():
     coordinator.async_request_refresh = AsyncMock()
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.data = {}
-    coordinator.device_client.available_registers["holding_registers"].add("required_temperature")
+    coordinator.device_client.available_registers["holding_registers"].add(
+        "supply_air_temperature_manual"
+    )
     coordinator.device_client.capabilities.basic_control = True
 
     climate = ThesslaGreenClimate(coordinator)
@@ -68,8 +70,8 @@ async def test_set_temperature_scaling():
     await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 21.5})
 
     calls = {c.args[0]: c.args[1] for c in coordinator.async_write_register.call_args_list}
-    assert "required_temperature" in calls  # nosec B101
-    assert calls["required_temperature"] == 21.5  # nosec B101
+    assert calls["supply_air_temperature_manual"] == 21.5  # nosec B101
+    assert "required_temperature" not in calls  # nosec B101
 
 
 def test_target_temperature_none_when_unavailable():
@@ -177,6 +179,39 @@ async def test_set_hvac_mode_turns_on_before_mode():
     first_two = coordinator.async_write_register.await_args_list[:2]
     assert first_two[0].args[:2] == ("on_off_panel_mode", 1)
     assert first_two[1].args[:2] == ("mode", 0)
+
+
+@pytest.mark.asyncio
+async def test_set_hvac_mode_fan_only_reapplies_stored_manual_setpoints():
+    """AUTO -> FAN_ONLY re-commits stored manual airflow and temperature before refresh."""
+    hass = SimpleNamespace()
+    coordinator = ThesslaGreenModbusCoordinator.from_params(
+        hass, "host", 502, 1, "dev", timedelta(seconds=1)
+    )
+    coordinator.async_write_register = AsyncMock(return_value=True)
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator.data = {
+        "on_off_panel_mode": 1,
+        "mode": 0,
+        "air_flow_rate_manual": 30,
+        "supply_air_temperature_manual": 22.0,
+    }
+    coordinator.device_client.available_registers["holding_registers"].update(
+        {"air_flow_rate_manual", "supply_air_temperature_manual"}
+    )
+
+    climate = ThesslaGreenClimate(coordinator)
+
+    await climate.async_set_hvac_mode(climate_mod.HVACMode.FAN_ONLY)
+
+    writes = [call.args[:2] for call in coordinator.async_write_register.await_args_list]
+    assert writes == [
+        ("on_off_panel_mode", 1),
+        ("mode", 1),
+        ("air_flow_rate_manual", 30),
+        ("supply_air_temperature_manual", 22.0),
+    ]  # nosec B101
+    coordinator.async_request_refresh.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -331,6 +366,9 @@ async def test_climate_write_paths_disable_targeted_readback():
     coordinator.async_write_register = AsyncMock(return_value=True)
     coordinator.async_request_refresh = AsyncMock()
     coordinator.device_client.capabilities.basic_control = True
+    coordinator.device_client.available_registers["holding_registers"].add(
+        "supply_air_temperature_manual"
+    )
     coordinator.data = {"on_off_panel_mode": 1, "mode": 0}
 
     climate = ThesslaGreenClimate(coordinator)
