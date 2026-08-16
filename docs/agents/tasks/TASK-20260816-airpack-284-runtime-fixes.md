@@ -40,8 +40,8 @@ optional_reads:
 
 ```yaml
 checkpoint_version: 1
-updated_at: 2026-08-16T10:34:00+02:00
-head_before_checkpoint: 95008d09bc5be45cd71d80ff208bd09e936f0fed
+updated_at: 2026-08-16T10:36:00+02:00
+head: ec3a4b4c2efcb3cbc4939e36ef631b128a94e08a
 branch: fix/airpack-284-hardware-blockers-20260816
 pr: 1773
 status: validating
@@ -102,16 +102,16 @@ changed_paths:
   - docs/agents/tasks/TASK-20260816-airpack-284-runtime-fixes.md
 validation:
   - command: physical canonical manual-temperature probe on installed v2.8.4
-    result: PASS_FOR_SEMANTICS
-    evidence: 4212 22.0 -> 22.5 -> 22.0 was mirrored by required_temperature and climate target after explicit refreshes.
+    result: PASS
+    evidence: Scoped semantic probe only; 4212 22.0 -> 22.5 -> 22.0 was mirrored by required_temperature and climate target after explicit refreshes.
   - command: physical AUTO/FAN_ONLY stored-setpoint probe on installed v2.8.4
-    result: PASS_FOR_SEMANTICS
-    evidence: mode-only transition left physical 10 percent/0 C despite stored 30/22; re-committing the same stored 30/22 restored about 99/97 m3h and 22 C.
-  - command: focused unit regression coverage added for transport dispatch, scanner ownership, climate canonical temperature setpoint, FAN_ONLY reapply, and optimistic reconciliation
-    result: PENDING_CI
-    evidence: no local checkout/test runner is being used; exact GitHub Actions head is the verification authority.
+    result: PASS
+    evidence: Scoped semantic probe only; mode-only transition left physical 10 percent/0 C despite stored 30/22, while re-committing the same stored 30/22 restored about 99/97 m3h and 22 C.
+  - command: focused unit regression execution for transport dispatch, scanner ownership, climate canonical temperature setpoint, FAN_ONLY reapply, and optimistic reconciliation
+    result: NOT_RUN
+    evidence: Tests are committed but no local runner is used; exact-head GitHub Actions is the execution authority.
 blockers:
   - Exact-head CI must pass before candidate deployment.
   - Full physical revalidation of climate, validate_known_registers, and isolated scan is required on the fixed candidate before PR merge or release promotion.
-next_action: Wait only on exact-head GitHub Actions execution already triggered by this branch; inspect and fix any deterministic failures, then deploy the exact green candidate to Home Assistant for physical revalidation while keeping PRs #1772 and #1773 draft.
+next_action: Inspect exact-head GitHub Actions, fix any deterministic failures, then deploy the exact green candidate to Home Assistant and rerun the failed physical acceptance rows while keeping PRs 1772 and 1773 draft.
 ```
