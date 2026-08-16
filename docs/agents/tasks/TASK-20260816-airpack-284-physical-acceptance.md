@@ -27,8 +27,8 @@ optional_reads: []
 
 ```yaml
 checkpoint_version: 1
-updated_at: 2026-08-16T07:40:00Z
-head: 7ba27a311a0428b2a0425e719b4b3198bf82d4cc
+updated_at: 2026-08-16T09:44:00+02:00
+head: 61278d4627656cf5a8d83beb9d0edf664f19bd81
 branch: test/airpack-284-acceptance-20260816
 pr: 1772
 status: blocked
@@ -46,38 +46,37 @@ owned_paths:
 proven:
   - main b198c626d20797978bb78dbbab1fe2934fc1dc32 is the v2.8.4 release target; push CI 31688676604 and Release 31688676652 succeeded on that exact SHA.
   - Repository quality-scale closeout is merged and enforced: total coverage 98.21 percent, every integration Python module above 95 percent, and config_flow.py plus _config_flow at 100 percent.
-  - The current ChatGPT session does not expose the previously configured HA-MCP connector as an invokable connector namespace.
-  - The local execution container cannot resolve homeassistant.molehill.cloud and therefore cannot directly invoke the authenticated HA-MCP endpoint.
-  - Secret-safe branch-only probe run 31934287819 / job 95133716323 executed successfully enough to inspect repository-provided inputs and failed with marker HA_MCP_PROBE=BLOCKED_NO_CONFIGURED_SECRET.
-  - Probe evidence shows HA_MCP_URL, HOME_ASSISTANT_MCP_URL and all six supported HA token secret candidates were empty; no repository-managed HA credential is currently available to GitHub Actions.
-  - The temporary probe workflow was removed after evidence capture; PR #1772 effective diff contains only this durable task record.
+  - Secret-safe branch-only probe run 31934287819 / job 95133716323 found no repository-managed HA URL/token secret and the temporary probe workflow was removed afterwards.
+  - After the owner explicitly selected @Home assistant, the Home_assistant tool namespace became visible in this conversation.
+  - Three direct Home_assistant calls were attempted: ha_get_skill_guide twice and ha_get_overview once; every call failed before reaching Home Assistant with the identical platform error FORBIDDEN: This conversation does not support developer MCPs.
+  - Because the Home Assistant server instructions require ha_get_skill_guide before matching actions, no live HA read/write acceptance action was performed after that platform-level denial.
 derived:
-  - No currently available execution surface can authenticate to the live Home Assistant instance without transferring an owner credential into an unsafe or unsupported channel.
-  - Physical acceptance can resume immediately when the existing HA-MCP connector is re-exposed to this ChatGPT session or an encrypted repository Actions secret is configured outside repository content.
+  - The current blocker is no longer connector discovery or HA authentication; it is the ChatGPT conversation capability gate for developer MCP execution.
+  - Physical acceptance can resume immediately in a conversation/workspace surface that supports the already-selected Home Assistant developer MCP app.
 unknown:
   - Exact HA Core/OS identity and installed 2.8.4 runtime identity visible from the live Home Assistant instance.
   - Fresh setup, polling, service registration, firmware identity, safe writes/read-back, validation scan, reconnect, diagnostics, stability and soak results on the physical AirPack with 2.8.4.
 conflicts: []
 first_failure:
-  marker: no-safe-authenticated-ha-execution-surface
-  evidence: interactive HA-MCP namespace absent; local DNS unavailable; GitHub Actions probe 31934287819/95133716323 found no configured HA credential.
+  marker: developer-mcp-conversation-forbidden
+  evidence: @Home assistant surfaced the namespace, but ha_get_skill_guide and ha_get_overview each returned FORBIDDEN: This conversation does not support developer MCPs before any HA call executed.
 rejected_hypotheses:
   - repository CI is sufficient evidence for physical AirPack acceptance.
-  - the thesslagreen repository already contains a usable encrypted HA token under conventional secret names.
-  - an owner token may be committed, printed, or passed through an unprotected workflow input to bypass connector availability.
+  - selecting @Home assistant alone guarantees that this conversation supports developer MCP execution.
+  - an owner token should be copied into repository content or workflow inputs to bypass the conversation capability gate.
 changed_paths:
   - docs/agents/tasks/TASK-20260816-airpack-284-physical-acceptance.md
 validation:
   - command: main/release/CI identity inspection
     result: PASS
     evidence: v2.8.4 is main@b198c626d20797978bb78dbbab1fe2934fc1dc32; CI 31688676604 and Release 31688676652 succeeded.
-  - command: interactive HA-MCP connector discovery and local endpoint reachability
-    result: BLOCKED
-    evidence: no invokable HA-MCP connector namespace; local execution DNS cannot resolve the endpoint.
   - command: branch-only secret-safe HA-MCP access probe 31934287819 / job 95133716323
     result: BLOCKED
     evidence: HA_MCP_PROBE=BLOCKED_NO_CONFIGURED_SECRET; no repository-managed HA URL/token secret was present.
+  - command: direct @Home assistant tool invocation in current conversation
+    result: BLOCKED
+    evidence: ha_get_skill_guide x2 and ha_get_overview x1 all returned FORBIDDEN: This conversation does not support developer MCPs.
 blockers:
-  - Owner action is required to re-expose the previously configured HA-MCP connector to this ChatGPT session or securely configure an encrypted HA credential outside repository content; current tools cannot create repository Actions secrets.
-next_action: Once a safe authenticated HA execution surface is available, run the complete docs/real_device_validation.md matrix on installed v2.8.4, record exact evidence, update stale closeout checkpoints, and close the final hardware acceptance gate.
+  - Owner must continue this task in a ChatGPT conversation/workspace surface where developer MCP apps are supported and select @Home assistant there; current conversation rejects the tool before Home Assistant is contacted.
+next_action: In a developer-MCP-capable conversation with @Home assistant selected, read the HA skill guide first, then run the complete docs/real_device_validation.md matrix on installed v2.8.4 and close PR #1772 only after exact hardware evidence is recorded.
 ```
