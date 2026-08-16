@@ -5,7 +5,7 @@ branch: test/airpack-284-acceptance-20260816
 base_branch: main
 created: 2026-08-16
 updated: 2026-08-16
-related_pr: ""
+related_pr: "1772"
 owned_paths:
   - docs/agents/tasks/TASK-20260816-airpack-284-physical-acceptance.md
   - docs/agents/tasks/TASK-20260812-quality-scale-closeout.md
@@ -28,9 +28,9 @@ optional_reads: []
 ```yaml
 checkpoint_version: 1
 updated_at: 2026-08-16T07:40:00Z
-head: b7c9f5978e991febde9b8b3ca5eadc83477ad9f4
+head: 7ba27a311a0428b2a0425e719b4b3198bf82d4cc
 branch: test/airpack-284-acceptance-20260816
-pr: none
+pr: 1772
 status: blocked
 context_routes:
   - AGENTS.md
@@ -50,7 +50,7 @@ proven:
   - The local execution container cannot resolve homeassistant.molehill.cloud and therefore cannot directly invoke the authenticated HA-MCP endpoint.
   - Secret-safe branch-only probe run 31934287819 / job 95133716323 executed successfully enough to inspect repository-provided inputs and failed with marker HA_MCP_PROBE=BLOCKED_NO_CONFIGURED_SECRET.
   - Probe evidence shows HA_MCP_URL, HOME_ASSISTANT_MCP_URL and all six supported HA token secret candidates were empty; no repository-managed HA credential is currently available to GitHub Actions.
-  - The temporary probe workflow was removed from the branch after evidence capture and is not intended for merge.
+  - The temporary probe workflow was removed after evidence capture; PR #1772 effective diff contains only this durable task record.
 derived:
   - No currently available execution surface can authenticate to the live Home Assistant instance without transferring an owner credential into an unsafe or unsupported channel.
   - Physical acceptance can resume immediately when the existing HA-MCP connector is re-exposed to this ChatGPT session or an encrypted repository Actions secret is configured outside repository content.
