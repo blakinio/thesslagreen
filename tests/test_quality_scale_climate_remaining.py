@@ -119,20 +119,20 @@ def test_climate_extra_attributes_include_optional_values() -> None:
 async def test_climate_write_compatibility_error_and_rejection_paths() -> None:
     climate, coordinator = _make_climate()
     coordinator.async_write_register = AsyncMock(side_effect=[TypeError("old signature"), True])
-    await climate._write_register("required_temperature", 21, refresh=False)
+    await climate._write_register("supply_air_temperature_manual", 21, refresh=False)
     assert coordinator.async_write_register.await_count == 2
 
     coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("offline"))
     with pytest.raises(HomeAssistantError, match="Failed to write"):
-        await climate._write_register("required_temperature", 21)
+        await climate._write_register("supply_air_temperature_manual", 21)
 
     coordinator.async_write_register = AsyncMock(return_value=False)
     with pytest.raises(HomeAssistantError, match="did not confirm"):
-        await climate._write_register("required_temperature", 21)
+        await climate._write_register("supply_air_temperature_manual", 21)
 
     coordinator.async_write_register = AsyncMock(side_effect=asyncio.CancelledError())
     with pytest.raises(asyncio.CancelledError):
-        await climate._write_register("required_temperature", 21)
+        await climate._write_register("supply_air_temperature_manual", 21)
 
 
 @pytest.mark.asyncio
@@ -173,26 +173,42 @@ async def test_climate_temperature_validation_and_temporary_failures() -> None:
 
 
 @pytest.mark.asyncio
-async def test_climate_temperature_writes_required_when_comfort_not_in_register_map() -> None:
+async def test_climate_temperature_writes_canonical_manual_setpoint() -> None:
     climate, coordinator = _make_climate({"mode": 0})
-    coordinator.device_client.available_registers["holding_registers"].update(
-        {"comfort_temperature", "required_temperature"}
+    coordinator.device_client.available_registers["holding_registers"].add(
+        "supply_air_temperature_manual"
     )
+
     await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 21.5})
+
     names = [call.args[0] for call in coordinator.async_write_register.await_args_list]
-    # Availability alone must not invent a register absent from the canonical map.
-    assert names == ["required_temperature"]
+    assert names == ["supply_air_temperature_manual"]
+
+
+@pytest.mark.asyncio
+async def test_climate_temperature_rejects_missing_manual_setpoint() -> None:
+    climate, coordinator = _make_climate({"mode": 0})
+
+    with pytest.raises(ServiceValidationError, match="Manual target-temperature control"):
+        await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 21.5})
+
+    coordinator.async_write_register.assert_not_awaited()
+    coordinator.async_request_refresh.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_climate_fan_and_preset_validation_and_commands() -> None:
-    climate, _coordinator = _make_climate({"min_percentage": 20, "max_percentage": 80})
+    climate, coordinator = _make_climate({"min_percentage": 20, "max_percentage": 80})
     with pytest.raises(ServiceValidationError, match="Invalid fan mode"):
         await climate.async_set_fan_mode("invalid")
     with pytest.raises(ServiceValidationError, match="between"):
         await climate.async_set_fan_mode("90%")
 
     await climate.async_set_fan_mode("40%")
+    coordinator.async_write_register.assert_any_await(
+        "air_flow_rate_manual", 40, refresh=False, offset=0, targeted_readback=False
+    )
+    coordinator.data["air_flow_rate_manual"] = 40
     assert climate.fan_mode == "40%"
 
     with pytest.raises(ServiceValidationError, match="Unsupported preset"):
@@ -208,6 +224,7 @@ async def test_climate_turn_on_off_and_availability() -> None:
     await climate.async_turn_on()
     assert climate.hvac_mode == HVACMode.AUTO
     await climate.async_turn_off()
+    coordinator.data["on_off_panel_mode"] = 0
     assert climate.hvac_mode == HVACMode.OFF
 
     coordinator.last_update_success = False
