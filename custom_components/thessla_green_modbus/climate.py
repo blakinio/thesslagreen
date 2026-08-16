@@ -59,6 +59,8 @@ PRESET_MODES = [
 ]
 
 TEMPERATURE_KEYS = ("comfort_temperature", "required_temperature", "required_temp")
+_MANUAL_AIRFLOW_REGISTER = "air_flow_rate_manual"
+_MANUAL_TEMPERATURE_REGISTER = "supply_air_temperature_manual"
 EXTRA_ATTRS_PASSTHROUGH = {
     "outside_temperature": "outside_temperature",
     "exhaust_temperature": "exhaust_temperature",
@@ -167,6 +169,41 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         if self.hass is not None:
             self.async_write_ha_state()
 
+    async def _refresh_and_reconcile(self, key: str) -> None:
+        """Refresh once, then let confirmed device state supersede the command.
+
+        A pending value remains visible while the awaited full refresh is in
+        flight. Once that refresh succeeds, its coordinator data is authoritative
+        even when the controller rejected or transformed the requested value, so
+        the optimistic override must no longer mask it.
+        """
+        await self.coordinator.async_request_refresh()
+        self._optimistic.clear_pending(key)
+        if self.hass is not None:
+            self.async_write_ha_state()
+
+    def _is_available_holding_register(self, register: str) -> bool:
+        """Return True when a bundled holding register is discovered on this device."""
+        return (
+            register in holding_registers()
+            and register
+            in self.coordinator.device_client.available_registers.get("holding_registers", set())
+        )
+
+    async def _reapply_manual_setpoints(self) -> None:
+        """Re-commit stored manual setpoints after switching into manual mode.
+
+        AirPack keeps the manual airflow/temperature registers while AUTO is
+        active, but a mode-only AUTO -> MANUAL write does not immediately apply
+        those stored values to the physical outputs. Rewriting the already-stored
+        manual setpoints makes the transition converge without inventing defaults.
+        """
+        data = self.coordinator.data or {}
+        for register in (_MANUAL_AIRFLOW_REGISTER, _MANUAL_TEMPERATURE_REGISTER):
+            value = data.get(register)
+            if isinstance(value, int | float) and self._is_available_holding_register(register):
+                await self._write_register(register, value, refresh=False)
+
     @property
     def current_temperature(self) -> float | None:
         return _first_numeric(self.coordinator.data, ("supply_temperature", "ambient_temperature"))
@@ -272,8 +309,10 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
                 raise ServiceValidationError(f"Unsupported HVAC mode: {hvac_mode}")
             await self._write_register("on_off_panel_mode", 1, refresh=False)
             await self._write_register("mode", HVAC_MODE_REVERSE_MAP[hvac_mode], refresh=False)
+            if hvac_mode == HVACMode.FAN_ONLY:
+                await self._reapply_manual_setpoints()
         self._set_optimistic("hvac_mode", hvac_mode)
-        await self.coordinator.async_request_refresh()
+        await self._refresh_and_reconcile("hvac_mode")
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         temperature = kwargs.get(ATTR_TEMPERATURE)
@@ -302,15 +341,14 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
                     "Device did not confirm temporary target-temperature write."
                 )
         else:
-            available = self.coordinator.device_client.available_registers.get(
-                "holding_registers", set()
-            )
-            if "comfort_temperature" in holding_registers() and "comfort_temperature" in available:
-                await self._write_register("comfort_temperature", temperature, refresh=False)
-            await self._write_register("required_temperature", temperature, refresh=False)
+            if not self._is_available_holding_register(_MANUAL_TEMPERATURE_REGISTER):
+                raise ServiceValidationError(
+                    "Manual target-temperature control is unavailable on this device."
+                )
+            await self._write_register(_MANUAL_TEMPERATURE_REGISTER, temperature, refresh=False)
 
         self._set_optimistic("target_temperature", temperature)
-        await self.coordinator.async_request_refresh()
+        await self._refresh_and_reconcile("target_temperature")
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         try:
@@ -320,9 +358,9 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         min_pct, max_pct = self._percentage_limits()
         if not min_pct <= airflow <= max_pct:
             raise ServiceValidationError(f"Fan mode must be between {min_pct}% and {max_pct}%.")
-        await self._write_register("air_flow_rate_manual", airflow, refresh=False)
+        await self._write_register(_MANUAL_AIRFLOW_REGISTER, airflow, refresh=False)
         self._set_optimistic("fan_mode", f"{airflow}%")
-        await self.coordinator.async_request_refresh()
+        await self._refresh_and_reconcile("fan_mode")
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         if preset_mode not in PRESET_MODES:
@@ -332,19 +370,19 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
             "special_mode", _special_mode_from_preset(preset_mode), refresh=False
         )
         self._set_optimistic("preset_mode", preset_mode)
-        await self.coordinator.async_request_refresh()
+        await self._refresh_and_reconcile("preset_mode")
 
     async def async_turn_on(self) -> None:
         await self._write_register("on_off_panel_mode", 1, refresh=False)
         self._set_optimistic(
             "hvac_mode", HVAC_MODE_MAP.get(self.coordinator.data.get("mode", 0), HVACMode.AUTO)
         )
-        await self.coordinator.async_request_refresh()
+        await self._refresh_and_reconcile("hvac_mode")
 
     async def async_turn_off(self) -> None:
         await self._write_register("on_off_panel_mode", 0, refresh=False)
         self._set_optimistic("hvac_mode", HVACMode.OFF)
-        await self.coordinator.async_request_refresh()
+        await self._refresh_and_reconcile("hvac_mode")
 
     @property
     def hvac_modes(self) -> list[HVACMode]:

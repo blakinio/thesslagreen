@@ -50,6 +50,28 @@ async def test_read_batch_existing_client_routes_and_unknown_type() -> None:
 
 
 @pytest.mark.asyncio
+async def test_read_batch_existing_client_calls_transport_wrapper_directly() -> None:
+    """Transport methods receive slave/address directly, avoiding double dispatch."""
+    transport = SimpleNamespace(read_input_registers=AsyncMock(return_value="transport-ok"))
+    device_client = SimpleNamespace(
+        _transport=transport,
+        slave_id=10,
+        client=SimpleNamespace(read_input_registers=AsyncMock()),
+        _get_client_method=Mock(),
+        _call_modbus=AsyncMock(),
+    )
+
+    result = await handlers_data._read_batch_via_existing_client(
+        device_client, "input_registers", 123, 4
+    )
+
+    assert result == "transport-ok"
+    transport.read_input_registers.assert_awaited_once_with(10, 123, count=4)
+    device_client._call_modbus.assert_not_awaited()
+    device_client._get_client_method.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_known_register_validation_classifies_batch_and_individual_outcomes() -> None:
     lock = asyncio.Lock()
     dc = SimpleNamespace(

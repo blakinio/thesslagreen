@@ -66,9 +66,16 @@ class TestThesslaGreenClimate:
             [
                 call("on_off_panel_mode", 1, refresh=False, offset=0, targeted_readback=False),
                 call("mode", 1, refresh=False, offset=0, targeted_readback=False),
+                call(
+                    "air_flow_rate_manual",
+                    60,
+                    refresh=False,
+                    offset=0,
+                    targeted_readback=False,
+                ),
             ]
         )
-        assert mock_climate_coordinator.async_write_register.call_count == 2
+        assert mock_climate_coordinator.async_write_register.call_count == 3
         mock_climate_coordinator.async_request_refresh.assert_called_once()
 
     @pytest.mark.asyncio
