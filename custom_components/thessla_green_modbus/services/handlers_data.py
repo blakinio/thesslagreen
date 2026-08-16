@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from typing import Any
 
@@ -74,7 +75,10 @@ async def _read_batch_via_existing_client(
     transport = getattr(device_client, "_transport", None)
     if transport is not None:
         transport_fn = getattr(transport, fn_name, None)
-        if callable(transport_fn):
+        # Real transport read APIs are async.  Do not mistake a loose MagicMock
+        # attribute (or another non-async compatibility shim) for that contract;
+        # fall back to the already-owned raw client path instead.
+        if callable(transport_fn) and inspect.iscoroutinefunction(transport_fn):
             return await transport_fn(device_client.slave_id, start, count=count)
 
     raw_client = getattr(device_client, "client", None)
