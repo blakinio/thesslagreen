@@ -186,13 +186,22 @@ def resolve_transport_and_client(
     scanner: Any,
     client: AsyncModbusTcpClient | AsyncModbusSerialClientType | None,
 ) -> tuple[Any, Any]:
-    """Return (transport, client) ready for reads. Raises if neither available."""
-    transport = scanner._transport if client is None else None
-    if client is None and transport is None:
+    """Return (transport, client) ready for reads. Raises if neither available.
+
+    Passing the scanner's own raw client must not opt out of its transport: the
+    transport owns reconnect/reset semantics and is the boundary that prevents
+    stale in-flight TCP responses from contaminating later transaction IDs.
+    Only a genuinely external client is allowed to bypass that owner.
+    """
+    transport = scanner._transport
+    if transport is not None and (client is None or client is scanner._client):
+        return transport, client
+
+    if client is None:
         client = scanner._client
-    if client is None and transport is None:
+    if client is None:
         raise ConnectionException("Modbus transport is not connected")
-    return transport, client
+    return None, client
 
 
 def track_input_failure(scanner: Any, count: int, address: int) -> None:
