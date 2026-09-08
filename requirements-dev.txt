@@ -17,7 +17,7 @@ pydantic==2.12.2
 # Code quality tools
 black>=24.4.0
 isort>=5.13.0
-ruff>=0.6.0
+ruff>=0.16.6
 mypy>=1.10.0
 pre-commit>=3.7.0
 
