@@ -62,8 +62,11 @@ its current mapping object; this is needed when running without the upstream con
 
 Full device acceptance remains pending. A successful test suite is not evidence of
 physical writes, successful restart of HA/NAS, optional hardware or alarm clearance.
-The independent Codex review attempts returned `Review blocked` before reading source;
-no independent review PASS is claimed or used as a deployment gate.
+The first independent Codex attempts were blocked before reading source. Three later
+owner-authorized, prompt-only scoped reviews completed against commit `72ea7759` with
+zero child tool calls. Their five findings were reproduced/corrected and regression
+tested; see `docs/agents/evidence/home-protocol-corrections-20261021/independent-review.md`.
+These scoped reviews are not full-repository approval or hardware acceptance.
 
 ## Deployment and rollback
 
@@ -80,3 +83,10 @@ freshness; loss/recovery of transport; manual-mode/temperature convergence from 
 safe preset/season mapping; one backed-up schedule slot with read-back and restoration.
 Never exercise factory reset, product-key, calibration or filter-system changes as
 routine acceptance tests.
+
+## Reviewed follow-up
+
+Schedule edits now serialize settings/time under one transport lock and reconcile
+partial/cancelled writes. Polls recheck shutdown after waiting for the lock. Invalid
+AATT words are unavailable, and both explicitly selected Home/AP4 profiles support
+the documented confirmed AFC/duct procedure. No such procedure was physically run.

@@ -60,6 +60,9 @@ async def async_update_data(coordinator: ThesslaGreenModbusCoordinator) -> dict[
 
     try:
         async with coordinator.device_client._write_lock:
+            # Shutdown may begin while this task waits behind another writer.
+            if getattr(coordinator, "_shutting_down", False):
+                return coordinator.data or {}
             try:
                 return await run_update_cycle(coordinator, start_time)
 

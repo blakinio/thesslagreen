@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Recheck shutdown after acquiring the poll lock; a queued update cannot reopen
+  the device connection after teardown has started.
+- Serialize each schedule slot's settings/time writes under the transport lock,
+  reconcile incomplete/cancelled edits and report possible partial changes. Reject
+  out-of-contract AATT reads instead of exposing plausible but invalid settings.
+- Allow the documented, explicitly equipment-confirmed AFC/duct test for both Home
+  and AirPack4; keep unknown-family requests blocked.
+
+- Remove the duplicate unreachable offset check after centralized validation; add
+  adversarial service/write failure-path tests without lowering per-module coverage gates.
+
 - Align special-function commands and summer/winter selection with both manufacturer
   register tables. Keep historical switch identities, but separate their identity
   suffixes from the actual command values. Unsupported lifestyle presets now fail

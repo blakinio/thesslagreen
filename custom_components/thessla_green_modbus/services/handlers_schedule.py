@@ -7,6 +7,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 
+from ..coordinator.schedule_service import async_write_schedule_slot
 from .handler_deps import ServiceHandlerDeps
 from .handlers_airing import register_airing_service
 from .schema import SET_AIRFLOW_SCHEDULE_SCHEMA
@@ -65,17 +66,9 @@ def register_schedule_services(hass: HomeAssistant, deps: ServiceHandlerDeps) ->
                     f"{', '.join(sorted(missing))}."
                 )
 
-            if settings is not None:
-                # Coordinator fills any omitted temperature from a fresh word
-                # under its write lock; no invented 0 C and no double packing.
-                await deps.write_register(
-                    coordinator, setting_register, settings, entity_id, "set airflow schedule AATT"
-                )
-            await deps.write_register(
-                coordinator, schedule_register, start_value, entity_id, "set airflow schedule start"
+            await async_write_schedule_slot(
+                coordinator, schedule_register, start_value, setting_register, settings
             )
-
-            await coordinator.async_request_refresh()
             deps.logger.info(
                 "Set airflow schedule [%s %s slot %d] start=%s flow=%s%% on %s",
                 season,

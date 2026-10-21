@@ -1,0 +1,113 @@
+{
+  "status": "REVIEW_FINDINGS_CORRECTED_AUTOMATED_GATES_PASS_HARDWARE_PENDING",
+  "reviewed_head": "72ea7759c4062753e3173a301a1e602bb1692b72",
+  "review_scope": "Three owner-authorized prompt-only Codex reviews of bounded pinned source excerpts; no child tools, tests or hardware access. Not whole-repository approval.",
+  "review_reports": {
+    "protocol": {
+      "report_sha256": "eef9a749f5d31ed9bbfa6cedfb952f921280810b518a34f9bf4fc3ae1060c777",
+      "findings": 1
+    },
+    "schedule": {
+      "report_sha256": "3ac5b468a0c4a03cc49ecaaea4cbdbc7e31fa25889ed51f6182aa9cdfc69dbf0",
+      "findings": 3
+    },
+    "recovery": {
+      "report_sha256": "a835ba6ca993726674a33e3dccf1e1d8809e62b9a07d567710bf511f812fc88e",
+      "findings": 1
+    }
+  },
+  "review_tool_items": 0,
+  "parent_candidate_pr": 1784,
+  "validated_source_sha256": "ba20d0117e8c19c77cc2dae31b84975fd5ca4bbe9da277e229ff49f0d1d9a148",
+  "source_manifest_files": 533,
+  "source_unchanged_during_checks": true,
+  "full_suite": {
+    "tests": 3287,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 3
+  },
+  "ha_2026_9_2_contracts": {
+    "tests": 188,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "coverage_percent": 98.28963177609725,
+  "completed_utc": "2026-10-21T10:52:13.232896+00:00",
+  "checks": [
+    {
+      "name": "compile",
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "ruff",
+      "exit_code": 0,
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "name": "imports",
+      "exit_code": 0,
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "name": "format",
+      "exit_code": 0,
+      "log_sha256": "f88968173c895ea7908cb06ac37064c0c779d82a4ae96f6d1ecdb543fee1eb8e"
+    },
+    {
+      "name": "mypy",
+      "exit_code": 0,
+      "log_sha256": "022871ecb816a765088751acadc9102aa4dd49aaa5e2e879170c6e4987e580b2"
+    },
+    {
+      "name": "full-pytest",
+      "exit_code": 0,
+      "log_sha256": "b10bae33053ca05a972aa350dd644d861253615e827c9ea588a7415df0fa4501"
+    },
+    {
+      "name": "module-coverage",
+      "exit_code": 0,
+      "log_sha256": "e2847b035ffba762faf4941985e95040a0b958d233fcafd17373d2ec223cf02c"
+    },
+    {
+      "name": "ha2026.9.2",
+      "exit_code": 0,
+      "log_sha256": "7f3000162c142bc8f050c23f7cc2040653b784e3fd4697de3e49015cbd5a67b2"
+    },
+    {
+      "name": "check_translations",
+      "exit_code": 0,
+      "log_sha256": "77f67c35ae8028964f22c2470e6360722f6074dd35fadd3dc4bf99e004708c8e"
+    },
+    {
+      "name": "check_maintainability",
+      "exit_code": 0,
+      "log_sha256": "3ab3ad408f040a6e6846d7f528479976b0fc285cc66ba97971c2ae353a45f065"
+    },
+    {
+      "name": "validate_registers",
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "validate_entity_mappings",
+      "exit_code": 0,
+      "log_sha256": "af1120a7ebad8c7a405e628c3582056b01719349038ce48e8c1d743423c9b4c5"
+    },
+    {
+      "name": "compare_registers_with_reference",
+      "exit_code": 0,
+      "log_sha256": "2830dd9e3cabc700e4eed4d7449f34bd5aa38b26e6525409bb59c90d564646f0"
+    },
+    {
+      "name": "compare_airpack4_vendor_coverage",
+      "exit_code": 0,
+      "log_sha256": "81894f9826b81353f73ef859bcd5164615fa88f881eee5aa254bb55a820f1643"
+    }
+  ],
+  "module_coverage_gate": "Exact existing CI predicate: config-flow 100%; every other runtime module >95%. No thresholds, exclusions or workflows weakened.",
+  "physical_acceptance": false,
+  "integration_deployed": false
+}

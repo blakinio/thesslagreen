@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from custom_components.thessla_green_modbus.register_defs_cache import get_register_definitions
 from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 from custom_components.thessla_green_modbus.services import (
     async_setup_services,
@@ -40,6 +42,7 @@ class _Coordinator:
         self.async_request_refresh = AsyncMock()
         self.data = {}
         self.device_client = SimpleNamespace(
+            _write_lock=asyncio.Lock(),
             effective_batch=2,
             available_registers={
                 "holding_registers": {r.name for r in get_registers_by_function("03")}
@@ -50,6 +53,16 @@ class _Coordinator:
             unknown_registers={},
             scanned_registers={},
         )
+
+    def _resolve_write_definition(self, name):
+        return get_register_definitions().get(name)
+
+    async def _locked_single_register_write(self, *, register_name, value, offset, refresh):
+        assert self.device_client._write_lock.locked()
+        success = await self.async_write_register(
+            register_name, value, refresh=False, targeted_readback=False
+        )
+        return success, False
 
 
 def _make_hass(coordinator=None):
@@ -174,7 +187,7 @@ async def test_set_airflow_schedule_write_failure(monkeypatch):
     )
     with pytest.raises(HomeAssistantError):
         await handler(call)
-    coord.async_request_refresh.assert_not_awaited()
+    coord.async_request_refresh.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +291,7 @@ async def test_set_airflow_schedule_setting_write_failure(monkeypatch):
     )
     with pytest.raises(HomeAssistantError):
         await handler(call)
-    coord.async_request_refresh.assert_not_awaited()
+    coord.async_request_refresh.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -301,7 +314,7 @@ async def test_set_airflow_schedule_start_write_failure(monkeypatch):
     )
     with pytest.raises(HomeAssistantError):
         await handler(call)
-    coord.async_request_refresh.assert_not_awaited()
+    coord.async_request_refresh.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -325,7 +338,7 @@ async def test_set_airflow_schedule_temp_write_failure(monkeypatch):
     )
     with pytest.raises(HomeAssistantError):
         await handler(call)
-    coord.async_request_refresh.assert_not_awaited()
+    coord.async_request_refresh.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------

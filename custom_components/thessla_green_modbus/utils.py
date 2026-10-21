@@ -140,13 +140,13 @@ def encode_bcd_time(value: time) -> int:
 def _decode_aatt(value: int) -> dict[str, float | int] | None:
     """Decode airflow percentage and temperature encoded as ``AATT``."""
 
-    if value == 32768 or value < 0:
+    if isinstance(value, bool) or not 0 <= value <= 0xFFFF:
         return None
 
     airflow = (value >> 8) & 255
     temp_double = value & 255
 
-    if airflow > 150 or temp_double > 200:
+    if not 10 <= airflow <= 100 or not 20 <= temp_double <= 90:
         return None
 
     return {"airflow_pct": airflow, "temp_c": temp_double / 2}

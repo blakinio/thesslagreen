@@ -52,14 +52,6 @@ def encode_write_value(
                 encoded_values: list[int] = _checked_words(encoded)
             else:
                 encoded_values = _checked_words([encoded])
-            if offset >= definition.length:
-                _LOGGER.error(
-                    "Register %s expects at most %d values starting at offset %d",
-                    register_name,
-                    definition.length - offset,
-                    offset,
-                )
-                return None, None
             return encoded_values[offset:], value
     else:
         if isinstance(value, list | tuple) and not isinstance(value, bytes | bytearray | str):

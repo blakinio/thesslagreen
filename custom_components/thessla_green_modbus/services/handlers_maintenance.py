@@ -268,9 +268,12 @@ def _build_start_pressure_test_handler(
             )
 
         async def _start_pressure_test_for_target(entity_id: str, coordinator: Any) -> bool:
-            if test_type == "afc_and_duct" and configured_device_family(coordinator) != "airpack4":
+            if test_type == "afc_and_duct" and configured_device_family(coordinator) not in (
+                "airpack_home",
+                "airpack4",
+            ):
                 raise ServiceValidationError(
-                    "AFC test is not enabled for the Home/unspecified profile"
+                    "Select the documented Home or AirPack4 profile before an AFC test"
                 )
             if "configuration_mode" not in coordinator.device_client.available_registers.get(
                 "holding_registers", set()

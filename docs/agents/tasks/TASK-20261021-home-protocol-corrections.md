@@ -33,9 +33,9 @@ Fresh-read the live PR head and CI before resuming. No merge/deployment is impli
 
 ```yaml
 checkpoint_version: 1
-updated_at: 2026-10-21T10:23:29+00:00
-head: b65cf9fd4c4370f6f6e6f8831ed06c0729584a8c
-branch: fix/home-protocol-corrections-20261021
+updated_at: 2026-10-21T10:54:11.769295+00:00
+head: 72ea7759c4062753e3173a301a1e602bb1692b72
+branch: main
 pr: 1784
 status: ready
 context_routes:
@@ -43,63 +43,49 @@ context_routes:
   - claude.md
   - docs/agents/CONTEXT_HANDOFF.md
   - docs/audits/home_protocol_corrections_20261021.md
-  - docs/agents/evidence/home-protocol-corrections-20261021/verification.json
+  - docs/agents/evidence/home-protocol-corrections-20261021/review-verification.json
 owned_paths:
   - custom_components/thessla_green_modbus/
   - tests/
-  - tools/check_translations.py
   - CHANGELOG.md
-  - docs/audits/home_protocol_corrections_20261021.md
   - docs/agents/tasks/TASK-20261021-home-protocol-corrections.md
   - docs/agents/evidence/home-protocol-corrections-20261021/
+  - docs/audits/home_protocol_corrections_20261021.md
 proven:
-  - 'Full Python 3.13 suite: 3202 passed, 3 skipped, 0 failed.'
-  - 106 HA 2026.9.2 framework/manufacturer tests passed on Python 3.14.
-  - All 13 checks exited zero; source remained identical across the check sequence.
-  - All 530 source/test/tool manifest files matched before commit.
-  - Source fingerprint caa93f6a55dba4cd33e6602bad52e00bcb10ab4a3b3f899c4030888962a9e73e
-  - Implementation commit published on the PR branch; main was not changed.
-  - Existing register names/addresses, entity and unique IDs retained; unsupported legacy controls fail closed.
+  - 'Full suite: 3284 passed, 3 skipped; current HA 2026.9.2 contracts: 188 passed.'
+  - All 14 local checks passed, including the unchanged per-module coverage gate.
+  - Three prompt-only scoped reviews completed with zero tool calls; five findings corrected and regression tested.
+  - Source fingerprint ba20d0117e8c19c77cc2dae31b84975fd5ca4bbe9da277e229ff49f0d1d9a148
 derived:
-  - Candidate is suitable for draft review, not automatic production installation.
+  - Candidate is suitable for exact-head CI and controlled deployment preparation, not automatic merge.
 unknown:
-  - Exact-head remote CI outcome; inspect the live run rather than assuming local PASS applies.
-  - Physical acceptance of combined PR1773 and manufacturer corrections.
-  - FC04/274-275 semantics and optional equipment not established by register presence.
+  - Physical acceptance and optional equipment.
+  - FC04/274-275 semantics remain ambiguous in the supplied PDFs.
 conflicts:
-  - Earlier work separately updated the private HA watchdog; integration code has not been deployed.
+  - Earlier private HA watchdog changes are separate from integration-code deployment.
 first_failure:
-  marker: none
-  evidence: docs/agents/evidence/home-protocol-corrections-20261021/verification.json
+  marker: original-ci-module-coverage
+  evidence: 'GitHub Actions run 39584339790; resolved locally by additional tests, not a weaker gate.'
 rejected_hypotheses:
-  - A green test suite proves hardware acceptance.
-  - Blocked Codex executions count as independent reviews.
+  - All passing tests imply every module satisfies the quality gate.
+  - Completed scoped reviews prove hardware acceptance.
 changed_paths:
-  - Runtime, regression tests, metadata, changelog and documentation; see b65cf9f diff against PR1773 head.
+  - See Git diff against parent head and independent-review.md for the reviewed follow-up.
 validation:
-  - command: compile; ruff; imports; format; mypy
+  - command: compile, ruff, imports, format, mypy
     result: PASS
-    evidence: docs/agents/evidence/home-protocol-corrections-20261021/verification.json
-  - command: full-pytest
+    evidence: docs/agents/evidence/home-protocol-corrections-20261021/review-verification.json
+  - command: full-pytest and unchanged CI module-coverage gate
     result: PASS
-    evidence: docs/agents/evidence/home-protocol-corrections-20261021/verification.json
-  - command: ha2026.9.2
+    evidence: docs/agents/evidence/home-protocol-corrections-20261021/review-verification.json
+  - command: ha2026.9.2 contracts
     result: PASS
-    evidence: docs/agents/evidence/home-protocol-corrections-20261021/verification.json
-  - command: check_translations; check_maintainability
+    evidence: docs/agents/evidence/home-protocol-corrections-20261021/review-verification.json
+  - command: translations, maintainability, register/entity validation, both vendor-reference checks
     result: PASS
-    evidence: docs/agents/evidence/home-protocol-corrections-20261021/verification.json
-  - command: validate_registers; validate_entity_mappings
-    result: PASS
-    evidence: docs/agents/evidence/home-protocol-corrections-20261021/verification.json
-  - command: compare_registers_with_reference; compare_airpack4_vendor_coverage
-    result: PASS
-    evidence: docs/agents/evidence/home-protocol-corrections-20261021/verification.json
-  - command: checkpoint validation of all task files before publication
-    result: PASS
-    evidence: tools/agents/checkpoint.py --tasks docs/agents/tasks --require-checkpoint validated nine tasks.
+    evidence: docs/agents/evidence/home-protocol-corrections-20261021/review-verification.json
 blockers:
-  - Independent AI reviews were blocked before reading code; no independent PASS claimed.
-  - Physical acceptance and deployment remain pending.
-next_action: Verify exact-head CI and review on PR1784, then plan controlled physical acceptance with separate deployment approval; do not merge or deploy automatically.
+  - Exact-head remote CI and physical acceptance pending.
+next_action: Publish the reviewed follow-up to PR 1784 and verify exact-head CI before controlled HA installation with rollback.
+
 ```

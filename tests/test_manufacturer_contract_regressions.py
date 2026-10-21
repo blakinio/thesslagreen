@@ -296,6 +296,14 @@ async def test_schedule_service_encodes_once(regs):
         write_register=write,
         logger=MagicMock(),
     )
+    coord.device_client._write_lock = asyncio.Lock()
+    coord._resolve_write_definition = regs.get
+
+    async def locked_write(*, register_name, value, offset, refresh):
+        assert coord.device_client._write_lock.locked()
+        return await write(coord, register_name, value), False
+
+    coord._locked_single_register_write = locked_write
     register_schedule_services(hass, deps)
     await handlers["set_airflow_schedule"](
         SimpleNamespace(
