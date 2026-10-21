@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.5] - pending release
+
+> Patch candidate for PR #1784. Not tagged or released until remaining hardware acceptance and merge gates are satisfied.
+
 ### Fixed
 
 - Recheck shutdown after acquiring the poll lock; a queued update cannot reopen
