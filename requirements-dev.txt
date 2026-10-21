@@ -10,6 +10,7 @@ aiodhcpwatcher>=1.1.0
 aiodiscover>=2.6.1
 PyYAML>=6.0
 types-PyYAML>=6.0.12
+pyserial>=3.5
 # pytest-homeassistant-custom-component 0.13.309-0.13.316 pins pydantic==2.12.2.
 # Keep this in sync with the plugin's pinned pydantic version to avoid pip conflicts.
 pydantic==2.12.2

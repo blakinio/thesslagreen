@@ -4,6 +4,7 @@ import pytest
 from custom_components.thessla_green_modbus.const import CONNECTION_TYPE_RTU
 from custom_components.thessla_green_modbus.coordinator import ThesslaGreenModbusCoordinator
 from custom_components.thessla_green_modbus.transport.rtu import RtuModbusTransport
+from pymodbus.client import AsyncModbusSerialClient
 
 
 @pytest.mark.asyncio
@@ -43,6 +44,29 @@ async def test_rtu_transport_initializes_serial_client(monkeypatch):
     assert transport.client.kwargs["baudrate"] == 9600
     assert transport.client.kwargs["parity"] == "N"
     assert transport.client.kwargs["stopbits"] == 1
+
+
+@pytest.mark.asyncio
+async def test_rtu_transport_builds_real_pymodbus_serial_client(monkeypatch):
+    transport = RtuModbusTransport(
+        serial_port="/dev/ttyUSB0",
+        baudrate=9600,
+        parity="N",
+        stopbits=1,
+        max_retries=2,
+        base_backoff=0.1,
+        max_backoff=1.0,
+        timeout=2.0,
+    )
+    connect_client = AsyncMock()
+    monkeypatch.setattr(transport, "_connect_client", connect_client)
+
+    await transport._connect()
+
+    assert isinstance(transport.client, AsyncModbusSerialClient)
+    assert transport.client.comm_params.host == "/dev/ttyUSB0"
+    assert transport.client.comm_params.baudrate == 9600
+    connect_client.assert_awaited_once_with(endpoint="/dev/ttyUSB0")
 
 
 @pytest.mark.asyncio

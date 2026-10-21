@@ -62,7 +62,6 @@ class RtuModbusTransport(_ClientBackedTransport):
         if not self.serial_port:
             raise ConnectionException("Serial port not configured for RTU transport")
         self.client = _AsyncModbusSerialClient(
-            method="rtu",
             port=self.serial_port,
             baudrate=self.baudrate,
             parity=self.parity,
