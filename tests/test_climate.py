@@ -376,7 +376,7 @@ async def test_climate_write_paths_disable_targeted_readback():
     await climate.async_set_hvac_mode(climate_mod.HVACMode.AUTO)
     await climate.async_set_temperature(**{const.ATTR_TEMPERATURE: 21.0})
     await climate.async_set_fan_mode("30%")
-    await climate.async_set_preset_mode("eco")
+    await climate.async_set_preset_mode("hood")
     await climate.async_turn_on()
     await climate.async_turn_off()
 

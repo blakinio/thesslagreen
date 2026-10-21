@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .registers.special_modes import SPECIAL_MODES
+
 try:
     from homeassistant.const import Platform as _HAPlatform
 except ModuleNotFoundError:  # pragma: no cover - test/runtime fallback without HA
@@ -246,9 +248,13 @@ PLATFORMS: list[Any] = [
 ]
 
 
-# Special function enum index mappings for services.
-# Values match the sequential enum indices in special_modes.json (0=none, 1=boost, ...).
-SPECIAL_FUNCTION_MAP = {
+# Protocol values are shared by the select, services, climate and switches.
+# Only unambiguous legacy aliases retain control behavior.
+SPECIAL_FUNCTION_MAP = {**SPECIAL_MODES, "boost": 7, "away": 11}
+
+# Historical bits are part of switch unique IDs. Preserve them as identity,
+# never use them as protocol commands after correcting the vendor mapping.
+LEGACY_SPECIAL_SWITCH_IDENTITIES = {
     "boost": 1,
     "eco": 2,
     "away": 3,

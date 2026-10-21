@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..const import SPECIAL_FUNCTION_MAP
+from ..const import LEGACY_SPECIAL_SWITCH_IDENTITIES, SPECIAL_FUNCTION_MAP
 from ._mapping_builders import (
     _extend_entity_mappings_from_registers,
     _get_parent,
@@ -48,7 +48,7 @@ def _build_entity_mappings() -> None:
     switch_mappings.update(_gen_switch)
     select_mappings.update(_gen_select)
 
-    for mode, bit in SPECIAL_FUNCTION_MAP.items():
+    for mode, bit in LEGACY_SPECIAL_SWITCH_IDENTITIES.items():
         switch_mappings[mode] = {
             "icon": special_mode_icons.get(mode, "mdi:toggle-switch"),
             "register": "special_mode",
@@ -56,6 +56,7 @@ def _build_entity_mappings() -> None:
             "category": None,
             "translation_key": mode,
             "bit": bit,
+            "protocol_value": SPECIAL_FUNCTION_MAP.get(mode),
         }
 
     # Temporarily inject time_mappings into parent so

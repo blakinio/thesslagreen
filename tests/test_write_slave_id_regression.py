@@ -81,7 +81,7 @@ async def test_multi_register_write_uses_configured_slave_id(coordinator_slave10
     """Regression: write_registers must use slave_id=10, not the pymodbus default 1."""
     coordinator, transport = coordinator_slave10
 
-    result = await coordinator.async_write_registers(0x1000, [1, 2, 3])
+    result = await coordinator.async_write_registers(4400, [2, 30, 1], require_single_request=True)
 
     assert result is True, "Write should succeed"
     transport.write_registers.assert_awaited_once()

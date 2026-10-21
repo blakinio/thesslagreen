@@ -8,6 +8,7 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pymodbus.exceptions import ConnectionException, ModbusException
@@ -98,6 +99,7 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         self.entity_config = entity_config
         self.register_name = register_name
         self.bit = entity_config.get("bit")
+        self._special_mode_value = entity_config.get("protocol_value", self.bit)
 
         self._attr_translation_key = entity_config["translation_key"]
         self._attr_icon = entity_config.get("icon", "mdi:toggle-switch")
@@ -134,7 +136,11 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
 
         if self.bit is not None:
             if self.register_name == "special_mode":
-                return bool(raw_value == self.bit)
+                return (
+                    None
+                    if self._special_mode_value is None
+                    else raw_value == self._special_mode_value
+                )
             return bool(raw_value & self.bit)
 
         return bool(raw_value)
@@ -156,7 +162,11 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         try:
             if self.bit is not None:
                 if self.register_name == "special_mode":
-                    value = self.bit
+                    if self._special_mode_value is None:
+                        raise HomeAssistantError(
+                            "This legacy preset has no documented AirPack function; use the mode/season/comfort selectors"
+                        )
+                    value = self._special_mode_value
                 else:
                     current = self.coordinator.data.get(self.register_name, 0)
                     value = current | self.bit
@@ -174,6 +184,14 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
         try:
             if self.bit is not None:
                 if self.register_name == "special_mode":
+                    if self._special_mode_value is None:
+                        raise HomeAssistantError(
+                            "This legacy preset has no documented AirPack function"
+                        )
+                    # Turning off an inactive alias must not cancel a different
+                    # special function selected by the wall panel or automation.
+                    if self.coordinator.data.get(self.register_name) != self._special_mode_value:
+                        return
                     value = 0
                 else:
                     current = self.coordinator.data.get(self.register_name, 0)
@@ -237,6 +255,8 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
 
         if self.register_name == "special_mode":
             attributes["control_type"] = "special_mode"
+            attributes["protocol_value"] = self._special_mode_value
+            attributes["control_supported"] = self._special_mode_value is not None
             if self.bit is not None:
                 attributes["bit"] = self.bit
         elif self.register_name == "on_off_panel_mode":
@@ -254,4 +274,6 @@ class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return self._coordinator_connected()
+        return self._coordinator_connected() and not (
+            self.register_name == "special_mode" and self._special_mode_value is None
+        )

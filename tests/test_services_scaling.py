@@ -93,15 +93,11 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
     writes = coordinator.writes
 
     assert writes[0] == (
-        HOLDING_REGISTERS["schedule_summer_mon_1"],
-        "06:30",
-        1,
-    )  # nosec: B101
-    assert writes[1] == (
         HOLDING_REGISTERS["setting_summer_mon_1"],
-        14091,
+        {"airflow_pct": 55, "temp_c": 21.5},
         1,
-    )  # nosec: B101
+    )
+    assert writes[1] == (HOLDING_REGISTERS["schedule_summer_mon_1"], "06:30", 1)
 
 
 @pytest.mark.asyncio

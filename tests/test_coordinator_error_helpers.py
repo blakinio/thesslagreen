@@ -81,10 +81,10 @@ async def test_handle_calls_disconnect():
 
 
 @pytest.mark.asyncio
-async def test_handle_triggers_reauth_when_at_max_failures():
+async def test_handle_network_failures_do_not_trigger_reauth():
     coord = _make_coord(consecutive_failures=4, max_failures=5)
     await handle_update_error(coord, RuntimeError("x"), reauth_reason="too_many", message="m")
-    coord._trigger_reauth.assert_called_once_with("too_many")
+    coord._trigger_reauth.assert_not_called()
 
 
 @pytest.mark.asyncio

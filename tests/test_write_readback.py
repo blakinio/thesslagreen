@@ -553,6 +553,7 @@ async def test_targeted_readback_decode_failure_does_not_fail_write(
     import custom_components.thessla_green_modbus.coordinator.coordinator as coord_mod
 
     class _BadDecodeDef:
+        access = "RW"
         function = 3
         length = 1
         address = 100
@@ -589,6 +590,7 @@ async def test_targeted_readback_decode_failure_refresh_false_no_full_refresh(
     import custom_components.thessla_green_modbus.coordinator.coordinator as coord_mod
 
     class _BadDecodeDef:
+        access = "RW"
         function = 3
         length = 1
         address = 100

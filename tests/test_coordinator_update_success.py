@@ -50,7 +50,9 @@ async def test_async_write_register_coil():
     coord.device_client._transport = transport
     coord.device_client._call_modbus = AsyncMock(return_value=ok_response)
     coord.async_request_refresh = AsyncMock()
-    assert await coord.async_write_register("bypass", 1) is True
+    assert await coord.async_write_register("bypass", 1) is False
+    coord._ensure_connection.assert_not_awaited()
+    coord.device_client._call_modbus.assert_not_awaited()
 
 
 async def test_async_write_register_refresh_type_error():
@@ -72,6 +74,7 @@ async def test_async_write_register_multi_reg_with_offset_via_transport():
     mock_def = MagicMock()
     mock_def.length = 3
     mock_def.function = 3
+    mock_def.access = "RW"
     mock_def.address = 100
     mock_def.encode.return_value = [10, 20, 30]
     ok_resp = MagicMock()
@@ -148,6 +151,7 @@ async def test_async_write_register_encoded_non_list():
     mock_def = MagicMock()
     mock_def.length = 2
     mock_def.function = 3
+    mock_def.access = "RW"
     mock_def.address = 100
     mock_def.encode.return_value = 999
     ok_resp = MagicMock()

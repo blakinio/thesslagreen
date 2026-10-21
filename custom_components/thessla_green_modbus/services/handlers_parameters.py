@@ -6,7 +6,9 @@ from collections.abc import Callable, Sequence
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
 
+from ..register_defs_cache import get_register_definitions
 from .dispatch import refresh_and_log_success, write_register_steps
 from .handler_deps import ServiceHandlerDeps
 from .schema import (
@@ -15,7 +17,7 @@ from .schema import (
     SET_GWC_PARAMETERS_SCHEMA,
     SET_TEMPERATURE_CURVE_SCHEMA,
 )
-from .validation import BYPASS_MODE_MAP, GWC_MODE_MAP, iter_air_quality_writes
+from .validation import iter_air_quality_writes
 
 WriteStep = tuple[str, object | None, bool, str]
 ServiceHandler = Callable[[ServiceCall], object]
@@ -93,10 +95,15 @@ def _parameter_registrations(
 
 
 def _bypass_steps(call: ServiceCall, deps: ServiceHandlerDeps) -> list[WriteStep]:
+    mode = deps.normalize_option(call.data["mode"])
+    if mode not in ("auto", "closed"):
+        raise ServiceValidationError(
+            "Forced-open bypass is not documented; use auto or closed (disabled)"
+        )
     return [
         (
-            "bypass_mode",
-            BYPASS_MODE_MAP[deps.normalize_option(call.data["mode"])],
+            "bypass_off",
+            int(mode == "closed"),
             False,
             "Failed to set bypass mode for %s",
         ),
@@ -110,10 +117,13 @@ def _bypass_steps(call: ServiceCall, deps: ServiceHandlerDeps) -> list[WriteStep
 
 
 def _gwc_steps(call: ServiceCall, deps: ServiceHandlerDeps) -> list[WriteStep]:
+    mode = deps.normalize_option(call.data["mode"])
+    if mode not in ("off", "auto"):
+        raise ServiceValidationError("Forced GWC is not documented; use off or auto")
     return [
         (
-            "gwc_mode",
-            GWC_MODE_MAP[deps.normalize_option(call.data["mode"])],
+            "gwc_off",
+            int(mode == "off"),
             False,
             "Failed to set GWC mode for %s",
         ),
@@ -171,6 +181,21 @@ async def _run_parameter_steps(
 ) -> None:
     """Run shared write/refresh flow for parameter handlers."""
     for entity_id, coordinator in await deps.iter_target_coordinators(hass, call):
+        definitions = get_register_definitions()
+        holding = coordinator.device_client.available_registers.get("holding_registers", set())
+        requested = [
+            (name, value) for name, value, optional, _ in steps if value is not None or not optional
+        ]
+        for name, value in requested:
+            definition = definitions.get(name)
+            if definition is None or "W" not in definition.access or name not in holding:
+                raise ServiceValidationError(
+                    f"Unsupported writable register {name}; no changes sent"
+                )
+            try:
+                definition.encode(value)
+            except (TypeError, ValueError, OverflowError) as err:
+                raise ServiceValidationError(f"Invalid value for {name}: {err}") from err
         if not await write_register_steps(
             coordinator,
             steps,

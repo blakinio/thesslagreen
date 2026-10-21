@@ -41,12 +41,12 @@ SENSOR_DEFINITIONS: dict[str, dict[str, Any]] = ENTITY_MAPPINGS.get("sensor", {}
 
 def _is_error_or_status_register(key: str) -> bool:
     """Return True when *key* belongs to an error or status register."""
-    return key.startswith(ERROR_REGISTER_PREFIX) or key.startswith(STATUS_REGISTER_PREFIX)
+    return key.startswith((ERROR_REGISTER_PREFIX, STATUS_REGISTER_PREFIX, "f_"))
 
 
 def _format_error_status_code(key: str) -> str:
     """Convert an internal register key to its display code."""
-    if key.startswith((ERROR_REGISTER_PREFIX, STATUS_REGISTER_PREFIX)):
+    if key.startswith((ERROR_REGISTER_PREFIX, STATUS_REGISTER_PREFIX, "f_")):
         prefix, _, suffix = key.partition("_")
         if suffix.isdigit():
             return f"{prefix.upper()}{int(suffix)}"

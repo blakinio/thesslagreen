@@ -11,8 +11,8 @@ def test_decode_bcd_time_valid():
 
 
 def test_decode_bcd_time_2400():
-    """Decode BCD 24:00 (0x2400) to midnight string."""
-    assert decode_bcd_time(9216) == "00:00"  # nosec B101
+    """Vendor 0x2400 disables airing; it must not become a midnight event."""
+    assert decode_bcd_time(9216) is None  # nosec B101
 
 
 @pytest.mark.parametrize("value", [6656, 9056, 39321, 65535])

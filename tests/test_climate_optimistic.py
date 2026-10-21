@@ -136,8 +136,8 @@ async def test_preset_mode_pending_before_refresh(mock_coordinator):
     assert climate._optimistic.get_pending("preset_mode") is None
     assert climate.preset_mode == "none"
 
-    mock_coordinator.data["special_mode"] = 1
-    assert climate.preset_mode == "boost"
+    mock_coordinator.data["special_mode"] = 7
+    assert climate.preset_mode == "airing_manual"
 
 
 def test_coordinator_update_reconciles_pending_state(mock_coordinator):

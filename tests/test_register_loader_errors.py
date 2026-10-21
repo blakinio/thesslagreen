@@ -91,28 +91,14 @@ def test_invalid_register_file_raises_runtime_error(tmp_path) -> None:
 
 
 def test_special_modes_invalid_json(monkeypatch) -> None:
-    """Parser falls back to empty special mode enum on invalid file."""
-
+    """Malformed UI JSON cannot corrupt the manufacturer protocol map."""
     import importlib
     from pathlib import Path
 
     from custom_components.thessla_green_modbus.registers import parser as parser_module
 
-    special_path = parser_module._SPECIAL_MODES_PATH
-    real_read_text = Path.read_text
-
-    def bad_read(self, *args, **kwargs):  # pragma: no cover - simple stub
-        if self == special_path:
-            return "{"
-        return real_read_text(self, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "read_text", bad_read)
-
-    parser_module = importlib.import_module(
-        "custom_components.thessla_green_modbus.registers.parser"
-    )
-    parser_module = importlib.reload(parser_module)
-    assert parser_module._SPECIAL_MODES_ENUM == {}  # nosec B101
-
-    monkeypatch.setattr(Path, "read_text", real_read_text)
-    importlib.reload(parser_module)
+    with monkeypatch.context() as patcher:
+        patcher.setattr(Path, "read_text", lambda *args, **kwargs: "{")
+        importlib.reload(parser_module)
+        assert parser_module.normalise_enum_map("special_mode", {})[1] == "hood"
+        assert parser_module.normalise_enum_map("special_mode", {})[11] == "empty_house"

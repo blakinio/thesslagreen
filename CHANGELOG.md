@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Align special-function commands and summer/winter selection with both manufacturer
+  register tables. Keep historical switch identities, but separate their identity
+  suffixes from the actual command values. Unsupported lifestyle presets now fail
+  closed instead of selecting an unrelated controller function.
+- Encode schedule AATT values once, using twice the temperature in Celsius. Preserve
+  an omitted temperature using a fresh read under the write lock; reject incomplete
+  replies rather than inventing zero degrees. Distinguish disabled schedule/airing
+  markers from midnight.
+- Reject named and raw writes to read-only/unknown registers and invalid 16-bit words.
+  Bypass and GWC services use the writable enable/disable controls instead of status
+  registers. Unsupported parameter services fail before performing partial writes.
+- Separate AirPack Home filter-system writes from AirPack4 replacement commands.
+  Home presostat replacement no longer silently disables the presostat. Pressure-test
+  calls require an explicit documented procedure and equipment confirmation.
+- Clean up the polling-in-progress flag when cancelled while waiting for a write
+  lock. Call Home Assistant's reauth callback directly; ordinary connection failures
+  no longer initiate authentication flows merely after repeated failures.
+- Decode inactive-CF flow, signed RTC calibration, module versions and filter dates;
+  correct the FPX thermal-protection display name, include F-code faults in aggregate
+  diagnostics, and count successful plus failed read cycles in total reads.
+
+### Added
+
+- Explicit AirPack Home / AirPack4 family option for variant-dependent filter writes.
+  The default remains unspecified, which blocks ambiguous filter writes without
+  guessing the family from a calibrated airflow or firmware number.
+- `set_airing_schedule` service with the documented airing-disable command and
+  explicit schedule-slot enable/disable support in `set_airflow_schedule`.
+
+### Changed
+
+- Legacy Boost and Away aliases now select manual airing and Empty House respectively.
+  Eco, Sleep, Party, Bathroom, Kitchen, Summer and Winter legacy *special-mode*
+  switches remain registered with unchanged identities but unavailable; use the
+  canonical special-function, season and comfort selectors. Existing automations
+  using unsupported presets need explicit migration before upgrading.
+- These changes extend draft PR #1773. They are an unreleased candidate; automated
+  verification does not replace post-fix acceptance on physical hardware.
+
 ## [2.8.3] - 2026-07-09
 
 > Wrap-up of the post-refactor cleanup series. Ships the targeted read-back safe

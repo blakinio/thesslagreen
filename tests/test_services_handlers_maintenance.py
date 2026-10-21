@@ -99,6 +99,8 @@ async def _setup_and_get(hass, service_name, coordinator, monkeypatch):
 async def test_reset_filters_basic(monkeypatch):
     """reset_filters writes filter_change register."""
     coord = _Coordinator()
+    coord.entry = SimpleNamespace(options={"device_family": "airpack_home"})
+    coord.data = {"filter_change": 2}
     hass = _make_hass()
     handler = await _setup_and_get(hass, "reset_filters", coord, monkeypatch)
 
@@ -115,10 +117,12 @@ async def test_reset_filters_basic(monkeypatch):
 async def test_reset_filters_write_failure(monkeypatch):
     """reset_filters surfaces a rejected write."""
     coord = _Coordinator(write_result=False)
+    coord.entry = SimpleNamespace(options={"device_family": "airpack_home"})
+    coord.data = {"filter_change": 2}
     hass = _make_hass()
     handler = await _setup_and_get(hass, "reset_filters", coord, monkeypatch)
 
-    call = _make_call({"entity_id": ["climate.dev"], "filter_type": "presostat"})
+    call = _make_call({"entity_id": ["climate.dev"], "filter_type": "flat_filters"})
     with pytest.raises(HomeAssistantError):
         await handler(call)
     coord.async_request_refresh.assert_not_awaited()
@@ -182,48 +186,40 @@ async def test_reset_settings_all(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_start_pressure_test_basic(monkeypatch):
-    """start_pressure_test writes day and time registers."""
-    import datetime
-
+    """Explicit duct-filter test writes configuration_mode47, not weekly times."""
     coord = _Coordinator()
-    hass = _make_hass()
-    handler = await _setup_and_get(hass, "start_pressure_test", coord, monkeypatch)
-
-    fake_now = datetime.datetime(2024, 3, 11, 14, 30)  # Monday, 14:30
-    from custom_components.thessla_green_modbus import services as svc_mod
-
-    monkeypatch.setattr(
-        svc_mod, "dt_util", type("DT", (), {"now": staticmethod(lambda: fake_now)})()
+    coord.device_client = SimpleNamespace(
+        available_registers={"holding_registers": {"configuration_mode"}}
     )
-
-    call = _make_call({"entity_id": ["climate.dev"]})
-    await handler(call)
-
-    written = [c.args[0] for c in coord.async_write_register.call_args_list]
-    assert "pres_check_day_2" in written
-    assert "pres_check_time_2" in written
+    handler = await _setup_and_get(_make_hass(), "start_pressure_test", coord, monkeypatch)
+    await handler(
+        _make_call(
+            {"entity_id": ["climate.dev"], "test_type": "duct_filter", "confirm_equipment": True}
+        )
+    )
+    coord.async_write_register.assert_awaited_once_with(
+        "configuration_mode", 47, refresh=False, targeted_readback=False
+    )
     coord.async_request_refresh.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_start_pressure_test_write_failure(monkeypatch):
-    """start_pressure_test surfaces a rejected day write."""
-    import datetime
-
     coord = _Coordinator(write_result=False)
-    hass = _make_hass()
-    handler = await _setup_and_get(hass, "start_pressure_test", coord, monkeypatch)
-
-    fake_now = datetime.datetime(2024, 3, 11, 14, 30)
-    from custom_components.thessla_green_modbus import services as svc_mod
-
-    monkeypatch.setattr(
-        svc_mod, "dt_util", type("DT", (), {"now": staticmethod(lambda: fake_now)})()
+    coord.device_client = SimpleNamespace(
+        available_registers={"holding_registers": {"configuration_mode"}}
     )
-
-    call = _make_call({"entity_id": ["climate.dev"]})
+    handler = await _setup_and_get(_make_hass(), "start_pressure_test", coord, monkeypatch)
     with pytest.raises(HomeAssistantError):
-        await handler(call)
+        await handler(
+            _make_call(
+                {
+                    "entity_id": ["climate.dev"],
+                    "test_type": "duct_filter",
+                    "confirm_equipment": True,
+                }
+            )
+        )
     coord.async_request_refresh.assert_not_awaited()
 
 

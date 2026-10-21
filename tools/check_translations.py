@@ -14,6 +14,7 @@ BASE_LANG = "en"
 LANGS = (BASE_LANG, "pl")
 
 OPTION_KEYS = [
+    "device_family",
     "force_full_register_list",
     "retry",
     "scan_interval",

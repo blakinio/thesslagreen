@@ -137,29 +137,22 @@ async def test_set_airflow_schedule_with_temperature(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_clamp_rate(monkeypatch):
-    """_clamp_airflow_rate applies min/max from coordinator data."""
+    """Reject an out-of-protocol schedule value rather than silently clamping."""
     coord = _Coordinator()
-    coord.data = {"min_percentage": 10, "max_percentage": 80}
-    hass = _make_hass()
-    handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
-
-    start = SimpleNamespace(hour=8, minute=0)
-    call = _make_call(
-        {
-            "entity_id": ["climate.dev"],
-            "day": "monday",
-            "period": 1,
-            "start_time": start,
-            "airflow_rate": 200,
-        }
-    )
-    await handler(call)
-
-    setting_calls = [
-        c for c in coord.async_write_register.call_args_list if c.args[0] == "setting_summer_mon_1"
-    ]
-    assert setting_calls
-    assert setting_calls[0].args[1] == (80 << 8)
+    handler = await _setup_and_get(_make_hass(), "set_airflow_schedule", coord, monkeypatch)
+    with pytest.raises(HomeAssistantError, match="10 to 100"):
+        await handler(
+            _make_call(
+                {
+                    "entity_id": ["climate.dev"],
+                    "day": "monday",
+                    "period": 1,
+                    "start_time": SimpleNamespace(hour=8, minute=0),
+                    "airflow_rate": 200,
+                }
+            )
+        )
+    coord.async_write_register.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -257,7 +250,7 @@ async def test_set_airflow_schedule_clamp_inverted_bounds(monkeypatch):
         c for c in coord.async_write_register.call_args_list if c.args[0] == "setting_summer_wed_1"
     ]
     assert setting_calls
-    assert setting_calls[0].args[1] == (60 << 8)
+    assert setting_calls[0].args[1] == {"airflow_pct": 10, "temp_c": None}
 
 
 # ---------------------------------------------------------------------------

@@ -86,7 +86,7 @@
     },
     "binary_sensor": {
       "ahu_filter_protection": {
-        "name": "AHU Filter Protection"
+        "name": "FPX heater thermal protection"
       },
       "airing_mini": {
         "name": "Airing Mini"
@@ -1112,10 +1112,10 @@
         "name": "Heat Recovery Efficiency"
       },
       "heat_recovery_power": {
-        "name": "Heat Recovery Power"
+        "name": "Calculated heat recovery power"
       },
       "electrical_power": {
-        "name": "Electrical Power Consumption"
+        "name": "Estimated electrical power"
       },
       "stop_ahu_code": {
         "name": "AHU Stop Alarm Code",
@@ -1136,13 +1136,13 @@
         "name": "Away"
       },
       "bathroom": {
-        "name": "Bathroom"
+        "name": "Bathroom — unsupported legacy preset"
       },
       "boost": {
         "name": "Boost"
       },
       "eco": {
-        "name": "Eco"
+        "name": "Eco — unsupported legacy preset"
       },
       "fireplace": {
         "name": "Fireplace (Control)"
@@ -1151,22 +1151,22 @@
         "name": "Hood"
       },
       "kitchen": {
-        "name": "Kitchen"
+        "name": "Kitchen — unsupported legacy preset"
       },
       "on_off_panel_mode": {
         "name": "On/Off Panel Mode"
       },
       "party": {
-        "name": "Party"
+        "name": "Party — unsupported legacy preset"
       },
       "sleep": {
-        "name": "Sleep"
+        "name": "Sleep — unsupported legacy preset"
       },
       "summer": {
-        "name": "Summer"
+        "name": "Summer — unsupported legacy preset"
       },
       "winter": {
-        "name": "Winter"
+        "name": "Winter — unsupported legacy preset"
       },
       "bypass_off": {
         "name": "Bypass Locked"
@@ -1461,7 +1461,8 @@
           "sync_device_clock_on_start": "Sync clock on integration start",
           "timeout": "Connection Timeout (seconds)",
           "scan_uart_settings": "Scan UART Port Settings",
-          "airflow_unit": "Airflow Unit"
+          "airflow_unit": "Airflow Unit",
+          "device_family": "Device family (not inferred from calibrated airflow)"
         },
         "data_description": {
           "deep_scan": "Read raw registers 0-300 for diagnostics",
@@ -1479,7 +1480,8 @@
           "sync_device_clock_on_start": "Sync once after first successful device connection",
           "timeout": "Maximum time to wait for response (5-60 seconds)",
           "scan_uart_settings": "Read UART port configuration registers from the device during scanning",
-          "airflow_unit": "Unit for displaying airflow values (percentage or cubic metres per hour)"
+          "airflow_unit": "Unit for displaying airflow values (percentage or cubic metres per hour)",
+          "device_family": "Select the family from the nameplate. Home and AirPack4 have different filter commands. Unspecified blocks filter writes; this does not change controller settings."
         },
         "description": "Configure advanced integration options. Current settings: Scan interval: {current_scan_interval}s. Timeout: {current_timeout}s. Retry count: {current_retry}. Force full register list: {force_full_enabled}. Device scan enabled: {device_scan_enabled}. Skip known missing registers: {skip_missing_enabled}. Deep scan: {deep_scan_enabled}. Safe scan: {safe_scan_enabled}. Max registers per request: {current_max_registers_per_request}. Log level: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "ThesslaGreen Modbus Options"
@@ -1488,14 +1490,22 @@
   },
   "services": {
     "reset_filters": {
-      "description": "Resets filter lifetime counter",
+      "description": "Requires an explicit family profile. Home presostat needs no replacement write. AirPack4: selected sides without AFC only.",
       "fields": {
         "filter_type": {
           "description": "Type of filter to reset",
           "name": "Filter Type"
+        },
+        "direction": {
+          "name": "AirPack4 filter direction",
+          "description": "Supply, exhaust, or both."
+        },
+        "confirm_without_afc": {
+          "name": "Confirm no AFC",
+          "description": "Confirm each selected side has no AFC."
         }
       },
-      "name": "Reset Filter Counter"
+      "name": "Record filter replacement"
     },
     "reset_settings": {
       "description": "Resets user settings to default values",
@@ -1541,7 +1551,7 @@
           "name": "Day of Week"
         },
         "end_time": {
-          "description": "End time for the period (HH:MM)",
+          "description": "Unsupported; the next slot start defines this slot end.",
           "name": "End Time"
         },
         "period": {
@@ -1559,6 +1569,10 @@
         "temperature": {
           "description": "Target temperature (°C)",
           "name": "Temperature"
+        },
+        "enabled": {
+          "name": "Slot enabled",
+          "description": "Disable writes 0xA200 without changing temperature."
         }
       },
       "name": "Set Airflow Schedule"
@@ -1618,10 +1632,10 @@
       "name": "Set Modbus Parameters"
     },
     "set_special_mode": {
-      "description": "Sets special operating mode of the heat recovery unit (boost, eco, fireplace, hood, etc.)",
+      "description": "Select a documented AirPack function: hood, fireplace, airing, open windows or empty house.",
       "fields": {
         "duration": {
-          "description": "Duration of special mode in minutes (1-minute steps, 0 = unlimited)",
+          "description": "0 keeps the controller duration; manual airing 1–45 min, fireplace 1–10 min.",
           "name": "Duration (minutes)"
         },
         "mode": {
@@ -1678,8 +1692,18 @@
       "name": "Refresh Device Data"
     },
     "start_pressure_test": {
-      "description": "Starts automatic filter/pressure control test",
-      "name": "Start Pressure Test"
+      "description": "Starts explicitly selected procedure 47/65; does not reschedule weekly filter checks.",
+      "name": "Start Pressure Test",
+      "fields": {
+        "test_type": {
+          "name": "Procedure",
+          "description": "Duct filter or AFC and duct filter."
+        },
+        "confirm_equipment": {
+          "name": "Confirm equipment",
+          "description": "Confirm matching installed equipment before testing."
+        }
+      }
     },
     "scan_all_registers": {
       "description": "Perform full Modbus register scan for diagnostics",
@@ -1736,6 +1760,28 @@
         }
       },
       "name": "Sync Device Clock"
+    },
+    "set_airing_schedule": {
+      "name": "Set airing schedule",
+      "description": "Disable writes 0x2400, not midnight.",
+      "fields": {
+        "schedule": {
+          "name": "Schedule",
+          "description": "schedule"
+        },
+        "day": {
+          "name": "Day",
+          "description": "day"
+        },
+        "start_time": {
+          "name": "Start Time",
+          "description": "start time"
+        },
+        "enabled": {
+          "name": "Enabled",
+          "description": "enabled"
+        }
+      }
     }
   },
   "title": "ThesslaGreen Modbus"

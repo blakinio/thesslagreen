@@ -179,7 +179,10 @@ def test_filter_reset_value_uses_normalized_option():
 
 def test_pressure_test_payload_builds_day_and_time():
     now = SimpleNamespace(weekday=lambda: 1, hour=9, minute=7)
-    assert pressure_test_payload(now) == [("pres_check_day_2", 1), ("pres_check_time_2", 907)]
+    assert pressure_test_payload(now) == [
+        ("pres_check_day_4432", 1),
+        ("pres_check_time_ggmm", "09:07"),
+    ]
 
 
 @pytest.mark.asyncio

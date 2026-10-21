@@ -45,17 +45,17 @@ HVAC_MODE_REVERSE_MAP = {HVACMode.AUTO: 0, HVACMode.FAN_ONLY: 1}
 
 PRESET_MODES = [
     "none",
-    "eco",
-    "boost",
-    "away",
-    "sleep",
-    "fireplace",
     "hood",
-    "party",
-    "bathroom",
-    "kitchen",
-    "summer",
-    "winter",
+    "fireplace",
+    "airing_doorbell",
+    "airing_switch",
+    "airing_hygrostat",
+    "airing_air_quality",
+    "airing_manual",
+    "airing_auto",
+    "airing_manual_timed",
+    "open_windows",
+    "empty_house",
 ]
 
 TEMPERATURE_KEYS = ("comfort_temperature", "required_temperature", "required_temp")
@@ -91,7 +91,7 @@ def _preset_from_special_mode(special_mode: Any) -> str:
 
 
 def _special_mode_from_preset(preset_mode: str) -> int:
-    return 0 if preset_mode == "none" else SPECIAL_FUNCTION_MAP.get(preset_mode, 0)
+    return SPECIAL_FUNCTION_MAP[preset_mode]
 
 
 def _hvac_mode_from_data(data: dict[str, Any]) -> HVACMode:
@@ -363,7 +363,7 @@ class ThesslaGreenClimate(ThesslaGreenEntity, ClimateEntity):
         await self._refresh_and_reconcile("fan_mode")
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        if preset_mode not in PRESET_MODES:
+        if preset_mode not in SPECIAL_FUNCTION_MAP:
             raise ServiceValidationError(f"Unsupported preset mode: {preset_mode}")
         await self._write_register("on_off_panel_mode", 1, refresh=False)
         await self._write_register(

@@ -86,7 +86,7 @@
     },
     "binary_sensor": {
       "ahu_filter_protection": {
-        "name": "Ochrona filtra AHU"
+        "name": "Zabezpieczenie termiczne nagrzewnicy FPX"
       },
       "airing_mini": {
         "name": "Wietrzenie mini"
@@ -1112,10 +1112,10 @@
         "name": "Sprawność rekuperatora"
       },
       "heat_recovery_power": {
-        "name": "Moc odzysku ciepła"
+        "name": "Obliczona moc odzysku ciepła"
       },
       "electrical_power": {
-        "name": "Pobór mocy elektrycznej"
+        "name": "Szacowany pobór mocy elektrycznej"
       },
       "stop_ahu_code": {
         "name": "Kod alarmu blokującego",
@@ -1136,13 +1136,13 @@
         "name": "Nieobecność"
       },
       "bathroom": {
-        "name": "Łazienka"
+        "name": "Łazienka — niewspierany stary skrót"
       },
       "boost": {
         "name": "Boost"
       },
       "eco": {
-        "name": "Eco"
+        "name": "Eco — niewspierany stary skrót"
       },
       "fireplace": {
         "name": "Kominek (sterowanie)"
@@ -1151,22 +1151,22 @@
         "name": "Okap"
       },
       "kitchen": {
-        "name": "Kuchnia"
+        "name": "Kuchnia — niewspierany stary skrót"
       },
       "on_off_panel_mode": {
         "name": "Włącz/Wyłącz Panel"
       },
       "party": {
-        "name": "Impreza"
+        "name": "Impreza — niewspierany stary skrót"
       },
       "sleep": {
-        "name": "Sen"
+        "name": "Sen — niewspierany stary skrót"
       },
       "summer": {
-        "name": "Lato"
+        "name": "Lato — niewspierany stary skrót"
       },
       "winter": {
-        "name": "Zima"
+        "name": "Zima — niewspierany stary skrót"
       },
       "bypass_off": {
         "name": "Bypass zablokowany"
@@ -1461,7 +1461,8 @@
           "sync_device_clock_on_start": "Synchronizuj zegar przy uruchomieniu integracji",
           "timeout": "Limit czasu połączenia (s)",
           "scan_uart_settings": "Skanuj ustawienia portów UART",
-          "airflow_unit": "Jednostka przepływu powietrza"
+          "airflow_unit": "Jednostka przepływu powietrza",
+          "device_family": "Rodzina urządzenia (bez zgadywania z wydatku)"
         },
         "data_description": {
           "deep_scan": "Zaawansowana diagnostyka offline: odczytuje surowe rejestry 0–286. Nie jest wymagana do normalnej walidacji. Może generować odpowiedzi o nieobsługiwanych zakresach i konflikty z aktywnym pollowaniem.",
@@ -1479,7 +1480,8 @@
           "sync_device_clock_on_start": "Synchronizuj raz po pierwszym połączeniu z urządzeniem",
           "timeout": "Maksymalny limit czasu oczekiwania na odpowiedź (5-60 s)",
           "scan_uart_settings": "Odczytuj rejestry konfiguracji portów UART z urządzenia podczas skanowania",
-          "airflow_unit": "Jednostka wyświetlania wartości przepływu (procenty lub metry sześcienne na godzinę)"
+          "airflow_unit": "Jednostka wyświetlania wartości przepływu (procenty lub metry sześcienne na godzinę)",
+          "device_family": "Wybierz rodzinę z tabliczki urządzenia. Home i AirPack4 mają różne polecenia filtrów. Brak wyboru blokuje te zapisy; nie zmienia ustawień centrali."
         },
         "description": "Skonfiguruj zaawansowane opcje integracji. Aktualne ustawienia: Częstotliwość odczytu: {current_scan_interval} s, Limit czasu połączenia: {current_timeout} s, Liczba powtórzeń nieudanych odczytów: {current_retry}, Wymuś pełną listę rejestrów: {force_full_enabled}. Skanowanie urządzenia włączone: {device_scan_enabled}. Pomijaj znane brakujące rejestry: {skip_missing_enabled}. Głęboki skan: {deep_scan_enabled}. Bezpieczny skan: {safe_scan_enabled}. Maksymalna liczba rejestrów na żądanie: {current_max_registers_per_request}. Poziom logowania: {current_log_level}. Transport: {transport_label}{transport_details}.",
         "title": "Opcje ThesslaGreen Modbus"
@@ -1488,14 +1490,22 @@
   },
   "services": {
     "reset_filters": {
-      "description": "Resetuje licznik czasu pracy filtrów",
+      "description": "Wymaga jawnego profilu rodziny. Home z presostatem nie wymaga zapisu wymiany. AirPack4: tylko wskazane strony bez AFC.",
       "fields": {
         "filter_type": {
           "description": "Typ filtra do zresetowania",
           "name": "Typ filtra"
+        },
+        "direction": {
+          "name": "Kierunek filtra AirPack4",
+          "description": "Nawiew, wywiew lub oba."
+        },
+        "confirm_without_afc": {
+          "name": "Potwierdź brak AFC",
+          "description": "Potwierdź brak AFC na każdej wybranej stronie."
         }
       },
-      "name": "Resetuj licznik filtrów"
+      "name": "Zapis wymiany filtrów"
     },
     "reset_settings": {
       "description": "Przywraca ustawienia użytkownika do wartości domyślnych",
@@ -1541,7 +1551,7 @@
           "name": "Dzień tygodnia"
         },
         "end_time": {
-          "description": "Czas zakończenia okresu (HH:MM)",
+          "description": "Niewspierane; koniec odcinka określa początek następnego.",
           "name": "Czas zakończenia"
         },
         "period": {
@@ -1559,6 +1569,10 @@
         "temperature": {
           "description": "Docelowa temperatura (°C)",
           "name": "Temperatura"
+        },
+        "enabled": {
+          "name": "Odcinek aktywny",
+          "description": "Wyłączenie zapisuje 0xA200, nie zmienia temperatury."
         }
       },
       "name": "Ustaw harmonogram przepływu powietrza"
@@ -1618,10 +1632,10 @@
       "name": "Ustaw parametry Modbus"
     },
     "set_special_mode": {
-      "description": "Ustawia specjalny tryb pracy rekuperatora (boost, eco, kominek, okap itd.)",
+      "description": "Ustawia udokumentowaną funkcję AirPack: okap, kominek, wietrzenie, otwarte okna lub pusty dom.",
       "fields": {
         "duration": {
-          "description": "Czas trwania trybu specjalnego w minutach (krok co 1 minutę, 0 = bez limitu)",
+          "description": "0 zachowuje czas centrali; wietrzenie ręczne 1–45 min, kominek 1–10 min.",
           "name": "Czas trwania (minuty)"
         },
         "mode": {
@@ -1678,8 +1692,18 @@
       "name": "Odśwież dane urządzenia"
     },
     "start_pressure_test": {
-      "description": "Uruchamia automatyczny test kontroli filtrów/ciśnienia",
-      "name": "Rozpocznij test ciśnienia"
+      "description": "Uruchamia jawnie wybraną procedurę 47/65; nie przestawia harmonogramu kontroli filtrów.",
+      "name": "Rozpocznij test ciśnienia",
+      "fields": {
+        "test_type": {
+          "name": "Procedura",
+          "description": "Filtr kanałowy lub AFC i filtr kanałowy."
+        },
+        "confirm_equipment": {
+          "name": "Potwierdź wyposażenie",
+          "description": "Potwierdzenie zgodnego wyposażenia przed rozpoczęciem testu."
+        }
+      }
     },
     "scan_all_registers": {
       "description": "Wykonaj pełny skan rejestrów Modbus do diagnostyki",
@@ -1736,6 +1760,28 @@
         }
       },
       "name": "Synchronizuj zegar urządzenia"
+    },
+    "set_airing_schedule": {
+      "name": "Harmonogram wietrzenia",
+      "description": "Wyłączenie zapisuje kod 0x2400, a nie północ.",
+      "fields": {
+        "schedule": {
+          "name": "Harmonogram",
+          "description": "Harmonogram"
+        },
+        "day": {
+          "name": "Dzień wietrzenia tygodniowego",
+          "description": "Dzień wietrzenia tygodniowego"
+        },
+        "start_time": {
+          "name": "Godzina początku",
+          "description": "Godzina początku"
+        },
+        "enabled": {
+          "name": "Włączone",
+          "description": "Włączone"
+        }
+      }
     }
   },
   "title": "ThesslaGreen Modbus"

@@ -42,9 +42,10 @@ async def handle_update_error(
     apply_update_failure_state(coordinator, exc, timeout_error=timeout_error)
     await coordinator._disconnect()
 
-    if coordinator.device_client._consecutive_failures >= coordinator.device_client._max_failures:
-        _LOGGER.error("Too many consecutive failures, disconnecting")
-        coordinator._trigger_reauth(reauth_reason)
+    if coordinator.device_client._consecutive_failures == coordinator.device_client._max_failures:
+        # A lost cable/gateway is not an authentication failure. Normal polling
+        # owns reconnection; do not start a reauth flow or repeat this every poll.
+        _LOGGER.error("Too many consecutive failures; waiting for Modbus reconnection")
 
     if check_auth and is_invalid_auth_error(exc):
         coordinator._trigger_reauth("invalid_auth")

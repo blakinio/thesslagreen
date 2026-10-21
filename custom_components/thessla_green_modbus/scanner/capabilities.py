@@ -19,8 +19,16 @@ _LOGGER = logging.getLogger(__name__)
 def is_valid_register_value(scanner: Any, name: str, value: int) -> bool:
     """Validate a register value against known constraints."""
     if value == 65535:
-        return False
+        # An inactive CF sensor is still a supported register.
+        return name in {"supply_air_flow", "exhaust_air_flow"}
 
+    if name.startswith("schedule_") and value == 0xA200:
+        return True
+    if (
+        name.startswith(("airing_summer_", "airing_winter_", "manual_airing_time_to_start"))
+        and value == 0x2400
+    ):
+        return True
     if name in SENSOR_UNAVAILABLE_REGISTERS and value == SENSOR_UNAVAILABLE:
         return True
 

@@ -97,7 +97,7 @@ async def test_set_special_mode_basic(monkeypatch):
     await handler(call)
 
     coord.async_write_register.assert_called_once_with(
-        "special_mode", 1, refresh=False, targeted_readback=False
+        "special_mode", 7, refresh=False, targeted_readback=False
     )
     coord.async_request_refresh.assert_awaited_once()
 
@@ -106,7 +106,7 @@ async def test_set_special_mode_basic(monkeypatch):
 async def test_set_special_mode_with_duration(monkeypatch):
     """set_special_mode writes duration register when available."""
     coord = _Coordinator()
-    coord.device_client.available_registers = {"holding_registers": {"boost_duration"}}
+    coord.device_client.available_registers = {"holding_registers": {"airing_panel_mode_time"}}
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_special_mode", coord, monkeypatch)
 
@@ -115,7 +115,7 @@ async def test_set_special_mode_with_duration(monkeypatch):
 
     calls = coord.async_write_register.call_args_list
     assert any(c.args[0] == "special_mode" for c in calls)
-    assert any(c.args[0] == "boost_duration" for c in calls)
+    assert any(c.args[0] == "airing_panel_mode_time" for c in calls)
 
 
 @pytest.mark.asyncio
@@ -157,7 +157,7 @@ async def test_set_special_mode_duration_write_failure(monkeypatch):
     coord = _Coordinator()
     # First write (special_mode) succeeds; second (duration) fails.
     coord.async_write_register = AsyncMock(side_effect=[True, False])
-    coord.device_client.available_registers = {"holding_registers": {"boost_duration"}}
+    coord.device_client.available_registers = {"holding_registers": {"airing_panel_mode_time"}}
     hass = _make_hass()
     handler = await _setup_and_get(hass, "set_special_mode", coord, monkeypatch)
 

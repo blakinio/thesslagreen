@@ -53,15 +53,25 @@ SET_SPECIAL_MODE_SCHEMA = _target_schema(
     }
 )
 
+SET_AIRING_SCHEDULE_SCHEMA = _target_schema(
+    {
+        vol.Optional("schedule", default="manual"): vol.In(("manual", "summer", "winter")),
+        vol.Optional("day"): vol.In(DAYS_OF_WEEK),
+        vol.Optional("start_time"): _CV_TIME,
+        vol.Optional("enabled", default=True): bool,
+    }
+)
+
 SET_AIRFLOW_SCHEDULE_SCHEMA = _target_schema(
     {
         vol.Required("day"): vol.In(DAYS_OF_WEEK),
         vol.Required("period"): vol.All(vol.Coerce(int), vol.Range(min=1, max=4)),
-        vol.Required("start_time"): _CV_TIME,
+        vol.Optional("start_time"): _CV_TIME,
         vol.Optional("end_time"): _CV_TIME,
-        vol.Required("airflow_rate"): vol.All(vol.Coerce(int), vol.Range(min=0, max=150)),
+        vol.Optional("airflow_rate"): vol.All(vol.Coerce(int), vol.Range(min=10, max=100)),
+        vol.Optional("enabled", default=True): bool,
         vol.Optional("season", default="summer"): vol.In(_SEASONS),
-        vol.Optional("temperature"): vol.All(vol.Coerce(float), vol.Range(min=16.0, max=30.0)),
+        vol.Optional("temperature"): vol.All(vol.Coerce(float), vol.Range(min=10.0, max=45.0)),
     }
 )
 
@@ -70,7 +80,7 @@ SET_BYPASS_PARAMETERS_SCHEMA = vol.All(
         {
             vol.Required("mode"): vol.In(BYPASS_MODES),
             vol.Optional("min_outdoor_temperature"): vol.All(
-                vol.Coerce(float), vol.Range(min=-20.0, max=40.0)
+                vol.Coerce(float), vol.Range(min=5.0, max=20.0)
             ),
         }
     ),
@@ -82,10 +92,10 @@ SET_GWC_PARAMETERS_SCHEMA = vol.All(
         {
             vol.Required("mode"): vol.In(GWC_MODES),
             vol.Optional("min_air_temperature"): vol.All(
-                vol.Coerce(float), vol.Range(min=0.0, max=20.0)
+                vol.Coerce(float), vol.Range(min=0.0, max=10.0)
             ),
             vol.Optional("max_air_temperature"): vol.All(
-                vol.Coerce(float), vol.Range(min=30.0, max=80.0)
+                vol.Coerce(float), vol.Range(min=15.0, max=40.0)
             ),
         }
     ),
@@ -110,11 +120,22 @@ SET_TEMPERATURE_CURVE_SCHEMA = _target_schema(
     }
 )
 
-RESET_FILTERS_SCHEMA = _target_schema({vol.Required("filter_type"): vol.In(FILTER_TYPES)})
+RESET_FILTERS_SCHEMA = _target_schema(
+    {
+        vol.Optional("filter_type"): vol.In(FILTER_TYPES),
+        vol.Optional("direction"): vol.In(("supply", "exhaust", "both")),
+        vol.Optional("confirm_without_afc", default=False): bool,
+    }
+)
 
 RESET_SETTINGS_SCHEMA = _target_schema({vol.Required("reset_type"): vol.In(RESET_TYPES)})
 
-START_PRESSURE_TEST_SCHEMA = _target_schema()
+START_PRESSURE_TEST_SCHEMA = _target_schema(
+    {
+        vol.Optional("test_type"): vol.In(("duct_filter", "afc_and_duct")),
+        vol.Optional("confirm_equipment", default=False): bool,
+    }
+)
 
 SET_MODBUS_PARAMETERS_SCHEMA = _target_schema(
     {

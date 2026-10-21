@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
+import math
 import struct
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import time
+from datetime import date, time
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
@@ -127,6 +128,17 @@ class RegisterDef:
             return clean.decode(encoding, errors="replace")
 
     def _decode_single_register(self, raw: int) -> Any:
+        if self.name in {"supply_air_flow", "exhaust_air_flow"} and raw == 0xFFFF:
+            return None  # CF inactive, not 65535 m3/h and not zero flow.
+        if self.name == "rtc_cal":
+            return (raw if raw < 128 else raw - 256) if 0 <= raw <= 255 and raw != 128 else None
+        if self.name in {"cf_version", "exp_version"}:
+            return f"{(raw >> 8) & 255}.{raw & 255}"
+        if self.name in {"filter_supply_date_limit_get", "filter_exhaust_date_limit_get"}:
+            try:
+                return date(2000 + (raw >> 9), (raw >> 5) & 15, raw & 31).isoformat()
+            except ValueError:
+                return None
         if self.name.startswith("dac_") and not (0 <= raw <= 4095):
             return None
 
@@ -143,7 +155,7 @@ class RegisterDef:
             return decoded_enum
 
         typ = self.extra.get("type") if self.extra else None
-        if typ == "i16":
+        if typ == "i16" or self._is_temperature():
             raw = raw if raw < 32768 else raw - 65536
 
         value = raw
@@ -186,7 +198,27 @@ class RegisterDef:
                         return int(k)
             return int(value)
 
+        if self.name == "rtc_cal":
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, int | float)
+                or not -127 <= value <= 127
+                or int(value) != value
+            ):
+                raise ValueError("RTC calibration must be an integer from -127 to 127")
+            return int(value) & 255
+        if self.name == "filter_change" and not isinstance(value, bool) and value in (17, 33):
+            # AirPack4 command values are profile-validated by the coordinator.
+            return int(value)
         if self._is_bcd_time():
+            if value == "disabled":
+                if self.name.startswith("schedule_"):
+                    return 0xA200
+                if self.name.startswith(
+                    ("airing_summer_", "airing_winter_", "manual_airing_time_to_start")
+                ):
+                    return 0x2400
+                raise ValueError(f"No documented disable command for {self.name}")
             if isinstance(value, str):
                 hours, minutes = (int(x) for x in value.split(":"))
             elif isinstance(value, int):
@@ -206,10 +238,24 @@ class RegisterDef:
             elif isinstance(value, list | tuple):
                 airflow, temp = value
             else:
-                airflow, temp = value, 0
-            if airflow is None or temp is None:
+                raise ValueError("AATT encoding needs both airflow and temperature")
+            if (
+                airflow is None
+                or temp is None
+                or isinstance(airflow, bool)
+                or isinstance(temp, bool)
+            ):
                 raise ValueError(f"Invalid AATT value for {self.name}: {value!r}")
-            return (int(airflow) << 8) | (round(float(temp) * 2) & 255)
+            flow, temperature = float(airflow), float(temp)
+            if not math.isfinite(flow) or not 10 <= flow <= 100 or not flow.is_integer():
+                raise ValueError("Schedule airflow must be an integer from 10 to 100 percent")
+            if (
+                not math.isfinite(temperature)
+                or not 10 <= temperature <= 45
+                or not (temperature * 2).is_integer()
+            ):
+                raise ValueError("Schedule temperature must be 10..45 C in 0.5 C steps")
+            return (int(flow) << 8) | int(temperature * 2)
 
         raw: Any = value
         if self.enum and not (self.extra and self.extra.get("bitmask")):

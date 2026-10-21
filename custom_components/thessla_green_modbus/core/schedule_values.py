@@ -1,0 +1,19 @@
+"""Pure AATT construction; FC03 schedule settings hold airflow AND temperature."""
+
+from __future__ import annotations
+
+from typing import Any
+
+
+def complete_schedule_value(value: Any, current: Any) -> dict[str, Any]:
+    """Fill an omitted temperature from a fresh decoded device word or fail."""
+    if isinstance(value, dict):
+        airflow = value.get("airflow_pct", value.get("airflow"))
+        temperature = value.get("temp_c", value.get("temp"))
+    else:
+        airflow, temperature = value, None
+    if temperature is None and isinstance(current, dict):
+        temperature = current.get("temp_c")
+    if temperature is None or airflow is None:
+        raise ValueError("AATT requires an airflow and a known temperature; refusing to invent 0 C")
+    return {"airflow_pct": airflow, "temp_c": temperature}

@@ -118,6 +118,7 @@ async def test_write_retries_logged(monkeypatch, caplog):
             )()
 
     class Def:
+        access = "RW"
         address = 0
         function = 3
         length = 1

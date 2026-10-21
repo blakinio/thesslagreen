@@ -1,14 +1,16 @@
 [
   "thessla_green_modbus.special_mode_none",
-  "thessla_green_modbus.special_mode_boost",
-  "thessla_green_modbus.special_mode_eco",
-  "thessla_green_modbus.special_mode_away",
-  "thessla_green_modbus.special_mode_sleep",
-  "thessla_green_modbus.special_mode_fireplace",
   "thessla_green_modbus.special_mode_hood",
-  "thessla_green_modbus.special_mode_party",
-  "thessla_green_modbus.special_mode_bathroom",
-  "thessla_green_modbus.special_mode_kitchen",
-  "thessla_green_modbus.special_mode_summer",
-  "thessla_green_modbus.special_mode_winter"
+  "thessla_green_modbus.special_mode_fireplace",
+  "thessla_green_modbus.special_mode_airing_doorbell",
+  "thessla_green_modbus.special_mode_airing_switch",
+  "thessla_green_modbus.special_mode_airing_hygrostat",
+  "thessla_green_modbus.special_mode_airing_air_quality",
+  "thessla_green_modbus.special_mode_airing_manual",
+  "thessla_green_modbus.special_mode_airing_auto",
+  "thessla_green_modbus.special_mode_airing_manual_timed",
+  "thessla_green_modbus.special_mode_open_windows",
+  "thessla_green_modbus.special_mode_empty_house",
+  "thessla_green_modbus.special_mode_boost",
+  "thessla_green_modbus.special_mode_away"
 ]

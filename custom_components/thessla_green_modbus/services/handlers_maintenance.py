@@ -7,7 +7,7 @@ from datetime import datetime as _dt
 from typing import Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from pymodbus.exceptions import ConnectionException, ModbusException
 
 from ..clock_sync import async_perform_clock_sync
@@ -15,6 +15,7 @@ from ..const import (
     CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
     DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
 )
+from ..device_profile import configured_device_family
 from .dispatch import (
     refresh_and_log_success,
     write_device_name_chunks,
@@ -35,7 +36,6 @@ from .validation import (
     filter_reset_value,
     iter_modbus_parameter_writes,
     normalize_modbus_options,
-    pressure_test_payload,
     reset_settings_registers,
 )
 
@@ -161,21 +161,59 @@ async def _write_then_refresh(
     return await _run_with_success_log(coordinator, deps, success_message, *success_args)
 
 
+def _filter_replacement_commands(
+    coordinator: Any, data: dict[str, Any], deps: ServiceHandlerDeps
+) -> list[int]:
+    """Separate Home type selection from AirPack4 per-side replacement commands."""
+    family = configured_device_family(coordinator)
+    if family == "airpack_home":
+        current = (coordinator.data or {}).get("filter_change")
+        if current not in (2, 3, 4):
+            raise ServiceValidationError(
+                "Home presostat needs no filter replacement write; inspect the filters, do not disable the presostat"
+            )
+        value = filter_reset_value(deps.normalize_option, data.get("filter_type", ""))
+        if value != current:
+            raise ServiceValidationError(
+                "Replacement must preserve Home's existing filter type; changing the filter system is a separate service operation"
+            )
+        return [value]
+    if family == "airpack4":
+        direction = data.get("direction")
+        if (
+            direction not in ("supply", "exhaust", "both")
+            or data.get("confirm_without_afc") is not True
+        ):
+            raise ServiceValidationError(
+                "AirPack4 replacement requires direction and confirmation that each selected side has no AFC"
+            )
+        return {"supply": [17], "exhaust": [33], "both": [17, 33]}[direction]
+    raise ServiceValidationError(
+        "Select AirPack Home or AirPack4 in integration options before recording filter replacement"
+    )
+
+
 def _build_reset_filters_handler(hass: HomeAssistant, deps: ServiceHandlerDeps) -> ServiceHandler:
     async def reset_filters(call: ServiceCall) -> None:
-        filter_value = filter_reset_value(deps.normalize_option, call.data["filter_type"])
-
         async def _reset_filters_for_target(entity_id: str, coordinator: Any) -> bool:
+            commands = _filter_replacement_commands(coordinator, call.data, deps)
+
             async def _write_flow() -> bool:
-                return await deps.write_register(
-                    coordinator, "filter_change", filter_value, entity_id, "reset filters"
+                return await write_register_batch(
+                    coordinator,
+                    [("filter_change", value) for value in commands],
+                    entity_id,
+                    "record filter replacement",
+                    deps.write_register,
+                    deps.logger,
+                    {"filter_change": "Failed to record filter replacement for %s"},
                 )
 
             return await _write_then_refresh(
                 coordinator=coordinator,
                 entity_id=entity_id,
                 deps=deps,
-                success_message="Reset filters for %s",
+                success_message="Recorded filter replacement for %s",
                 success_args=(entity_id,),
                 write_flow=_write_flow,
             )
@@ -220,22 +258,32 @@ def _build_start_pressure_test_handler(
     hass: HomeAssistant, deps: ServiceHandlerDeps
 ) -> ServiceHandler:
     async def start_pressure_test(call: ServiceCall) -> None:
+        test_type = call.data.get("test_type")
+        if (
+            test_type not in ("duct_filter", "afc_and_duct")
+            or call.data.get("confirm_equipment") is not True
+        ):
+            raise ServiceValidationError(
+                "Choose the documented pressure-test procedure and confirm installed equipment; this does not reschedule the weekly test"
+            )
+
         async def _start_pressure_test_for_target(entity_id: str, coordinator: Any) -> bool:
-            if not await write_register_batch(
+            if test_type == "afc_and_duct" and configured_device_family(coordinator) != "airpack4":
+                raise ServiceValidationError(
+                    "AFC test is not enabled for the Home/unspecified profile"
+                )
+            if "configuration_mode" not in coordinator.device_client.available_registers.get(
+                "holding_registers", set()
+            ):
+                raise ServiceValidationError("Pressure-test command is unavailable on this device")
+            if not await deps.write_register(
                 coordinator,
-                pressure_test_payload(deps.dt_now()),
+                "configuration_mode",
+                47 if test_type == "duct_filter" else 65,
                 entity_id,
                 "start pressure test",
-                deps.write_register,
-                deps.logger,
-                {
-                    "pres_check_day_2": "Failed to start pressure test for %s",
-                    "pres_check_time_2": "Failed to start pressure test for %s",
-                },
             ):
-                raise HomeAssistantError(
-                    f"Device did not confirm pressure test start for {entity_id}."
-                )
+                raise HomeAssistantError("Device did not confirm pressure test start")
             return await _run_with_success_log(
                 coordinator, deps, "Started pressure test for %s", entity_id
             )

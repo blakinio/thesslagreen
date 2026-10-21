@@ -98,10 +98,9 @@ class TestThesslaGreenClimate:
     @pytest.mark.asyncio
     async def test_climate_set_preset_mode(self, mock_climate_coordinator):
         from custom_components.thessla_green_modbus.climate import ThesslaGreenClimate
-        from homeassistant.components.climate import PRESET_ECO
 
         climate = ThesslaGreenClimate(mock_climate_coordinator)
-        await climate.async_set_preset_mode(PRESET_ECO)
+        await climate.async_set_preset_mode("hood")
         assert mock_climate_coordinator.async_write_register.call_count >= 2
 
     def test_climate_fan_mode_calculation(self, mock_climate_coordinator):

@@ -65,7 +65,7 @@ def test_climate_confirmed_and_optimistic_state_properties() -> None:
     assert climate.target_temperature == 22.0
     assert climate.hvac_mode == HVACMode.AUTO
     assert climate.fan_mode == "30%"
-    assert climate.preset_mode == "boost"
+    assert climate.preset_mode == "hood"
 
     climate._optimistic.set_pending("target_temperature", 23.5)
     climate._optimistic.set_pending("hvac_mode", HVACMode.FAN_ONLY)

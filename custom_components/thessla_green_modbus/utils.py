@@ -105,7 +105,7 @@ def _decode_bcd_time_to_time(value: int) -> time | None:
         hours = nibbles[0] * 10 + nibbles[1]
         minutes = nibbles[2] * 10 + nibbles[3]
         if hours == 24 and minutes == 0:
-            return time(0, 0)
+            return None  # 0x2400 disables airing; it is not midnight.
         if 0 <= hours <= 23 and 0 <= minutes <= 59:
             return time(hours, minutes)
 
