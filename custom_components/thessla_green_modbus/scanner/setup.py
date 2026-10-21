@@ -19,6 +19,7 @@ from ..const import (
     DEFAULT_PARITY,
     DEFAULT_STOP_BITS,
     HOLDING_BATCH_BOUNDARIES,
+    KNOWN_MISSING_MIN_FIRMWARE,
     SERIAL_PARITY_MAP,
     SERIAL_STOP_BITS_MAP,
 )
@@ -224,6 +225,31 @@ def update_known_missing_addresses(
                 continue
             size = multi_register_sizes.get(name, 1)
             scanner._known_missing_addresses.update(range(addr, addr + size))
+
+
+def firmware_major_minor(firmware: str) -> tuple[int, int] | None:
+    major, _, rest = firmware.strip().partition(".")
+    minor = rest.partition(".")[0]
+    if not (major.isdigit() and minor.isdigit()):
+        return None
+    return int(major), int(minor)
+
+
+def apply_firmware_known_missing(scanner: Any, firmware: str) -> None:
+    version = firmware_major_minor(firmware)
+    if version is None:
+        return
+    supported = {
+        reg_type: {name for name, minimum in names.items() if version >= minimum}
+        for reg_type, names in KNOWN_MISSING_MIN_FIRMWARE.items()
+    }
+    if not any(supported.values()):
+        return
+    scanner._known_missing_registers = {
+        reg_type: set(names) - supported.get(reg_type, set())
+        for reg_type, names in scanner._known_missing_registers.items()
+    }
+    scanner._update_known_missing_addresses()
 
 
 async def async_setup_register_maps(scanner: Any) -> None:

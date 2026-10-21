@@ -230,6 +230,15 @@ KNOWN_MISSING_CLASSIFICATION: dict[str, str] = {
     "uart_1_stop": "internal_service_uart",
 }
 
+KNOWN_MISSING_MIN_FIRMWARE: dict[str, dict[str, tuple[int, int]]] = {
+    "holding_registers": {
+        "cfgszf_fn_new": (4, 75),
+        "cfgszf_fw_new": (4, 75),
+        "filter_supply_date_limit_get": (4, 75),
+        "filter_exhaust_date_limit_get": (4, 75),
+    },
+}
+
 # Platforms supported by the integration
 # Diagnostics is handled separately and therefore not listed here
 PLATFORMS: list[Any] = [
