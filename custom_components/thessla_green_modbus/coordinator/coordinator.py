@@ -419,6 +419,7 @@ class ThesslaGreenModbusCoordinator(
         """Shutdown coordinator and disconnect."""
         _LOGGER.debug("Shutting down ThesslaGreen coordinator")
         self._shutting_down = True
+        self._device_client.shut_down()
         if self._stop_listener is not None:
             self._stop_listener()
             self._stop_listener = None

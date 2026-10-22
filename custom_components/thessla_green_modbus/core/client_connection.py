@@ -8,6 +8,7 @@ from typing import Any
 # Module-level name so tests can patch
 # ``core.client_connection.AsyncModbusTcpClient`` without dynamic imports.
 from pymodbus.client import AsyncModbusTcpClient
+from pymodbus.exceptions import ConnectionException
 
 from ..const import (
     CONNECTION_MODE_AUTO,
@@ -92,6 +93,7 @@ class _DeviceClientConnectionMixin:
     backoff: float
     timeout: float
     _resolved_connection_mode: str | None
+    _shut_down: bool = False
 
     # ------------------------------------------------------------------
     # Connection lifecycle
@@ -138,8 +140,13 @@ class _DeviceClientConnectionMixin:
                 logger=_LOGGER,
             )
 
+    def shut_down(self) -> None:
+        self._shut_down = True
+
     async def _disconnect_locked(self) -> None:
         """Disconnect without acquiring the client lock."""
+        if self._shut_down and self._transport is not None:
+            self._transport.shut_down()
         await _disconnect_locked_impl(
             transport=self._transport,
             client=self.client,
@@ -210,6 +217,8 @@ class _DeviceClientConnectionMixin:
         )
 
         async def _ensure_transport_selected() -> Any:
+            if self._shut_down:
+                raise ConnectionException("Modbus connection is shut down")
             return await _ensure_transport_selected_impl(
                 current_transport=self._transport,
                 connection_type=self.config.connection_type,
