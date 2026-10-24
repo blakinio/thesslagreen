@@ -6,10 +6,10 @@ pytest-asyncio>=1.2.0
 voluptuous>=0.13.1
 # Keep this range in sync with known-good HA plugin behavior on Python 3.13.
 pytest-homeassistant-custom-component>=0.13.309,<0.13.317
-aiodhcpwatcher>=1.1.0
+aiodhcpwatcher>=1.2.7
 aiodiscover>=2.6.1
-PyYAML>=6.0
-types-PyYAML>=6.0.12
+PyYAML>=6.0.3
+types-PyYAML>=6.0.12.20260906
 pyserial>=3.5
 # pytest-homeassistant-custom-component 0.13.309-0.13.316 pins pydantic==2.12.2.
 # Keep this in sync with the plugin's pinned pydantic version to avoid pip conflicts.
@@ -20,11 +20,11 @@ black>=24.4.0
 isort>=5.13.0
 ruff>=0.16.6
 mypy>=2.3.1
-pre-commit>=4.6.2
+pre-commit>=4.7.0
 
 # hassfest and HACS validations are executed via dedicated GitHub Actions
 # and are not distributed as installable PyPI packages.
 
 # Documentation
 sphinx>=4.0.0
-sphinx-rtd-theme>=1.0.0
+sphinx-rtd-theme>=3.1.0
