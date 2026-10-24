@@ -175,3 +175,54 @@ def test_switch_icon_fallback(hass, mock_config_entry, mock_coordinator):
 
     assert len(added) == 1
     assert added[0]._attr_icon == "mdi:toggle-switch"
+
+
+def test_legacy_presets_without_protocol_value_are_not_created(
+    hass, mock_config_entry, mock_coordinator
+):
+    """Permanently unavailable legacy shortcuts are skipped and purged from the registry."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    address = switch.holding_registers()["special_mode"]
+    mock_coordinator.device_client.available_registers = {"holding_registers": {"special_mode"}}
+    mock_coordinator.device_client.force_full_register_list = False
+    mock_coordinator.data["special_mode"] = 0
+    mock_config_entry.runtime_data = mock_coordinator
+    retired = [
+        key
+        for key, cfg in ENTITY_MAPPINGS["switch"].items()
+        if cfg["register"] == "special_mode" and cfg.get("protocol_value") is None
+    ]
+    assert "sleep" in retired  # nosec B101
+
+    reg_entries = [
+        SimpleNamespace(
+            domain="switch",
+            entity_id="switch.sleep",
+            unique_id=f"Unknown_10_sleep_{address}_bit4",
+        ),
+        SimpleNamespace(
+            domain="switch",
+            entity_id="switch.boost",
+            unique_id=f"Unknown_10_boost_{address}_bit1",
+        ),
+        SimpleNamespace(domain="sensor", entity_id="sensor.x", unique_id="Unknown_10_x_1"),
+    ]
+    registry = MagicMock()
+    added = []
+
+    with (
+        patch.object(switch.er, "async_get", return_value=registry),
+        patch.object(switch.er, "async_entries_for_config_entry", return_value=reg_entries),
+    ):
+        asyncio.run(
+            switch.async_setup_entry(
+                hass, mock_config_entry, lambda ents, _upd=False: added.extend(ents)
+            )
+        )
+
+    keys = {entity._key for entity in added}
+    assert not keys & set(retired)  # nosec B101
+    assert "boost" in keys  # nosec B101
+    registry.async_remove.assert_called_once_with("switch.sleep")

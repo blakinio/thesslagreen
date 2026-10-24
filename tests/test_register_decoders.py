@@ -223,3 +223,22 @@ def test_multi_register_decode_int32() -> None:
     )
     raw = [4660, 22136]
     assert reg.decode(raw) == 305419896
+
+
+def test_decode_aatt_firmware_slot_without_temperature():
+    """Firmware 3.11 stores TT=0 in schedule slots; airflow is still valid."""
+    assert _decode_aatt(0x3200) == {"airflow_pct": 50, "temp_c": None}
+    assert _decode_aatt(0x0900) is None  # airflow below 10 %
+
+
+def test_partial_aatt_write_keeps_device_tt_zero():
+    """Changing only airflow on a TT=0 slot writes TT=0 back instead of failing."""
+    from custom_components.thessla_green_modbus.core.schedule_values import (
+        complete_schedule_value,
+    )
+    from custom_components.thessla_green_modbus.registers.loader import (
+        get_register_definition,
+    )
+
+    value = complete_schedule_value(30, _decode_aatt(0x3200))
+    assert get_register_definition("setting_summer_mon_1").encode(value) == 0x1E00

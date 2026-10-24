@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Error fetching thessla_green_modbus_… data: Modbus connection is shut down` at
   ERROR: a connection error caused by the coordinator's own shutdown now ends the
   cycle quietly with the last known data instead of raising `UpdateFailed`.
+- Schedule airflow selects no longer show "unknown" on firmware 3.11, which stores
+  `TT=0` (no temperature) in schedule slots such as `0x3200`. The airflow byte is
+  decoded on its own, and changing only the airflow keeps `TT=0` instead of
+  rejecting the write.
+- The seven legacy special-mode shortcut switches without a documented AirPack
+  function (eco, sleep, party, bathroom, kitchen, summer, winter) are no longer
+  created. They were permanently unavailable, and their stale registry entries
+  are removed on setup. The switch mappings themselves are unchanged.
 
 ## [2.8.7] - 2026-10-24
 
