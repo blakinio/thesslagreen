@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.8.5] - pending release
+## [2.8.5] - 2026-10-24
 
-> Patch candidate for PR #1784. Not tagged or released until remaining hardware acceptance and merge gates are satisfied.
+> Hardware acceptance PARTIAL: normal Modbus polling, bounded airflow and temperature writes with restoration, and manual/auto/manual transitions were tested on AirPack Home 400h Energy. Extended soak, fault injection, full register-scan and optional equipment behavior remain unverified. Do not interpret passing CI as full hardware acceptance. Existing E252 filter warning requires physical inspection; no filter configuration change or alarm clearing is implied.
 
 ### Fixed
 
