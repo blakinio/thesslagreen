@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import sys
 import warnings
@@ -80,6 +81,20 @@ def enable_event_loop_debug():
     # subsequent fixture teardown/setup does not emit the Python 3.13
     # "There is no current event loop" deprecation warning.
     _ensure_current_event_loop()
+
+
+@pytest.fixture(autouse=True)
+def restore_integration_logger_level():
+    """Undo log-level changes made by setup paths and log-level services.
+
+    ``_apply_log_level`` and the ``set_debug_logging`` manager set the level of
+    the integration's package logger. Leaking that level hides DEBUG records
+    from later ``caplog.at_level(logging.DEBUG)`` assertions.
+    """
+    logger = logging.getLogger("custom_components.thessla_green_modbus")
+    level = logger.level
+    yield
+    logger.setLevel(level)
 
 
 @pytest.fixture

@@ -130,6 +130,34 @@ def test_register_uint64_encode_decode(uint64_register: Register, value: int) ->
     assert uint64_register.decode(raw) == value
 
 
+def _wire_register(reg_type: str, length: int, **extra: str) -> Register:
+    return Register(
+        function=3,
+        address=0,
+        name=f"{reg_type}_wire_test",
+        access="rw",
+        length=length,
+        extra={"type": reg_type, **extra},
+    )
+
+
+@pytest.mark.parametrize(
+    ("reg_type", "length", "extra", "value", "words"),
+    [
+        ("u32", 2, {}, 0x12345678, [0x1234, 0x5678]),
+        ("u32", 2, {"endianness": "little"}, 0x12345678, [0x5678, 0x1234]),
+        ("i32", 2, {}, -2, [0xFFFF, 0xFFFE]),
+        ("f32", 2, {}, 12.5, [0x4148, 0x0000]),
+        ("u64", 4, {}, 0x0102030405060708, [0x0102, 0x0304, 0x0506, 0x0708]),
+    ],
+)
+def test_multiword_wire_vectors(reg_type, length, extra, value, words) -> None:
+    """Encode and decode independently known register words, not just round trips."""
+    register = _wire_register(reg_type, length, **extra)
+    assert register.encode(value) == words
+    assert register.decode(words) == value
+
+
 def test_decode_i16_negative():
     """raw >= 32768 is converted to signed negative."""
     reg = Register(function=3, address=0, name="test_i16", access="rw", extra={"type": "i16"})

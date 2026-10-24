@@ -240,6 +240,8 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
             )
             if info is not None:
                 self._device_info, self._scan_result = _extract_discovered_state_impl(info)
+                if self._is_different_known_device(entry.unique_id):
+                    return self.async_abort(reason="wrong_device")
                 stable_unique_id = self._build_stable_unique_id(self._device_info)
                 updated_unique_id = entry.unique_id
                 if stable_unique_id and stable_unique_id != entry.unique_id:
@@ -273,6 +275,19 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
     def _build_stable_unique_id(device_info: dict[str, Any]) -> str | None:
         """Return a stable device-derived config-entry unique ID when available."""
         return _build_stable_unique_id_impl(device_info)
+
+    def _is_different_known_device(self, entry_unique_id: str | None) -> bool:
+        """Return True when validation reached another controller than the entry's.
+
+        Entries without a confirmed serial may still be promoted to one.
+        """
+        stable_unique_id = self._build_stable_unique_id(self._device_info)
+        return bool(
+            stable_unique_id
+            and entry_unique_id
+            and entry_unique_id.startswith("serial:")
+            and stable_unique_id != entry_unique_id.casefold()
+        )
 
     @staticmethod
     def _build_connection_match(data: dict[str, Any]) -> dict[str, Any]:
@@ -387,6 +402,10 @@ class ConfigFlow(_ConfigFlowBase, domain=DOMAIN):
             if info is not None:
                 self._data = user_input
                 self._device_info, self._scan_result = _extract_discovered_state_impl(info)
+                if entry is not None and self._is_different_known_device(
+                    getattr(entry, "unique_id", None)
+                ):
+                    return self.async_abort(reason="wrong_device")
                 return await self.async_step_reauth_confirm()
             errors.update(submit_errors)
 

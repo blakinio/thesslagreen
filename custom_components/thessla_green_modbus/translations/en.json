@@ -1,7 +1,8 @@
 {
   "config": {
     "abort": {
-      "already_configured": "Device with this IP address and Device ID is already configured."
+      "already_configured": "Device with this IP address and Device ID is already configured.",
+      "wrong_device": "The device at these connection settings has a different serial number than the configured unit. Add it as a new device instead."
     },
     "error": {
       "cannot_connect": "Cannot connect to device. Check IP address, port, and network connection.",

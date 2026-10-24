@@ -73,15 +73,18 @@ async def test_time_setup_creates_force_full_entity(monkeypatch, mock_coordinato
 
 
 def test_time_native_value_decodes_supported_and_fallback_values(mock_coordinator):
+    """Disabled, missing and invalid values must not be reported as midnight."""
     entity = ThesslaGreenTime(mock_coordinator, "schedule_start", 12, _definition())
 
     cases = (
-        (None, dt_time(0, 0)),
+        (None, None),
+        ("00:00", dt_time(0, 0)),
         ("07:45", dt_time(7, 45)),
-        ("bad:value", dt_time(0, 0)),
+        ("bad:value", None),
         (75, dt_time(1, 15)),
-        (24 * 60, dt_time(0, 0)),
-        (object(), dt_time(0, 0)),
+        (24 * 60, None),
+        (True, None),
+        (object(), None),
     )
     for raw, expected in cases:
         mock_coordinator.data["schedule_start"] = raw
@@ -113,3 +116,19 @@ async def test_time_set_value_surfaces_device_failure(mock_coordinator):
 
     with pytest.raises(HomeAssistantError, match="Failed to set schedule_start to 06:05"):
         await entity.async_set_value(dt_time(6, 5))
+
+
+def test_time_native_value_follows_register_decoding(mock_coordinator):
+    """Wire values flow through the register decoder into the entity state."""
+    from custom_components.thessla_green_modbus.registers.loader import (
+        get_registers_by_function,
+    )
+
+    register = next(
+        reg for reg in get_registers_by_function(3) if reg.name == "schedule_summer_mon_1"
+    )
+    entity = ThesslaGreenTime(mock_coordinator, register.name, register.address, _definition())
+
+    for raw, expected in ((0x0000, dt_time(0, 0)), (0x0730, dt_time(7, 30)), (0xA200, None)):
+        mock_coordinator.data[register.name] = register.decode(raw)
+        assert entity.native_value == expected

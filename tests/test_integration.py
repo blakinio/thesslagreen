@@ -116,6 +116,7 @@ async def test_async_setup_entry_failure():
         mock_coordinator.async_config_entry_first_refresh = AsyncMock(
             side_effect=ConfigEntryNotReady("Connection failed")
         )
+        mock_coordinator.async_shutdown = AsyncMock()
         mock_coordinator_class.return_value = mock_coordinator
 
         import homeassistant.exceptions as _ha_exc
@@ -123,6 +124,8 @@ async def test_async_setup_entry_failure():
         _ConfigEntryNotReady = _ha_exc.ConfigEntryNotReady
         with pytest.raises(_ConfigEntryNotReady):
             await async_setup_entry(hass, entry)
+
+    mock_coordinator.async_shutdown.assert_awaited_once_with()
 
 
 async def test_async_setup_entry_triggers_reauth_on_auth_error():
@@ -150,12 +153,14 @@ async def test_async_setup_entry_triggers_reauth_on_auth_error():
         mock_coordinator = MagicMock()
         mock_coordinator.async_setup = AsyncMock(side_effect=ConnectionException("auth failed"))
         mock_coordinator.async_config_entry_first_refresh = AsyncMock()
+        mock_coordinator.async_shutdown = AsyncMock()
         mock_coordinator_class.return_value = mock_coordinator
 
         result = await async_setup_entry(hass, entry)
 
     assert result is False
     entry.async_start_reauth.assert_called_once_with(hass)
+    mock_coordinator.async_shutdown.assert_awaited_once_with()
 
 
 async def test_async_setup_entry_triggers_reauth_on_refresh_auth_error():
@@ -186,12 +191,14 @@ async def test_async_setup_entry_triggers_reauth_on_refresh_auth_error():
         mock_coordinator.async_config_entry_first_refresh = AsyncMock(
             side_effect=UpdateFailed("Invalid credentials")
         )
+        mock_coordinator.async_shutdown = AsyncMock()
         mock_coordinator_class.return_value = mock_coordinator
 
         result = await async_setup_entry(hass, entry)
 
     assert result is False
     entry.async_start_reauth.assert_called_once_with(hass)
+    mock_coordinator.async_shutdown.assert_awaited_once_with()
 
 
 @pytest.mark.asyncio

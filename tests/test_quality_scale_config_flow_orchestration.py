@@ -33,7 +33,7 @@ class _Caps:
 
 
 @pytest.mark.asyncio
-async def test_reconfigure_updates_stable_serial_identity() -> None:
+async def test_reconfigure_promotes_endpoint_identity_to_serial() -> None:
     entry = SimpleNamespace(
         data={
             CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
@@ -41,7 +41,7 @@ async def test_reconfigure_updates_stable_serial_identity() -> None:
             CONF_PORT: 502,
             CONF_SLAVE_ID: 10,
         },
-        unique_id="serial:old",
+        unique_id="192.0.2.10:502:10",
     )
     user_input = {CONF_HOST: "192.0.2.11", CONF_PORT: 502, CONF_SLAVE_ID: 10}
     flow = ConfigFlow()
@@ -70,6 +70,82 @@ async def test_reconfigure_updates_stable_serial_identity() -> None:
         unique_id="serial:ap4-new",
         data_updates=user_input,
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("entry_unique_id", ["serial:old", "serial:AP4-NEW"])
+async def test_reconfigure_rejects_different_known_device(entry_unique_id) -> None:
+    """A confirmed serial may not be swapped for another controller's serial."""
+    entry = SimpleNamespace(
+        data={
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_TCP,
+            CONF_HOST: "192.0.2.10",
+            CONF_PORT: 502,
+            CONF_SLAVE_ID: 10,
+        },
+        unique_id=entry_unique_id,
+    )
+    user_input = {CONF_HOST: "192.0.2.11", CONF_PORT: 502, CONF_SLAVE_ID: 10}
+    flow = ConfigFlow()
+    flow.hass = MagicMock()
+    flow._get_reconfigure_entry = Mock(return_value=entry)
+    flow.async_set_unique_id = AsyncMock()
+    flow._abort_if_unique_id_configured = Mock()
+    flow.async_update_and_abort = Mock(return_value={"type": "abort", "reason": "updated"})
+    flow.async_abort = Mock(return_value={"type": "abort", "reason": "wrong_device"})
+
+    with patch(
+        "custom_components.thessla_green_modbus._config_flow._process_user_submission_impl",
+        new=AsyncMock(
+            return_value=(
+                {"device_info": {"serial_number": "ap4-new"}, "scan_result": {}},
+                {},
+            )
+        ),
+    ):
+        result = await flow.async_step_reconfigure(user_input)
+
+    if entry_unique_id == "serial:old":
+        assert result == {"type": "abort", "reason": "wrong_device"}
+        flow.async_abort.assert_called_once_with(reason="wrong_device")
+        flow.async_update_and_abort.assert_not_called()
+    else:
+        assert result == {"type": "abort", "reason": "updated"}
+        flow.async_abort.assert_not_called()
+        flow.async_update_and_abort.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_reauth_rejects_different_known_device() -> None:
+    """Reauth must not repoint an entry at another known controller."""
+    entry = SimpleNamespace(entry_id="entry-1", unique_id="serial:old", data={})
+    flow = ConfigFlow()
+    flow.hass = MagicMock()
+    flow.context = {"entry_id": "entry-1"}
+    flow._tg_flow_reauth_entry_id = "entry-1"
+    flow.async_abort = Mock(return_value={"type": "abort", "reason": "wrong_device"})
+    flow.async_step_reauth_confirm = AsyncMock()
+    user_input = {CONF_HOST: "192.0.2.11", CONF_PORT: 502, CONF_SLAVE_ID: 10}
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus._config_flow._resolve_reauth_entry_impl",
+            return_value=entry,
+        ),
+        patch(
+            "custom_components.thessla_green_modbus._config_flow._process_reauth_submission_impl",
+            new=AsyncMock(
+                return_value=(
+                    {"device_info": {"serial_number": "other"}, "scan_result": {}},
+                    {},
+                )
+            ),
+        ),
+    ):
+        result = await flow.async_step_reauth(user_input)
+
+    assert result == {"type": "abort", "reason": "wrong_device"}
+    flow.async_step_reauth_confirm.assert_not_called()
 
 
 @pytest.mark.asyncio

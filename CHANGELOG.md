@@ -35,6 +35,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `None`).
 - Airflow sensors shown in percent no longer declare the volume-flow device class.
 - Diagnostics mask serial numbers in nested sections and raw serial words.
+- Disabled (0xA200) or unreadable schedule times report an unknown state instead of
+  being shown as an active 00:00 slot.
+- Reconfigure and reauthentication abort with `wrong_device` when the endpoint
+  reports a different known serial number; entries without a confirmed serial can
+  still be promoted to one.
+- A failed or cancelled entry setup shuts the coordinator down, releasing the TCP
+  connection or serial port before Home Assistant retries.
+- Repeated temporary log-level overrides restore the level from before the first
+  override.
+
+### Internal
+
+- Tests restore the integration logger level and shared entity mappings, removing
+  order-dependent failures; weak tests now assert results, and multi-word codecs
+  are checked against fixed register words.
 
 ## [2.8.5] - 2026-10-24
 

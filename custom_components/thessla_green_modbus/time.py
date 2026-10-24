@@ -86,22 +86,24 @@ class ThesslaGreenTime(ThesslaGreenEntity, TimeEntity):
 
     @property
     def native_value(self) -> dt_time | None:
-        """Return the current time value decoded from the register."""
+        """Return the decoded time, or ``None`` for disabled or unreadable slots.
+
+        A disabled schedule slot decodes to ``None``; reporting it as midnight
+        would make an inactive slot look like an enabled 00:00 entry.
+        """
         raw = self.coordinator.data.get(self._register_name)
-        if raw is None:
-            return dt_time(0, 0)
         if isinstance(raw, str) and ":" in raw:
             try:
                 hours, minutes = (int(x) for x in raw.split(":"))
                 return dt_time(hours, minutes)
             except (ValueError, TypeError):
-                return dt_time(0, 0)
-        if isinstance(raw, int):
+                return None
+        if isinstance(raw, int) and not isinstance(raw, bool):
             try:
                 return dt_time(raw // 60, raw % 60)
             except (ValueError, TypeError):
-                return dt_time(0, 0)
-        return dt_time(0, 0)
+                return None
+        return None
 
     async def async_set_value(self, value: dt_time) -> None:
         """Set a new time value and surface device failures to Home Assistant."""

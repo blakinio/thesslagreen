@@ -135,6 +135,32 @@ async def test_log_level_manager_cancel_previous():
 
 
 @pytest.mark.asyncio
+async def test_log_level_manager_repeated_override_restores_original_level():
+    """A replaced temporary override must restore the pre-override level."""
+    from custom_components.thessla_green_modbus.services import _LogLevelManager
+
+    target = logging.getLogger("custom_components.thessla_green_modbus")
+    target.setLevel(logging.WARNING)
+    callbacks = []
+
+    def fake_call_later(_h, _d, cb):
+        callbacks.append(cb)
+        return MagicMock()
+
+    with patch(
+        "custom_components.thessla_green_modbus.services.async_call_later",
+        side_effect=fake_call_later,
+    ):
+        mgr = _LogLevelManager(SimpleNamespace())
+        mgr.set_level(logging.DEBUG, 60)
+        mgr.set_level(logging.DEBUG, 60)
+
+    assert target.level == logging.DEBUG
+    callbacks[-1](None)
+    assert target.level == logging.WARNING
+
+
+@pytest.mark.asyncio
 async def test_log_level_manager_zero_duration():
     """set_level with duration=0 does not schedule a restore."""
     from custom_components.thessla_green_modbus.services import _LogLevelManager

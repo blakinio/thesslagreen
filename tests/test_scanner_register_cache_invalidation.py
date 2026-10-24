@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -10,20 +11,31 @@ from custom_components.thessla_green_modbus.scanner import register_maps
 def test_scanner_register_cache_invalidation(tmp_path: Path, monkeypatch) -> None:
     """Scanner should rebuild register maps when definitions change."""
     tmp_json = tmp_path / "registers.json"
-    tmp_json.write_text(get_registers_path().read_text(), encoding="utf-8")
+    payload = json.loads(get_registers_path().read_text(encoding="utf-8"))
+    tmp_json.write_text(json.dumps(payload), encoding="utf-8")
     monkeypatch.setattr(
         "custom_components.thessla_green_modbus.registers.loader._REGISTERS_PATH",
         tmp_json,
     )
+    try:
+        clear_cache()
+        register_maps._ensure_register_maps()
+        first_hash = register_maps.REGISTER_HASH
+        assert "outside_temperature" in sc.INPUT_REGISTERS
 
-    clear_cache()
-    sc.REGISTER_DEFINITIONS.clear()
-    sc.INPUT_REGISTERS.clear()
-    sc.HOLDING_REGISTERS.clear()
-    sc.COIL_REGISTERS.clear()
-    sc.DISCRETE_INPUT_REGISTERS.clear()
-    sc.MULTI_REGISTER_SIZES.clear()
-    register_maps.REGISTER_HASH = None
+        payload["registers"] = [
+            reg for reg in payload["registers"] if reg.get("name") != "outside_temperature"
+        ]
+        tmp_json.write_text(json.dumps(payload), encoding="utf-8")
+        register_maps._ensure_register_maps()
+
+        assert first_hash != register_maps.REGISTER_HASH
+        assert "outside_temperature" not in sc.INPUT_REGISTERS
+        assert "outside_temperature" not in sc.REGISTER_DEFINITIONS
+    finally:
+        monkeypatch.undo()
+        clear_cache()
+        register_maps._build_register_maps()
 
 
 @pytest.mark.asyncio

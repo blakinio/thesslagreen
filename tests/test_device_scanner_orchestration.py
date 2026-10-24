@@ -134,10 +134,6 @@ async def test_scan_device_success_static(mock_modbus_response):
                 assert "expansion" in result["available_registers"]["discrete_inputs"]
 
 
-async def test_temperature_register_unavailable_skipped():
-    """Temperature registers with SENSOR_UNAVAILABLE should be skipped."""
-
-
 async def test_temperature_register_unavailable_kept():
     """Temperature registers with SENSOR_UNAVAILABLE should remain available."""
     scanner = await ThesslaGreenDeviceScanner.create("192.168.1.1", 502, 10)

@@ -1,7 +1,8 @@
 {
   "config": {
     "abort": {
-      "already_configured": "Urządzenie z tym adresem IP i ID urządzenia jest już skonfigurowane."
+      "already_configured": "Urządzenie z tym adresem IP i ID urządzenia jest już skonfigurowane.",
+      "wrong_device": "Urządzenie pod tymi ustawieniami połączenia ma inny numer seryjny niż skonfigurowana centrala. Dodaj je jako nowe urządzenie."
     },
     "error": {
       "cannot_connect": "Nie można połączyć się z urządzeniem. Sprawdź adres IP, port i połączenie sieciowe.",

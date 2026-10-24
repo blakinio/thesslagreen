@@ -177,7 +177,11 @@ async def test_update_cycle_does_not_call_coordinator_read_methods():
         side_effect=AssertionError("coordinator IO called!")
     )
 
-    await coord._async_update_data()  # Must NOT raise
+    result = await coord._async_update_data()
+
+    coord._read_input_registers_optimized.assert_not_called()
+    dc._read_input_registers_optimized.assert_awaited_once()
+    assert result.get("mode") == 0
 
 
 # ---------------------------------------------------------------------------

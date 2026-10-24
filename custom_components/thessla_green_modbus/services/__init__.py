@@ -64,12 +64,15 @@ class _LogLevelManager:
     def set_level(self, level: int, duration: int) -> None:
         logger = self._target_logger()
         previous_level = logger.level
-        logger.setLevel(level)
-        _LOGGER.info("Set %s log level to %s", logger.name, logging.getLevelName(level))
-
         if self._undo_callback:
+            # Replacing an active temporary override must keep the level from
+            # before the first override, not the temporary one.
             self._undo_callback()
             self._undo_callback = None
+            if self._restore_level is not None:
+                previous_level = self._restore_level
+        logger.setLevel(level)
+        _LOGGER.info("Set %s log level to %s", logger.name, logging.getLevelName(level))
 
         self._restore_level = previous_level
         if duration > 0:

@@ -74,6 +74,7 @@ class TestThesslaGreenIntegration:
         mock_coordinator.async_config_entry_first_refresh = AsyncMock(
             side_effect=Exception("Connection failed")
         )
+        mock_coordinator.async_shutdown = AsyncMock()
 
         with patch(
             "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
@@ -84,6 +85,8 @@ class TestThesslaGreenIntegration:
             _ConfigEntryNotReady = _ha_exc.ConfigEntryNotReady
             with pytest.raises(_ConfigEntryNotReady):
                 await async_setup_entry(mock_hass, mock_config_entry)
+
+        mock_coordinator.async_shutdown.assert_awaited_once_with()
 
     @pytest.mark.asyncio
     async def test_async_unload_entry_success(self, mock_hass, mock_config_entry, mock_coordinator):

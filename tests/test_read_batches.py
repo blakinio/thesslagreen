@@ -274,7 +274,10 @@ async def test_read_input_uses_transport_when_connected():
     owner._find_register_name.return_value = "reg_a"
     owner._read_with_retry.return_value = _ok_response([5])
     owner._process_register_value.return_value = 5
-    await read_input_registers_optimized(owner)
+    result = await read_input_registers_optimized(owner)
+
+    assert result == {"reg_a": 5}
+    assert owner._read_with_retry.await_args.args[0] is transport.read_input_registers
 
 
 # ---------------------------------------------------------------------------

@@ -262,7 +262,10 @@ def test_compute_register_groups_runs():
         "coil_registers": set(),
         "discrete_inputs": set(),
     }
+    client._register_groups = {"input_registers": [(0, 1)]}
     client.compute_register_groups()
+
+    assert all(not groups for groups in client._register_groups.values())
 
 
 def test_find_register_name_returns_name():

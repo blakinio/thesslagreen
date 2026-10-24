@@ -14,7 +14,7 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_platform_setup_cancellation(caplog):
-    """Cancellation during platform setup is logged without errors."""
+    """Cancellation during platform setup is logged and releases the coordinator."""
     hass = MagicMock()
     hass.data = {}
 
@@ -49,6 +49,7 @@ async def test_platform_setup_cancellation(caplog):
         mock_coordinator = MagicMock()
         mock_coordinator.async_setup = AsyncMock(return_value=True)
         mock_coordinator.async_config_entry_first_refresh = AsyncMock()
+        mock_coordinator.async_shutdown = AsyncMock()
         mock_coordinator_class.return_value = mock_coordinator
 
         with pytest.raises(asyncio.CancelledError):
@@ -56,3 +57,4 @@ async def test_platform_setup_cancellation(caplog):
 
     assert not any(record.levelno >= logging.ERROR for record in caplog.records)
     assert any("cancelled" in record.message.lower() for record in caplog.records)
+    mock_coordinator.async_shutdown.assert_awaited_once_with()

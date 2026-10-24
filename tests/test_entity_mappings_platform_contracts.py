@@ -1,5 +1,6 @@
 """Platform mapping contract tests split from test_entity_mappings.py."""
 
+import pytest
 from custom_components.thessla_green_modbus import mappings as em
 from custom_components.thessla_green_modbus.registers.register_def import RegisterDef
 
@@ -78,52 +79,45 @@ def test_all_number_entities_have_translation_key():
     )
 
 
-def test_rw_schedule_registers_mapped_as_time(monkeypatch):
+_SCHEDULE_KEY = "schedule_summer_mon_1"
+
+
+@pytest.fixture
+def isolated_schedule_key():
+    """Remove the schedule key from the shared mappings and restore it exactly after."""
+    targets = (em.SELECT_ENTITY_MAPPINGS, em.SENSOR_ENTITY_MAPPINGS, em.TIME_ENTITY_MAPPINGS)
+    saved = [(target, target.pop(_SCHEDULE_KEY, None)) for target in targets]
+    yield
+    for target, original in saved:
+        target.pop(_SCHEDULE_KEY, None)
+        if original is not None:
+            target[_SCHEDULE_KEY] = original
+
+
+def test_rw_schedule_registers_mapped_as_time(monkeypatch, isolated_schedule_key):
     """RW schedule_* BCD time registers should end up in TIME_ENTITY_MAPPINGS."""
     sched_reg = RegisterDef(
-        function=3, address=16, name="schedule_summer_mon_1", access="RW", min=0, max=2359
+        function=3, address=16, name=_SCHEDULE_KEY, access="RW", min=0, max=2359
     )
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [sched_reg])
-    em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
-    em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
-    em.TIME_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
-    try:
-        em._extend_entity_mappings_from_registers()
-        assert "schedule_summer_mon_1" in em.TIME_ENTITY_MAPPINGS, (
-            "RW schedule register should be a time entity"
-        )
-        assert "schedule_summer_mon_1" not in em.SENSOR_ENTITY_MAPPINGS, (
-            "RW schedule register must not also be a sensor"
-        )
-        assert "schedule_summer_mon_1" not in em.SELECT_ENTITY_MAPPINGS, (
-            "RW schedule register must not also be a select"
-        )
-        defn = em.TIME_ENTITY_MAPPINGS["schedule_summer_mon_1"]
-        assert defn["icon"] == "mdi:clock-outline"
-    finally:
-        em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
-        em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
-        em.TIME_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
+    em._extend_entity_mappings_from_registers()
+
+    assert _SCHEDULE_KEY in em.TIME_ENTITY_MAPPINGS, "RW schedule register should be a time entity"
+    assert _SCHEDULE_KEY not in em.SENSOR_ENTITY_MAPPINGS, (
+        "RW schedule register must not also be a sensor"
+    )
+    assert _SCHEDULE_KEY not in em.SELECT_ENTITY_MAPPINGS, (
+        "RW schedule register must not also be a select"
+    )
+    assert em.TIME_ENTITY_MAPPINGS[_SCHEDULE_KEY]["icon"] == "mdi:clock-outline"
 
 
-def test_ro_schedule_registers_mapped_as_sensor(monkeypatch):
+def test_ro_schedule_registers_mapped_as_sensor(monkeypatch, isolated_schedule_key):
     """Read-only schedule_* BCD time registers remain sensors."""
-    sched_reg = RegisterDef(
-        function=3, address=16, name="schedule_summer_mon_1", access="R", min=0, max=2359
-    )
+    sched_reg = RegisterDef(function=3, address=16, name=_SCHEDULE_KEY, access="R", min=0, max=2359)
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [sched_reg])
-    orig_select = em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
-    orig_sensor = em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
-    try:
-        em._extend_entity_mappings_from_registers()
-        assert "schedule_summer_mon_1" in em.SENSOR_ENTITY_MAPPINGS, (
-            "RO schedule register should remain a sensor"
-        )
-        assert "schedule_summer_mon_1" not in em.SELECT_ENTITY_MAPPINGS
-    finally:
-        em.SELECT_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
-        em.SENSOR_ENTITY_MAPPINGS.pop("schedule_summer_mon_1", None)
-        if orig_select is not None:
-            em.SELECT_ENTITY_MAPPINGS["schedule_summer_mon_1"] = orig_select
-        if orig_sensor is not None:
-            em.SENSOR_ENTITY_MAPPINGS["schedule_summer_mon_1"] = orig_sensor
+    em._extend_entity_mappings_from_registers()
+
+    assert _SCHEDULE_KEY in em.SENSOR_ENTITY_MAPPINGS, "RO schedule register should remain a sensor"
+    assert _SCHEDULE_KEY not in em.SELECT_ENTITY_MAPPINGS
+    assert _SCHEDULE_KEY not in em.TIME_ENTITY_MAPPINGS
