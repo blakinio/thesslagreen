@@ -55,13 +55,15 @@ def _format_register_value(name: str, value: int) -> int | str | None:
         return f"{time_decoded // 60:02d}:{time_decoded % 60:02d}"
 
     if name.startswith(SETTING_PREFIX):
-        aatt_decoded: dict[str, float | int] | None = _decode_aatt(value)
+        aatt_decoded: dict[str, float | int | None] | None = _decode_aatt(value)
         if aatt_decoded is None:
             return None if value == SENSOR_UNAVAILABLE else value
         airflow = aatt_decoded.get("airflow_pct")
         temp = aatt_decoded.get("temp_c")
-        if airflow is None or temp is None:
+        if airflow is None:
             return None if value == SENSOR_UNAVAILABLE else value
+        if temp is None:
+            return f"{airflow}%"
         temp_str = f"{temp:g}"
         return f"{airflow}% @ {temp_str}°C"
 

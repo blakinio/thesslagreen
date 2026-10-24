@@ -232,23 +232,29 @@ class RegisterDef:
             return int(time_to_bcd(time(hours, minutes)))
 
         if self._is_aatt():
+            temp_unset = False
             if isinstance(value, dict):
                 airflow = value.get("airflow_pct", value.get("airflow"))
                 temp = value.get("temp_c", value.get("temp"))
+                temp_unset = temp is None and value.get("temp_unset") is True
             elif isinstance(value, list | tuple):
                 airflow, temp = value
             else:
                 raise ValueError("AATT encoding needs both airflow and temperature")
             if (
                 airflow is None
-                or temp is None
+                or (temp is None and not temp_unset)
                 or isinstance(airflow, bool)
                 or isinstance(temp, bool)
             ):
                 raise ValueError(f"Invalid AATT value for {self.name}: {value!r}")
-            flow, temperature = float(airflow), float(temp)
+            flow = float(airflow)
             if not math.isfinite(flow) or not 10 <= flow <= 100 or not flow.is_integer():
                 raise ValueError("Schedule airflow must be an integer from 10 to 100 percent")
+            if temp is None:
+                # temp_unset: preserve the device's TT=0 "no temperature" marker.
+                return int(flow) << 8
+            temperature = float(temp)
             if (
                 not math.isfinite(temperature)
                 or not 10 <= temperature <= 45

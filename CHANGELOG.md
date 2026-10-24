@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.8] - 2026-10-24
+
+> Hardware acceptance PARTIAL: v2.8.7 was confirmed on a running AirPack Home
+> installation (HA 2026.10.2): the three log entries fixed in 2.8.7 no longer appear
+> after restart. The fix below is CI-validated only. No register addresses or names,
+> entity IDs, unique IDs, service IDs or existing translation keys changed.
+
+### Fixed
+
+- Removing or reloading the integration while a poll is in flight no longer logs
+  `Error fetching thessla_green_modbus_… data: Modbus connection is shut down` at
+  ERROR: a connection error caused by the coordinator's own shutdown now ends the
+  cycle quietly with the last known data instead of raising `UpdateFailed`.
+- Schedule airflow selects no longer show "unknown" on firmware 3.11, which stores
+  `TT=0` (no temperature) in schedule slots such as `0x3200`. The airflow byte is
+  decoded on its own, and changing only the airflow keeps `TT=0` instead of
+  rejecting the write.
+- The seven legacy special-mode shortcut switches without a documented AirPack
+  function (eco, sleep, party, bathroom, kitchen, summer, winter) are no longer
+  created. They were permanently unavailable, and their stale registry entries
+  are removed on setup. The switch mappings themselves are unchanged.
+
 ## [2.8.7] - 2026-10-24
 
 > Hardware acceptance PARTIAL: the issues below were found in the Home Assistant log

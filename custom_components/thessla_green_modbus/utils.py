@@ -137,8 +137,12 @@ def encode_bcd_time(value: time) -> int:
     return (_int_to_bcd(value.hour) << 8) | _int_to_bcd(value.minute)
 
 
-def _decode_aatt(value: int) -> dict[str, float | int] | None:
-    """Decode airflow percentage and temperature encoded as ``AATT``."""
+def _decode_aatt(value: int) -> dict[str, float | int | None] | None:
+    """Decode airflow percentage and temperature encoded as ``AATT``.
+
+    Firmware 3.11 stores ``TT=0`` in slots that carry no temperature setting
+    (e.g. ``0x3200``); the airflow byte is still valid and ``temp_c`` is None.
+    """
 
     if isinstance(value, bool) or not 0 <= value <= 0xFFFF:
         return None
@@ -146,13 +150,17 @@ def _decode_aatt(value: int) -> dict[str, float | int] | None:
     airflow = (value >> 8) & 255
     temp_double = value & 255
 
-    if not 10 <= airflow <= 100 or not 20 <= temp_double <= 90:
+    if not 10 <= airflow <= 100:
+        return None
+    if temp_double == 0:
+        return {"airflow_pct": airflow, "temp_c": None}
+    if not 20 <= temp_double <= 90:
         return None
 
     return {"airflow_pct": airflow, "temp_c": temp_double / 2}
 
 
-def decode_aatt(value: int) -> dict[str, float | int] | None:
+def decode_aatt(value: int) -> dict[str, float | int | None] | None:
     """Decode airflow percentage and temperature encoded as ``AATT``."""
 
     return _decode_aatt(value)

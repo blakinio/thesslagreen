@@ -9,6 +9,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pymodbus.exceptions import ConnectionException, ModbusException
@@ -36,8 +37,13 @@ async def async_setup_entry(
 
     holding_map = holding_registers()
     coil_map = coil_registers()
+    retired: list[tuple[str, dict[str, Any]]] = []
     for key, config in ENTITY_MAPPINGS["switch"].items():
         register_name = config["register"]
+
+        if register_name == "special_mode" and config.get("protocol_value") is None:
+            retired.append((key, config))
+            continue
 
         if reason := capability_block_reason(register_name, coordinator.device_client.capabilities):
             _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
@@ -75,11 +81,43 @@ async def async_setup_entry(
             )
             _LOGGER.debug("Created switch entity: %s", key)
 
+    _remove_retired_switches(hass, entry, retired, holding_map.get("special_mode"))
+
     if entities:
         async_add_entities(entities, False)
         _LOGGER.debug("Added %d switch entities", len(entities))
     else:
         _LOGGER.debug("No switch entities were created")
+
+
+def _remove_retired_switches(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    retired: list[tuple[str, dict[str, Any]]],
+    address: int | None,
+) -> None:
+    """Drop registry entries of legacy presets that have no AirPack function.
+
+    Those switches were permanently unavailable; keeping them only cluttered
+    the device page with "unsupported legacy shortcut" controls.
+    """
+    if not retired or address is None:
+        return
+    suffixes = tuple(f"_{key}_{address}_bit{config.get('bit')}" for key, config in retired)
+    try:
+        registry = er.async_get(hass)
+        reg_entries = er.async_entries_for_config_entry(registry, entry.entry_id)
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return
+    for reg_entry in reg_entries:
+        unique_id = getattr(reg_entry, "unique_id", None)
+        if (
+            getattr(reg_entry, "domain", None) == "switch"
+            and isinstance(unique_id, str)
+            and unique_id.endswith(suffixes)
+        ):
+            _LOGGER.debug("Removing retired legacy switch %s", reg_entry.entity_id)
+            registry.async_remove(reg_entry.entity_id)
 
 
 class ThesslaGreenSwitch(ThesslaGreenEntity, SwitchEntity):

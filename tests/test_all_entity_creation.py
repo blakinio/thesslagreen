@@ -244,7 +244,8 @@ async def test_entity_counts_per_platform(
         "binary_sensor": 70,
         "select": 70,
         "number": 45,
-        "switch": 15,
+        # 7 legacy special-mode shortcuts without an AirPack function are not created.
+        "switch": 11,
         "time": 56,
     }
     for platform_name, minimum in MIN_COUNTS.items():
