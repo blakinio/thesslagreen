@@ -23,6 +23,7 @@ from ..scanner.device_info import ScannerDeviceInfo
 from ..transport.rtu import RtuModbusTransport
 from . import custom_scan as scanner_custom_scan
 from . import scan_runtime
+from . import setup as scanner_setup
 from .full_scan_phase import apply_word_register_block
 from .io import is_request_cancelled_error
 
@@ -393,6 +394,7 @@ async def scan(scanner: Any) -> dict[str, Any]:
 
     device = ScannerDeviceInfo()
     await _collect_scan_device_info(scanner, device)
+    scanner_setup.apply_firmware_known_missing(scanner, device.firmware)
 
     (
         input_registers,

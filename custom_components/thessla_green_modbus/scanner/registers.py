@@ -351,11 +351,12 @@ def collect_missing_registers(
         "coil_registers": {name: addr for addr, name in coil_registers.items()},
         "discrete_inputs": {name: addr for addr, name in discrete_registers.items()},
     }
+    known_missing = getattr(scanner, "_known_missing_registers", KNOWN_MISSING_REGISTERS)
     missing_registers: dict[str, dict[str, int]] = {}
     for reg_type, mapping in register_maps.items():
         missing: dict[str, int] = {}
         for name, addr in mapping.items():
-            if name in KNOWN_MISSING_REGISTERS.get(reg_type, set()):
+            if name in known_missing.get(reg_type, set()):
                 continue
             if name not in scanner.available_registers[reg_type]:
                 missing[name] = addr
