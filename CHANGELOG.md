@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.8] - 2026-10-24
+
+> Hardware acceptance PARTIAL: v2.8.7 was confirmed on a running AirPack Home
+> installation (HA 2026.10.2): the three log entries fixed in 2.8.7 no longer appear
+> after restart. The fix below is CI-validated only. No register addresses or names,
+> entity IDs, unique IDs, service IDs or existing translation keys changed.
+
+### Fixed
+
+- Removing or reloading the integration while a poll is in flight no longer logs
+  `Error fetching thessla_green_modbus_… data: Modbus connection is shut down` at
+  ERROR: a connection error caused by the coordinator's own shutdown now ends the
+  cycle quietly with the last known data instead of raising `UpdateFailed`.
+
 ## [2.8.7] - 2026-10-24
 
 > Hardware acceptance PARTIAL: the issues below were found in the Home Assistant log

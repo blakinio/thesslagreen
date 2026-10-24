@@ -54,12 +54,13 @@ async def test_update_no_error_log_when_shutting_down(caplog):
     assert not any(r.levelno >= logging.ERROR for r in caplog.records)
 
 
-async def test_connection_error_during_shutdown_raises_update_failed_not_error(caplog):
+async def test_connection_error_during_shutdown_returns_current_data(caplog):
     """ConnectionException raised after shutdown flag is set logs at DEBUG, not ERROR."""
     from custom_components.thessla_green_modbus.coordinator.update import async_update_data
 
     coord = _make_coordinator()
     coord._shutting_down = False  # not yet shutting down when cycle starts
+    coord.data = {"sensor": 42}
     coord.device_client._update_in_progress = False
     coord.device_client._failed_registers = set()
 
@@ -74,8 +75,7 @@ async def test_connection_error_during_shutdown_raises_update_failed_not_error(c
         ),
         caplog.at_level(logging.DEBUG),
     ):
-        with pytest.raises(UpdateFailed):
-            await async_update_data(coord)
+        assert await async_update_data(coord) == {"sensor": 42}
 
     assert not any(r.levelno >= logging.ERROR for r in caplog.records)
     assert any("shutdown" in r.message.lower() for r in caplog.records)
@@ -164,7 +164,35 @@ async def test_shutdown_during_in_flight_read_no_error_logged(caplog):
         coord._shutting_down = True
         shutdown_triggered.set()
 
-        with pytest.raises(UpdateFailed):
-            await task
+        assert await task == {}
 
     assert not any(r.levelno >= logging.ERROR for r in caplog.records)
+
+
+async def test_refresh_interrupted_by_unload_does_not_log_fetch_error(caplog):
+    """DataUpdateCoordinator must not log "Error fetching" when unload closes the link.
+
+    Unloading the entry while a poll is in flight closes the Modbus connection;
+    an ``UpdateFailed`` from that cycle was logged by Home Assistant at ERROR.
+    """
+    coord = _make_coordinator()
+    coord.data = {"sensor": 42}
+    coord.device_client._update_in_progress = False
+    coord.device_client._failed_registers = set()
+
+    async def _unload_mid_read(coordinator, start_time):
+        coordinator._shutting_down = True
+        raise ConnectionException("Modbus connection is shut down")
+
+    with (
+        patch(
+            "custom_components.thessla_green_modbus.coordinator.update.run_update_cycle",
+            new=_unload_mid_read,
+        ),
+        caplog.at_level(logging.DEBUG),
+    ):
+        await coord._async_refresh(log_failures=True)
+
+    assert not any(r.levelno >= logging.ERROR for r in caplog.records)
+    assert coord.last_update_success is True
+    assert coord.data == {"sensor": 42}

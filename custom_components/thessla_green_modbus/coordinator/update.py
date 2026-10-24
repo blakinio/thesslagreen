@@ -8,7 +8,6 @@ import logging
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.helpers.update_coordinator import UpdateFailed
 from pymodbus.exceptions import ConnectionException, ModbusException
 
 from ..utils import utcnow as _utcnow
@@ -76,8 +75,10 @@ async def async_update_data(coordinator: ThesslaGreenModbusCoordinator) -> dict[
                 raise
             except (ModbusException, ConnectionException) as exc:
                 if getattr(coordinator, "_shutting_down", False):
+                    # Raising UpdateFailed here would make DataUpdateCoordinator
+                    # log "Error fetching ... data" at ERROR on every unload.
                     _LOGGER.debug("Connection error during shutdown (expected): %s", exc)
-                    raise UpdateFailed(str(exc)) from exc
+                    return coordinator.data or {}
                 raise await handle_update_error(
                     coordinator,
                     exc,
