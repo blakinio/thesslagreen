@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.6] - 2026-10-24
+
+> Hardware acceptance PARTIAL: CI validated only. No physical-device run was made
+> on this candidate; see `docs/real_device_validation.md`. No register addresses or
+> names, entity IDs, unique IDs, service IDs or existing translation keys changed.
+
 ### Fixed
 
 - Serial (RTU/USB) connections: stop passing the removed `method="rtu"` argument to
@@ -45,8 +51,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Repeated temporary log-level overrides restore the level from before the first
   override.
 
+### Docs
+
+- The 2026-08-16 v2.8.4 physical acceptance record (from draft PR #1772) is kept as
+  historical evidence in `docs/real_device_validation.md`; its runtime failures
+  were fixed in 2.8.5 and still need a physical re-run.
+
 ### Internal
 
+- Dependency minimums raised: ruff 0.16.6, mypy 2.3.1, pre-commit 4.6.2, plus the
+  GitHub Actions updates. Dependabot now ignores aiodiscover minor/patch bumps
+  until the Home Assistant test plugin moves past its aiodiscover/aiodns pins.
 - Tests restore the integration logger level and shared entity mappings, removing
   order-dependent failures; weak tests now assert results, and multi-word codecs
   are checked against fixed register words.
