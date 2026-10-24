@@ -54,22 +54,18 @@ async def async_setup_options(hass: HomeAssistant | None = None) -> None:
     If Home Assistant utilities are unavailable, the lists are populated
     synchronously when running in tests.
     """
-    global SPECIAL_MODE_OPTIONS, DAYS_OF_WEEK, PERIODS, BYPASS_MODES, GWC_MODES
-    global FILTER_TYPES, RESET_TYPES, MODBUS_PORTS, MODBUS_BAUD_RATES
-    global MODBUS_PARITY, MODBUS_STOP_BITS
-
     filenames = [
-        ("special_modes.json", "SPECIAL_MODE_OPTIONS"),
-        ("days_of_week.json", "DAYS_OF_WEEK"),
-        ("periods.json", "PERIODS"),
-        ("bypass_modes.json", "BYPASS_MODES"),
-        ("gwc_modes.json", "GWC_MODES"),
-        ("filter_types.json", "FILTER_TYPES"),
-        ("reset_types.json", "RESET_TYPES"),
-        ("modbus_ports.json", "MODBUS_PORTS"),
-        ("modbus_baud_rates.json", "MODBUS_BAUD_RATES"),
-        ("modbus_parity.json", "MODBUS_PARITY"),
-        ("modbus_stop_bits.json", "MODBUS_STOP_BITS"),
+        ("special_modes.json", SPECIAL_MODE_OPTIONS),
+        ("days_of_week.json", DAYS_OF_WEEK),
+        ("periods.json", PERIODS),
+        ("bypass_modes.json", BYPASS_MODES),
+        ("gwc_modes.json", GWC_MODES),
+        ("filter_types.json", FILTER_TYPES),
+        ("reset_types.json", RESET_TYPES),
+        ("modbus_ports.json", MODBUS_PORTS),
+        ("modbus_baud_rates.json", MODBUS_BAUD_RATES),
+        ("modbus_parity.json", MODBUS_PARITY),
+        ("modbus_stop_bits.json", MODBUS_STOP_BITS),
     ]
 
     async with _get_options_init_lock():
@@ -80,19 +76,8 @@ async def async_setup_options(hass: HomeAssistant | None = None) -> None:
         else:
             results = [_load_json_option(fn) for fn, _ in filenames]
 
-        (
-            SPECIAL_MODE_OPTIONS,
-            DAYS_OF_WEEK,
-            PERIODS,
-            BYPASS_MODES,
-            GWC_MODES,
-            FILTER_TYPES,
-            RESET_TYPES,
-            MODBUS_PORTS,
-            MODBUS_BAUD_RATES,
-            MODBUS_PARITY,
-            MODBUS_STOP_BITS,
-        ) = results
+        for (_, target), values in zip(filenames, results, strict=True):
+            target[:] = values
 
 
 __all__ = [

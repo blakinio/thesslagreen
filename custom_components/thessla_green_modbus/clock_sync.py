@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
@@ -124,6 +125,9 @@ async def async_perform_clock_sync(
             start_address=RTC_START_ADDRESS,
             values=payload,
             readback_count=RTC_REGISTER_COUNT,
+            # Date/time words 0-3 must land together or the RTC can roll over
+            # between partial writes when a small batch size is configured.
+            require_single_request=True,
         )
     except Exception:
         log.exception("Exception while writing RTC registers")
@@ -185,9 +189,10 @@ class ClockSyncManager:
         self._on_start_done = False
         self._sync_in_progress = False
 
-    def attach(self) -> None:
-        """Register as a coordinator listener."""
-        self._coordinator.async_add_listener(self._on_update)
+    def attach(self) -> Callable[[], None]:
+        """Register as a coordinator listener and return the unsubscribe callback."""
+        unsubscribe: Callable[[], None] = self._coordinator.async_add_listener(self._on_update)
+        return unsubscribe
 
     def _options(self) -> dict[str, Any]:
         opts = getattr(self._entry, "options", {}) or {}

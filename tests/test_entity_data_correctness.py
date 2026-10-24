@@ -23,7 +23,7 @@ class TestSensorNativeValue:
     def test_returns_integer_from_coordinator(self, mock_coordinator):
         mock_coordinator.data = {"supply_percentage": 50}
         entity = _make_sensor(mock_coordinator, "supply_percentage")
-        _ = entity.native_value
+        assert entity.native_value == 50
 
     def test_returns_none_when_value_is_none(self, mock_coordinator):
         mock_coordinator.data = {"outside_temperature": None}

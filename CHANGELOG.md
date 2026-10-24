@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Serial (RTU/USB) connections: stop passing the removed `method="rtu"` argument to
+  pymodbus and declare `pyserial>=3.5` as a runtime requirement (contributed by
+  leesiuu).
+- Special-mode service option lists are filled in place, so service schemas accept
+  every documented mode (contributed by leesiuu).
+- Registers known to be absent before their minimum firmware are skipped during the
+  scan instead of being reported as missing (contributed by leesiuu).
+- A shut-down coordinator no longer reopens its transport or serial port after
+  unload; the direct TCP client path honours the same guard (contributed by
+  leesiuu).
+- Device name (8144-8151), serial number (FC04 24-29) and product key lock_pass
+  (8187-8188, u32 little-endian, 0-999999) are decoded from all of their words
+  during polling, including single-register fallback reads; incomplete reads are
+  dropped instead of publishing one word.
+- `set_device_name` writes the whole NUL-padded name in one encoded payload; short
+  names no longer lose characters when split by the batch size.
+- Temporary airflow/temperature number entities (0x1131/0x1134) write the mode,
+  setpoint and activation flag in one request, as the vendor protocol requires.
+- Clock synchronisation writes the four RTC words (0-3) in a single request.
+- The clock-sync coordinator listener is removed when the entry unloads.
+- Host-prefixed unique IDs move to the serial prefix once the serial number is
+  known instead of being double-prefixed.
+- Reauthentication start is no longer awaited (Home Assistant's callback returns
+  `None`).
+- Airflow sensors shown in percent no longer declare the volume-flow device class.
+- Diagnostics mask serial numbers in nested sections and raw serial words.
+- Disabled (0xA200) or unreadable schedule times report an unknown state instead of
+  being shown as an active 00:00 slot.
+- Reconfigure and reauthentication abort with `wrong_device` when the endpoint
+  reports a different known serial number; entries without a confirmed serial can
+  still be promoted to one.
+- A failed or cancelled entry setup shuts the coordinator down, releasing the TCP
+  connection or serial port before Home Assistant retries.
+- Repeated temporary log-level overrides restore the level from before the first
+  override.
+
+### Internal
+
+- Tests restore the integration logger level and shared entity mappings, removing
+  order-dependent failures; weak tests now assert results, and multi-word codecs
+  are checked against fixed register words.
+
 ## [2.8.5] - 2026-10-24
 
 > Hardware acceptance PARTIAL: normal Modbus polling, bounded airflow and temperature writes with restoration, and manual/auto/manual transitions were tested on AirPack Home 400h Energy. Extended soak, fault injection, full register-scan and optional equipment behavior remain unverified. Do not interpret passing CI as full hardware acceptance. Existing E252 filter warning requires physical inspection; no filter configuration change or alarm clearing is implied.

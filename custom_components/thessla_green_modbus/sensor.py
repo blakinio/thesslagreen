@@ -160,9 +160,11 @@ class ThesslaGreenSensor(ThesslaGreenEntity, SensorEntity):
         self._sensor_def = sensor_definition
         self._attr_icon = sensor_definition.get("icon")
         self._attr_native_unit_of_measurement = sensor_definition.get("unit")
+        self._attr_device_class = sensor_definition.get("device_class")
         if self._use_percentage():
             self._attr_native_unit_of_measurement = PERCENTAGE
-        self._attr_device_class = sensor_definition.get("device_class")
+            # HA rejects a volume-flow device class paired with a % unit.
+            self._attr_device_class = None
         self._attr_state_class = sensor_definition.get("state_class")
         _ec = sensor_definition.get("entity_category")
         if _ec:

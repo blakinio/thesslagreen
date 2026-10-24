@@ -35,6 +35,7 @@ class BaseModbusTransport(ABC):
         self.timeout = float(timeout)
         self.offline_state = offline_state
         self._lock = asyncio.Lock()
+        self._shut_down = False
 
     @property
     def offline(self) -> bool:
@@ -111,6 +112,8 @@ class BaseModbusTransport(ABC):
 
     async def ensure_connected(self) -> None:
         async with self._lock:
+            if self._shut_down:
+                raise ConnectionException("Modbus transport is shut down")
             if self._is_connected():
                 return
             await self._reset_connection()
@@ -120,6 +123,9 @@ class BaseModbusTransport(ABC):
         async with self._lock:
             await self._reset_connection()
             self.offline_state = True
+
+    def shut_down(self) -> None:
+        self._shut_down = True
 
     async def _handle_timeout(self, attempt: int, exc: Exception) -> None:
         log_transport_retry(

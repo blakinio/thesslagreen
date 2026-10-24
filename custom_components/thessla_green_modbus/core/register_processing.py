@@ -18,6 +18,28 @@ def find_register_name(
     return reverse_maps.get(register_type, {}).get(address)
 
 
+def assemble_multi_register_values(
+    function: int,
+    available: set[str],
+    raw_words: dict[int, int],
+    data: dict[str, Any],
+) -> None:
+    """Decode multi-word registers (strings, u32) from the words of one poll.
+
+    Batch reads decode word by word, which leaves e.g. ``device_name`` holding
+    only its first word. Replace such values with the full decode when every
+    word was read, and drop them otherwise so no truncated value is published.
+    """
+    for name, definition in get_register_definitions().items():
+        if definition.function != function or definition.length < 2 or name not in available:
+            continue
+        addresses = range(definition.address, definition.address + definition.length)
+        if any(address not in raw_words for address in addresses):
+            data.pop(name, None)
+            continue
+        data[name] = definition.decode([raw_words[address] for address in addresses])
+
+
 def process_register_value(register_name: str, value: int) -> Any:
     """Decode a raw register value using its definition."""
     if register_name in {"dac_supply", "dac_exhaust", "dac_heater", "dac_cooler"} and not (

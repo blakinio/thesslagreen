@@ -68,20 +68,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     from .device_registry_migration import migrate_device_identifier
 
     coordinator = await async_create_coordinator(hass, entry)
-    if not await async_start_coordinator(hass, entry, coordinator):
-        return False
-    entry.runtime_data = coordinator
+    try:
+        if not await async_start_coordinator(hass, entry, coordinator):
+            await coordinator.async_shutdown()
+            return False
+        entry.runtime_data = coordinator
 
-    await async_setup_mappings(hass)
-    migrate_config_entry_unique_id(hass, entry, coordinator)
-    migrate_device_identifier(hass, entry, coordinator)
-    await async_migrate_entity_unique_ids(hass, entry, coordinator)
-    await async_setup_platforms(hass, entry, PLATFORM_DOMAINS)
+        await async_setup_mappings(hass)
+        migrate_config_entry_unique_id(hass, entry, coordinator)
+        migrate_device_identifier(hass, entry, coordinator)
+        await async_migrate_entity_unique_ids(hass, entry, coordinator)
+        await async_setup_platforms(hass, entry, PLATFORM_DOMAINS)
+    except BaseException:
+        # A failed or cancelled setup is never unloaded, so release the
+        # connection and stop listener before Home Assistant retries.
+        await coordinator.async_shutdown()
+        raise
 
     from .clock_sync import ClockSyncManager
 
     clock_sync_manager = ClockSyncManager(hass, coordinator, entry)
-    clock_sync_manager.attach()
+    entry.async_on_unload(clock_sync_manager.attach())
     coordinator._clock_sync_manager = clock_sync_manager
 
     entry.async_on_unload(entry.add_update_listener(async_update_options))

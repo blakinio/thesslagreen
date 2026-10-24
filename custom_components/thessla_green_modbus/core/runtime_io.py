@@ -17,6 +17,10 @@ async def call_modbus(
     **kwargs: Any,
 ) -> Any:
     """Wrapper around Modbus calls injecting the slave ID."""
+    if getattr(device_client, "_shut_down", False) is True:
+        # Covers the direct AsyncModbusTcpClient path, which bypasses the
+        # transport's own shut-down guard.
+        raise ConnectionException("Modbus connection is shut down")
     if device_client._transport is None:
         if not device_client.client:
             raise ConnectionException("Modbus client is not connected")

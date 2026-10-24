@@ -172,6 +172,30 @@ async def async_get_config_entry_diagnostics(
     return diagnostics_safe
 
 
+# FC04 24-29 hold the controller serial number words (deep-scan raw dump).
+_SERIAL_INPUT_ADDRESSES = frozenset(range(24, 30))
+
+
+def _redact_serial_numbers(node: Any) -> None:
+    """Mask serial numbers and raw serial words anywhere in the diagnostics tree."""
+    if isinstance(node, list):
+        for item in node:
+            _redact_serial_numbers(item)
+        return
+    if not isinstance(node, dict):
+        return
+    for key, value in node.items():
+        if key == "serial_number" and isinstance(value, str):
+            if len(value) > 4:
+                node[key] = f"{value[:2]}***{value[-2:]}"
+        elif key == "raw_registers" and isinstance(value, dict):
+            for address in list(value):
+                if str(address).isdigit() and int(address) in _SERIAL_INPUT_ADDRESSES:
+                    value[address] = "**REDACTED**"
+        else:
+            _redact_serial_numbers(value)
+
+
 def _redact_sensitive_data(data: dict[str, Any]) -> dict[str, Any]:
     """Redact sensitive information from diagnostics."""
     safe_data = copy.deepcopy(data)
@@ -198,10 +222,7 @@ def _redact_sensitive_data(data: dict[str, Any]) -> dict[str, Any]:
                 masked = "<redacted-host>"
             safe_data["connection"]["host"] = masked
 
-    if "device_info" in safe_data and "serial_number" in safe_data["device_info"]:
-        serial = safe_data["device_info"]["serial_number"]
-        if serial and len(serial) > 4:
-            safe_data["device_info"]["serial_number"] = f"{serial[:2]}***{serial[-2:]}"
+    _redact_serial_numbers(safe_data)
 
     if "recent_errors" in safe_data:
         for error in safe_data["recent_errors"]:

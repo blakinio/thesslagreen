@@ -18,7 +18,6 @@ from ..const import (
 from ..device_profile import configured_device_family
 from .dispatch import (
     refresh_and_log_success,
-    write_device_name_chunks,
     write_mapped_optional_register,
     write_register_batch,
 )
@@ -336,16 +335,11 @@ def _build_set_device_name_handler(hass: HomeAssistant, deps: ServiceHandlerDeps
 
         async def _set_device_name_for_target(entity_id: str, coordinator: Any) -> bool:
             try:
-                if len(device_name) >= 16:
-                    success = await coordinator.async_write_register(
-                        "device_name", device_name, refresh=False, targeted_readback=False
-                    )
-                else:
-                    success = await write_device_name_chunks(
-                        coordinator,
-                        device_name,
-                        getattr(coordinator, "effective_batch", 2),
-                    )
+                # Encode the whole NUL-padded name once; the coordinator splits
+                # the 8-word payload into effective-batch FC16 chunks.
+                success = await coordinator.async_write_register(
+                    "device_name", device_name, refresh=False, targeted_readback=False
+                )
             except _DEVICE_ERRORS as err:
                 deps.logger.error("Failed to set device name for %s: %s", entity_id, err)
                 raise HomeAssistantError(
@@ -375,6 +369,7 @@ def _build_sync_time_handler(hass: HomeAssistant, deps: ServiceHandlerDeps) -> S
                     start_address=0,
                     values=_clock_payload(now),
                     refresh=False,
+                    require_single_request=True,
                 )
             except _DEVICE_ERRORS as err:
                 deps.logger.error("Failed to sync clock for %s: %s", entity_id, err)

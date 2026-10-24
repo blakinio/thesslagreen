@@ -113,8 +113,10 @@ async def test_test_connection_successful():
     transport.read_input_registers = AsyncMock(return_value=ok_response)
     coord.device_client._transport = transport
 
-    # Should complete without exception
     await coord._test_connection()
+
+    coord._ensure_connection.assert_awaited_once()
+    transport.read_input_registers.assert_awaited()
 
 
 async def test_test_connection_modbus_exception_raises():

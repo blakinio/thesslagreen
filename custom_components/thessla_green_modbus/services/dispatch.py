@@ -177,21 +177,3 @@ async def _perform_step_write(
         return True
     logger.error(error_message, entity_id)
     return False
-
-
-async def write_device_name_chunks(coordinator: Any, device_name: str, batch: int) -> bool:
-    """Write a short device name in chunked register writes with offsets.
-
-    device_name is multi-register/string-like; targeted read-back is disabled
-    per chunk since it only applies to single holding-word registers anyway,
-    and the caller performs its own refresh once all chunks are written.
-    """
-    chars_per_batch = batch * 2
-    for i in range(0, len(device_name), chars_per_batch):
-        chunk = device_name[i : i + chars_per_batch]
-        reg_offset = i // 2
-        if not await coordinator.async_write_register(
-            "device_name", chunk, refresh=False, offset=reg_offset, targeted_readback=False
-        ):
-            return False
-    return True

@@ -3,8 +3,7 @@
 
 from types import SimpleNamespace
 from typing import Any, ClassVar
-from unittest.mock import ANY, AsyncMock
-from unittest.mock import call as call_obj
+from unittest.mock import AsyncMock
 
 import pytest
 from custom_components.thessla_green_modbus import services as services_module
@@ -80,8 +79,8 @@ class DummyCoordinator:
 
 
 @pytest.mark.asyncio
-async def test_set_device_name_uses_offsets(monkeypatch):
-    """Service chunks multi-register writes with offsets."""
+async def test_set_device_name_writes_whole_name_once(monkeypatch):
+    """Short names are encoded as one padded payload, not per-chunk offsets."""
 
     hass = SimpleNamespace()
     hass.services = Services()
@@ -106,9 +105,6 @@ async def test_set_device_name_uses_offsets(monkeypatch):
 
     await handler(call)
 
-    coordinator.async_write_register.assert_has_calls(
-        [
-            call_obj("device_name", ANY, refresh=False, offset=0, targeted_readback=False),
-            call_obj("device_name", ANY, refresh=False, offset=2, targeted_readback=False),
-        ]
+    coordinator.async_write_register.assert_awaited_once_with(
+        "device_name", "ABCDEFGH", refresh=False, targeted_readback=False
     )

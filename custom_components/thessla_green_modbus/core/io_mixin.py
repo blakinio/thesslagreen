@@ -187,6 +187,7 @@ class _ModbusIOMixin:
         chunk_start: int,
         register_names: list[str | None],
         data: dict[str, Any],
+        raw_words: dict[int, int] | None = None,
     ) -> None:
         await _read_holding_individually_impl(
             self,
@@ -194,6 +195,7 @@ class _ModbusIOMixin:
             chunk_start,
             register_names,
             data,
+            raw_words=raw_words,
         )
 
     async def _read_holding_registers_optimized(self) -> dict[str, Any]:

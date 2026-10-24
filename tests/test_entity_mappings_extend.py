@@ -9,10 +9,14 @@ def test_extend_entity_mappings_switch_continue(monkeypatch):
     sw_reg = RegisterDef(function=3, address=900, name="p10_switch_only", access="rw", min=0, max=1)
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [sw_reg])
     # Temporarily inject the name into SWITCH but not into the earlier mappings
-    em.SWITCH_ENTITY_MAPPINGS["p10_switch_only"] = {"register": "p10_switch_only"}
+    existing = {"register": "p10_switch_only"}
+    em.SWITCH_ENTITY_MAPPINGS["p10_switch_only"] = existing
     try:
         em._extend_entity_mappings_from_registers()
-        # Should complete without error – the continue at line 1083 was reached
+        assert em.SWITCH_ENTITY_MAPPINGS["p10_switch_only"] is existing
+        assert "p10_switch_only" not in em.NUMBER_ENTITY_MAPPINGS
+        assert "p10_switch_only" not in em.SELECT_ENTITY_MAPPINGS
+        assert "p10_switch_only" not in em.SENSOR_ENTITY_MAPPINGS
     finally:
         em.SWITCH_ENTITY_MAPPINGS.pop("p10_switch_only", None)
 
@@ -23,9 +27,14 @@ def test_extend_entity_mappings_select_continue(monkeypatch):
         function=3, address=901, name="p10_select_only", access="rw", min=0, max=3
     )
     monkeypatch.setattr(em, "get_all_registers", lambda *a, **kw: [sel_reg])
-    em.SELECT_ENTITY_MAPPINGS["p10_select_only"] = {"states": {}}
+    existing = {"states": {}}
+    em.SELECT_ENTITY_MAPPINGS["p10_select_only"] = existing
     try:
         em._extend_entity_mappings_from_registers()
+        assert em.SELECT_ENTITY_MAPPINGS["p10_select_only"] is existing
+        assert "p10_select_only" not in em.NUMBER_ENTITY_MAPPINGS
+        assert "p10_select_only" not in em.SWITCH_ENTITY_MAPPINGS
+        assert "p10_select_only" not in em.SENSOR_ENTITY_MAPPINGS
     finally:
         em.SELECT_ENTITY_MAPPINGS.pop("p10_select_only", None)
 

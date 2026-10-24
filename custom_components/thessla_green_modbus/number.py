@@ -23,6 +23,14 @@ _LOGGER = logging.getLogger(__name__)
 
 PARALLEL_UPDATES = 1
 
+# Vendor protocol: temporary-mode setpoints are only accepted when the mode,
+# setpoint and activation flag (0x1130-0x1132 / 0x1133-0x1135) are written in
+# a single request, so these numbers use the coordinator's triplet writers.
+_TEMPORARY_TRIPLET_WRITERS = {
+    "air_flow_rate_temporary_4401": "async_write_temporary_airflow",
+    "supply_air_temperature_temporary_4404": "async_write_temporary_temperature",
+}
+
 UNIT_MAPPINGS = {
     "°C": UnitOfTemperature.CELSIUS,
     "%": PERCENTAGE,
@@ -194,7 +202,11 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
         try:
-            await self._write_register(self.register_name, value, include_offset=True)
+            if writer := _TEMPORARY_TRIPLET_WRITERS.get(self.register_name):
+                if not await getattr(self.coordinator, writer)(value):
+                    raise RuntimeError(f"Failed to write register {self.register_name}")
+            else:
+                await self._write_register(self.register_name, value, include_offset=True)
             self._optimistic.set_pending(self.register_name, float(value))
             if self.hass is not None:
                 self.async_write_ha_state()

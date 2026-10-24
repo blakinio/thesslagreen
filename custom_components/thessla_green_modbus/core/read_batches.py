@@ -14,6 +14,7 @@ from typing import Any
 from pymodbus.exceptions import ConnectionException, ModbusException, ModbusIOException
 
 from ..registers.read_planner import chunk_register_range
+from .register_processing import assemble_multi_register_values
 from .retry import _PermanentModbusError
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,13 +27,16 @@ async def _read_holding_fallback(
     chunk_start: int,
     register_names: list[str | None],
     data: dict[str, Any],
+    raw_words: dict[int, int] | None = None,
 ) -> None:
     """Call owner fallback hook when present, else default helper."""
     fallback = getattr(owner, "_read_holding_individually", None)
     if callable(fallback):
-        await fallback(read_method, chunk_start, register_names, data)
+        await fallback(read_method, chunk_start, register_names, data, raw_words=raw_words)
         return
-    await read_holding_individually(owner, read_method, chunk_start, register_names, data)
+    await read_holding_individually(
+        owner, read_method, chunk_start, register_names, data, raw_words=raw_words
+    )
 
 
 def _merge_batch_read_results(
@@ -40,10 +44,13 @@ def _merge_batch_read_results(
     response: Any,
     chunk_start: int,
     data: dict[str, Any],
+    raw_words: dict[int, int] | None = None,
 ) -> None:
     """Merge successfully-read batch register values into data."""
     for i, value in enumerate(response.registers):
         addr = chunk_start + i
+        if raw_words is not None:
+            raw_words[addr] = value
         register_name = owner._find_register_name("input_registers", addr)
         if (
             register_name
@@ -62,6 +69,7 @@ async def _fallback_individual_input_reads(
     chunk_start: int,
     register_names: list[str | None],
     data: dict[str, Any],
+    raw_words: dict[int, int] | None = None,
 ) -> None:
     """Read input registers one-by-one as fallback when a batch returns empty."""
     for idx, reg_name in enumerate(register_names):
@@ -71,6 +79,8 @@ async def _fallback_individual_input_reads(
         try:
             single = await owner._read_with_retry(read_method, addr, 1, register_type="input")
             if single.registers:
+                if raw_words is not None:
+                    raw_words[addr] = single.registers[0]
                 pv = owner._process_register_value(reg_name, single.registers[0])
                 if pv is not None:
                     data[reg_name] = pv
@@ -94,11 +104,12 @@ async def _handle_batch_read_failure(
     read_method: Any,
     chunk_start: int,
     data: dict[str, Any],
+    raw_words: dict[int, int] | None = None,
 ) -> None:
     """Handle a partial or empty batch response."""
     if len(response.registers) == 0:
         await _fallback_individual_input_reads(
-            owner, read_method, chunk_start, register_names, data
+            owner, read_method, chunk_start, register_names, data, raw_words
         )
     else:
         missing = register_names[len(response.registers) :]
@@ -113,6 +124,7 @@ async def _read_input_register_batch(
     register_names: list[str | None],
     data: dict[str, Any],
     failed: set[str],
+    raw_words: dict[int, int] | None = None,
 ) -> None:
     """Read one input register chunk, with fallback on partial or empty response."""
     if all(name in failed for name in register_names if name):
@@ -121,10 +133,17 @@ async def _read_input_register_batch(
         response = await owner._read_with_retry(
             read_method, chunk_start, chunk_count, register_type="input"
         )
-        _merge_batch_read_results(owner, response, chunk_start, data)
+        _merge_batch_read_results(owner, response, chunk_start, data, raw_words)
         if len(response.registers) < chunk_count:
             await _handle_batch_read_failure(
-                owner, response, chunk_count, register_names, read_method, chunk_start, data
+                owner,
+                response,
+                chunk_count,
+                register_names,
+                read_method,
+                chunk_start,
+                data,
+                raw_words,
             )
     except _PermanentModbusError:
         owner._mark_registers_failed(register_names)
@@ -158,6 +177,7 @@ async def read_input_registers_optimized(owner: Any) -> dict[str, Any]:
         raise ConnectionException("Modbus client is not connected")
 
     failed: set[str] = getattr(owner, "_failed_registers", set())
+    raw_words: dict[int, int] = {}
 
     for start_addr, count in owner.device_client._register_groups["input_registers"]:
         for chunk_start, chunk_count in chunk_register_range(
@@ -168,9 +188,19 @@ async def read_input_registers_optimized(owner: Any) -> dict[str, Any]:
                 for i in range(chunk_count)
             ]
             await _read_input_register_batch(
-                owner, read_method, chunk_start, chunk_count, register_names, data, failed
+                owner,
+                read_method,
+                chunk_start,
+                chunk_count,
+                register_names,
+                data,
+                failed,
+                raw_words,
             )
 
+    assemble_multi_register_values(
+        4, owner.device_client.available_registers.get("input_registers", set()), raw_words, data
+    )
     return data
 
 
@@ -180,6 +210,7 @@ async def read_holding_individually(
     chunk_start: int,
     register_names: list[str | None],
     data: dict[str, Any],
+    raw_words: dict[int, int] | None = None,
 ) -> None:
     """Read holding registers one-by-one as fallback when a batch read fails."""
     for idx, reg_name in enumerate(register_names):
@@ -189,6 +220,8 @@ async def read_holding_individually(
         try:
             single = await owner._read_with_retry(read_method, addr, 1, register_type="holding")
             if single.registers:
+                if raw_words is not None:
+                    raw_words[addr] = single.registers[0]
                 pv = owner._process_register_value(reg_name, single.registers[0])
                 if pv is not None:
                     data[reg_name] = pv
@@ -231,6 +264,7 @@ async def read_holding_registers_optimized(owner: Any) -> dict[str, Any]:
         return data
 
     failed: set[str] = getattr(owner, "_failed_registers", set())
+    raw_words: dict[int, int] = {}
 
     for start_addr, count in owner.device_client._register_groups["holding_registers"]:
         for chunk_start, chunk_count in chunk_register_range(
@@ -252,6 +286,7 @@ async def read_holding_registers_optimized(owner: Any) -> dict[str, Any]:
 
                 for i, value in enumerate(response.registers):
                     addr = chunk_start + i
+                    raw_words[addr] = value
                     register_name = owner._find_register_name("holding_registers", addr)
                     if (
                         register_name
@@ -267,22 +302,27 @@ async def read_holding_registers_optimized(owner: Any) -> dict[str, Any]:
                 if len(response.registers) < chunk_count:
                     if len(response.registers) == 0:
                         await _read_holding_fallback(
-                            owner, read_method, chunk_start, register_names, data
+                            owner, read_method, chunk_start, register_names, data, raw_words
                         )
                     else:
                         tail_offset = len(response.registers)
                         tail_names = register_names[tail_offset:]
                         tail_start = chunk_start + tail_offset
                         await _read_holding_fallback(
-                            owner, read_method, tail_start, tail_names, data
+                            owner, read_method, tail_start, tail_names, data, raw_words
                         )
             except _PermanentModbusError:
                 owner._mark_registers_failed(register_names)
             except ConnectionException:
                 raise
             except (ModbusException, TimeoutError, OSError, ValueError):
-                await _read_holding_fallback(owner, read_method, chunk_start, register_names, data)
+                await _read_holding_fallback(
+                    owner, read_method, chunk_start, register_names, data, raw_words
+                )
 
+    assemble_multi_register_values(
+        3, owner.device_client.available_registers.get("holding_registers", set()), raw_words, data
+    )
     return data
 
 
