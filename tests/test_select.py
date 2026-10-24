@@ -72,6 +72,22 @@ def test_select_modbus_error_logs_and_returns(mock_coordinator):
     mock_coordinator.async_request_refresh.assert_not_awaited()
 
 
+def test_select_validation_error_is_service_validation_error(mock_coordinator):
+    """A write rejected by validation surfaces as a user error, not a 500."""
+    from homeassistant.exceptions import ServiceValidationError
+
+    mock_coordinator.data["mode"] = 0
+    select_entity = ThesslaGreenSelect(
+        mock_coordinator, "mode", 4208, ENTITY_MAPPINGS["select"]["mode"]
+    )
+    mock_coordinator.async_write_register = AsyncMock(
+        side_effect=ValueError("Filter write rejected: select the correct device family first")
+    )
+
+    with pytest.raises(ServiceValidationError, match="select the correct device family"):
+        asyncio.run(select_entity.async_select_option("manual"))
+
+
 def test_select_definitions_single_source():
     """Ensure select definitions come from central ENTITY_MAPPINGS."""
     assert not hasattr(select, "SELECT_DEFINITIONS")

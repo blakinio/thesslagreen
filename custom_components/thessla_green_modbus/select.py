@@ -12,7 +12,7 @@ from typing import Any
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pymodbus.exceptions import ConnectionException, ModbusException
@@ -157,6 +157,12 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         value = self._states[option]
         try:
             await self._write_register(self._register_name, value)
+        except ValueError as err:
+            # Rejected by validation (e.g. no device family selected for the
+            # filter command): a user-facing error, not a 500 from the service call.
+            raise ServiceValidationError(
+                f"Cannot set {self._register_name} to {option}: {err}"
+            ) from err
         except RuntimeError as err:
             msg = f"Failed to set {self._register_name} to {option}: {err}"
             _LOGGER.error(msg)

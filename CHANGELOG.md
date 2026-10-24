@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A select option rejected by write validation (for example the filter type
+  selected while no device family is set in the options) now raises a
+  user-facing `ServiceValidationError` with the reason instead of failing the
+  service call with an HTTP 500.
+
 ## [2.8.8] - 2026-10-24
 
 > Hardware acceptance PARTIAL: v2.8.7 was confirmed on a running AirPack Home
