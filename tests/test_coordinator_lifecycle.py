@@ -33,6 +33,21 @@ async def test_async_shutdown_calls_disconnect():
     coord._disconnect.assert_called_once()
 
 
+@pytest.mark.asyncio
+async def test_stop_event_does_not_call_already_removed_listener():
+    """``async_listen_once`` has already removed the listener when it fires."""
+    coord = _make_coordinator()
+    coord._disconnect = AsyncMock()
+    stop_listener_mock = MagicMock()
+    coord._stop_listener = stop_listener_mock
+
+    await coord._async_handle_stop(MagicMock())
+
+    stop_listener_mock.assert_not_called()
+    assert coord._stop_listener is None
+    coord._disconnect.assert_called_once()
+
+
 def test_resolve_setup_endpoint_rtu_uses_serial_fallback():
     coord = _make_coordinator(connection_type=CONNECTION_TYPE_RTU, serial_port="")
 

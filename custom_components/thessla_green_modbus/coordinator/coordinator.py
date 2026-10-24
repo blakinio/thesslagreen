@@ -413,6 +413,9 @@ class ThesslaGreenModbusCoordinator(
 
     async def _async_handle_stop(self, _event: Any) -> None:
         """Handle Home Assistant stop to cancel tasks."""
+        # ``async_listen_once`` removes the listener itself before invoking it;
+        # calling the stale unsubscribe callback logs a core ERROR.
+        self._stop_listener = None
         await self.async_shutdown()
 
     async def async_shutdown(self) -> None:

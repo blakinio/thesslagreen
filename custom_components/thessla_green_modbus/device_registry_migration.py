@@ -29,6 +29,23 @@ def _belongs_to_entry(device: Any, entry_id: str) -> bool:
         return False
 
 
+def _get_entry_device(registry: Any, identifier: tuple[str, str], entry_id: str) -> Any | None:
+    """Return the entry-owned device with ``identifier`` across supported HA APIs.
+
+    Newer Home Assistant releases provide ``async_get_device_by_identifier`` and
+    deprecate the entry-agnostic ``async_get_device`` (removal planned for
+    2027.8). Older supported releases only provide the latter, so filter
+    ownership manually there.
+    """
+    get_by_identifier = getattr(registry, "async_get_device_by_identifier", None)
+    if callable(get_by_identifier):
+        return get_by_identifier(identifier, entry_id)
+    device = registry.async_get_device(identifiers={identifier})
+    if device is None or not _belongs_to_entry(device, entry_id):
+        return None
+    return device
+
+
 def migrate_device_identifier(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -53,10 +70,10 @@ def migrate_device_identifier(
     stable = (DOMAIN, stable_identifier)
     legacy = (DOMAIN, f"{dc.config.host}:{dc.config.port}:{dc.config.slave_id}")
 
-    stable_device = registry.async_get_device(identifiers={stable})
-    legacy_device = registry.async_get_device(identifiers={legacy})
-    device = stable_device or legacy_device
-    if device is None or not _belongs_to_entry(device, entry.entry_id):
+    device = _get_entry_device(registry, stable, entry.entry_id) or _get_entry_device(
+        registry, legacy, entry.entry_id
+    )
+    if device is None:
         return
 
     current_identifiers = set(getattr(device, "identifiers", set()))

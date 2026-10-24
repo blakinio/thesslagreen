@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.7] - 2026-10-24
+
+> Hardware acceptance PARTIAL: the issues below were found in the Home Assistant log
+> of a running AirPack Home installation (HA 2026.10.2, v2.8.6); the fixes are
+> CI-validated only. No register addresses or names, entity IDs, unique IDs,
+> service IDs or existing translation keys changed.
+
+### Fixed
+
+- Device-registry migration uses the entry-scoped
+  `async_get_device_by_identifier` lookup where Home Assistant provides it, removing
+  the `device_registry.async_get_device` deprecation warning logged on every start
+  (the old call stops working in Home Assistant 2027.8). Older supported releases
+  keep the previous lookup.
+- Home Assistant shutdown no longer logs `Unable to remove unknown job listener`:
+  the coordinator no longer calls the stop listener that `async_listen_once` has
+  already removed.
+- Fan platform setup no longer requests a second full Modbus poll right after the
+  first refresh (`update_before_add`), which made Home Assistant warn that the fan
+  platform setup took over 10 seconds.
+
 ### Internal
 
 - Development dependency minimums raised: aiodhcpwatcher 1.2.7, PyYAML 6.0.3,

@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
@@ -16,7 +15,8 @@ from pymodbus.exceptions import ConnectionException
 
 
 @pytest.mark.asyncio
-async def test_fan_setup_cancelled_add_retries_without_initial_state() -> None:
+async def test_fan_setup_does_not_request_update_before_add() -> None:
+    """Fan setup reuses first-refresh data instead of polling the device again."""
     coordinator = SimpleNamespace(
         device_client=SimpleNamespace(
             available_registers={
@@ -27,11 +27,12 @@ async def test_fan_setup_cancelled_add_retries_without_initial_state() -> None:
         get_device_info=Mock(return_value={}),
     )
     entry = SimpleNamespace(runtime_data=coordinator)
-    add = Mock(side_effect=[asyncio.CancelledError(), None])
+    add = Mock()
     await fan_module.async_setup_entry(SimpleNamespace(), entry, add)
-    assert add.call_count == 2
-    assert add.call_args_list[0].args[1] is True
-    assert add.call_args_list[1].args[1] is False
+    add.assert_called_once()
+    (entities,) = add.call_args.args
+    assert [type(entity) for entity in entities] == [ThesslaGreenFan]
+    assert add.call_args.kwargs == {}
 
 
 @pytest.mark.asyncio

@@ -227,7 +227,8 @@ jobs:
             tests/test_service_target_contract.py \
             tests/test_integration_service_lifecycle.py \
             tests/test_repairs.py \
-            tests/test_write_repair_lifecycle.py
+            tests/test_write_repair_lifecycle.py \
+            tests/test_device_registry_migration.py
 
   current-ha:
     name: Current HA API contracts (2026.8.1)
@@ -259,7 +260,8 @@ jobs:
             tests/test_service_target_contract.py \
             tests/test_integration_service_lifecycle.py \
             tests/test_repairs.py \
-            tests/test_write_repair_lifecycle.py
+            tests/test_write_repair_lifecycle.py \
+            tests/test_device_registry_migration.py
 
   pymodbus-compatibility:
     name: pymodbus ${{ matrix.pymodbus-version }} compatibility
