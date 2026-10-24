@@ -1,5 +1,6 @@
 """Tests for service helpers ensuring values are encoded when written."""
 
+import asyncio
 from datetime import time
 from types import SimpleNamespace
 
@@ -25,6 +26,7 @@ class DummyCoordinator:
         from types import SimpleNamespace
 
         self.device_client = SimpleNamespace(
+            _write_lock=asyncio.Lock(),
             available_registers={"holding_registers": set()},
             max_registers_per_request=max_registers_per_request,
             effective_batch=min(max_registers_per_request, MAX_BATCH_REGISTERS),
@@ -42,6 +44,13 @@ class DummyCoordinator:
         except Exception:  # pragma: no cover - defensive
             pass
         return True
+
+    def _resolve_write_definition(self, name):
+        return get_register_definition(name)
+
+    async def _locked_single_register_write(self, *, register_name, value, offset, refresh):
+        assert self.device_client._write_lock.locked()
+        return await self.async_write_register(register_name, value, refresh=False), False
 
     async def async_request_refresh(self) -> None:  # pragma: no cover - no behaviour
         pass
@@ -93,15 +102,11 @@ async def test_airflow_schedule_service_passes_user_values(monkeypatch):
     writes = coordinator.writes
 
     assert writes[0] == (
-        HOLDING_REGISTERS["schedule_summer_mon_1"],
-        "06:30",
-        1,
-    )  # nosec: B101
-    assert writes[1] == (
         HOLDING_REGISTERS["setting_summer_mon_1"],
-        14091,
+        {"airflow_pct": 55, "temp_c": 21.5},
         1,
-    )  # nosec: B101
+    )
+    assert writes[1] == (HOLDING_REGISTERS["schedule_summer_mon_1"], "06:30", 1)
 
 
 @pytest.mark.asyncio

@@ -60,6 +60,7 @@ from ..const import (
     MAX_BATCH_REGISTERS,
     MIN_SCAN_INTERVAL,
 )
+from ..device_profile import CONF_DEVICE_FAMILY, DEVICE_FAMILIES
 from ..utils import resolve_connection_settings
 
 
@@ -69,6 +70,7 @@ def build_options_defaults(
 ) -> dict[str, Any]:
     """Build normalized defaults used in options flow forms/placeholders."""
     return {
+        CONF_DEVICE_FAMILY: entry_options.get(CONF_DEVICE_FAMILY, "unspecified"),
         CONF_SCAN_INTERVAL: entry_options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
         CONF_TIMEOUT: entry_options.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
         CONF_RETRY: entry_options.get(CONF_RETRY, DEFAULT_RETRY),
@@ -145,6 +147,9 @@ def build_options_schema(values: dict[str, Any]) -> vol.Schema:
     """Build options flow schema from normalized defaults."""
     return vol.Schema(
         {
+            vol.Optional(
+                CONF_DEVICE_FAMILY, default=values.get(CONF_DEVICE_FAMILY, "unspecified")
+            ): vol.In(DEVICE_FAMILIES),
             vol.Optional(CONF_SCAN_INTERVAL, default=values[CONF_SCAN_INTERVAL]): vol.All(
                 vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL, max=300)
             ),

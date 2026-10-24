@@ -165,11 +165,10 @@ def test_encode_aatt_dict_airflow_pct_key():
 
 
 def test_encode_aatt_scalar_airflow_temp_zero():
-    """AATT encode treats scalar as airflow with temp=0."""
-    reg = Register(function=3, address=0, name="setting_test", access="rw", extra={"aatt": True})
-    result = reg.encode(60)
-    # airflow=60, temp=0 → (60 << 8) | 0 = 15360
-    assert result == (60 << 8)
+    """Airflow-only values must be completed under coordinator lock, never zero temperature."""
+    reg = Register(function=3, address=72, name="setting_summer_mon_1", access="RW")
+    with pytest.raises(ValueError, match="both airflow and temperature"):
+        reg.encode(30)
 
 
 def test_encode_enum_invalid_value_raises():

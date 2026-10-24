@@ -279,7 +279,7 @@ class ThesslaGreenModbusCoordinator(
         _LOGGER.warning(
             "Starting reauthentication for %s (%s)", self._device_client._device_name, reason
         )
-        self.hass.async_create_task(self.entry.async_start_reauth(self.hass))
+        self.entry.async_start_reauth(self.hass)
 
     def _apply_scan_result(self, scan_result: dict[str, Any]) -> None:
         """Store and process a completed device scan result."""

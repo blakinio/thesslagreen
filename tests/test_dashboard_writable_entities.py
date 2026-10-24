@@ -31,6 +31,7 @@ from custom_components.thessla_green_modbus.registers.maps import holding_regist
 from custom_components.thessla_green_modbus.select import ThesslaGreenSelect
 from custom_components.thessla_green_modbus.switch import ThesslaGreenSwitch
 from custom_components.thessla_green_modbus.time import ThesslaGreenTime
+from homeassistant.exceptions import HomeAssistantError
 
 # ---------------------------------------------------------------------------
 # Dashboard entity IDs that are considered writable by the dashboard spec.
@@ -226,14 +227,14 @@ def test_fan_set_percentage_no_stale_coordinator_proxy_needed(mock_coordinator):
 
 _SPECIAL_MODE_DASHBOARD_KEYS = [
     ("boost", SPECIAL_FUNCTION_MAP["boost"]),
-    ("eco", SPECIAL_FUNCTION_MAP["eco"]),
+    ("eco", None),
     ("away", SPECIAL_FUNCTION_MAP["away"]),
-    ("sleep", SPECIAL_FUNCTION_MAP["sleep"]),
+    ("sleep", None),
     ("fireplace", SPECIAL_FUNCTION_MAP["fireplace"]),
     ("hood", SPECIAL_FUNCTION_MAP["hood"]),
-    ("party", SPECIAL_FUNCTION_MAP["party"]),
-    ("bathroom", SPECIAL_FUNCTION_MAP["bathroom"]),
-    ("kitchen", SPECIAL_FUNCTION_MAP["kitchen"]),
+    ("party", None),
+    ("bathroom", None),
+    ("kitchen", None),
 ]
 
 
@@ -248,6 +249,12 @@ def test_special_mode_switch_turn_on_writes_bit_to_special_mode(
     entity_config = ENTITY_MAPPINGS["switch"][mode_key]
     sw = _make_switch(mock_coordinator, mode_key, entity_config)
 
+    if expected_bit is None:
+        assert not sw.available
+        with pytest.raises(HomeAssistantError):
+            asyncio.run(sw.async_turn_on())
+        mock_coordinator.async_write_register.assert_not_awaited()
+        return
     asyncio.run(sw.async_turn_on())
 
     mock_coordinator.async_write_register.assert_awaited()
@@ -269,6 +276,12 @@ def test_special_mode_switch_turn_off_writes_zero_to_special_mode(
     entity_config = ENTITY_MAPPINGS["switch"][mode_key]
     sw = _make_switch(mock_coordinator, mode_key, entity_config)
 
+    if expected_bit is None:
+        assert not sw.available
+        with pytest.raises(HomeAssistantError):
+            asyncio.run(sw.async_turn_off())
+        mock_coordinator.async_write_register.assert_not_awaited()
+        return
     asyncio.run(sw.async_turn_off())
 
     mock_coordinator.async_write_register.assert_awaited()
@@ -373,8 +386,8 @@ def test_number_write_path_needs_no_coordinator_proxy(mock_coordinator, register
 _SELECT_WRITE_CASES: list[tuple[str, str, int]] = [
     ("mode", "manual", 1),
     ("mode", "auto", 0),
-    ("season_mode", "summer", 1),
-    ("season_mode", "winter", 0),
+    ("season_mode", "summer", 0),
+    ("season_mode", "winter", 1),
     ("bypass_user_mode", "mode_2", 2),
     ("gwc_regen", "daily_schedule", 1),
     ("gwc_regen", "inactive", 0),

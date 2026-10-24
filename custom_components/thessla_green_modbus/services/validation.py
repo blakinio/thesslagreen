@@ -29,9 +29,9 @@ GWC_MODE_MAP = {"off": 0, "auto": 1, "forced": 2}
 def validate_bypass_temperature_range(data: dict[str, Any]) -> dict[str, Any]:
     """Validate bypass temperature range independently from voluptuous internals."""
     temperature = data.get("min_outdoor_temperature")
-    if temperature is not None and not (-20.0 <= float(temperature) <= 40.0):
+    if temperature is not None and not (5.0 <= float(temperature) <= 20.0):
         invalid_exc = getattr(vol, "Invalid", ValueError)
-        raise invalid_exc(f"min_outdoor_temperature ({temperature}) must be in range -20.0..40.0")
+        raise invalid_exc(f"min_outdoor_temperature ({temperature}) must be in range 5.0..20.0")
     return data
 
 
@@ -128,9 +128,9 @@ def filter_reset_value(normalize: Any, raw_filter_type: str) -> int:
     return FILTER_TYPE_MAP[normalize(raw_filter_type)]
 
 
-def pressure_test_payload(now: Any) -> list[tuple[str, int]]:
-    """Build pressure-test register writes from current datetime."""
+def pressure_test_payload(now: Any) -> list[tuple[str, int | str]]:
+    """Build user-unit weekly pressure-check schedule values (not an immediate start)."""
     return [
-        ("pres_check_day_2", now.weekday()),
-        ("pres_check_time_2", now.hour * 100 + now.minute),
+        ("pres_check_day_4432", now.weekday()),
+        ("pres_check_time_ggmm", f"{now.hour:02d}:{now.minute:02d}"),
     ]

@@ -38,7 +38,8 @@ def performance_stats(coordinator: Any) -> dict[str, Any]:
     """Return performance statistics."""
     dc = coordinator.device_client
     return {
-        "total_reads": dc.statistics["successful_reads"],
+        "total_reads": dc.statistics["successful_reads"] + dc.statistics["failed_reads"],
+        "successful_reads": dc.statistics["successful_reads"],
         "failed_reads": dc.statistics["failed_reads"],
         "success_rate": (
             dc.statistics["successful_reads"]
@@ -144,7 +145,7 @@ def _resolve_sw_version(coordinator: Any) -> str:
         parts.append(str(int(major)))
 
     if cf is not None:
-        parts.append(f"CF{int(cf)}")
+        parts.append(f"CF{cf}")
 
     return " ".join(parts) if parts else "Unknown"
 

@@ -7,35 +7,45 @@ from typing import Any
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 
+from ..coordinator.schedule_service import async_write_schedule_slot
 from .handler_deps import ServiceHandlerDeps
+from .handlers_airing import register_airing_service
 from .schema import SET_AIRFLOW_SCHEDULE_SCHEMA
 
 
-def _resolve_schedule_temperature_byte(
-    coordinator: Any, setting_register: str, temperature: float | None
-) -> int:
-    if temperature is not None:
-        return max(0, min(39, round((temperature - 16.0) * 2)))
-
-    current = coordinator.data.get(setting_register) if coordinator.data else None
-    return int(current) & 0xFF if isinstance(current, int) else 0
+def _schedule_settings(flow: int, temperature: float | None) -> dict[str, Any]:
+    """Validate AATT fields in user units; absent temperature is read under lock."""
+    if not 10 <= flow <= 100:
+        raise ServiceValidationError("Schedule airflow must be from 10 to 100 percent")
+    if temperature is not None and (
+        not 10 <= temperature <= 45 or not float(temperature * 2).is_integer()
+    ):
+        raise ServiceValidationError("Schedule temperature must be 10..45 C in 0.5 C steps")
+    return {"airflow_pct": flow, "temp_c": temperature}
 
 
 def register_schedule_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> None:
     """Register schedule-related services."""
+    register_airing_service(hass, deps)
 
     async def set_airflow_schedule(call: ServiceCall) -> None:
         day = deps.normalize_option(call.data["day"])
         period = int(deps.normalize_option(str(call.data["period"])))
         season = deps.normalize_option(call.data.get("season", "summer"))
-        start_time = call.data["start_time"]
+        start_time = call.data.get("start_time")
+        enabled = call.data.get("enabled", True)
         end_time = call.data.get("end_time")
-        airflow_rate = call.data["airflow_rate"]
+        airflow_rate = call.data.get("airflow_rate")
         temperature = call.data.get("temperature")
         dow_key = deps.day_to_device_key[day]
         schedule_register = f"schedule_{season}_{dow_key}_{period}"
         setting_register = f"setting_{season}_{dow_key}_{period}"
-        start_value = f"{start_time.hour:02d}:{start_time.minute:02d}"
+        if enabled and (start_time is None or airflow_rate is None):
+            raise ServiceValidationError(
+                "start_time and airflow_rate are required when enabling a slot"
+            )
+        start_value = f"{start_time.hour:02d}:{start_time.minute:02d}" if enabled else "disabled"
+        settings = _schedule_settings(airflow_rate, temperature) if enabled else None
 
         if end_time is not None:
             raise ServiceValidationError(
@@ -56,35 +66,16 @@ def register_schedule_services(hass: HomeAssistant, deps: ServiceHandlerDeps) ->
                     f"{', '.join(sorted(missing))}."
                 )
 
-            clamped_airflow = deps.clamp_airflow_rate(coordinator, airflow_rate)
-            temp_byte = _resolve_schedule_temperature_byte(
-                coordinator, setting_register, temperature
+            await async_write_schedule_slot(
+                coordinator, schedule_register, start_value, setting_register, settings
             )
-            aatt_value = ((clamped_airflow & 0xFF) << 8) | (temp_byte & 0xFF)
-
-            await deps.write_register(
-                coordinator,
-                schedule_register,
-                start_value,
-                entity_id,
-                "set airflow schedule start",
-            )
-            await deps.write_register(
-                coordinator,
-                setting_register,
-                aatt_value,
-                entity_id,
-                "set airflow schedule AATT",
-            )
-
-            await coordinator.async_request_refresh()
             deps.logger.info(
-                "Set airflow schedule [%s %s slot %d] start=%s flow=%d%% on %s",
+                "Set airflow schedule [%s %s slot %d] start=%s flow=%s%% on %s",
                 season,
                 dow_key,
                 period,
                 start_value,
-                clamped_airflow,
+                airflow_rate,
                 entity_id,
             )
 

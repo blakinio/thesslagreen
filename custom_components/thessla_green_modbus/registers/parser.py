@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import Any, cast
@@ -10,21 +9,9 @@ from typing import Any, cast
 from .parse_file_helpers import async_read_registers_json, read_registers_json
 from .register_def import RegisterDef
 from .schema import RegisterList, _normalise_function, _normalise_name
+from .special_modes import SPECIAL_MODES
 
 _LOGGER = logging.getLogger(__name__)
-_SPECIAL_MODES_PATH = Path(__file__).resolve().parents[1] / "options" / "special_modes.json"
-_SPECIAL_MODES_ENUM: dict[int, str] = {}
-try:
-    _SPECIAL_MODES_ENUM = {
-        idx: key.split("_")[-1]
-        for idx, key in enumerate(json.loads(_SPECIAL_MODES_PATH.read_text()))
-    }
-except (OSError, json.JSONDecodeError, ValueError) as err:
-    _LOGGER.debug("Failed to load special modes: %s", err)
-    _SPECIAL_MODES_ENUM = {}
-except (AttributeError, TypeError) as err:
-    _LOGGER.exception("Unexpected error loading special modes: %s", err)
-    _SPECIAL_MODES_ENUM = {}
 
 
 def parse_registers(raw: Any) -> list[RegisterDef]:
@@ -43,7 +30,7 @@ def normalise_enum_map(
 ) -> dict[int | str, Any] | None:
     """Normalize enum maps while preserving non-numeric mappings."""
     if name == "special_mode":
-        return cast(dict[int | str, Any], _SPECIAL_MODES_ENUM)
+        return {code: name for name, code in SPECIAL_MODES.items()}
     if not enum_map:
         return enum_map
     if all(isinstance(k, int | float) or str(k).isdigit() for k in enum_map):

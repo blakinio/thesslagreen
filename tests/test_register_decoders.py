@@ -65,8 +65,8 @@ def test_decode_aatt_value_valid():
     """Verify combined airflow/temperature registers decode correctly."""
     assert _decode_aatt(15400) == {"airflow_pct": 60, "temp_c": 20.0}
     assert _decode_aatt(25650) == {"airflow_pct": 100, "temp_c": 25.0}
-    assert _decode_aatt(38400) == {"airflow_pct": 150, "temp_c": 0.0}
-    assert _decode_aatt(0) == {"airflow_pct": 0, "temp_c": 0.0}
+    assert _decode_aatt(38400) is None  # Outside both manufacturer schedule ranges
+    assert _decode_aatt(0) is None  # Not a valid schedule setting
 
 
 @pytest.mark.parametrize("value", [-1, 65320, 15871, 32768])

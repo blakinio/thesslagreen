@@ -66,7 +66,11 @@ async def test_write_then_refresh_rejects_unconfirmed_write() -> None:
 
 @pytest.mark.asyncio
 async def test_reset_filters_success_and_write_failure() -> None:
-    coordinator = SimpleNamespace(async_request_refresh=AsyncMock())
+    coordinator = SimpleNamespace(
+        async_request_refresh=AsyncMock(),
+        entry=SimpleNamespace(options={"device_family": "airpack_home"}),
+        data={"filter_change": 3},
+    )
     deps = _deps(coordinator)
     handler = maintenance._build_reset_filters_handler(object(), deps)
     with (
@@ -75,7 +79,7 @@ async def test_reset_filters_success_and_write_failure() -> None:
     ):
         await handler(SimpleNamespace(data={"filter_type": "all"}))
     deps.write_register.assert_awaited_once_with(
-        coordinator, "filter_change", 3, "sensor.unit", "reset filters"
+        coordinator, "filter_change", 3, "sensor.unit", "record filter replacement"
     )
     refresh.assert_awaited_once()
 
@@ -88,7 +92,11 @@ async def test_reset_filters_success_and_write_failure() -> None:
 
 @pytest.mark.asyncio
 async def test_reset_settings_and_pressure_test_failure_paths() -> None:
-    coordinator = SimpleNamespace()
+    coordinator = SimpleNamespace(
+        device_client=SimpleNamespace(
+            available_registers={"holding_registers": {"configuration_mode"}}
+        )
+    )
     deps = _deps(coordinator)
     reset_handler = maintenance._build_reset_settings_handler(object(), deps)
     with (
@@ -97,14 +105,12 @@ async def test_reset_settings_and_pressure_test_failure_paths() -> None:
     ):
         with pytest.raises(HomeAssistantError, match="did not confirm maintenance action"):
             await reset_handler(SimpleNamespace(data={"reset_type": "hard"}))
-
+    deps.write_register = AsyncMock(return_value=False)
     pressure_handler = maintenance._build_start_pressure_test_handler(object(), deps)
-    with (
-        patch.object(maintenance, "pressure_test_payload", return_value=[("x", 1)]),
-        patch.object(maintenance, "write_register_batch", new=AsyncMock(return_value=False)),
-    ):
-        with pytest.raises(HomeAssistantError, match="did not confirm pressure test"):
-            await pressure_handler(SimpleNamespace(data={}))
+    with pytest.raises(HomeAssistantError, match="did not confirm pressure test"):
+        await pressure_handler(
+            SimpleNamespace(data={"test_type": "duct_filter", "confirm_equipment": True})
+        )
 
 
 @pytest.mark.asyncio

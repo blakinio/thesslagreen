@@ -75,7 +75,7 @@ async def test_coordinator_uses_rtu_transport_for_read_write():
         1,
         register_type="input",
     )
-    await coordinator.async_write_registers(10, [1])
+    await coordinator.async_write_registers(4210, [30])
 
     coordinator.device_client._transport.read_input_registers.assert_awaited()
     coordinator.device_client._transport.write_registers.assert_awaited()

@@ -43,7 +43,7 @@ SELECT_ENTITY_MAPPINGS: dict[str, dict[str, Any]] = {
     "season_mode": {
         "icon": "mdi:weather-partly-snowy",
         "translation_key": "season_mode",
-        "states": {"winter": 0, "summer": 1},
+        "states": {"summer": 0, "winter": 1},
         "register_type": "holding_registers",
     },
     "filter_change": {

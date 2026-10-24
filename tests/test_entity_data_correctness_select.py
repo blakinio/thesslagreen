@@ -52,12 +52,12 @@ class TestSelectEntity:
         assert entity.current_option is None
 
     def test_season_mode_winter(self, mock_coordinator):
-        mock_coordinator.data["season_mode"] = 0
+        mock_coordinator.data["season_mode"] = 1
         entity = _make_select(mock_coordinator, "season_mode")
         assert entity.current_option == "winter"
 
     def test_season_mode_summer(self, mock_coordinator):
-        mock_coordinator.data["season_mode"] = 1
+        mock_coordinator.data["season_mode"] = 0
         entity = _make_select(mock_coordinator, "season_mode")
         assert entity.current_option == "summer"
 

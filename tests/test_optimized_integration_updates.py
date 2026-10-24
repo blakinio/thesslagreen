@@ -74,8 +74,12 @@ class TestThesslaGreenModbusCoordinator:
     async def test_coordinator_write_register(self, coordinator_data):
         mock_response = MagicMock()
         mock_response.isError.return_value = False
-        mock_client = AsyncMock()
-        mock_client.write_register.return_value = mock_response
+        mock_client = MagicMock()
+        mock_client.write_register = AsyncMock(return_value=mock_response)
+        read_response = MagicMock()
+        read_response.isError.return_value = False
+        read_response.registers = [1]
+        mock_client.read_holding_registers = AsyncMock(return_value=read_response)
         with patch.object(coordinator_data, "_ensure_connection", AsyncMock()):
             coordinator_data.device_client.client = mock_client
             result = await coordinator_data.async_write_register("mode", 1)
@@ -184,7 +188,7 @@ class TestThesslaGreenDeviceScanner:
         assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
         assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
         assert scanner._is_valid_register_value("outside_temperature", SENSOR_UNAVAILABLE) is True
-        assert scanner._is_valid_register_value("supply_air_flow", 65535) is False
+        assert scanner._is_valid_register_value("supply_air_flow", 65535) is True
         assert scanner._is_valid_register_value("mode", 5) is False
         scanner._register_ranges["schedule_start_time"] = (0, 2359)
         assert scanner._is_valid_register_value("schedule_start_time", 2078) is True

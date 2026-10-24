@@ -217,7 +217,7 @@ async def test_special_mode_rejects_duration_when_register_is_missing() -> None:
     hass = SimpleNamespace(services=_Services())
     deps = _mode_deps(coordinator)
     handlers_mode.register_mode_services(hass, deps)
-    with pytest.raises(ServiceValidationError, match="boost_duration"):
+    with pytest.raises(ServiceValidationError, match="Duration unavailable"):
         await hass.services.handlers["set_special_mode"](
             SimpleNamespace(data={"mode": "boost", "duration": 10})
         )

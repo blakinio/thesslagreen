@@ -160,16 +160,12 @@ def test_parser_schema_delegate_and_reversed_enum_paths() -> None:
 
 
 def test_parser_special_modes_import_error_paths_restore_module() -> None:
-    """Exercise both expected and unexpected special-mode load failures."""
-    try:
-        with patch.object(Path, "read_text", side_effect=OSError("unavailable")):
+    """UI filesystem failures cannot rewrite the manufacturer protocol enum."""
+    for error in (OSError("unavailable"), TypeError("bad path")):
+        with patch.object(Path, "read_text", side_effect=error):
             importlib.reload(parser_module)
-            assert parser_module._SPECIAL_MODES_ENUM == {}
-        with patch.object(Path, "read_text", side_effect=TypeError("bad path")):
-            importlib.reload(parser_module)
-            assert parser_module._SPECIAL_MODES_ENUM == {}
-    finally:
-        importlib.reload(parser_module)
+            assert parser_module.normalise_enum_map("special_mode", {})[1] == "hood"
+            assert parser_module.normalise_enum_map("special_mode", {})[7] == "airing_manual"
 
 
 def test_framer_missing_enum_and_invalid_enum_paths_restore_module() -> None:

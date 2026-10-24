@@ -58,45 +58,49 @@ async def async_update_data(coordinator: ThesslaGreenModbusCoordinator) -> dict[
     if prepared_data is not None:
         return prepared_data
 
-    async with coordinator.device_client._write_lock:
-        try:
-            return await run_update_cycle(coordinator, start_time)
+    try:
+        async with coordinator.device_client._write_lock:
+            # Shutdown may begin while this task waits behind another writer.
+            if getattr(coordinator, "_shutting_down", False):
+                return coordinator.data or {}
+            try:
+                return await run_update_cycle(coordinator, start_time)
 
-        except asyncio.CancelledError:
-            # Don't count cancellation as a failure, but close the transport
-            # to avoid leaving it in an inconsistent state mid-read.
-            with contextlib.suppress(Exception):
-                await coordinator._disconnect()
-            if getattr(coordinator, "_shutting_down", False):
-                _LOGGER.debug("Update cycle cancelled during coordinator shutdown")
-            raise
-        except (ModbusException, ConnectionException) as exc:
-            if getattr(coordinator, "_shutting_down", False):
-                _LOGGER.debug("Connection error during shutdown (expected): %s", exc)
-                raise UpdateFailed(str(exc)) from exc
-            raise await handle_update_error(
-                coordinator,
-                exc,
-                reauth_reason="connection_failure",
-                message="Error communicating with device",
-                check_auth=True,
-            ) from exc
-        except TimeoutError as exc:
-            raise await handle_update_error(
-                coordinator,
-                exc,
-                reauth_reason="timeout",
-                message="Timeout during data update",
-                log_level=logging.WARNING,
-                timeout_error=True,
-            ) from exc
-        except (OSError, ValueError) as exc:
-            raise await handle_update_error(
-                coordinator,
-                exc,
-                reauth_reason="connection_failure",
-                message="Unexpected error",
-                use_helper=False,
-            ) from exc
-        finally:
-            finish_update_cycle(coordinator)
+            except asyncio.CancelledError:
+                # Don't count cancellation as a failure, but close the transport
+                # to avoid leaving it in an inconsistent state mid-read.
+                with contextlib.suppress(Exception):
+                    await coordinator._disconnect()
+                if getattr(coordinator, "_shutting_down", False):
+                    _LOGGER.debug("Update cycle cancelled during coordinator shutdown")
+                raise
+            except (ModbusException, ConnectionException) as exc:
+                if getattr(coordinator, "_shutting_down", False):
+                    _LOGGER.debug("Connection error during shutdown (expected): %s", exc)
+                    raise UpdateFailed(str(exc)) from exc
+                raise await handle_update_error(
+                    coordinator,
+                    exc,
+                    reauth_reason="connection_failure",
+                    message="Error communicating with device",
+                    check_auth=True,
+                ) from exc
+            except TimeoutError as exc:
+                raise await handle_update_error(
+                    coordinator,
+                    exc,
+                    reauth_reason="timeout",
+                    message="Timeout during data update",
+                    log_level=logging.WARNING,
+                    timeout_error=True,
+                ) from exc
+            except (OSError, ValueError) as exc:
+                raise await handle_update_error(
+                    coordinator,
+                    exc,
+                    reauth_reason="connection_failure",
+                    message="Unexpected error",
+                    use_helper=False,
+                ) from exc
+    finally:
+        finish_update_cycle(coordinator)

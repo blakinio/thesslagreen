@@ -30,6 +30,7 @@ class _Coordinator:
         self.available_registers = {
             "holding_registers": {r.name for r in get_registers_by_function("03")}
         }
+        self.device_client = SimpleNamespace(available_registers=self.available_registers)
 
 
 def _make_hass():
@@ -55,41 +56,41 @@ async def _setup_and_get(hass, service_name, coordinator, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_set_air_quality_thresholds_basic(monkeypatch):
+    """Undocumented targets must not be presented as successful writes."""
     coord = _Coordinator()
     handler = await _setup_and_get(_make_hass(), "set_air_quality_thresholds", coord, monkeypatch)
-    await handler(
-        _make_call(
-            {
-                "entity_id": ["climate.dev"],
-                "co2_low": 600,
-                "co2_medium": 900,
-                "co2_high": 1200,
-                "humidity_target": 50,
-            }
+    with pytest.raises(HomeAssistantError, match="Unsupported writable register"):
+        await handler(
+            _make_call(
+                {
+                    "entity_id": ["climate.dev"],
+                    **{"co2_low": 600, "co2_medium": 900, "co2_high": 1200, "humidity_target": 50},
+                }
+            )
         )
-    )
-    written = {c.args[0]: c.args[1] for c in coord.async_write_register.call_args_list}
-    assert written["co2_threshold_low"] == 600
-    assert written["co2_threshold_medium"] == 900
-    assert written["co2_threshold_high"] == 1200
-    assert written["humidity_target"] == 50
-    coord.async_request_refresh.assert_awaited_once()
+    coord.async_write_register.assert_not_awaited()
+    coord.async_request_refresh.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_set_air_quality_thresholds_partial(monkeypatch):
+    """Undocumented targets must not be presented as successful writes."""
     coord = _Coordinator()
     handler = await _setup_and_get(_make_hass(), "set_air_quality_thresholds", coord, monkeypatch)
-    await handler(_make_call({"entity_id": ["climate.dev"], "co2_low": 600}))
-    written = [c.args[0] for c in coord.async_write_register.call_args_list]
-    assert written == ["co2_threshold_low"]
+    with pytest.raises(HomeAssistantError, match="Unsupported writable register"):
+        await handler(_make_call({"entity_id": ["climate.dev"], **{"co2_low": 600}}))
+    coord.async_write_register.assert_not_awaited()
+    coord.async_request_refresh.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_set_air_quality_thresholds_write_failure(monkeypatch):
-    coord = _Coordinator(write_result=False)
+    """Undocumented targets must not be presented as successful writes."""
+    coord = _Coordinator()
     handler = await _setup_and_get(_make_hass(), "set_air_quality_thresholds", coord, monkeypatch)
-    with pytest.raises(HomeAssistantError):
-        await handler(_make_call({"entity_id": ["climate.dev"], "co2_low": 600, "co2_medium": 900}))
+    with pytest.raises(HomeAssistantError, match="Unsupported writable register"):
+        await handler(
+            _make_call({"entity_id": ["climate.dev"], **{"co2_low": 600, "co2_medium": 900}})
+        )
+    coord.async_write_register.assert_not_awaited()
     coord.async_request_refresh.assert_not_awaited()
-    assert coord.async_write_register.call_count == 1

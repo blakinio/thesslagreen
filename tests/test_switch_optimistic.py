@@ -83,6 +83,7 @@ def test_special_mode_pending_raw_value(mock_coordinator):
     assert switch._optimistic.get_pending("special_mode") == 2
     assert switch.is_on is True
 
+    mock_coordinator.data["special_mode"] = 2  # confirmed command before switching off
     asyncio.run(switch.async_turn_off())
     assert switch._optimistic.get_pending("special_mode") == 0
     assert switch.is_on is False

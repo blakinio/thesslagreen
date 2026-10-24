@@ -121,7 +121,7 @@ SERVICE_REGISTRATION_GROUPS: tuple[ServiceRegistrationGroup, ...] = (
     ),
     ServiceRegistrationGroup(
         register=register_schedule_services,
-        service_names=("set_airflow_schedule", "set_intensity"),
+        service_names=("set_airflow_schedule", "set_intensity", "set_airing_schedule"),
     ),
     ServiceRegistrationGroup(
         register=register_parameter_services,

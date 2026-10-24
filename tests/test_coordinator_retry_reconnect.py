@@ -199,6 +199,7 @@ async def test_async_write_register_multi_reg_chunk_error_last_attempt():
     mock_def = MagicMock()
     mock_def.length = 2
     mock_def.function = 3
+    mock_def.access = "RW"
     mock_def.address = 100
     err_resp = MagicMock()
     err_resp.isError.return_value = True
@@ -323,6 +324,7 @@ async def test_async_write_register_multi_reg_chunk_error_retry():
     mock_def = MagicMock()
     mock_def.length = 2
     mock_def.function = 3
+    mock_def.access = "RW"
     mock_def.address = 100
     err_resp = MagicMock()
     err_resp.isError.return_value = True

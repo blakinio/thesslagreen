@@ -95,6 +95,31 @@ def test_resolve_falls_back_to_transport_when_no_client() -> None:
     assert client is None
 
 
+def test_resolve_own_client_preserves_transport_ownership() -> None:
+    """Passing scanner._client must still use the transport lifecycle."""
+    fake_transport = object()
+    fake_client = object()
+    scanner = SimpleNamespace(_transport=fake_transport, _client=fake_client)
+
+    transport, client = resolve_transport_and_client(scanner, fake_client)
+
+    assert transport is fake_transport
+    assert client is fake_client
+
+
+def test_resolve_external_client_can_bypass_transport() -> None:
+    """A genuinely external explicit client remains an intentional override."""
+    fake_transport = object()
+    scanner_client = object()
+    external_client = object()
+    scanner = SimpleNamespace(_transport=fake_transport, _client=scanner_client)
+
+    transport, client = resolve_transport_and_client(scanner, external_client)
+
+    assert transport is None
+    assert client is external_client
+
+
 def test_resolve_falls_back_to_scanner_client() -> None:
     fake_client = object()
     scanner = SimpleNamespace(_transport=None, _client=fake_client)

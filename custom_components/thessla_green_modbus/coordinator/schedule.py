@@ -9,7 +9,10 @@ from typing import TYPE_CHECKING, Any
 from pymodbus.exceptions import ConnectionException, ModbusException
 
 from ..const import MAX_REGS_PER_REQUEST
-from ..core.write_path import SingleWritePlan, encode_write_value
+from ..core.schedule_values import complete_schedule_value
+from ..core.write_path import SingleWritePlan, encode_write_value, validate_holding_write_span
+from ..device_profile import configured_device_family, validate_filter_command
+from ..register_defs_cache import get_register_definitions
 from ..registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
 from ..registers.read_planner import chunk_register_values
 from .write_path import (
@@ -232,10 +235,14 @@ class _CoordinatorScheduleMixin:
     def _resolve_write_definition(self, register_name: str) -> Any | None:
         """Resolve writable register definition or log an error."""
         try:
-            return _get_register_definition(register_name)
+            definition = _get_register_definition(register_name)
         except KeyError:
             _LOGGER.error("Unknown register name: %s", register_name)
             return None
+        if "W" not in definition.access.upper() or definition.function not in (1, 3):
+            _LOGGER.error("Register %s is read-only", register_name)
+            return None
+        return definition
 
     def _validate_multi_register_write_request(
         self, start_address: int, values: list[int], require_single_request: bool
@@ -243,6 +250,15 @@ class _CoordinatorScheduleMixin:
         """Validate a multi-register write request before connection work."""
         if not values:
             _LOGGER.error("No values provided for multi-register write at %s", start_address)
+            return False
+        try:
+            validate_holding_write_span(start_address, values, get_register_definitions().values())
+            if start_address <= 8191 < start_address + len(values):
+                validate_filter_command(
+                    configured_device_family(self), values[8191 - start_address]
+                )
+        except (ValueError, TypeError, OverflowError) as error:
+            _LOGGER.error("Raw register write rejected: %s", error)
             return False
         if require_single_request and len(values) > MAX_REGS_PER_REQUEST:
             _LOGGER.error(
@@ -332,7 +348,7 @@ class _CoordinatorScheduleMixin:
         self,
         *,
         register_name: str,
-        original_value: float | str | list[int] | tuple[int, ...],
+        original_value: float | str | dict[str, Any] | list[int] | tuple[int, ...],
         refresh: bool,
     ) -> bool:
         """Apply common success side effects for single-register write path."""
@@ -398,7 +414,7 @@ class _CoordinatorScheduleMixin:
         self,
         *,
         register_name: str,
-        value: float | str | list[int] | tuple[int, ...],
+        value: float | str | dict[str, Any] | list[int] | tuple[int, ...],
         offset: int,
         refresh: bool,
     ) -> tuple[bool, bool]:
@@ -410,8 +426,23 @@ class _CoordinatorScheduleMixin:
         if definition is None:
             return False, False
 
+        if register_name == "filter_change":
+            validate_filter_command(configured_device_family(self), value)
+
         await self._ensure_connection()
         self._assert_write_connection_ready()
+
+        if register_name.startswith("setting_"):
+            # Read/modify/write under the same transport lock. Do not preserve
+            # the temperature byte from a potentially stale coordinator snapshot.
+            current = None
+            if not isinstance(value, dict) or value.get("temp_c", value.get("temp")) is None:
+                raw = await self._locked_read_holding_registers(definition.address, count=1)
+                if raw is None or len(raw) != 1:
+                    _LOGGER.error("Cannot preserve schedule temperature for %s", register_name)
+                    return False, False
+                current = definition.decode(raw)
+            value = complete_schedule_value(value, current)
 
         encoded_values, scalar_value = encode_write_value(register_name, definition, value, offset)
         if encoded_values is None and scalar_value is None:
@@ -429,7 +460,7 @@ class _CoordinatorScheduleMixin:
     async def async_write_register(
         self,
         register_name: str,
-        value: float | str | list[int] | tuple[int, ...],
+        value: float | str | dict[str, Any] | list[int] | tuple[int, ...],
         refresh: bool = True,
         *,
         offset: int = 0,

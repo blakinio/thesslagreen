@@ -10,7 +10,11 @@ from homeassistant.exceptions import ServiceValidationError
 from .handler_deps import ServiceHandlerDeps
 from .schema import SET_SPECIAL_MODE_SCHEMA
 
-_DURATION_MODES = frozenset({"boost", "fireplace", "hood", "party", "bathroom"})
+_DURATION_REGISTERS = {
+    "boost": ("airing_panel_mode_time", 45),
+    "airing_manual": ("airing_panel_mode_time", 45),
+    "fireplace": ("fireplace_mode_time", 10),
+}
 
 
 async def _refresh_and_log_mode_success(
@@ -28,27 +32,31 @@ def register_mode_services(hass: HomeAssistant, deps: ServiceHandlerDeps) -> Non
         duration = call.data.get("duration", 0)
 
         for entity_id, coordinator in await deps.iter_target_coordinators(hass, call):
-            duration_register: str | None = None
-            if duration > 0 and mode in _DURATION_MODES:
-                duration_register = f"{mode}_duration"
+            if mode not in deps.special_function_map:
+                raise ServiceValidationError(f"Unsupported AirPack special function: {mode}")
+            duration_register = None
+            if duration > 0:
+                if mode not in _DURATION_REGISTERS:
+                    raise ServiceValidationError(f"No documented duration control for {mode}")
+                duration_register, maximum = _DURATION_REGISTERS[mode]
                 holding = coordinator.device_client.available_registers.get(
                     "holding_registers", set()
                 )
-                if duration_register not in holding:
+                if duration_register not in holding or not 1 <= duration <= maximum:
                     raise ServiceValidationError(
-                        f"{entity_id} does not expose {duration_register}; "
-                        "the requested duration cannot be applied safely."
+                        f"Duration unavailable or outside 1..{maximum} minutes for {mode}"
                     )
-
-            special_mode_value = deps.special_function_map.get(mode, 0)
-            await deps.write_register(
-                coordinator, "special_mode", special_mode_value, entity_id, "set special mode"
-            )
-
             if duration_register is not None:
                 await deps.write_register(
                     coordinator, duration_register, duration, entity_id, "set special mode duration"
                 )
+            await deps.write_register(
+                coordinator,
+                "special_mode",
+                deps.special_function_map[mode],
+                entity_id,
+                "set special mode",
+            )
 
             await _refresh_and_log_mode_success(coordinator, deps, mode, entity_id)
 

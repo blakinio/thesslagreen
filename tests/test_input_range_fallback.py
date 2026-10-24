@@ -25,7 +25,8 @@ async def test_input_range_read_after_block_failure():
     regs = {f"reg_{addr:04X}": addr for addr in range(14, 30)}
     call_log = []
 
-    async def fake_call_modbus(func, slave_id, address, *, count):
+    async def fake_read_input(_transport, slave_id, address, *, count, attempt=1):
+        assert slave_id == 10
         call_log.append((address, count))
         if address == 0 and count == 5:
             return SimpleNamespace(registers=[4, 85, 0, 0, 0], isError=lambda: False)
@@ -68,8 +69,9 @@ async def test_input_range_read_after_block_failure():
 
         with (
             patch(
-                "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
-                side_effect=fake_call_modbus,
+                "custom_components.thessla_green_modbus.transport.tcp._ClientBackedTransport.read_input_registers",
+                autospec=True,
+                side_effect=fake_read_input,
             ),
             patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
             patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),
@@ -98,7 +100,8 @@ async def test_block_exception_allows_single_register_reads():
 
     error_response = SimpleNamespace(isError=lambda: True, exception_code=4)
 
-    async def fake_call_modbus(func, slave_id, address, *, count):
+    async def fake_read_input(_transport, slave_id, address, *, count, attempt=1):
+        assert slave_id == 10
         call_log.append((address, count))
         if address == 0 and count == 5:
             return SimpleNamespace(registers=[4, 85, 0, 0, 0], isError=lambda: False)
@@ -141,8 +144,9 @@ async def test_block_exception_allows_single_register_reads():
 
         with (
             patch(
-                "custom_components.thessla_green_modbus.scanner.io_core._call_modbus",
-                side_effect=fake_call_modbus,
+                "custom_components.thessla_green_modbus.transport.tcp._ClientBackedTransport.read_input_registers",
+                autospec=True,
+                side_effect=fake_read_input,
             ),
             patch.object(scanner, "_read_holding", AsyncMock(side_effect=fake_read_holding)),
             patch.object(scanner, "_read_coil", AsyncMock(side_effect=fake_read_coil)),

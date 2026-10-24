@@ -30,6 +30,7 @@ class _Coordinator:
         self.available_registers = {
             "holding_registers": {r.name for r in get_registers_by_function("03")}
         }
+        self.device_client = SimpleNamespace(available_registers=self.available_registers)
 
 
 def _make_hass():
@@ -59,7 +60,7 @@ async def test_set_bypass_parameters_basic(monkeypatch):
     handler = await _setup_and_get(_make_hass(), "set_bypass_parameters", coord, monkeypatch)
     await handler(_make_call({"entity_id": ["climate.dev"], "mode": "auto"}))
     coord.async_write_register.assert_called_once_with(
-        "bypass_mode", 0, refresh=False, targeted_readback=False
+        "bypass_off", 0, refresh=False, targeted_readback=False
     )
     coord.async_request_refresh.assert_awaited_once()
 
@@ -72,13 +73,13 @@ async def test_set_bypass_parameters_with_temperature(monkeypatch):
         _make_call(
             {
                 "entity_id": ["climate.dev"],
-                "mode": "open",
+                "mode": "auto",
                 "min_outdoor_temperature": 15.0,
             }
         )
     )
     written = [c.args[0] for c in coord.async_write_register.call_args_list]
-    assert "bypass_mode" in written
+    assert "bypass_off" in written
     assert "min_bypass_temperature" in written
 
 
@@ -109,15 +110,15 @@ async def test_set_bypass_parameters_min_temp_write_failure(monkeypatch):
     coord.async_request_refresh.assert_not_awaited()
 
 
-def test_set_bypass_parameters_schema_accepts_negative_min_temperature():
+def test_set_bypass_parameters_schema_accepts_vendor_min_temperature():
     from custom_components.thessla_green_modbus.services import _validate_bypass_temperature_range
 
-    payload = {"min_outdoor_temperature": -10.0}
+    payload = {"min_outdoor_temperature": 5.0}
     assert _validate_bypass_temperature_range(payload) == payload
 
 
 def test_set_bypass_parameters_schema_rejects_too_low_temperature():
     from custom_components.thessla_green_modbus.services import _validate_bypass_temperature_range
 
-    with pytest.raises(Exception, match=r"-20.0\.\.40.0"):
+    with pytest.raises(Exception, match=r"5.0\.\.20.0"):
         _validate_bypass_temperature_range({"min_outdoor_temperature": -25.0})

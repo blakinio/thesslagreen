@@ -20,7 +20,7 @@ set_special_mode:
           options: !include options/special_modes.json
     duration:
       name: Duration (minutes)
-      description: Minutes to run mode; 0 for unlimited.
+      description: Stored controller duration when 0; manual airing supports 1–45 min and fireplace 1–10 min.
       required: false
       default: 0
       selector:
@@ -52,13 +52,13 @@ set_airflow_schedule:
           step: 1
     start_time:
       name: Start Time
-      description: Period start time.
-      required: true
+      description: Period start time (required when enabled).
+      required: false
       selector: &time_selector
         time:
     end_time:
       name: End Time
-      description: Deprecated. Ignored by device (slot end equals next slot start).
+      description: Unsupported and rejected; a slot ends when the next slot starts.
       required: false
       selector: *time_selector
     season:
@@ -73,8 +73,8 @@ set_airflow_schedule:
             - winter
     airflow_rate:
       name: Airflow Rate
-      description: Airflow in %.
-      required: true
+      description: Airflow in percent (required when enabled).
+      required: false
       selector:
         number:
           min: 10
@@ -86,13 +86,20 @@ set_airflow_schedule:
       required: false
       selector:
         number:
-          min: 16.0
-          max: 30.0
+          min: 10.0
+          max: 45.0
           step: 0.5
+    enabled:
+      name: Slot enabled
+      description: False writes the documented 0xA200 disable marker without changing its intensity or temperature.
+      default: true
+      selector:
+        boolean:
+
 
 set_bypass_parameters:
   name: Set Bypass Parameters
-  description: Configure bypass parameters.
+  description: Enable automatic bypass or disable it. Forced open is unsupported and rejected.
   target: *tg_target
   fields:
     mode:
@@ -108,13 +115,13 @@ set_bypass_parameters:
       required: false
       selector:
         number:
-          min: -20.0
-          max: 40.0
+          min: 5.0
+          max: 20.0
           step: 0.5
 
 set_gwc_parameters:
   name: Set GWC Parameters
-  description: Configure ground heat exchanger.
+  description: Enable or disable automatic ground heat exchanger control. Forced mode is rejected.
   target: *tg_target
   fields:
     mode:
@@ -131,7 +138,7 @@ set_gwc_parameters:
       selector:
         number:
           min: 0.0
-          max: 20.0
+          max: 10.0
           step: 0.5
     max_air_temperature:
       name: Maximum Air Temperature
@@ -139,13 +146,13 @@ set_gwc_parameters:
       required: false
       selector:
         number:
-          min: 30.0
-          max: 80.0
+          min: 15.0
+          max: 40.0
           step: 0.5
 
 set_air_quality_thresholds:
   name: Set Air Quality Thresholds
-  description: Configure air quality thresholds.
+  description: Unavailable for the documented Home/AirPack4 register set; rejects unsupported targets without writing.
   target: *tg_target
   fields:
     co2_low:
@@ -187,7 +194,7 @@ set_air_quality_thresholds:
 
 set_temperature_curve:
   name: Set Temperature Curve
-  description: Configure heating curve.
+  description: Unavailable for the documented Home/AirPack4 register set; rejects unsupported targets without writing.
   target: *tg_target
   fields:
     slope:
@@ -228,17 +235,33 @@ set_temperature_curve:
           step: 0.5
 
 reset_filters:
-  name: Reset Filter Counter
-  description: Reset filter lifetime counter.
+  name: Record Filter Replacement
+  description: >-
+    Requires the explicit device-family option. Home presostat requires no write;
+    changing its filter type would disable pressure-switch protection. For Home
+    timed filters only the current type can be renewed. AirPack4 uses separate
+    supply/exhaust replacement commands only for sides without AFC.
   target: *tg_target
   fields:
     filter_type:
-      name: Filter Type
-      description: Filter to reset.
-      required: true
+      name: Current Home filter type
+      description: For Home timed filters only; must match the current device setting.
+      required: false
       selector:
         select:
           options: !include options/filter_types.json
+    direction:
+      name: AirPack4 filter direction
+      required: false
+      selector:
+        select:
+          options: [supply, exhaust, both]
+    confirm_without_afc:
+      name: Confirm each selected side has no AFC
+      default: false
+      selector:
+        boolean:
+
 
 reset_settings:
   name: Reset Settings
@@ -255,8 +278,23 @@ reset_settings:
 
 start_pressure_test:
   name: Start Pressure Test
-  description: Start automatic pressure test.
+  description: >-
+    Explicit documented configuration-mode procedure, not a rewrite of the weekly
+    filter-check schedule. Confirm the required equipment is installed first.
   target: *tg_target
+  fields:
+    test_type:
+      name: Procedure
+      required: true
+      selector:
+        select:
+          options: [duct_filter, afc_and_duct]
+    confirm_equipment:
+      name: Confirm installed equipment
+      default: false
+      selector:
+        boolean:
+
 
 set_modbus_parameters:
   name: Set Modbus Parameters
@@ -448,5 +486,30 @@ sync_device_clock:
         When false, sync is skipped if drift is within the maximum drift limit.
       required: false
       default: false
+      selector:
+        boolean:
+
+set_airing_schedule:
+  name: Set Airing Schedule
+  description: Configure manual or weekly airing time; disable writes 0x2400, never midnight.
+  target: *tg_target
+  fields:
+    schedule:
+      name: Schedule
+      default: manual
+      selector:
+        select:
+          options: [manual, summer, winter]
+    day:
+      name: Day for weekly airing
+      selector:
+        select:
+          options: !include options/days_of_week.json
+    start_time:
+      name: Start time when enabled
+      selector: *time_selector
+    enabled:
+      name: Enabled
+      default: true
       selector:
         boolean:

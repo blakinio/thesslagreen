@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from custom_components.thessla_green_modbus.register_defs_cache import get_register_definitions
 from custom_components.thessla_green_modbus.registers.loader import get_registers_by_function
 from custom_components.thessla_green_modbus.services import (
     async_setup_services,
@@ -40,6 +42,7 @@ class _Coordinator:
         self.async_request_refresh = AsyncMock()
         self.data = {}
         self.device_client = SimpleNamespace(
+            _write_lock=asyncio.Lock(),
             effective_batch=2,
             available_registers={
                 "holding_registers": {r.name for r in get_registers_by_function("03")}
@@ -50,6 +53,16 @@ class _Coordinator:
             unknown_registers={},
             scanned_registers={},
         )
+
+    def _resolve_write_definition(self, name):
+        return get_register_definitions().get(name)
+
+    async def _locked_single_register_write(self, *, register_name, value, offset, refresh):
+        assert self.device_client._write_lock.locked()
+        success = await self.async_write_register(
+            register_name, value, refresh=False, targeted_readback=False
+        )
+        return success, False
 
 
 def _make_hass(coordinator=None):
@@ -137,29 +150,22 @@ async def test_set_airflow_schedule_with_temperature(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_set_airflow_schedule_clamp_rate(monkeypatch):
-    """_clamp_airflow_rate applies min/max from coordinator data."""
+    """Reject an out-of-protocol schedule value rather than silently clamping."""
     coord = _Coordinator()
-    coord.data = {"min_percentage": 10, "max_percentage": 80}
-    hass = _make_hass()
-    handler = await _setup_and_get(hass, "set_airflow_schedule", coord, monkeypatch)
-
-    start = SimpleNamespace(hour=8, minute=0)
-    call = _make_call(
-        {
-            "entity_id": ["climate.dev"],
-            "day": "monday",
-            "period": 1,
-            "start_time": start,
-            "airflow_rate": 200,
-        }
-    )
-    await handler(call)
-
-    setting_calls = [
-        c for c in coord.async_write_register.call_args_list if c.args[0] == "setting_summer_mon_1"
-    ]
-    assert setting_calls
-    assert setting_calls[0].args[1] == (80 << 8)
+    handler = await _setup_and_get(_make_hass(), "set_airflow_schedule", coord, monkeypatch)
+    with pytest.raises(HomeAssistantError, match="10 to 100"):
+        await handler(
+            _make_call(
+                {
+                    "entity_id": ["climate.dev"],
+                    "day": "monday",
+                    "period": 1,
+                    "start_time": SimpleNamespace(hour=8, minute=0),
+                    "airflow_rate": 200,
+                }
+            )
+        )
+    coord.async_write_register.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -181,7 +187,7 @@ async def test_set_airflow_schedule_write_failure(monkeypatch):
     )
     with pytest.raises(HomeAssistantError):
         await handler(call)
-    coord.async_request_refresh.assert_not_awaited()
+    coord.async_request_refresh.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
@@ -257,7 +263,7 @@ async def test_set_airflow_schedule_clamp_inverted_bounds(monkeypatch):
         c for c in coord.async_write_register.call_args_list if c.args[0] == "setting_summer_wed_1"
     ]
     assert setting_calls
-    assert setting_calls[0].args[1] == (60 << 8)
+    assert setting_calls[0].args[1] == {"airflow_pct": 10, "temp_c": None}
 
 
 # ---------------------------------------------------------------------------
@@ -285,7 +291,7 @@ async def test_set_airflow_schedule_setting_write_failure(monkeypatch):
     )
     with pytest.raises(HomeAssistantError):
         await handler(call)
-    coord.async_request_refresh.assert_not_awaited()
+    coord.async_request_refresh.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -308,7 +314,7 @@ async def test_set_airflow_schedule_start_write_failure(monkeypatch):
     )
     with pytest.raises(HomeAssistantError):
         await handler(call)
-    coord.async_request_refresh.assert_not_awaited()
+    coord.async_request_refresh.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -332,7 +338,7 @@ async def test_set_airflow_schedule_temp_write_failure(monkeypatch):
     )
     with pytest.raises(HomeAssistantError):
         await handler(call)
-    coord.async_request_refresh.assert_not_awaited()
+    coord.async_request_refresh.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
