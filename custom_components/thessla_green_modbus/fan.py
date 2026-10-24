@@ -6,7 +6,6 @@ available on the device.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from time import monotonic
 from typing import Any, ClassVar
@@ -71,13 +70,9 @@ async def async_setup_entry(
             break
 
     if has_fan_registers:
-        entities = [ThesslaGreenFan(coordinator)]
-        try:
-            async_add_entities(entities, True)
-        except asyncio.CancelledError:
-            _LOGGER.warning("Cancelled while adding fan entity, retrying without initial state")
-            async_add_entities(entities, False)
-            return
+        # The coordinator already holds first-refresh data; requesting an update
+        # before add would trigger a second full Modbus poll during setup.
+        async_add_entities([ThesslaGreenFan(coordinator)])
         _LOGGER.debug("Added fan entity")
     else:
         _LOGGER.debug("No fan control registers available - skipping fan entity")
