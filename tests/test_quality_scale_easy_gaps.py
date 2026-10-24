@@ -307,6 +307,10 @@ def test_scanner_helper_manual_and_setting_fallbacks() -> None:
         assert helpers._format_register_value("setting_test", 123) == 123
     with patch.object(helpers, "_decode_aatt", return_value={"airflow_pct": 55, "temp_c": 20.5}):
         assert helpers._format_register_value("setting_test", 123) == "55% @ 20.5°C"
+    # Firmware 3.11 TT=0 slot: airflow only.
+    assert helpers._format_register_value("setting_test", 0x3200) == "50%"
+    with patch.object(helpers, "_decode_register_time", return_value=8 * 60 + 30):
+        assert helpers._format_register_value("manual_airing_time_to_start", 123) == "08:30"
 
 
 def test_scanner_capability_facade_delegates_input_unsupported() -> None:
