@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   leesiuu).
 - Device name (8144-8151), serial number (FC04 24-29) and product key lock_pass
   (8187-8188, u32 little-endian, 0-999999) are decoded from all of their words
-  during polling; incomplete reads are dropped instead of publishing one word.
+  during polling, including single-register fallback reads; incomplete reads are
+  dropped instead of publishing one word.
 - `set_device_name` writes the whole NUL-padded name in one encoded payload; short
   names no longer lose characters when split by the batch size.
 - Temporary airflow/temperature number entities (0x1131/0x1134) write the mode,

@@ -40,7 +40,7 @@ async def test_holding_fallback_uses_default_when_owner_has_no_hook() -> None:
     owner = _owner()
     with patch.object(read_batches, "read_holding_individually", new=AsyncMock()) as fallback:
         await read_batches._read_holding_fallback(owner, "read", 1, ["h1"], {})
-    fallback.assert_awaited_once_with(owner, "read", 1, ["h1"], {})
+    fallback.assert_awaited_once_with(owner, "read", 1, ["h1"], {}, raw_words=None)
 
 
 @pytest.mark.asyncio

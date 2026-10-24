@@ -32,7 +32,7 @@ device or Home Assistant instance was contacted.
 
 | Area | Source and root cause | Fix |
 | --- | --- | --- |
-| Multi-word reads | Home p.13 `device_name` 8144-8151 (ASCII), FC04 24-29 serial, 8187/8188 product key ("save both registers"; 0x423f, 0x000f = 999999). Polling decoded each word on its own, so these values only ever held their first word. | `core/register_processing.assemble_multi_register_values` decodes from every word of the poll. An incomplete read is dropped. The `lock_pass` number range is now 0-999999. |
+| Multi-word reads | Home p.13 `device_name` 8144-8151 (ASCII), FC04 24-29 serial, 8187/8188 product key ("save both registers"; 0x423f, 0x000f = 999999). Polling decoded each word on its own, so these values only ever held their first word. | `core/register_processing.assemble_multi_register_values` decodes from every word of the poll, including single-register fallback reads. An incomplete read is dropped. The `lock_pass` number range is now 0-999999. |
 | Device name write | Short names were split into per-chunk encodes that wrote zeros over the following words. | The whole NUL-padded name is encoded once and the coordinator splits it into FC16 chunks. |
 | Temporary mode | Home p.12: write 0x1130-0x1132 / 0x1133-0x1135 "in one operation". The number entities for 4401/4404 wrote one word. | They now use the coordinator's existing triplet writers. |
 | RTC | FC03 0-3 date/time words could be split by a small batch size. | The clock sync and the `sync_time` service both require a single request. |
@@ -55,5 +55,6 @@ device or Home Assistant instance was contacted.
 ## Not verified
 
 - No physical acceptance: these are protocol and contract fixes only.
-- The multi-word assembly covers batch reads only. A chunk that falls back to
-  single-register reads leaves the multi-word value unset for that poll.
+- Multi-word values are assembled from batch and single-register fallback
+  reads alike; a value whose words were not all read in a poll is dropped for
+  that poll rather than published from a partial read.

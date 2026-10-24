@@ -424,3 +424,56 @@ async def test_holding_poll_assembles_lock_pass_u32():
     data = await read_holding_registers_optimized(owner)
 
     assert data["lock_pass"] == 999999
+
+
+@pytest.mark.asyncio
+async def test_holding_fallback_reads_still_assemble_lock_pass():
+    """A failed batch recovered by single reads keeps the multi-word value."""
+    owner = _real_name_owner("holding_registers", (8187, 2, {"lock_pass"}), 16)
+    singles = {8187: 0x423F, 8188: 0x000F}
+
+    def read(addr, count):
+        if count > 1:
+            raise ModbusException("batch failed")
+        return _ok_response([singles[addr]])
+
+    owner._read_with_retry = AsyncMock(side_effect=lambda _m, a, c, **_k: read(a, c))
+    data = await read_holding_registers_optimized(owner)
+
+    assert data["lock_pass"] == 999999
+
+
+@pytest.mark.asyncio
+async def test_holding_partial_batch_tail_recovery_assembles_device_name():
+    words = [int.from_bytes(b, "big") for b in (b"Ai", b"rP", b"ac", b"k ", b"40", b"0h")]
+    words += [0, 0]
+    names = {"device_name"} | {f"device_name_{i}" for i in range(2, 9)}
+    owner = _real_name_owner("holding_registers", (8144, 8, names), 8)
+
+    def read(addr, count):
+        if count > 1:
+            return _ok_response(words[:3])
+        return _ok_response([words[addr - 8144]])
+
+    owner._read_with_retry = AsyncMock(side_effect=lambda _m, a, c, **_k: read(a, c))
+    data = await read_holding_registers_optimized(owner)
+
+    assert data["device_name"] == "AirPack 400h"
+
+
+@pytest.mark.asyncio
+async def test_input_empty_batch_fallback_assembles_serial_number():
+    raw = b"AB1234567890"
+    words = [int.from_bytes(raw[i : i + 2], "big") for i in range(0, 12, 2)]
+    names = {"serial_number"} | {f"serial_number_{i}" for i in range(2, 7)}
+    owner = _real_name_owner("input_registers", (24, 6, names), 16)
+
+    def read(addr, count):
+        if count > 1:
+            return _ok_response([])
+        return _ok_response([words[addr - 24]])
+
+    owner._read_with_retry = AsyncMock(side_effect=lambda _m, a, c, **_k: read(a, c))
+    data = await read_input_registers_optimized(owner)
+
+    assert data["serial_number"] == "AB1234567890"
