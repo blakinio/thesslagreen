@@ -42,6 +42,7 @@ dev = [
     "pydantic==2.12.2",
     "pre-commit>=3.7.0",
     "types-PyYAML>=6.0.12",
+    "pyserial>=3.5",
 ]
 docs = [
     "sphinx>=4.0.0",
