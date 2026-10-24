@@ -83,6 +83,24 @@ def _resolve_legacy_register_name(
     return None
 
 
+def _resolve_current_format(uid_no_domain: str, slave_id: int, lookup: EntityLookup) -> str | None:
+    """Return ``<slave>_<key>_<addr>[_bitN]`` when uid is current-format under any prefix.
+
+    Entity keys contain underscores, so every ``_<slave>_`` split point is tried
+    and only a known entity key is accepted. This lets a host-based unique ID
+    move to the serial prefix without being double-prefixed.
+    """
+    marker = f"_{slave_id}_"
+    start = uid_no_domain.find(marker)
+    while start != -1:
+        remainder = uid_no_domain[start + len(marker) :]
+        match = re.fullmatch(r"(.+)_(\d+|calc)(_bit\d+)?", remainder)
+        if match and remainder not in lookup and match.group(1) in lookup:
+            return f"{slave_id}_{match.group(1)}_{match.group(2)}{match.group(3) or ''}"
+        start = uid_no_domain.find(marker, start + 1)
+    return None
+
+
 def _resolve_legacy_entity_parts(
     uid_no_domain: str,
     slave_id: int,
@@ -168,5 +186,7 @@ def migrate_unique_id(
             return discrete_input_registers().get(register)
         return None
 
-    base_uid = _resolve_legacy_entity_parts(uid_no_domain, slave_id, lookup, _get_address)
+    base_uid = _resolve_current_format(
+        uid_no_domain, slave_id, lookup
+    ) or _resolve_legacy_entity_parts(uid_no_domain, slave_id, lookup, _get_address)
     return _build_migrated_unique_id(base_uid, prefix, uid_no_domain)

@@ -184,3 +184,21 @@ def test_migrate_unique_id_fan_remainder():
     uid = f"{DOMAIN}_{HOST}_{PORT}_{SLAVE}_fan"
     result = migrate_unique_id(uid, serial_number=None, host=HOST, port=PORT, slave_id=SLAVE)
     assert "fan_0" in result  # nosec B101
+
+
+def test_migrate_host_prefixed_current_uid_to_serial_prefix():
+    """Recovering the serial swaps the prefix instead of double-prefixing the uid."""
+    host_prefix = device_unique_id_prefix(None, HOST, PORT)
+    uid = f"{host_prefix}_{SLAVE}_{REGISTER_NAME}_{REGISTER_ADDRESS}"
+
+    result = migrate_unique_id(uid, serial_number="ABC123", host=HOST, port=PORT, slave_id=SLAVE)
+
+    assert result == f"ABC123_{SLAVE}_{REGISTER_NAME}_{REGISTER_ADDRESS}"  # nosec B101
+
+
+def test_migrate_current_uid_with_underscored_key_is_stable():
+    uid = f"ABC123_{SLAVE}_{REGISTER_NAME}_{REGISTER_ADDRESS}"
+
+    result = migrate_unique_id(uid, serial_number="ABC123", host=HOST, port=PORT, slave_id=SLAVE)
+
+    assert result == uid  # nosec B101

@@ -121,7 +121,7 @@ async def async_start_coordinator(
     async def _handle_start_exception(exc: Exception, *, phase: str, user_message: str) -> bool:
         if is_invalid_auth_error(exc):
             _LOGGER.error("Authentication failed during %s: %s", phase, exc)
-            await entry.async_start_reauth(hass)
+            entry.async_start_reauth(hass)
             return False
         if isinstance(exc, ConfigEntryNotReady):
             raise exc

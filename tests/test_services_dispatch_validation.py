@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -7,7 +8,6 @@ import pytest
 import voluptuous as vol
 from custom_components.thessla_green_modbus.services.dispatch import (
     refresh_and_log_success,
-    write_device_name_chunks,
     write_mapped_optional_register,
     write_optional_register,
     write_register,
@@ -72,6 +72,41 @@ async def test_write_optional_register_skips_none_value():
 
     assert result is True
     write_func.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_write_register_propagates_cancellation():
+    coordinator = SimpleNamespace(
+        async_write_register=AsyncMock(side_effect=asyncio.CancelledError)
+    )
+    logger = SimpleNamespace(error=MagicMock())
+
+    with pytest.raises(asyncio.CancelledError):
+        await write_register(coordinator, "reg", 1, "climate.a", "action", logger)
+
+    logger.error.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_write_optional_register_reports_failed_write():
+    write_func = AsyncMock(return_value=False)
+    logger = SimpleNamespace(error=MagicMock())
+    coordinator = object()
+
+    result = await write_optional_register(
+        coordinator,
+        "reg",
+        5,
+        "climate.a",
+        "act",
+        "err %s",
+        write_func,
+        logger,
+    )
+
+    assert result is False
+    write_func.assert_awaited_once_with(coordinator, "reg", 5, "climate.a", "act")
+    logger.error.assert_called_once_with("err %s", "climate.a")
 
 
 def test_validate_gwc_temperature_range_rejects_equal_values():
@@ -185,19 +220,25 @@ def test_pressure_test_payload_builds_day_and_time():
     ]
 
 
-@pytest.mark.asyncio
-async def test_write_device_name_chunks_writes_offsets():
-    coordinator = SimpleNamespace(async_write_register=AsyncMock(return_value=True))
-    result = await write_device_name_chunks(coordinator, "ABCDEFGH", 2)
+@pytest.mark.parametrize("batch", [1, 2, 3, 16])
+def test_device_name_payload_survives_batch_chunking(batch):
+    """Every character lands at its own word, whatever the FC16 batch size."""
+    from custom_components.thessla_green_modbus.core.write_path import encode_write_value
+    from custom_components.thessla_green_modbus.registers.loader import get_register_definition
+    from custom_components.thessla_green_modbus.registers.read_planner import (
+        chunk_register_values,
+    )
 
-    assert result is True
-    assert coordinator.async_write_register.await_count == 2
-    coordinator.async_write_register.assert_any_await(
-        "device_name", "ABCD", refresh=False, offset=0, targeted_readback=False
-    )
-    coordinator.async_write_register.assert_any_await(
-        "device_name", "EFGH", refresh=False, offset=2, targeted_readback=False
-    )
+    definition = get_register_definition("device_name")
+    encoded, _ = encode_write_value("device_name", definition, "ABCDEFGHIJ", 0)
+    written = {}
+    for start, chunk in chunk_register_values(definition.address, encoded, batch):
+        for index, word in enumerate(chunk):
+            written[start + index] = word
+
+    assert sorted(written) == list(range(8144, 8152))
+    payload = b"".join(written[a].to_bytes(2, "big") for a in sorted(written))
+    assert payload == b"ABCDEFGHIJ\x00\x00\x00\x00\x00\x00"
 
 
 def test_iter_air_quality_writes_builds_optional_steps_with_register_map():

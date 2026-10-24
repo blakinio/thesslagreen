@@ -10,6 +10,7 @@ from custom_components.thessla_green_modbus.mappings import (
     SENSOR_ENTITY_MAPPINGS,
 )
 from custom_components.thessla_green_modbus.sensor import ThesslaGreenSensor
+from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import PERCENTAGE, UnitOfVolumeFlowRate
 
 
@@ -51,6 +52,7 @@ def test_sensor_converts_to_percentage():
     address = 274
     sensor = ThesslaGreenSensor(coord, "supply_flow_rate", address, sensor_def)
     assert sensor.native_unit_of_measurement == PERCENTAGE
+    assert sensor.device_class is None
     assert sensor.native_value == 50
 
 
@@ -61,4 +63,5 @@ def test_sensor_reports_m3h_by_default():
     address = 274
     sensor = ThesslaGreenSensor(coord, "supply_flow_rate", address, sensor_def)
     assert sensor.native_unit_of_measurement == UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR
+    assert sensor.device_class == SensorDeviceClass.VOLUME_FLOW_RATE
     assert sensor.native_value == 150

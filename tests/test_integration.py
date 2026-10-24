@@ -142,7 +142,7 @@ async def test_async_setup_entry_triggers_reauth_on_auth_error():
     entry.options = {}
     entry.add_update_listener = MagicMock()
     entry.async_on_unload = MagicMock()
-    entry.async_start_reauth = AsyncMock()
+    entry.async_start_reauth = MagicMock(return_value=None)
 
     with patch(
         "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
@@ -155,7 +155,7 @@ async def test_async_setup_entry_triggers_reauth_on_auth_error():
         result = await async_setup_entry(hass, entry)
 
     assert result is False
-    entry.async_start_reauth.assert_awaited_once()
+    entry.async_start_reauth.assert_called_once_with(hass)
 
 
 async def test_async_setup_entry_triggers_reauth_on_refresh_auth_error():
@@ -176,7 +176,7 @@ async def test_async_setup_entry_triggers_reauth_on_refresh_auth_error():
     entry.options = {}
     entry.add_update_listener = MagicMock()
     entry.async_on_unload = MagicMock()
-    entry.async_start_reauth = AsyncMock()
+    entry.async_start_reauth = MagicMock(return_value=None)
 
     with patch(
         "custom_components.thessla_green_modbus.coordinator.ThesslaGreenModbusCoordinator"
@@ -191,7 +191,7 @@ async def test_async_setup_entry_triggers_reauth_on_refresh_auth_error():
         result = await async_setup_entry(hass, entry)
 
     assert result is False
-    entry.async_start_reauth.assert_awaited_once()
+    entry.async_start_reauth.assert_called_once_with(hass)
 
 
 @pytest.mark.asyncio

@@ -57,6 +57,29 @@ def test_number_set_value(mock_coordinator):
     mock_coordinator.async_request_refresh.assert_not_awaited()
 
 
+@pytest.mark.parametrize(
+    ("register", "writer", "value"),
+    [
+        ("air_flow_rate_temporary_4401", "async_write_temporary_airflow", 60),
+        ("supply_air_temperature_temporary_4404", "async_write_temporary_temperature", 22.5),
+    ],
+)
+def test_temporary_numbers_write_vendor_triplet(mock_coordinator, register, writer, value):
+    """0x1131/0x1134 must go out with their mode and activation flag in one request."""
+    setattr(mock_coordinator, writer, AsyncMock(return_value=True))
+    entity_config = ENTITY_MAPPINGS["number"][register]
+    number = ThesslaGreenNumber(mock_coordinator, register, entity_config)
+
+    asyncio.run(number.async_set_native_value(value))
+
+    getattr(mock_coordinator, writer).assert_awaited_once_with(value)
+    mock_coordinator.async_write_register.assert_not_awaited()
+
+    setattr(mock_coordinator, writer, AsyncMock(return_value=False))
+    with pytest.raises(RuntimeError):
+        asyncio.run(number.async_set_native_value(value))
+
+
 def test_number_set_value_modbus_failure(mock_coordinator):
     """Ensure Modbus errors are surfaced when setting the number."""
     mock_coordinator.data["supply_air_temperature_manual"] = 20

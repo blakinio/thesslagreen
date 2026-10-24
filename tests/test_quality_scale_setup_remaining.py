@@ -79,18 +79,18 @@ async def test_start_coordinator_sync_setup_and_invalid_auth_reauth() -> None:
         async_setup=Mock(return_value=None),
         async_config_entry_first_refresh=AsyncMock(),
     )
-    entry = SimpleNamespace(async_start_reauth=AsyncMock())
+    entry = SimpleNamespace(async_start_reauth=Mock(return_value=None))
     assert await _setup.async_start_coordinator(object(), entry, coordinator) is True
 
     coordinator.async_setup = Mock(side_effect=ConnectionException("auth"))
     with patch.object(_setup, "is_invalid_auth_error", return_value=True):
         assert await _setup.async_start_coordinator(object(), entry, coordinator) is False
-    entry.async_start_reauth.assert_awaited()
+    entry.async_start_reauth.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_start_coordinator_setup_and_refresh_error_translation() -> None:
-    entry = SimpleNamespace(async_start_reauth=AsyncMock())
+    entry = SimpleNamespace(async_start_reauth=Mock(return_value=None))
     coordinator = SimpleNamespace(
         async_setup=Mock(side_effect=RuntimeError("setup boom")),
         async_config_entry_first_refresh=AsyncMock(),
@@ -112,7 +112,7 @@ async def test_start_coordinator_setup_and_refresh_error_translation() -> None:
 
 @pytest.mark.asyncio
 async def test_start_coordinator_cancellation_propagates() -> None:
-    entry = SimpleNamespace(async_start_reauth=AsyncMock())
+    entry = SimpleNamespace(async_start_reauth=Mock(return_value=None))
     coordinator = SimpleNamespace(
         async_setup=Mock(side_effect=asyncio.CancelledError()),
         async_config_entry_first_refresh=AsyncMock(),

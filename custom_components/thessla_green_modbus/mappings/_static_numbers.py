@@ -119,11 +119,12 @@ NUMBER_OVERRIDES: dict[str, dict[str, Any]] = {
     "cfgszf_fw_new": {"icon": "mdi:filter-check", "min": 0, "max": 127, "step": 1},
     # RTC calibration register (0–255, signed offset encoded as unsigned; no SI unit)
     "rtc_cal": {"icon": "mdi:clock-edit", "min": -127, "max": 127, "step": 1, "unit": None},
-    # lock_pass — product key passphrase, first 16-bit word (0–0x423f = 16959)
+    # lock_pass — six-digit product key, u32 little-endian over 8187/8188
+    # (vendor example: 0x423f, 0x000f -> 999999)
     "lock_pass": {
         "icon": "mdi:lock",
         "min": 0,
-        "max": 16959,
+        "max": 999999,
         "step": 1,
         "entity_category": "config",
         "risk_level": "advanced",

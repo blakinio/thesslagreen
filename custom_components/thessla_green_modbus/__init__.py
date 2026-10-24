@@ -81,7 +81,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     from .clock_sync import ClockSyncManager
 
     clock_sync_manager = ClockSyncManager(hass, coordinator, entry)
-    clock_sync_manager.attach()
+    entry.async_on_unload(clock_sync_manager.attach())
     coordinator._clock_sync_manager = clock_sync_manager
 
     entry.async_on_unload(entry.add_update_listener(async_update_options))

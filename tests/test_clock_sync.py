@@ -177,6 +177,7 @@ async def test_sync_force_writes_registers():
     call_kwargs = coord.async_write_and_read_holding_registers.call_args
     assert call_kwargs.kwargs["start_address"] == 0
     assert len(call_kwargs.kwargs["values"]) == 4
+    assert call_kwargs.kwargs["require_single_request"] is True
 
 
 @pytest.mark.asyncio
@@ -1100,3 +1101,14 @@ async def test_do_sync_handles_exception_gracefully():
 
     await mgr._do_sync(300)
     assert mgr._sync_in_progress is False
+
+
+def test_manager_attach_returns_listener_unsubscribe():
+    """The entry stores the unsubscribe so unload detaches the clock-sync listener."""
+    unsubscribe = MagicMock()
+    coordinator = MagicMock()
+    coordinator.async_add_listener.return_value = unsubscribe
+    manager = ClockSyncManager(MagicMock(), coordinator, MagicMock())
+
+    assert manager.attach() is unsubscribe
+    coordinator.async_add_listener.assert_called_once_with(manager._on_update)

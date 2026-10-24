@@ -157,14 +157,11 @@ async def test_device_name_long_short_success_exception_and_unconfirmed() -> Non
     )
 
     coordinator.async_write_register.reset_mock()
-    with (
-        patch.object(
-            maintenance, "write_device_name_chunks", new=AsyncMock(return_value=True)
-        ) as chunks,
-        patch.object(maintenance, "refresh_and_log_success", new=AsyncMock()),
-    ):
+    with patch.object(maintenance, "refresh_and_log_success", new=AsyncMock()):
         await handler(SimpleNamespace(data={"device_name": "short"}))
-    chunks.assert_awaited_once_with(coordinator, "short", 2)
+    coordinator.async_write_register.assert_awaited_once_with(
+        "device_name", "short", refresh=False, targeted_readback=False
+    )
 
     coordinator.async_write_register = AsyncMock(side_effect=ConnectionException("offline"))
     handler = maintenance._build_set_device_name_handler(object(), deps)
@@ -190,6 +187,7 @@ async def test_sync_time_success_exception_and_unconfirmed() -> None:
         start_address=0,
         values=maintenance._clock_payload(fixed),
         refresh=False,
+        require_single_request=True,
     )
 
     coordinator.async_write_registers = AsyncMock(side_effect=ConnectionException("offline"))

@@ -102,3 +102,18 @@ async def test_poll_cancelled_during_shutdown_does_not_reopen_serial_port(rtu_co
         await poll
     assert ExclusiveSerialClient.held_ports == set()
     assert len(ExclusiveSerialClient.instances) == 1
+
+
+@pytest.mark.asyncio
+async def test_direct_client_calls_refused_after_shutdown():
+    """The direct AsyncModbusTcpClient path also honours the shut-down flag."""
+    from unittest.mock import AsyncMock
+
+    from custom_components.thessla_green_modbus.core.runtime_io import call_modbus
+
+    func = AsyncMock()
+    device_client = SimpleNamespace(_shut_down=True, _transport=None, client=object())
+
+    with pytest.raises(ConnectionException, match="shut down"):
+        await call_modbus(device_client, func, 0, count=1)
+    func.assert_not_awaited()

@@ -341,3 +341,86 @@ async def test_read_holding_uses_transport_when_connected():
     owner._read_with_retry.return_value = _ok_response([3, 4])
     result = await read_holding_registers_optimized(owner)
     assert isinstance(result, dict)
+
+
+# ---------------------------------------------------------------------------
+# Multi-word register assembly (device_name / serial_number)
+# ---------------------------------------------------------------------------
+
+
+def _real_name_owner(register_type, names, batch):
+    from custom_components.thessla_green_modbus.core.register_processing import (
+        find_register_name,
+        process_register_value,
+    )
+    from custom_components.thessla_green_modbus.register_defs_cache import (
+        get_register_definitions,
+    )
+
+    function = 3 if register_type == "holding_registers" else 4
+    reverse = {
+        register_type: {
+            d.address: n for n, d in get_register_definitions().items() if d.function == function
+        }
+    }
+    owner = _make_owner(reg_groups={register_type: [(names[0], names[1])]})
+    owner.device_client.effective_batch = batch
+    owner.device_client.available_registers = {register_type: set(names[2])}
+    owner.device_client._transport = MagicMock()
+    owner.device_client._transport.is_connected.return_value = True
+    owner._find_register_name = lambda rt, addr: find_register_name(reverse, rt, addr)
+    owner._process_register_value = process_register_value
+    return owner
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("batch", [3, 8, 16])
+async def test_holding_poll_assembles_device_name_across_chunks(batch):
+    words = [int.from_bytes(b, "big") for b in (b"Ai", b"rP", b"ac", b"k ", b"40", b"0h")]
+    words += [0, 0]
+    names = {"device_name"} | {f"device_name_{i}" for i in range(2, 9)}
+    owner = _real_name_owner("holding_registers", (8144, 8, names), batch)
+
+    def read(addr, count):
+        return _ok_response(words[addr - 8144 : addr - 8144 + count])
+
+    owner._read_with_retry = AsyncMock(side_effect=lambda _m, a, c, **_k: read(a, c))
+    data = await read_holding_registers_optimized(owner)
+
+    assert data["device_name"] == "AirPack 400h"
+
+
+@pytest.mark.asyncio
+async def test_holding_poll_drops_incomplete_multi_word_value():
+    names = {"device_name"}
+    owner = _real_name_owner("holding_registers", (8144, 8, names), 8)
+    owner._read_with_retry = AsyncMock(return_value=_ok_response([0x4142]))
+    owner._read_holding_individually = AsyncMock()
+    data = await read_holding_registers_optimized(owner)
+
+    assert "device_name" not in data
+
+
+@pytest.mark.asyncio
+async def test_input_poll_assembles_serial_number():
+    raw = b"AB1234567890"
+    words = [int.from_bytes(raw[i : i + 2], "big") for i in range(0, 12, 2)]
+    owner = _real_name_owner("input_registers", (24, 6, {"serial_number"}), 4)
+
+    def read(addr, count):
+        return _ok_response(words[addr - 24 : addr - 24 + count])
+
+    owner._read_with_retry = AsyncMock(side_effect=lambda _m, a, c, **_k: read(a, c))
+    data = await read_input_registers_optimized(owner)
+
+    assert data["serial_number"] == "AB1234567890"
+
+
+@pytest.mark.asyncio
+async def test_holding_poll_assembles_lock_pass_u32():
+    """Vendor example: 0x423f (8187), 0x000f (8188) is product key 999999."""
+    owner = _real_name_owner("holding_registers", (8187, 2, {"lock_pass"}), 16)
+    owner._read_with_retry = AsyncMock(return_value=_ok_response([0x423F, 0x000F]))
+    data = await read_holding_registers_optimized(owner)
+
+    assert data["lock_pass"] == 999999
