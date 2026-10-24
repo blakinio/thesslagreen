@@ -41,7 +41,7 @@ dev = [
     # keep in sync with requirements-dev.txt to avoid pip conflicts in CI.
     "pydantic==2.12.2",
     "pre-commit>=4.6.2",
-    "types-PyYAML>=6.0.12",
+    "types-PyYAML>=6.0.12.20260906",
     "pyserial>=3.5",
 ]
 docs = [
