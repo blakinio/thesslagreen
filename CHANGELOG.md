@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Internal
+
+- Development dependency minimums raised: aiodhcpwatcher 1.2.7, PyYAML 6.0.3,
+  types-PyYAML 6.0.12.20260906, pre-commit 4.7.0, sphinx-rtd-theme 3.1.0; CI actions
+  updated (hassfest, setup-python 7.1.0, upload-artifact 7.0.2).
+
 ## [2.8.6] - 2026-10-24
 
 > Hardware acceptance PARTIAL: CI validated only. No physical-device run was made
