@@ -27,7 +27,7 @@ dependencies = ["pydantic>=2,<3", "pymodbus>=3.6.1,<4.0", "pyserial>=3.5", "volu
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
-    "pytest-asyncio>=1.2.0",
+    "pytest-asyncio>=1.4.0",
     "pytest-homeassistant-custom-component>=0.13.309,<0.13.317",
     "aiodhcpwatcher>=1.2.7",
     "aiodiscover>=2.6.1",
