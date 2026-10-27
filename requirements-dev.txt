@@ -16,7 +16,7 @@ pyserial>=3.5
 pydantic==2.12.2
 
 # Code quality tools
-black>=24.4.0
+black>=26.10.1
 isort>=5.13.0
 ruff>=0.16.6
 mypy>=2.3.1
