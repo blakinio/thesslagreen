@@ -26,5 +26,5 @@ pre-commit>=4.7.0
 # and are not distributed as installable PyPI packages.
 
 # Documentation
-sphinx>=4.0.0
+sphinx>=9.2.0
 sphinx-rtd-theme>=3.1.0
