@@ -7,7 +7,7 @@
 pydantic>=2,<3
 
 # Modbus communication library
-pymodbus>=3.6.1,<4.0
+pymodbus[serial]>=3.6.1,<4.0
 voluptuous>=0.13
 
 # Serial (RTU/USB) transport used by pymodbus

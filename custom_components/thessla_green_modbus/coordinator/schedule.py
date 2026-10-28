@@ -456,20 +456,25 @@ class _CoordinatorScheduleMixin:
 
         firmware = str((self._device_client.device_info or {}).get("firmware", ""))
         if (
-            register_name == "mode"
+            register_name in {"mode", "cfg_mode_1", "cfg_mode_2"}
             and scalar_value == 2
             and firmware.strip().lstrip("vV").split(".")[:2] == ["3", "11"]
         ):
-            # Home 3.11 echoes FC06/4208=2 without entering temporary mode.
-            # Preserve its existing temporary target and activate the complete
-            # documented airflow triplet; never invent a default percentage.
-            current = await self._locked_read_holding_registers(4211, count=1)
-            if current is None or len(current) != 1 or not 10 <= current[0] <= 100:
-                return False, False
-            _, success = await self._write_holding_multi(
-                REG_TEMPORARY_FLOW_START, [2, current[0], 1], 1
+            # Home 3.11 needs the complete activation triplet for either mode
+            # alias as well. Preserve the current target in device units.
+            temperature_mode = register_name == "cfg_mode_2"
+            target_address = 4213 if temperature_mode else 4211
+            start_address = (
+                REG_TEMPORARY_TEMP_START if temperature_mode else REG_TEMPORARY_FLOW_START
             )
-            if not success or await self._locked_read_holding_registers(4208, count=1) != [2]:
+            minimum, maximum = (100, 450) if temperature_mode else (10, 100)
+            current = await self._locked_read_holding_registers(target_address, count=1)
+            if current is None or len(current) != 1 or not minimum <= current[0] <= maximum:
+                return False, False
+            _, success = await self._write_holding_multi(start_address, [2, current[0], 1], 1)
+            if not success or await self._locked_read_holding_registers(
+                definition.address, count=1
+            ) != [2]:
                 return False, False
             return True, self._handle_successful_single_register_write(
                 register_name=register_name, original_value=value, refresh=refresh

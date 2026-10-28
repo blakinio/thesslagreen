@@ -297,6 +297,50 @@ async def test_311_mode_two_cannot_invent_an_unknown_temporary_target(current):
     device._write_holding_multi.assert_not_awaited()
 
 
+@pytest.mark.parametrize(
+    "name,target,address,start",
+    [
+        ("cfg_mode_1", 70, 4211, 4400),
+        ("cfg_mode_1", 80, 4211, 4400),
+        ("cfg_mode_2", 235, 4213, 4403),
+        ("cfg_mode_2", 200, 4213, 4403),
+    ],
+)
+async def test_311_temporary_mode_aliases_preserve_correct_target(name, target, address, start):
+    from unittest.mock import Mock, call
+
+    device = make_coordinator()
+    device.device_client.device_info["firmware"] = "3.11"
+    device._ensure_connection = AsyncMock()
+    device._assert_write_connection_ready = Mock()
+    device._locked_read_holding_registers = AsyncMock(side_effect=[[target], [2]])
+    device._write_holding_multi = AsyncMock(return_value=(None, True))
+    assert await device._locked_single_register_write(
+        register_name=name, value=2, offset=0, refresh=False
+    ) == (True, False)
+    device._write_holding_multi.assert_awaited_once_with(start, [2, target, 1], 1)
+    assert device._locked_read_holding_registers.await_args_list == [
+        call(address, count=1),
+        call(start, count=1),
+    ]
+
+
+@pytest.mark.parametrize("current", [None, [], [0], [99], [451]])
+async def test_311_temperature_mode_alias_refuses_missing_or_invalid_target(current):
+    from unittest.mock import Mock
+
+    device = make_coordinator()
+    device.device_client.device_info["firmware"] = "3.11"
+    device._ensure_connection = AsyncMock()
+    device._assert_write_connection_ready = Mock()
+    device._locked_read_holding_registers = AsyncMock(return_value=current)
+    device._write_holding_multi = AsyncMock()
+    assert await device._locked_single_register_write(
+        register_name="cfg_mode_2", value=2, offset=0, refresh=False
+    ) == (False, False)
+    device._write_holding_multi.assert_not_awaited()
+
+
 @pytest.mark.parametrize("write_ok,readback", [(False, [2]), (True, [1])])
 async def test_311_mode_two_requires_effective_mode_readback(write_ok, readback):
     from unittest.mock import Mock

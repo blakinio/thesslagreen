@@ -66,3 +66,9 @@ write but returns a different value, the coordinator publishes the actual
 confirmed state and reports failure. Number/switch entities therefore cannot
 replace that confirmed state with a successful optimistic setpoint after an
 ignored command. Reset/trigger words keep their separate command semantics.
+
+On Home firmware 3.11, selecting temporary mode through `mode`, `cfg_mode_1`
+or `cfg_mode_2` uses the complete corresponding airflow/temperature activation
+triplet. The writer reads and preserves the existing temporary target and
+verifies the requested mode word afterwards; a direct single-word echo is
+insufficient. The generic mode select does not invent an airflow percentage.

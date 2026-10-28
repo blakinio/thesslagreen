@@ -13,7 +13,7 @@ checkpoint_version: 1
 updated_at: 2026-10-28T17:20:00+01:00
 task: TASK-20261028-register-ha-e2e
 branch: codex/fix-home-311-filter-ack
-head: 1d31e1ddf0c3cc3ff9126e38955916760f9c39e7
+head: c0d4a1e8b0454c436d9065992f14b6d57e8d981c
 pr: https://github.com/blakinio/thesslagreen/pull/1807
 status: validating
 context_routes:
@@ -28,10 +28,12 @@ proven:
   - 170 distinct native HA actions passed write/read/restore and displayed/restored state checks.
   - New read_register_diagnostics service never writes and preserves atomic RTC/lock-date reads.
   - Live dashboard shows 80 percent on both fans, nonzero flows and no active alarms.
+  - All 56 schedule temperatures passed set/read/display/clear/restore; actual dashboard save and clear buttons passed.
+  - Comfort write-one remains zero; fixed coordinator now reports rejection and HA stays off, confirmed by logs.
 derived:
   - Baseline includes 178 applicable native write cases; absent accessories and protected controls are separate.
 unknown:
-  - Cases 171-177, corrected comfort rejection, 56 temperature round trips and UI editor need live acceptance after restart.
+  - Corrected mode aliases cfg_mode_1 and cfg_mode_2 and final mode action need live acceptance after restart.
   - No documented firmware 3.11 calibration-start command has been established.
 conflicts: []
 first_failure:
@@ -45,6 +47,9 @@ changed_paths:
   - custom_components/thessla_green_modbus/coordinator/schedule.py
   - custom_components/thessla_green_modbus/clock_sync.py
   - custom_components/thessla_green_modbus/services/handlers_maintenance.py
+  - custom_components/thessla_green_modbus/manifest.json
+  - pyproject.toml
+  - requirements.txt
   - custom_components/thessla_green_modbus/services/handlers_schedule.py
   - custom_components/thessla_green_modbus/core/schedule_values.py
   - custom_components/thessla_green_modbus/select.py
@@ -59,13 +64,14 @@ changed_paths:
   - tests/test_write_readback.py
   - tests/test_clock_sync.py
   - tests/test_quality_scale_services_maintenance_remaining.py
+  - tests/test_home_hardware_acceptance_guards.py
 validation:
   - command: pytest tests/ --cov
     result: PASS
-    evidence: 3585 passed, 3 skipped, 98.42 percent; current changes installed with SHA verification and backup.
+    evidence: 3594 passed, 3 skipped, 98.42 percent; all module gates pass; installed with SHA verification and backup.
   - command: ruff; format; mypy; translation and maintainability checks
     result: PASS
     evidence: Current production/test changes passed before live installation.
 blockers: []
-next_action: After HA restarts, retest rejected comfort without optimistic success, finish cases 171-177 and run the 56 schedule-temperature set/clear cases.
+next_action: After HA restarts, retake cfg_mode_1 and cfg_mode_2 and mode actions, then verify the complete configuration restoration and final raw-to-HA matrix.
 ```
