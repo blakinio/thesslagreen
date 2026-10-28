@@ -46,6 +46,7 @@ class _Coordinator:
         self.available_registers = {
             "holding_registers": {r.name for r in get_registers_by_function("03")}
         }
+        self.device_client = SimpleNamespace(available_registers=self.available_registers)
         self.data = {}
         self.timeout = 5
         self.retry = 3

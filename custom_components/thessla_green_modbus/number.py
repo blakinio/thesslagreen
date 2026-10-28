@@ -13,7 +13,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pymodbus.exceptions import ConnectionException, ModbusException
 
-from .capability_rules import capability_block_reason
+from .capability_rules import capability_block_reason, firmware_block_reason
 from .coordinator import ThesslaGreenModbusCoordinator
 from .entity import ThesslaGreenEntity
 from .mappings import ENTITY_MAPPINGS
@@ -60,6 +60,12 @@ async def async_setup_entry(
 
         if reason := capability_block_reason(register_name, coordinator.device_client.capabilities):
             _LOGGER.info("Entity skipped due to capability: %s (%s)", register_name, reason)
+            continue
+
+        if reason := firmware_block_reason(
+            register_name, coordinator.device_client.device_info.get("firmware")
+        ):
+            _LOGGER.info("Entity skipped due to firmware: %s (%s)", register_name, reason)
             continue
 
         if register_name in available or force_create:
@@ -259,4 +265,10 @@ class ThesslaGreenNumber(ThesslaGreenEntity, NumberEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return super().available
+        return (
+            super().available
+            and firmware_block_reason(
+                self.register_name, self.coordinator.device_client.device_info.get("firmware")
+            )
+            is None
+        )

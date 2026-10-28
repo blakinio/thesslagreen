@@ -37,7 +37,11 @@ def assemble_multi_register_values(
         if any(address not in raw_words for address in addresses):
             data.pop(name, None)
             continue
-        data[name] = definition.decode([raw_words[address] for address in addresses])
+        try:
+            data[name] = definition.decode([raw_words[address] for address in addresses])
+        except (TypeError, ValueError, OverflowError) as error:
+            data.pop(name, None)
+            _LOGGER.debug("Invalid multi-register value for %s: %s", name, error)
 
 
 def process_register_value(register_name: str, value: int) -> Any:

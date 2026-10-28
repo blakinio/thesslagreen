@@ -92,6 +92,13 @@ class RegisterDef:
         else:
             raw_list = [(raw >> (16 * (self.length - 1 - i))) & 65535 for i in range(self.length)]
 
+        if self.name == "serial_number":
+            # Home p.4: FC04/24..29 hold six hexadecimal bytes, not ASCII
+            # characters or six 16-bit serial components. Keep trailing zeros.
+            if len(raw_list) != 6 or any(not 0 <= word <= 255 for word in raw_list):
+                raise ValueError("Serial number requires all six byte-valued registers")
+            return "".join(f"{word:02X}" for word in raw_list)
+
         if self._is_temperature() and all(v == 32768 for v in raw_list):
             return None
 

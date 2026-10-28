@@ -406,8 +406,7 @@ async def test_holding_poll_drops_incomplete_multi_word_value():
 
 @pytest.mark.asyncio
 async def test_input_poll_assembles_serial_number():
-    raw = b"AB1234567890"
-    words = [int.from_bytes(raw[i : i + 2], "big") for i in range(0, 12, 2)]
+    words = [0xAB, 0x12, 0x34, 0x56, 0x78, 0x90]
     owner = _real_name_owner("input_registers", (24, 6, {"serial_number"}), 4)
 
     def read(addr, count):
@@ -466,8 +465,7 @@ async def test_holding_partial_batch_tail_recovery_assembles_device_name():
 
 @pytest.mark.asyncio
 async def test_input_empty_batch_fallback_assembles_serial_number():
-    raw = b"AB1234567890"
-    words = [int.from_bytes(raw[i : i + 2], "big") for i in range(0, 12, 2)]
+    words = [0xAB, 0x12, 0x34, 0x56, 0x78, 0x90]
     names = {"serial_number"} | {f"serial_number_{i}" for i in range(2, 7)}
     owner = _real_name_owner("input_registers", (24, 6, names), 16)
 

@@ -115,7 +115,9 @@ async def test_reset_settings_and_pressure_test_failure_paths() -> None:
 
 @pytest.mark.asyncio
 async def test_modbus_parameter_mapping_failure_and_success() -> None:
-    coordinator = SimpleNamespace()
+    coordinator = SimpleNamespace(
+        device_client=SimpleNamespace(available_registers={"holding_registers": {"uart_baud"}})
+    )
     deps = _deps(coordinator)
     handler = maintenance._build_set_modbus_parameters_handler(object(), deps)
     call = SimpleNamespace(data={"port": 1})

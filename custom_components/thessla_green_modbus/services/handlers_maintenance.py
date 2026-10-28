@@ -305,6 +305,14 @@ def _build_set_modbus_parameters_handler(
 
         async def _set_modbus_parameters_for_target(entity_id: str, coordinator: Any) -> bool:
             writes = iter_modbus_parameter_writes(port, baud_rate, parity, stop_bits)
+            holding = coordinator.device_client.available_registers.get("holding_registers", set())
+            unsupported = [
+                name for name, value, _, _ in writes if value is not None and name not in holding
+            ]
+            if unsupported:
+                raise ServiceValidationError(
+                    f"Unsupported Modbus settings: {', '.join(unsupported)}; no changes sent"
+                )
             for register_name, option_value, option_map, error_message in writes:
                 if not await write_mapped_optional_register(
                     coordinator,

@@ -129,7 +129,20 @@ async def _read_known_registers_safe(
 
             if reg_map:
                 addr_to_name: dict[int, str] = {addr: name for name, addr in reg_map.items()}
-                groups = group_reads(sorted(addr_to_name.keys()), max_block_size=batch)
+                # Home p.5 requires complete RTC (0..3) and lock-date (7..9)
+                # reads, including when the diagnostic batch limit is one.
+                atomic = [(0, 4), (7, 3)] if reg_type == "holding_registers" else []
+                atomic = [
+                    (start, count)
+                    for start, count in atomic
+                    if any(address in addr_to_name for address in range(start, start + count))
+                ]
+                covered = {
+                    address for start, count in atomic for address in range(start, start + count)
+                }
+                groups = atomic + group_reads(
+                    sorted(set(addr_to_name) - covered), max_block_size=batch
+                )
 
                 for start, group_count in groups:
                     if delay_ms > 0:
@@ -161,6 +174,11 @@ async def _read_known_registers_safe(
                         continue
 
                     faults.append({"start": start, "count": group_count, "error": batch_error})
+                    if (start, group_count) in atomic:
+                        # An individual-word retry is invalid for these blocks.
+                        destination = miss if batch_error == "modbus_error_response" else unknown
+                        destination.update(valid_names)
+                        continue
                     for i in range(group_count):
                         addr = start + i
                         if addr not in addr_to_name:

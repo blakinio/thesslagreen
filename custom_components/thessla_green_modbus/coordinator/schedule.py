@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from pymodbus.exceptions import ConnectionException, ModbusException
 
+from ..capability_rules import firmware_block_reason
 from ..const import MAX_REGS_PER_REQUEST
 from ..core.schedule_values import complete_schedule_value
 from ..core.write_path import SingleWritePlan, encode_write_value, validate_holding_write_span
@@ -242,6 +243,11 @@ class _CoordinatorScheduleMixin:
         if "W" not in definition.access.upper() or definition.function not in (1, 3):
             _LOGGER.error("Register %s is read-only", register_name)
             return None
+        if reason := firmware_block_reason(
+            register_name, (getattr(self._device_client, "device_info", None) or {}).get("firmware")
+        ):
+            _LOGGER.error("Register %s is unsupported: %s", register_name, reason)
+            return None
         return definition
 
     def _validate_multi_register_write_request(
@@ -447,6 +453,27 @@ class _CoordinatorScheduleMixin:
         encoded_values, scalar_value = encode_write_value(register_name, definition, value, offset)
         if encoded_values is None and scalar_value is None:
             return False, False
+
+        firmware = str((self._device_client.device_info or {}).get("firmware", ""))
+        if (
+            register_name == "mode"
+            and scalar_value == 2
+            and firmware.strip().lstrip("vV").split(".")[:2] == ["3", "11"]
+        ):
+            # Home 3.11 echoes FC06/4208=2 without entering temporary mode.
+            # Preserve its existing temporary target and activate the complete
+            # documented airflow triplet; never invent a default percentage.
+            current = await self._locked_read_holding_registers(4211, count=1)
+            if current is None or len(current) != 1 or not 10 <= current[0] <= 100:
+                return False, False
+            _, success = await self._write_holding_multi(
+                REG_TEMPORARY_FLOW_START, [2, current[0], 1], 1
+            )
+            if not success or await self._locked_read_holding_registers(4208, count=1) != [2]:
+                return False, False
+            return True, self._handle_successful_single_register_write(
+                register_name=register_name, original_value=value, refresh=refresh
+            )
 
         plan = SingleWritePlan(
             register_name=register_name,

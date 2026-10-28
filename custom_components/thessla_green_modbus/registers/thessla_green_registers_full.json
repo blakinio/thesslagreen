@@ -4894,7 +4894,7 @@
       "address_hex": "0x18",
       "name": "serial_number",
       "access": "R",
-      "unit": "ASCII",
+        "unit": null,
       "enum": null,
       "multiplier": 1.0,
       "resolution": 1.0,

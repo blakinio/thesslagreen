@@ -148,9 +148,14 @@ async def scan_device_identity(
     """Parse serial number and device name from registers into device."""
     try:
         start = INPUT_REGISTERS["serial_number"]
-        parts = info_regs[start : start + REGISTER_DEFINITIONS["serial_number"].length]
-        if parts:
-            device.serial_number = "".join(f"{p:04X}" for p in parts)
+        definition = REGISTER_DEFINITIONS["serial_number"]
+        parts = info_regs[start : start + definition.length]
+        if len(parts) != definition.length:
+            # FW 3.11 rejects the broad 0..29 info read because optional
+            # firmware words are absent. Read the valid serial block itself.
+            parts = await scanner._read_input_block(start, definition.length) or []
+        if len(parts) == definition.length:
+            device.serial_number = definition.decode(parts)
     except (KeyError, IndexError, TypeError, ValueError) as err:
         _LOGGER.debug("Failed to parse serial number: %s", err)
     except (AttributeError, RuntimeError) as err:
