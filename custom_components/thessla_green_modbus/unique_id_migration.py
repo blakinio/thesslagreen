@@ -94,7 +94,7 @@ def _resolve_current_format(uid_no_domain: str, slave_id: int, lookup: EntityLoo
     start = uid_no_domain.find(marker)
     while start != -1:
         remainder = uid_no_domain[start + len(marker) :]
-        match = re.fullmatch(r"(.+)_(\d+|calc)(_bit\d+)?", remainder)
+        match = re.fullmatch(r"(.+)_(-?\d+|calc)(_bit\d+)?", remainder)
         if match and remainder not in lookup and match.group(1) in lookup:
             return f"{slave_id}_{match.group(1)}_{match.group(2)}{match.group(3) or ''}"
         start = uid_no_domain.find(marker, start + 1)

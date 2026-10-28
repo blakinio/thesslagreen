@@ -103,7 +103,7 @@ async def test_scan_device_identity_serial_and_device_name_success() -> None:
         info[start + offset] = offset + 1
 
     await firmware.scan_device_identity(scanner, info, device)
-    assert device.serial_number.startswith("0001")
+    assert device.serial_number == "010203040506"
     assert device.device_name == "ABC"
 
 

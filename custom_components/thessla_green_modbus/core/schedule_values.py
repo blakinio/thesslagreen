@@ -10,6 +10,12 @@ def complete_schedule_value(value: Any, current: Any) -> dict[str, Any]:
     if isinstance(value, dict):
         airflow = value.get("airflow_pct", value.get("airflow"))
         temperature = value.get("temp_c", value.get("temp"))
+        if value.get("temp_unset") is True:
+            if temperature is not None or airflow is None:
+                raise ValueError(
+                    "Clearing schedule temperature requires airflow and no temperature"
+                )
+            return {"airflow_pct": airflow, "temp_c": None, "temp_unset": True}
     else:
         airflow, temperature = value, None
     if temperature is None and isinstance(current, dict):

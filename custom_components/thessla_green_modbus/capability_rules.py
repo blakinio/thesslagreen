@@ -51,4 +51,27 @@ def capability_block_reason(register_name: str, capabilities: Any) -> str | None
     return None
 
 
-__all__ = ["CAPABILITY_PATTERNS", "capability_block_reason"]
+def firmware_block_reason(register_name: str, firmware: Any) -> str | None:
+    """Reject readable reserved words that older Home firmware cannot control.
+
+    Home 06.2021.01 p.12: airingSwitchCoef requires 4.85; openWindowCoef
+    requires 3.72 / 4.72. Home 3.11 reads zero and echoes writes without
+    applying them, so a successful probe cannot establish these capabilities.
+    Unknown firmware keeps discovery behavior; do not guess its version.
+    """
+    if register_name not in ("airing_switch_coef", "open_window_coef"):
+        return None
+    if not isinstance(firmware, str):
+        return None
+    parts = firmware.strip().lstrip("vV").split(".")
+    if len(parts) < 2 or not all(part.isdigit() for part in parts[:2]):
+        return None
+    major, minor = map(int, parts[:2])
+    if register_name == "airing_switch_coef" and (major == 3 or (major == 4 and minor < 85)):
+        return "requires firmware 4.85 or later on the 4.x controller"
+    if register_name == "open_window_coef" and major in (3, 4) and minor < 72:
+        return "requires firmware 3.72 / 4.72 or later"
+    return None
+
+
+__all__ = ["CAPABILITY_PATTERNS", "capability_block_reason", "firmware_block_reason"]

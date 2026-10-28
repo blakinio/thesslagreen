@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from custom_components.thessla_green_modbus.services import handlers_maintenance as maintenance
@@ -115,7 +116,9 @@ async def test_reset_settings_and_pressure_test_failure_paths() -> None:
 
 @pytest.mark.asyncio
 async def test_modbus_parameter_mapping_failure_and_success() -> None:
-    coordinator = SimpleNamespace()
+    coordinator = SimpleNamespace(
+        device_client=SimpleNamespace(available_registers={"holding_registers": {"uart_baud"}})
+    )
     deps = _deps(coordinator)
     handler = maintenance._build_set_modbus_parameters_handler(object(), deps)
     call = SimpleNamespace(data={"port": 1})
@@ -179,9 +182,8 @@ async def test_sync_time_success_exception_and_unconfirmed() -> None:
     coordinator = SimpleNamespace(async_write_registers=AsyncMock(return_value=True))
     deps = _deps(coordinator)
     handler = maintenance._build_sync_time_handler(object(), deps)
-    fixed = datetime(2026, 8, 12, 19, 30, 45)
-    with patch.object(maintenance, "_dt") as dt_cls:
-        dt_cls.now.return_value = fixed
+    fixed = datetime(2026, 8, 12, 19, 30, 45, tzinfo=ZoneInfo("Europe/Warsaw"))
+    with patch.object(maintenance.dt_util, "now", return_value=fixed):
         await handler(SimpleNamespace(data={}))
     coordinator.async_write_registers.assert_awaited_once_with(
         start_address=0,

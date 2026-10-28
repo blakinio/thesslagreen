@@ -288,7 +288,7 @@ async def test_scan_device_identity_parses_serial_and_ascii_name():
     serial_start = SCANNER_INPUT_REGISTERS["serial_number"]
     serial_length = REGISTER_DEFINITIONS["serial_number"].length
     info_regs = [0] * (serial_start + serial_length)
-    serial_words = [0x1234 + index for index in range(serial_length)]
+    serial_words = [0x1A + index for index in range(serial_length)]
     info_regs[serial_start : serial_start + serial_length] = serial_words
 
     name = b"AirPack Test"
@@ -304,7 +304,7 @@ async def test_scan_device_identity_parses_serial_and_ascii_name():
 
     await scan_device_identity(scanner, info_regs, device)
 
-    assert device.serial_number == "".join(f"{word:04X}" for word in serial_words)
+    assert device.serial_number == "".join(f"{word:02X}" for word in serial_words)
     assert device.device_name == "AirPack Test"
     scanner._read_holding_block.assert_awaited_once_with(
         SCANNER_HOLDING_REGISTERS["device_name"], expected_length

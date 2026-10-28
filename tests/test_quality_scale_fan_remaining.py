@@ -87,10 +87,10 @@ def test_fan_status_and_mode_fallback_paths(mock_coordinator) -> None:
 
     mock_coordinator.data.pop("exhaust_percentage", None)
     mock_coordinator.data["mode"] = 2
-    mock_coordinator.data["air_flow_rate_temporary_2"] = 66
+    mock_coordinator.data["air_flow_rate_temporary_4401"] = 66
     assert fan._get_current_flow_rate() == 66.0
 
-    mock_coordinator.data.pop("air_flow_rate_temporary_2", None)
+    mock_coordinator.data.pop("air_flow_rate_temporary_4401", None)
     mock_coordinator.data["air_flow_rate_manual"] = 33
     assert fan._get_current_flow_rate() == 33.0
 
@@ -106,7 +106,7 @@ def test_fan_write_path_validation_shortcuts_and_auto_failure(mock_coordinator) 
 
     mock_coordinator.data["mode"] = 0
     mock_coordinator.device_client.available_registers["holding_registers"].discard(
-        "air_flow_rate_temporary_2"
+        "airflow_rate_change_flag"
     )
     with pytest.raises(ServiceValidationError, match="unavailable"):
         fan._validate_percentage_write_path(50)
@@ -137,7 +137,7 @@ async def test_fan_temporary_write_exception_and_auto_unavailable(mock_coordinat
 
     mock_coordinator.data["mode"] = 0
     fan._is_writable_holding_register = Mock(return_value=False)
-    with pytest.raises(ServiceValidationError, match="Temporary fan speed control"):
+    with pytest.raises(ServiceValidationError, match="temporary airflow block"):
         await fan.async_set_percentage(70)
 
 

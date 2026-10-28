@@ -1574,6 +1574,10 @@
         "enabled": {
           "name": "Odcinek aktywny",
           "description": "Wyłączenie zapisuje 0xA200, nie zmienia temperatury."
+        },
+        "clear_temperature": {
+          "name": "Usuń temperaturę zadaną",
+          "description": "Zapisuje znacznik TT=0 oznaczający brak temperatury zadanej. Nie łącz z polem temperature."
         }
       },
       "name": "Ustaw harmonogram przepływu powietrza"
@@ -1781,6 +1785,42 @@
         "enabled": {
           "name": "Włączone",
           "description": "Włączone"
+        }
+      }
+    },
+    "reset_filter_alarms": {
+      "name": "Kasowanie alarmów filtrów Home",
+      "description": "Potwierdzenie aktywnych S17/E252 po fizycznej wymianie filtrów. Firmware 3.11 wymaga zapisu 1; wynikowy stan alarmu musi wynosić 0. Zachowuje system kontroli filtrów.",
+      "fields": {
+        "write_method": {
+          "name": "Funkcja zapisu Modbus",
+          "description": "Zapis pojedynczy (FC06) lub wielokrotny (FC16)."
+        },
+        "device_family": {
+          "name": "Rodzina urządzenia",
+          "description": "Potwierdź model AirPack Home."
+        },
+        "confirm_filters_replaced": {
+          "name": "Filtry zostały fizycznie wymienione",
+          "description": "Potwierdź zamontowanie czystych filtrów."
+        },
+        "codes": {
+          "name": "Alarmy filtrów",
+          "description": "Kasowane są wyłącznie aktywne alarmy S17 i E252."
+        }
+      }
+    },
+    "filter_alarm_diagnostics": {
+      "name": "Diagnostyka alarmów filtrów Home",
+      "description": "Odczyt bieżących rejestrów alarmów i sterowania bez zapisu do centrali."
+    },
+    "read_register_diagnostics": {
+      "name": "Odczyt diagnostyczny rejestrów",
+      "description": "Odczytuje surowe i zdekodowane wartości maksymalnie 32 nazwanych rejestrów przez istniejące połączenie, bez zapisu.",
+      "fields": {
+        "names": {
+          "name": "Nazwy rejestrów",
+          "description": "Lista nazw z mapy rejestrów."
         }
       }
     }

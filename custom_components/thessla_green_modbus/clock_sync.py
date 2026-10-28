@@ -146,8 +146,9 @@ async def async_perform_clock_sync(
 
     # Read-back validation using the locked register read (avoids stale coordinator.data).
     if readback_regs is None:
-        log.warning("Device clock unavailable after RTC write; skipping validation")
-        return True
+        raise HomeAssistantError(
+            "RTC read-back validation failed: device did not return clock words"
+        )
 
     readback_str = decode_rtc_registers(*readback_regs)
     if readback_str is None:

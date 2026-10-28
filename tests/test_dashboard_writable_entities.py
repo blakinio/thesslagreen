@@ -171,15 +171,15 @@ def test_fan_set_percentage_writes_air_flow_rate_manual(mock_coordinator):
     assert matched[0][0][1] == 60
 
 
-def test_fan_turn_on_writes_on_off_and_flow(mock_coordinator):
-    """turn_on writes on_off_panel_mode=1 and a non-zero flow to air_flow_rate_manual."""
+def test_fan_turn_on_with_percentage_writes_on_off_and_flow(mock_coordinator):
+    """An explicit turn-on speed writes both power and the requested manual flow."""
     mock_coordinator.data.pop("mode", None)  # no mode → defaults to manual path
     mock_coordinator.device_client.available_registers["holding_registers"].update(
         {"on_off_panel_mode", "air_flow_rate_manual", "mode"}
     )
 
     fan = ThesslaGreenFan(mock_coordinator)
-    asyncio.run(fan.async_turn_on())
+    asyncio.run(fan.async_turn_on(percentage=50))
 
     calls_by_reg = {c[0][0]: c[0][1] for c in mock_coordinator.async_write_register.call_args_list}
     assert "on_off_panel_mode" in calls_by_reg, "on_off_panel_mode not written by turn_on"

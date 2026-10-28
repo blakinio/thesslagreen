@@ -258,7 +258,7 @@ async def test_firmware_partial_identity_and_device_identity_error_paths() -> No
         ),
     ):
         await firmware.scan_device_identity(scanner, [0x0001, 0x0002], device)
-    assert device.serial_number == "00010002"
+    assert device.serial_number == "Unknown"
     assert device.device_name == "ABC"
 
     scanner = SimpleNamespace(_read_holding_block=AsyncMock(side_effect=RuntimeError("name")))

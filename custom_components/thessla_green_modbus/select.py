@@ -19,6 +19,7 @@ from pymodbus.exceptions import ConnectionException, ModbusException
 
 from .capability_rules import capability_block_reason
 from .coordinator import ThesslaGreenModbusCoordinator
+from .device_profile import configuration_command_block_reason, configured_device_family
 from .entity import ThesslaGreenEntity
 from .mappings import ENTITY_MAPPINGS
 from .optimistic import OptimisticState
@@ -83,6 +84,18 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         self._attr_icon = definition.get("icon")
         self._attr_has_entity_name = True
         self._states: dict[str, Any] = dict(definition["states"])
+        if register_name == "configuration_mode":
+            firmware = (getattr(coordinator.device_client, "device_info", None) or {}).get(
+                "firmware"
+            )
+            self._states = {
+                option: command
+                for option, command in self._states.items()
+                if configuration_command_block_reason(
+                    configured_device_family(coordinator), firmware, command
+                )
+                is None
+            }
         self._reverse_states: dict[Any, str] = {v: k for k, v in self._states.items()}
         self._attr_options = list(self._states.keys())
         if _ec := definition.get("entity_category"):
@@ -90,8 +103,9 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
         self._apply_risk_policy(definition)
 
         # Optimistic UI is only safe for plain enumerated control selects.
-        self._optimistic_enabled = not register_name.startswith(
-            BCD_TIME_PREFIXES + SETTING_SCHEDULE_PREFIXES
+        self._optimistic_enabled = (
+            not register_name.startswith(BCD_TIME_PREFIXES + SETTING_SCHEDULE_PREFIXES)
+            and register_name != "configuration_mode"
         )
         self._optimistic = OptimisticState()
 
@@ -120,6 +134,12 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return risk metadata for advanced/dangerous entities."""
         attrs: dict[str, Any] = {}
+        if self._register_name.startswith(SETTING_SCHEDULE_PREFIXES):
+            value = self.coordinator.data.get(self._register_name)
+            if isinstance(value, dict):
+                attrs["airflow_percentage"] = value.get("airflow_pct")
+                attrs["temperature_c"] = value.get("temp_c")
+                attrs["temperature_unset"] = value.get("temp_c") is None
         for meta_key in ("risk_level", "risk_category", "safety_warning"):
             meta_val = self._definition.get(meta_key)
             if meta_val is not None:

@@ -202,26 +202,16 @@ def test_fan_set_percentage_temporary_fail_raises(mock_coordinator):
         asyncio.run(fan.async_set_percentage(70))
 
 
-def test_fan_set_percentage_auto_mode_uses_temporary_register(mock_coordinator, monkeypatch):
-    """In auto mode with air_flow_rate_temporary_2 available, write to it (lines 251-255)."""
-    from custom_components.thessla_green_modbus import fan as fan_module
-
+def test_fan_set_percentage_auto_mode_uses_temporary_register(mock_coordinator):
+    """Auto mode uses the real atomic airflow block rather than a made-up alias."""
     mock_coordinator.data["mode"] = 0  # auto mode
-    mock_coordinator.device_client.available_registers["holding_registers"].add(
-        "air_flow_rate_temporary_2"
-    )
+    mock_coordinator.async_write_temporary_airflow = AsyncMock(return_value=True)
     mock_coordinator.async_write_register = AsyncMock(return_value=True)
     mock_coordinator.async_request_refresh = AsyncMock()
-
-    original = fan_module.holding_registers()
-    patched = {**original, "air_flow_rate_temporary_2": 999}
-    monkeypatch.setattr(fan_module, "holding_registers", lambda: patched)
-
     fan = ThesslaGreenFan(mock_coordinator)
     asyncio.run(fan.async_set_percentage(60))
-
-    register_names = [c[0][0] for c in mock_coordinator.async_write_register.call_args_list]
-    assert "air_flow_rate_temporary_2" in register_names  # nosec B101
+    mock_coordinator.async_write_temporary_airflow.assert_awaited_once_with(60, refresh=False)
+    mock_coordinator.async_write_register.assert_not_awaited()
 
 
 def test_fan_get_current_mode_auto(mock_coordinator):
@@ -582,39 +572,16 @@ def test_fan_manual_write_keeps_targeted_readback_disabled(mock_coordinator):
         assert kwargs.get("refresh") is False  # nosec B101
 
 
-def test_fan_no_setpoint_write_enables_targeted_readback(mock_coordinator, monkeypatch):
-    """No fan setpoint write path may enable generic targeted read-back.
-
-    Covers the auto-mode air_flow_rate_temporary_2 branch in addition to the
-    manual mode + air_flow_rate_manual writes.
-    """
-    from custom_components.thessla_green_modbus import fan as fan_module
-
-    mock_coordinator.data["mode"] = 0  # auto -> temporary_2 branch
+def test_fan_no_setpoint_write_enables_targeted_readback(mock_coordinator):
+    """Auto mode delegates to the atomic writer without individual setpoint writes."""
+    mock_coordinator.data["mode"] = 0
     mock_coordinator.data["supply_percentage"] = 50
-    mock_coordinator.device_client.available_registers["holding_registers"].add(
-        "air_flow_rate_temporary_2"
-    )
     mock_coordinator.async_request_refresh = AsyncMock()
-
-    write_kwargs: list[dict] = []
-
-    async def _fake_write(register_name, value, **kwargs):
-        write_kwargs.append(kwargs)
-        return True
-
-    mock_coordinator.async_write_register = AsyncMock(side_effect=_fake_write)
-
-    original = fan_module.holding_registers()
-    patched = {**original, "air_flow_rate_temporary_2": 999}
-    monkeypatch.setattr(fan_module, "holding_registers", lambda: patched)
-
+    mock_coordinator.async_write_temporary_airflow = AsyncMock(return_value=True)
     fan = ThesslaGreenFan(mock_coordinator)
     asyncio.run(fan.async_set_percentage(70))
-
-    assert write_kwargs, "expected at least one setpoint write"  # nosec B101
-    for kwargs in write_kwargs:
-        assert kwargs.get("targeted_readback") is False  # nosec B101
+    mock_coordinator.async_write_temporary_airflow.assert_awaited_once_with(70, refresh=False)
+    mock_coordinator.async_write_register.assert_not_awaited()
 
 
 def test_fan_mode_enum_write_does_not_engage_readback(mock_coordinator):
@@ -783,3 +750,34 @@ async def test_fan_temporary_write_failure_skips_refresh_and_pending(mock_coordi
 
     assert fan._pending_percentage is None  # nosec B101
     mock_coordinator.async_request_refresh.assert_not_awaited()
+
+
+@pytest.mark.parametrize("mode", [0, 2])
+@pytest.mark.parametrize(
+    "missing", ["cfg_mode_1", "air_flow_rate_temporary_4401", "airflow_rate_change_flag"]
+)
+async def test_incomplete_temporary_block_prevents_power_and_speed_writes(
+    mock_coordinator, mode, missing
+):
+    """A discovered partial block cannot power up the unit or send a guessed command."""
+    mock_coordinator.data["mode"] = mode
+    mock_coordinator.device_client.available_registers["holding_registers"].discard(missing)
+    mock_coordinator.async_write_temporary_airflow = AsyncMock(return_value=True)
+    fan = ThesslaGreenFan(mock_coordinator)
+    with pytest.raises(ServiceValidationError, match="complete temporary airflow block"):
+        await fan.async_turn_on(percentage=80)
+    mock_coordinator.async_write_register.assert_not_awaited()
+    mock_coordinator.async_write_temporary_airflow.assert_not_awaited()
+
+
+@pytest.mark.parametrize("mode", [0, 2])
+async def test_auto_turn_off_requires_real_power_register(mock_coordinator, mode):
+    """Zero is not sent to an invented temporary register when power control is absent."""
+    mock_coordinator.data["mode"] = mode
+    mock_coordinator.device_client.available_registers["holding_registers"].discard(
+        "on_off_panel_mode"
+    )
+    fan = ThesslaGreenFan(mock_coordinator)
+    with pytest.raises(ServiceValidationError, match="cannot be turned off"):
+        await fan.async_turn_off()
+    mock_coordinator.async_write_register.assert_not_awaited()

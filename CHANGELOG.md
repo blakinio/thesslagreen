@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.9] - 2026-10-28
+
+### Fixed
+
+- Home firmware 3.11 filter acknowledgements now confirm physical replacement,
+  acknowledge active S17/E252 with the correct command and require cleared readback.
+- Control writes report rejected requests instead of displaying an unapplied
+  value. Temporary-mode aliases use complete activation triplets with correctly
+  scaled existing targets; fan resume preserves the mode and airflow target.
+- Serial decoding and identity migration preserve existing entities. Device-clock
+  synchronization uses HA local time and complete atomic RTC blocks; diagnostic
+  reads preserve the complete lock-date block.
+- AFC filter control command 65 is gated to firmware 4.75 or later across the
+  service, configuration select and named/raw writes. Configuration mode displays
+  confirmed state. Unsupported UART and firmware-specific writes are rejected.
+- Serial transport dependencies use the pymodbus serial extra for compatibility
+  with Home Assistant validation.
+
+### Added
+
+- Read-only `read_register_diagnostics` returns raw/decoded values and explicit
+  response classifications through the existing serialized connection.
+- Schedule actions can explicitly clear the temperature byte while preserving
+  airflow; selects expose both packed fields and accept canonical weekday names.
+
+### Validation and limits
+
+- Physical Home 400h series 3, firmware 3.11 acceptance covers 357 named reads,
+  native HA control round trips, all 56 schedule-temperature slots and preserved
+  original 344 entity IDs. Fourteen additional accessory settings passed storage
+  change/read/display/restore checks; absent accessory operation is not qualified.
+- Final local suite: 3620 passed, 3 skipped, 98.40% coverage, all module gates pass.
+  Loopback fault tests cover transport failures and alarm reporting without
+  inducing physical safety faults.
+- This is scoped hardware acceptance. Home 3.11 airflow calibration remains
+  undocumented and unverified. Inactive alarm commands, factory/security resets,
+  absent equipment, rejected comfort/GWC requests and unavailable addresses are
+  explicitly distinguished in the acceptance reports.
+
 ## [2.8.8] - 2026-10-24
 
 > Hardware acceptance PARTIAL: v2.8.7 was confirmed on a running AirPack Home

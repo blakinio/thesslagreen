@@ -37,6 +37,9 @@ def register_schedule_services(hass: HomeAssistant, deps: ServiceHandlerDeps) ->
         end_time = call.data.get("end_time")
         airflow_rate = call.data.get("airflow_rate")
         temperature = call.data.get("temperature")
+        clear_temperature = call.data.get("clear_temperature", False)
+        if clear_temperature and temperature is not None:
+            raise ServiceValidationError("temperature and clear_temperature are mutually exclusive")
         dow_key = deps.day_to_device_key[day]
         schedule_register = f"schedule_{season}_{dow_key}_{period}"
         setting_register = f"setting_{season}_{dow_key}_{period}"
@@ -46,6 +49,8 @@ def register_schedule_services(hass: HomeAssistant, deps: ServiceHandlerDeps) ->
             )
         start_value = f"{start_time.hour:02d}:{start_time.minute:02d}" if enabled else "disabled"
         settings = _schedule_settings(airflow_rate, temperature) if enabled else None
+        if clear_temperature and settings is not None:
+            settings["temp_unset"] = True
 
         if end_time is not None:
             raise ServiceValidationError(

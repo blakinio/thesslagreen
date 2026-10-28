@@ -8,10 +8,15 @@ from typing import TYPE_CHECKING, Any
 
 from pymodbus.exceptions import ConnectionException, ModbusException
 
+from ..capability_rules import firmware_block_reason
 from ..const import MAX_REGS_PER_REQUEST
 from ..core.schedule_values import complete_schedule_value
 from ..core.write_path import SingleWritePlan, encode_write_value, validate_holding_write_span
-from ..device_profile import configured_device_family, validate_filter_command
+from ..device_profile import (
+    configuration_command_block_reason,
+    configured_device_family,
+    validate_filter_command,
+)
 from ..register_defs_cache import get_register_definitions
 from ..registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
 from ..registers.read_planner import chunk_register_values
@@ -242,6 +247,11 @@ class _CoordinatorScheduleMixin:
         if "W" not in definition.access.upper() or definition.function not in (1, 3):
             _LOGGER.error("Register %s is read-only", register_name)
             return None
+        if reason := firmware_block_reason(
+            register_name, (getattr(self._device_client, "device_info", None) or {}).get("firmware")
+        ):
+            _LOGGER.error("Register %s is unsupported: %s", register_name, reason)
+            return None
         return definition
 
     def _validate_multi_register_write_request(
@@ -253,6 +263,8 @@ class _CoordinatorScheduleMixin:
             return False
         try:
             validate_holding_write_span(start_address, values, get_register_definitions().values())
+            if start_address <= 13 < start_address + len(values):
+                self._validate_configuration_command(values[13 - start_address])
             if start_address <= 8191 < start_address + len(values):
                 validate_filter_command(
                     configured_device_family(self), values[8191 - start_address]
@@ -269,6 +281,14 @@ class _CoordinatorScheduleMixin:
             )
             return False
         return True
+
+    def _validate_configuration_command(self, value: Any) -> None:
+        """Validate command-specific firmware requirements before any connection."""
+        firmware = (getattr(self._device_client, "device_info", None) or {}).get("firmware")
+        if reason := configuration_command_block_reason(
+            configured_device_family(self), firmware, value
+        ):
+            raise ValueError(reason)
 
     def _plan_multi_register_chunks(
         self, start_address: int, values: list[int], require_single_request: bool
@@ -428,6 +448,11 @@ class _CoordinatorScheduleMixin:
 
         if register_name == "filter_change":
             validate_filter_command(configured_device_family(self), value)
+        if register_name == "configuration_mode":
+            _, command = encode_write_value(register_name, definition, value, offset)
+            if command is None:
+                return False, False
+            self._validate_configuration_command(command)
 
         await self._ensure_connection()
         self._assert_write_connection_ready()
@@ -447,6 +472,42 @@ class _CoordinatorScheduleMixin:
         encoded_values, scalar_value = encode_write_value(register_name, definition, value, offset)
         if encoded_values is None and scalar_value is None:
             return False, False
+
+        firmware = str((self._device_client.device_info or {}).get("firmware", ""))
+        if (
+            register_name in {"mode", "cfg_mode_1", "cfg_mode_2"}
+            and scalar_value == 2
+            and firmware.strip().lstrip("vV").split(".")[:2] == ["3", "11"]
+        ):
+            # Home 3.11 needs the complete activation triplet for either mode
+            # alias as well. Preserve the current target in device units.
+            temperature_mode = register_name == "cfg_mode_2"
+            target_definition = _get_register_definition(
+                "supply_air_temperature_temporary"
+                if temperature_mode
+                else "air_flow_rate_temporary"
+            )
+            start_address = (
+                REG_TEMPORARY_TEMP_START if temperature_mode else REG_TEMPORARY_FLOW_START
+            )
+            minimum, maximum = (10, 45) if temperature_mode else (10, 100)
+            current = await self._locked_read_holding_registers(target_definition.address, count=1)
+            if current is None or len(current) != 1:
+                return False, False
+            decoded_target = target_definition.decode(current[0])
+            if (
+                not isinstance(decoded_target, int | float)
+                or not minimum <= decoded_target <= maximum
+            ):
+                return False, False
+            _, success = await self._write_holding_multi(start_address, [2, current[0], 1], 1)
+            if not success or await self._locked_read_holding_registers(
+                definition.address, count=1
+            ) != [2]:
+                return False, False
+            return True, self._handle_successful_single_register_write(
+                register_name=register_name, original_value=value, refresh=refresh
+            )
 
         plan = SingleWritePlan(
             register_name=register_name,
@@ -488,6 +549,7 @@ class _CoordinatorScheduleMixin:
         refresh_after_write = False
         _raw_readback: list[int] | None = None
         _readback_definition: Any = None
+        _expected_readback: int | list[int] | None = None
 
         async with self._device_client._write_lock:
             try:
@@ -515,6 +577,7 @@ class _CoordinatorScheduleMixin:
                     )
                     if _raw_readback is not None:
                         _readback_definition = _definition
+                        _expected_readback = _definition.encode(value)
                         refresh_after_write = False
                     else:
                         _LOGGER.debug(
@@ -557,6 +620,15 @@ class _CoordinatorScheduleMixin:
                         "Skipping listener notification after read-back for %s", register_name
                     )
                 _LOGGER.debug("Targeted read-back for %s decoded to %r", register_name, _decoded)
+
+        if _raw_readback is not None and _raw_readback != [_expected_readback]:
+            _LOGGER.error(
+                "Device did not apply %s: requested raw %s, read back %s",
+                register_name,
+                _expected_readback,
+                _raw_readback,
+            )
+            return False
 
         return await finalize_write_result(self, refresh_after_write)
 

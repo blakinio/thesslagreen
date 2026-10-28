@@ -165,6 +165,34 @@ async def async_setup_mappings(hass: HomeAssistant) -> None:  # pragma: no cover
     await async_setup_entity_mappings(hass)
 
 
+def _migrate_serial_device_identifier(hass: Any, entry: Any, serial: Any) -> None:
+    """Keep the existing device when correcting the old padded serial format."""
+    if not isinstance(serial, str) or len(serial) != 12:
+        return
+    try:
+        octets = bytes.fromhex(serial)
+    except ValueError:
+        return
+    legacy = "".join(f"{value:04x}" for value in octets)
+    previous_identifiers = {
+        (DOMAIN, f"serial:{legacy}"),
+        (DOMAIN, f"entry:{entry.entry_id}"),
+    }
+    from homeassistant.helpers import device_registry as dr
+
+    try:
+        registry = dr.async_get(hass)
+        for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
+            if previous_identifiers & device.identifiers:
+                registry.async_update_device(
+                    device.id,
+                    new_identifiers=device.identifiers | {(DOMAIN, f"serial:{serial.lower()}")},
+                    serial_number=serial,
+                )
+    except (AttributeError, KeyError, TypeError, ValueError):
+        _LOGGER.debug("Could not migrate the legacy serial device identifier", exc_info=True)
+
+
 async def async_migrate_entity_unique_ids(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -189,6 +217,8 @@ async def async_migrate_entity_unique_ids(
         serial_number = (coordinator.device_client.device_info or {}).get("serial_number")
     except (AttributeError, TypeError, ValueError):
         serial_number = None
+
+    _migrate_serial_device_identifier(hass, entry, serial_number)
 
     host = getattr(coordinator.device_client.config, "host", "")
     port = getattr(coordinator.device_client.config, "port", 0)
@@ -222,6 +252,23 @@ async def async_migrate_entity_unique_ids(
         )
         if new_unique_id != old_unique_id:
             try:
+                # Recover duplicates created by the historical double-prefix migration.
+                # Keep the older entity ID and its user customizations.
+                duplicate_id = (
+                    entity_registry.async_get_entity_id(
+                        entity.entity_id.split(".", 1)[0], DOMAIN, new_unique_id
+                    )
+                    if serial_number and old_unique_id.startswith(f"{serial_number}_")
+                    else None
+                )
+                duplicate = entity_registry.async_get(duplicate_id) if duplicate_id else None
+                if (
+                    duplicate is not None
+                    and old_unique_id.startswith(f"{serial_number}_")
+                    and duplicate.config_entry_id == entry.entry_id
+                    and duplicate.created_at > entity.created_at
+                ):
+                    entity_registry.async_remove(duplicate.entity_id)
                 entity_registry.async_update_entity(
                     entity.entity_id,
                     new_unique_id=new_unique_id,
