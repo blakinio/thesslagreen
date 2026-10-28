@@ -463,13 +463,23 @@ class _CoordinatorScheduleMixin:
             # Home 3.11 needs the complete activation triplet for either mode
             # alias as well. Preserve the current target in device units.
             temperature_mode = register_name == "cfg_mode_2"
-            target_address = 4213 if temperature_mode else 4211
+            target_definition = _get_register_definition(
+                "supply_air_temperature_temporary"
+                if temperature_mode
+                else "air_flow_rate_temporary"
+            )
             start_address = (
                 REG_TEMPORARY_TEMP_START if temperature_mode else REG_TEMPORARY_FLOW_START
             )
-            minimum, maximum = (100, 450) if temperature_mode else (10, 100)
-            current = await self._locked_read_holding_registers(target_address, count=1)
-            if current is None or len(current) != 1 or not minimum <= current[0] <= maximum:
+            minimum, maximum = (10, 45) if temperature_mode else (10, 100)
+            current = await self._locked_read_holding_registers(target_definition.address, count=1)
+            if current is None or len(current) != 1:
+                return False, False
+            decoded_target = target_definition.decode(current[0])
+            if (
+                not isinstance(decoded_target, int | float)
+                or not minimum <= decoded_target <= maximum
+            ):
                 return False, False
             _, success = await self._write_holding_multi(start_address, [2, current[0], 1], 1)
             if not success or await self._locked_read_holding_registers(

@@ -302,8 +302,8 @@ async def test_311_mode_two_cannot_invent_an_unknown_temporary_target(current):
     [
         ("cfg_mode_1", 70, 4211, 4400),
         ("cfg_mode_1", 80, 4211, 4400),
-        ("cfg_mode_2", 235, 4213, 4403),
-        ("cfg_mode_2", 200, 4213, 4403),
+        ("cfg_mode_2", 47, 4213, 4403),
+        ("cfg_mode_2", 40, 4213, 4403),
     ],
 )
 async def test_311_temporary_mode_aliases_preserve_correct_target(name, target, address, start):
@@ -325,7 +325,7 @@ async def test_311_temporary_mode_aliases_preserve_correct_target(name, target, 
     ]
 
 
-@pytest.mark.parametrize("current", [None, [], [0], [99], [451]])
+@pytest.mark.parametrize("current", [None, [], [0], [19], [91]])
 async def test_311_temperature_mode_alias_refuses_missing_or_invalid_target(current):
     from unittest.mock import Mock
 

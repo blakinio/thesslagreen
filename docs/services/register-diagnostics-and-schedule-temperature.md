@@ -72,3 +72,28 @@ or `cfg_mode_2` uses the complete corresponding airflow/temperature activation
 triplet. The writer reads and preserves the existing temporary target and
 verifies the requested mode word afterwards; a direct single-word echo is
 insufficient. The generic mode select does not invent an airflow percentage.
+
+`fan.turn_on` without a percentage resumes the saved operation when the panel
+power register is available. It does not replace the saved target with 50% or
+move AUTO into temporary mode. An explicit percentage still uses the validated
+speed-write path. Devices without a writable panel power register retain the
+legacy fallback behavior.
+
+Physical acceptance on the standalone Home 400h firmware 3.11 distinguishes
+storage/control confirmation from optional equipment operation. All 357 named
+definitions were read: 338 respond and 19 return explicit exceptions. Of 178
+native writable-entity cases, 177 passed change/read/display/restore and comfort
+mode correctly reports its ignored enable request after the fix. All 56 packed
+schedule-temperature set/clear cases passed. Eleven main-action cases, three
+clock actions and fan resumption in all three modes passed. The 265 responding
+writable definitions outside the progressing RTC block returned to their exact
+initial raw values; the original 344 entity IDs remain unchanged.
+
+This does not qualify every possible write to all 280 RW definitions. Seven
+reset/security/service definitions were preserved, 60 alarm/type command words
+were not physically asserted for blanket reset testing, 15 settings concern
+absent accessories, two controls are firmware-gated, eleven RW addresses return
+device exceptions, and comfort mode rejects enable. The complete name block and
+RTC block are tested as blocks. No undocumented 3.11 calibration command or
+physical safety-input fault injection is claimed. Loopback simulations cover
+17 transport failures and all 54 mapped individual E/S alarm reports.

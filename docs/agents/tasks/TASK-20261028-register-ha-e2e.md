@@ -10,12 +10,12 @@ HA coordinator connection; a concurrent PC Modbus client causes contention.
 
 ```yaml
 checkpoint_version: 1
-updated_at: 2026-10-28T17:20:00+01:00
+updated_at: 2026-10-28T18:19:14+01:00
 task: TASK-20261028-register-ha-e2e
 branch: codex/fix-home-311-filter-ack
-head: c0d4a1e8b0454c436d9065992f14b6d57e8d981c
+head: b3c23bb36d8c4433e433765ca1ad1a80c48f2bd7
 pr: https://github.com/blakinio/thesslagreen/pull/1807
-status: validating
+status: ready
 context_routes:
   - AGENTS.md
   - docs/agents/CONTEXT_HANDOFF.md
@@ -25,16 +25,22 @@ owned_paths:
   - tests/test_register_read_diagnostics.py
 proven:
   - Fresh HA-owned reads cover all 357 definitions: 338 successful, 19 explicit device exceptions.
-  - 170 distinct native HA actions passed write/read/restore and displayed/restored state checks.
+  - 177 distinct native HA actions passed write/read/restore and displayed/restored state checks, including both mode aliases.
   - New read_register_diagnostics service never writes and preserves atomic RTC/lock-date reads.
   - Live dashboard shows 80 percent on both fans, nonzero flows and no active alarms.
   - All 56 schedule temperatures passed set/read/display/clear/restore; actual dashboard save and clear buttons passed.
   - Comfort write-one remains zero; fixed coordinator now reports rejection and HA stays off, confirmed by logs.
+  - Fan off/on preserves auto, manual and temporary modes and the existing 30/80 targets in actual HA.
+  - Eleven additional main-action cases and three clock actions passed with physical readback.
+  - All 265 responding writable definitions excluding the four progressing RTC words match the initial raw baseline.
+  - Final registry preserves exactly the original 344 entity IDs; all 15 deployed production files match local SHA256.
+  - HA presentation matches 331 direct values; two flow samples differ by 2 cubic metres per hour across acquisition times; no unexplained mismatch.
+  - Loopback-only fault tests pass 17 transport cases and 54 individual alarm codes, with no physical fault injection.
 derived:
   - Baseline includes 178 applicable native write cases; absent accessories and protected controls are separate.
 unknown:
-  - Corrected mode aliases cfg_mode_1 and cfg_mode_2 and final mode action need live acceptance after restart.
   - No documented firmware 3.11 calibration-start command has been established.
+  - Factory/security/service resets, inactive alarm acknowledgement semantics and absent accessories have no blanket physical write acceptance.
 conflicts: []
 first_failure:
   marker: schedule-temperature-clear
@@ -45,6 +51,7 @@ rejected_hypotheses:
 changed_paths:
   - custom_components/thessla_green_modbus/services/handlers_register_read.py
   - custom_components/thessla_green_modbus/coordinator/schedule.py
+  - custom_components/thessla_green_modbus/fan.py
   - custom_components/thessla_green_modbus/clock_sync.py
   - custom_components/thessla_green_modbus/services/handlers_maintenance.py
   - custom_components/thessla_green_modbus/manifest.json
@@ -65,13 +72,15 @@ changed_paths:
   - tests/test_clock_sync.py
   - tests/test_quality_scale_services_maintenance_remaining.py
   - tests/test_home_hardware_acceptance_guards.py
+  - tests/test_fan_resume_stored_operation.py
+  - tests/test_dashboard_writable_entities.py
 validation:
   - command: pytest tests/ --cov
     result: PASS
-    evidence: 3594 passed, 3 skipped, 98.42 percent; all module gates pass; installed with SHA verification and backup.
+    evidence: 3598 passed, 3 skipped, 98.42 percent; all module gates pass; installed with SHA verification and backup.
   - command: ruff; format; mypy; translation and maintainability checks
     result: PASS
     evidence: Current production/test changes passed before live installation.
 blockers: []
-next_action: After HA restarts, retake cfg_mode_1 and cfg_mode_2 and mode actions, then verify the complete configuration restoration and final raw-to-HA matrix.
+next_action: Review draft PR 1807 together with the explicit unsupported and untested command boundaries; applicable reversible live tests are complete.
 ```

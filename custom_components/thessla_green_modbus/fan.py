@@ -282,7 +282,11 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         preset_mode: str | None = None,
         **kwargs: Any,
     ) -> None:
-        """Turn on the fan without reporting success for an unsupported speed path."""
+        """Resume stored operation unless the caller explicitly requests a speed."""
+        if percentage is None and self._is_writable_holding_register("on_off_panel_mode"):
+            await self._write_register("on_off_panel_mode", 1)
+            return
+
         requested_percentage = FAN_DEFAULT_PERCENT if percentage is None else percentage
         if requested_percentage < 0:
             raise ServiceValidationError("Fan percentage must be greater than or equal to 0.")
