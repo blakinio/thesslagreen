@@ -35,9 +35,11 @@ is retained privately with raw responses and restoration journals.
   effective mode 2, without guessing a percentage. All AUTO/manual/temporary
   transitions passed on hardware after the change.
 
+- Live HA acceptance exposed a further migration defect: time/text/button and virtual fan/climate/alarm keys were missing from the migration lookup, and negative virtual addresses were not parsed. The corrected lookup and signed address parser preserve those entity IDs. Recovery removes only a newer duplicate in the same config entry when an existing older entity has the historical double-prefix defect. Final live HA and persisted registry both contain exactly the original 344 entity IDs, with no added or missing IDs and the same device ID. The correct serial is present. Original fan control reports 80/80 percent, flows 264/262 cubic metres per hour, no active alarms, stop code zero and access level zero. Global logging and device refresh actions also succeeded in real HA.
+
 ## Acceptance boundary
 
-All 56 seasonal/day/period schedule execution cases passed on physical hardware. Each selected controller weekday, period and requested airflow matched the fixture. The initial clock restoration weekday required a separate correction; FC04 weekday 2 was subsequently verified. Every schedule start and settings word (56 + 56) and every seasonal airing day
+All 56 seasonal/day/period schedule execution cases passed on physical hardware. Each selected controller weekday, period and requested airflow matched the fixture. The initial clock restoration weekday required a separate correction; FC04 weekday 2 was subsequently verified. All 15 timed airing cases (14 weekly and one manual) also passed: full RTC date/time, a unique trigger hour per weekday, observed idle before the trigger, and resulting airing mode/100 percent were verified. The ordinary schedule weekday may refer to the previous calendar day before its first slot; it is not the airing RTC weekday. Every schedule start and settings word (56 + 56) and every seasonal airing day
 (7 + 7) was changed/read/restored individually. Clock actions and an eight-word
 name change were tested with restoration. Ordinary parameter storage and fan
 70/80/off/on behavior were tested using the actual production handlers, fan
@@ -54,8 +56,8 @@ is **not claimed**, even if repository CI and normal operating tests pass.
 
 ```yaml
 checkpoint_version: 1
-updated_at: 2026-10-28T12:12:46.4991286+01:00
-head: 1460fdfe82f8b48e00dcff233f60123338a076ee
+updated_at: 2026-10-28T12:32:20.736076+01:00
+head: 4e7c0c006f316d1735bdd4cbd79646d991073559
 branch: codex/fix-home-311-filter-ack
 pr: https://github.com/blakinio/thesslagreen/pull/1807
 status: validating
@@ -74,17 +76,21 @@ owned_paths:
   - custom_components/thessla_green_modbus/scanner/firmware.py
   - custom_components/thessla_green_modbus/services/handlers_data.py
   - custom_components/thessla_green_modbus/services/handlers_maintenance.py
+  - custom_components/thessla_green_modbus/entity_lookup.py
+  - custom_components/thessla_green_modbus/unique_id_migration.py
   - tests/test_home_hardware_acceptance_guards.py
 proven:
   - All 331 unique manufacturer FC/address pairs exist in the integration map.
   - Hardware read coverage is 318 responding Home addresses and 13 explicit firmware/equipment exceptions.
   - Every 56 schedule and 56 setting word and 14 weekly airing words passed reversible storage tests.
   - All 56 timed seasonal/day/period execution cases passed, followed by restoration and weekday correction verification.
+  - All 15 timed airing cases passed with complete RTC and observed idle-to-airing transitions.
+  - Live HA and persisted registry preserve all original 344 entity IDs and the device ID.
   - Six-byte serial read and full scanner identity now agree with the physical nameplate.
   - Firmware-gated reserved controls ignored documented writes; guarded before IO after repair.
   - Actual fan transitions and 70/80/off/on tests passed; final requested control is 80 percent.
   - Complete RTC sync actions and device-name write passed physical read/restore checks.
-  - Latest full local suite passed 3507 tests with 3 skips; per-module coverage gates pass.
+  - Latest full local suite passed 3524 tests with 3 skips; per-module coverage gates pass.
 derived:
   - A successful Modbus write echo is insufficient evidence of functional support.
 unknown:
@@ -108,17 +114,19 @@ changed_paths:
   - custom_components/thessla_green_modbus/scanner/firmware.py
   - custom_components/thessla_green_modbus/services/handlers_data.py
   - custom_components/thessla_green_modbus/services/handlers_maintenance.py
+  - custom_components/thessla_green_modbus/entity_lookup.py
+  - custom_components/thessla_green_modbus/unique_id_migration.py
   - tests/test_home_hardware_acceptance_guards.py
 validation:
   - command: pytest tests/ --cov
     result: PASS
-    evidence: 3507 passed, 3 skipped; 98.40 percent total coverage and per-module gates pass.
+    evidence: 3524 passed, 3 skipped; 98.40 percent total coverage and per-module gates pass.
   - command: ruff; mypy; reference/translation/mapping and maintainability checks
     result: PASS
     evidence: Local CI-equivalent checks.
 blockers:
   - Destructive resets, credentials, calibration and fault injection deliberately not exercised on a working installation.
-next_action: Complete airing timer execution and verify the installed code, registry identities and 80 percent state in HA.
+next_action: Review the draft PR and the explicit unsupported or untested command boundaries; no further hardware mutation is needed.
 ```
 
 

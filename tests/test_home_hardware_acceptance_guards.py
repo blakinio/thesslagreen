@@ -310,3 +310,72 @@ async def test_311_mode_two_requires_effective_mode_readback(write_ok, readback)
     assert await device._locked_single_register_write(
         register_name="mode", value=2, offset=0, refresh=False
     ) == (False, False)
+
+
+@pytest.mark.parametrize(
+    "suffix",
+    [
+        "ventilation_0",
+        "climate_control_-1",
+        "error_codes_-2",
+        "active_errors_-3",
+        "schedule_summer_mon_1_16",
+        "device_name_8144",
+        "sync_device_clock_calc",
+    ],
+)
+@pytest.mark.parametrize("old_prefix", ["Unknown", "123456780000_Unknown"])
+def test_all_platform_serial_migration_preserves_entity_suffix(suffix, old_prefix):
+    from custom_components.thessla_green_modbus.entity_lookup import _build_entity_lookup
+
+    from tests.test_migrate_unique_id import migrate_unique_id
+
+    _build_entity_lookup.cache_clear()
+    assert (
+        migrate_unique_id(
+            f"{old_prefix}_10_{suffix}",
+            serial_number="123456780000",
+            host="test",
+            port=8899,
+            slave_id=10,
+        )
+        == f"123456780000_10_{suffix}"
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("same_entry,newer", [(True, True), (True, False), (False, True)])
+async def test_double_prefix_recovery_keeps_older_entity(monkeypatch, same_entry, newer):
+    from unittest.mock import Mock
+
+    from custom_components.thessla_green_modbus import _setup
+    from homeassistant.helpers import entity_registry as er
+
+    entity = SimpleNamespace(
+        entity_id="fan.original", unique_id="123456780000_Unknown_10_ventilation_0", created_at=1
+    )
+    duplicate = SimpleNamespace(
+        entity_id="fan.duplicate",
+        config_entry_id="entry" if same_entry else "other",
+        created_at=2 if newer else 0,
+    )
+    registry = Mock()
+    registry.async_get_entity_id.return_value = duplicate.entity_id
+    registry.async_get.return_value = duplicate
+    monkeypatch.setattr(er, "async_get", lambda _: registry)
+    monkeypatch.setattr(er, "async_entries_for_config_entry", lambda *_: [entity])
+    monkeypatch.setattr(_setup, "_migrate_serial_device_identifier", lambda *_: None)
+    coordinator = SimpleNamespace(
+        device_client=SimpleNamespace(
+            device_info={"serial_number": "123456780000"},
+            config=SimpleNamespace(host="test", port=8899, slave_id=10),
+            slave_id=10,
+        )
+    )
+    await _setup.async_migrate_entity_unique_ids(
+        object(), SimpleNamespace(entry_id="entry"), coordinator
+    )
+    assert registry.async_remove.called == (same_entry and newer)
+    registry.async_update_entity.assert_called_once_with(
+        "fan.original", new_unique_id="123456780000_10_ventilation_0"
+    )
