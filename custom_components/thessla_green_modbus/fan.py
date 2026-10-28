@@ -54,7 +54,7 @@ async def async_setup_entry(
     # ThesslaGreenDeviceScanner.scan_device()
     fan_registers = [
         "air_flow_rate_manual",
-        "air_flow_rate_temporary_2",
+        "air_flow_rate_temporary_4401",
         "supply_percentage",
         "exhaust_percentage",
     ]
@@ -95,7 +95,9 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         self._attr_translation_key = "thessla_green_fan"
 
         # Fan configuration
-        self._attr_supported_features = FanEntityFeature.SET_SPEED
+        self._attr_supported_features = (
+            FanEntityFeature.SET_SPEED | FanEntityFeature.TURN_ON | FanEntityFeature.TURN_OFF
+        )
 
         # Speed range (0-150% as per ThesslaGreen specs)
         self._attr_speed_count = FAN_SPEED_LEVELS
@@ -251,7 +253,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         # Mode-aware setpoint fallback.
         current_mode = self._get_current_mode()
         if current_mode == "temporary":
-            candidates: tuple[str, ...] = ("air_flow_rate_temporary_2", "air_flow_rate_manual")
+            candidates: tuple[str, ...] = ("air_flow_rate_temporary_4401", "air_flow_rate_manual")
         else:
             candidates = ("air_flow_rate_manual",)
 
@@ -267,17 +269,12 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         if percentage <= 0:
             return
         current_mode = self._get_current_mode()
-        if current_mode == "temporary":
-            return
-        register = (
-            "air_flow_rate_manual"
-            if current_mode == "manual" or not current_mode
-            else "air_flow_rate_temporary_2"
-        )
-        if not self._is_writable_holding_register(register):
-            raise ServiceValidationError(
-                f"Fan speed control register {register} is unavailable on this device."
-            )
+        if current_mode in ("auto", "temporary"):
+            required = ("cfg_mode_1", "air_flow_rate_temporary_4401", "airflow_rate_change_flag")
+            if not all(self._is_writable_holding_register(name) for name in required):
+                raise ServiceValidationError("The complete temporary airflow block is unavailable.")
+        elif not self._is_writable_holding_register("air_flow_rate_manual"):
+            raise ServiceValidationError("Manual fan speed control is unavailable on this device.")
 
     async def async_turn_on(
         self,
@@ -307,12 +304,10 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             return
 
         current_mode = self._get_current_mode()
-        register = (
-            "air_flow_rate_manual"
-            if current_mode == "manual" or not current_mode
-            else "air_flow_rate_temporary_2"
-        )
-        if not self._is_writable_holding_register(register):
+        register = "air_flow_rate_manual"
+        if current_mode in ("auto", "temporary") or not self._is_writable_holding_register(
+            register
+        ):
             raise ServiceValidationError(
                 "Fan cannot be turned off because no writable power or airflow register is available."
             )
@@ -334,6 +329,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
         actual_percentage = max(min_pct, requested)
         current_mode = self._get_current_mode()
+        self._validate_percentage_write_path(actual_percentage)
 
         if current_mode == "manual" or not current_mode:
             if not self._is_writable_holding_register("air_flow_rate_manual"):
@@ -348,7 +344,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
             return
 
-        if current_mode == "temporary":
+        if current_mode in ("auto", "temporary"):
             try:
                 success = await self.coordinator.async_write_temporary_airflow(
                     actual_percentage, refresh=False
@@ -367,15 +363,6 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             await self.coordinator.async_request_refresh()
             _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
             return
-
-        if not self._is_writable_holding_register("air_flow_rate_temporary_2"):
-            raise ServiceValidationError(
-                "Temporary fan speed control is unavailable on this device."
-            )
-        await self._write_register("air_flow_rate_temporary_2", actual_percentage, refresh=False)
-        self._set_pending_percentage(actual_percentage)
-        await self.coordinator.async_request_refresh()
-        _LOGGER.debug("Set fan speed to %d%%", actual_percentage)
 
     def _get_current_mode(self) -> str | None:
         """Get current system mode."""

@@ -1783,6 +1783,32 @@
           "description": "enabled"
         }
       }
+    },
+    "reset_filter_alarms": {
+      "name": "Acknowledge Home filter alarms",
+      "description": "Acknowledge active S17/E252 after physically replacing filters. Firmware 3.11 uses write-one acknowledgement; the resulting alarm state must be zero. Preserves the filter system.",
+      "fields": {
+        "write_method": {
+          "name": "Modbus write function",
+          "description": "Single (FC06) or multiple (FC16) register write."
+        },
+        "device_family": {
+          "name": "Device family",
+          "description": "Confirm the device is an AirPack Home."
+        },
+        "confirm_filters_replaced": {
+          "name": "Filters physically replaced",
+          "description": "Confirm clean replacement filters are installed."
+        },
+        "codes": {
+          "name": "Filter alarms",
+          "description": "Only active S17 and E252 may be acknowledged."
+        }
+      }
+    },
+    "filter_alarm_diagnostics": {
+      "name": "Home filter alarm diagnostics",
+      "description": "Read current filter alarm and control registers without writing to the device."
     }
   },
   "title": "ThesslaGreen Modbus"

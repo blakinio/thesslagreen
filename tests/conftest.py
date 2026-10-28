@@ -146,7 +146,14 @@ def mock_coordinator():
     coordinator.device_client.capabilities = capabilities
     available_registers = {
         "input_registers": {"outside_temperature", "supply_temperature", "exhaust_temperature"},
-        "holding_registers": {"mode", "on_off_panel_mode", "air_flow_rate_manual"},
+        "holding_registers": {
+            "mode",
+            "on_off_panel_mode",
+            "air_flow_rate_manual",
+            "cfg_mode_1",
+            "air_flow_rate_temporary_4401",
+            "airflow_rate_change_flag",
+        },
         "coil_registers": {"power_supply_fans", "bypass"},
         "discrete_inputs": {"expansion", "contamination_sensor"},
         "calculated": {

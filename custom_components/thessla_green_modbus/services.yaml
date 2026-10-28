@@ -513,3 +513,48 @@ set_airing_schedule:
       default: true
       selector:
         boolean:
+reset_filter_alarms:
+  name: Kasowanie alarmów filtrów Home
+  description: Jednorazowe kasowanie S17 lub E252 po fizycznej wymianie filtrów w AirPack Home z presostatem. Zachowuje typ filtra i weryfikuje odczyt po zapisie.
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus
+  fields:
+    write_method:
+      name: Funkcja zapisu Modbus
+      default: single
+      selector:
+        select:
+          options:
+            - single
+            - multiple
+    device_family:
+      name: Rodzina urządzenia
+      required: true
+      selector:
+        select:
+          options:
+            - airpack_home
+    confirm_filters_replaced:
+      name: Filtry zostały fizycznie wymienione
+      required: true
+      selector:
+        boolean:
+    codes:
+      name: Alarmy do skasowania
+      required: true
+      selector:
+        select:
+          multiple: true
+          options:
+            - S17
+            - E252
+
+filter_alarm_diagnostics:
+  name: Diagnostyka alarmów filtrów Home
+  description: Odczyt bieżących rejestrów alarmów i sterowania bez wysyłania zapisów.
+  target:
+    entity:
+      domain: climate
+      integration: thessla_green_modbus

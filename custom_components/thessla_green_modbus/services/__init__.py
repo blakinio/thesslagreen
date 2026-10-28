@@ -18,6 +18,7 @@ from . import schema as _services_schema
 from .dispatch import write_register as _write_register_impl
 from .handler_deps import ServiceHandlerDeps
 from .handlers_data import register_data_services
+from .handlers_filter_alarms import register_filter_alarm_services
 from .handlers_logging import register_logging_services
 from .handlers_maintenance import register_maintenance_services
 from .handlers_mode import register_mode_services
@@ -118,6 +119,10 @@ class ServiceRegistrationGroup:
 
 
 SERVICE_REGISTRATION_GROUPS: tuple[ServiceRegistrationGroup, ...] = (
+    ServiceRegistrationGroup(
+        register=register_filter_alarm_services,
+        service_names=("reset_filter_alarms", "filter_alarm_diagnostics"),
+    ),
     ServiceRegistrationGroup(
         register=register_mode_services,
         service_names=("set_special_mode", "set_mode", "set_special_function"),
