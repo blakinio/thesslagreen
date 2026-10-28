@@ -55,7 +55,8 @@ async def test_documented_home_and_ap4_afc_test_requires_equipment_confirmation(
     coordinator = SimpleNamespace(
         entry=SimpleNamespace(options={"device_family": family}),
         device_client=SimpleNamespace(
-            available_registers={"holding_registers": {"configuration_mode"}}
+            device_info={"firmware": "4.75"},
+            available_registers={"holding_registers": {"configuration_mode"}},
         ),
         async_request_refresh=AsyncMock(),
     )

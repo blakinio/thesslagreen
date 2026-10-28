@@ -16,7 +16,7 @@ from ..const import (
     CONF_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
     DEFAULT_SYNC_DEVICE_CLOCK_MAX_DRIFT_SECONDS,
 )
-from ..device_profile import configured_device_family
+from ..device_profile import configuration_command_block_reason, configured_device_family
 from .dispatch import (
     refresh_and_log_success,
     write_mapped_optional_register,
@@ -268,13 +268,14 @@ def _build_start_pressure_test_handler(
             )
 
         async def _start_pressure_test_for_target(entity_id: str, coordinator: Any) -> bool:
-            if test_type == "afc_and_duct" and configured_device_family(coordinator) not in (
-                "airpack_home",
-                "airpack4",
+            command = 47 if test_type == "duct_filter" else 65
+            firmware = (
+                getattr(getattr(coordinator, "device_client", None), "device_info", None) or {}
+            ).get("firmware")
+            if reason := configuration_command_block_reason(
+                configured_device_family(coordinator), firmware, command
             ):
-                raise ServiceValidationError(
-                    "Select the documented Home or AirPack4 profile before an AFC test"
-                )
+                raise ServiceValidationError(reason)
             if "configuration_mode" not in coordinator.device_client.available_registers.get(
                 "holding_registers", set()
             ):
@@ -282,7 +283,7 @@ def _build_start_pressure_test_handler(
             if not await deps.write_register(
                 coordinator,
                 "configuration_mode",
-                47 if test_type == "duct_filter" else 65,
+                command,
                 entity_id,
                 "start pressure test",
             ):

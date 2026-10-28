@@ -12,7 +12,11 @@ from ..capability_rules import firmware_block_reason
 from ..const import MAX_REGS_PER_REQUEST
 from ..core.schedule_values import complete_schedule_value
 from ..core.write_path import SingleWritePlan, encode_write_value, validate_holding_write_span
-from ..device_profile import configured_device_family, validate_filter_command
+from ..device_profile import (
+    configuration_command_block_reason,
+    configured_device_family,
+    validate_filter_command,
+)
 from ..register_defs_cache import get_register_definitions
 from ..registers import REG_TEMPORARY_FLOW_START, REG_TEMPORARY_TEMP_START
 from ..registers.read_planner import chunk_register_values
@@ -259,6 +263,8 @@ class _CoordinatorScheduleMixin:
             return False
         try:
             validate_holding_write_span(start_address, values, get_register_definitions().values())
+            if start_address <= 13 < start_address + len(values):
+                self._validate_configuration_command(values[13 - start_address])
             if start_address <= 8191 < start_address + len(values):
                 validate_filter_command(
                     configured_device_family(self), values[8191 - start_address]
@@ -275,6 +281,14 @@ class _CoordinatorScheduleMixin:
             )
             return False
         return True
+
+    def _validate_configuration_command(self, value: Any) -> None:
+        """Validate command-specific firmware requirements before any connection."""
+        firmware = (getattr(self._device_client, "device_info", None) or {}).get("firmware")
+        if reason := configuration_command_block_reason(
+            configured_device_family(self), firmware, value
+        ):
+            raise ValueError(reason)
 
     def _plan_multi_register_chunks(
         self, start_address: int, values: list[int], require_single_request: bool
@@ -434,6 +448,11 @@ class _CoordinatorScheduleMixin:
 
         if register_name == "filter_change":
             validate_filter_command(configured_device_family(self), value)
+        if register_name == "configuration_mode":
+            _, command = encode_write_value(register_name, definition, value, offset)
+            if command is None:
+                return False, False
+            self._validate_configuration_command(command)
 
         await self._ensure_connection()
         self._assert_write_connection_ready()
