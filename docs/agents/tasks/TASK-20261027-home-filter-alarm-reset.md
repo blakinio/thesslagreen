@@ -19,9 +19,9 @@ block. Missing power control in AUTO/temporary mode fails explicitly.
 ```yaml
 checkpoint_version: 1
 updated_at: 2026-10-28T08:45:00+00:00
-head: af7528644dc624c277b2c87fe78e264371f192b6
+head: b9495952b4ad20dfa82c5b661879465d98e64f5c
 branch: codex/fix-home-311-filter-ack
-pr: unpublished
+pr: https://github.com/blakinio/thesslagreen/pull/1807
 status: ready
 context_routes:
   - AGENTS.md
@@ -77,7 +77,8 @@ validation:
     result: PASS
     evidence: Local CI-equivalent checks.
 blockers:
-  - No hardware or local validation blocker; draft publication pending.
-next_action: Publish the tested branch as a draft PR and verify the installed HA version.
+  - No hardware or local validation blocker; remote CI pending.
+next_action: Inspect PR 1807 CI results for the current head; keep the PR in draft until reviewed.
 ```
+
 
