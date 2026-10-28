@@ -7,9 +7,9 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.helpers import config_validation as cv
 
+from ..const import DOMAIN
 from ..options import (
     BYPASS_MODES,
-    DAYS_OF_WEEK,
     FILTER_TYPES,
     GWC_MODES,
     MODBUS_BAUD_RATES,
@@ -29,6 +29,16 @@ from .validation import (
 _CV_TIME = getattr(cv, "time", str)
 _CV_STRING = getattr(cv, "string", str)
 _SEASONS = ("summer", "winter")
+_SCHEDULE_DAYS: tuple[str, ...] = (
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+)
+_SCHEDULE_DAYS += tuple(f"{DOMAIN}.day_{day}" for day in _SCHEDULE_DAYS)
 
 
 def _target_schema(fields: dict[Any, Any] | None = None) -> vol.Schema:
@@ -56,7 +66,7 @@ SET_SPECIAL_MODE_SCHEMA = _target_schema(
 SET_AIRING_SCHEDULE_SCHEMA = _target_schema(
     {
         vol.Optional("schedule", default="manual"): vol.In(("manual", "summer", "winter")),
-        vol.Optional("day"): vol.In(DAYS_OF_WEEK),
+        vol.Optional("day"): vol.In(_SCHEDULE_DAYS),
         vol.Optional("start_time"): _CV_TIME,
         vol.Optional("enabled", default=True): bool,
     }
@@ -64,7 +74,7 @@ SET_AIRING_SCHEDULE_SCHEMA = _target_schema(
 
 SET_AIRFLOW_SCHEDULE_SCHEMA = _target_schema(
     {
-        vol.Required("day"): vol.In(DAYS_OF_WEEK),
+        vol.Required("day"): vol.In(_SCHEDULE_DAYS),
         vol.Required("period"): vol.All(vol.Coerce(int), vol.Range(min=1, max=4)),
         vol.Optional("start_time"): _CV_TIME,
         vol.Optional("end_time"): _CV_TIME,
@@ -72,6 +82,7 @@ SET_AIRFLOW_SCHEDULE_SCHEMA = _target_schema(
         vol.Optional("enabled", default=True): bool,
         vol.Optional("season", default="summer"): vol.In(_SEASONS),
         vol.Optional("temperature"): vol.All(vol.Coerce(float), vol.Range(min=10.0, max=45.0)),
+        vol.Optional("clear_temperature", default=False): bool,
     }
 )
 

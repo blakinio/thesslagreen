@@ -120,6 +120,12 @@ class ThesslaGreenSelect(ThesslaGreenEntity, SelectEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return risk metadata for advanced/dangerous entities."""
         attrs: dict[str, Any] = {}
+        if self._register_name.startswith(SETTING_SCHEDULE_PREFIXES):
+            value = self.coordinator.data.get(self._register_name)
+            if isinstance(value, dict):
+                attrs["airflow_percentage"] = value.get("airflow_pct")
+                attrs["temperature_c"] = value.get("temp_c")
+                attrs["temperature_unset"] = value.get("temp_c") is None
         for meta_key in ("risk_level", "risk_category", "safety_warning"):
             meta_val = self._definition.get(meta_key)
             if meta_val is not None:

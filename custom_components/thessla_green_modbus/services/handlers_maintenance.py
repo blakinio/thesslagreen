@@ -8,6 +8,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.util import dt as dt_util
 from pymodbus.exceptions import ConnectionException, ModbusException
 
 from ..clock_sync import async_perform_clock_sync
@@ -371,7 +372,7 @@ def _build_set_device_name_handler(hass: HomeAssistant, deps: ServiceHandlerDeps
 def _build_sync_time_handler(hass: HomeAssistant, deps: ServiceHandlerDeps) -> ServiceHandler:
     async def sync_time(call: ServiceCall) -> None:
         async def _sync_time_for_target(entity_id: str, coordinator: Any) -> bool:
-            now = _dt.now()
+            now = dt_util.now()
             try:
                 success = await coordinator.async_write_registers(
                     start_address=0,

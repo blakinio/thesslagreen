@@ -243,11 +243,38 @@ async def test_targeted_readback_uses_decoded_value_not_raw_request(coordinator)
 
     result = await coordinator.async_write_register("mode", 1, refresh=True)
 
-    assert result is True
+    assert result is False
     coordinator.async_request_refresh.assert_not_called()
     # Value in coordinator.data must come from read-back (device returned 2), not from
     # the written value (1). The exact decoded type depends on the register definition.
     assert coordinator.data.get("mode") != 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "name,value,actual",
+    [
+        ("comfort_mode_panel", 1, 0),
+        ("air_flow_rate_manual", 80, 79),
+        ("supply_air_temperature_manual", 20.5, 204),
+        ("bypass_off", 1, 0),
+    ],
+)
+async def test_acknowledged_but_rejected_value_is_failure_with_confirmed_state(
+    coordinator, name, value, actual
+) -> None:
+    coordinator._ensure_connection = AsyncMock()
+    coordinator.device_client.available_registers["holding_registers"].add(name)
+    client = MagicMock()
+    client.write_register = AsyncMock(return_value=_write_response())
+    client.read_holding_registers = AsyncMock(return_value=_read_response([actual]))
+    coordinator.device_client.client = client
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator.data = {}
+
+    assert await coordinator.async_write_register(name, value) is False
+    assert name in coordinator.data
+    coordinator.async_request_refresh.assert_not_called()
 
 
 @pytest.mark.asyncio

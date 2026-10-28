@@ -89,6 +89,12 @@ set_airflow_schedule:
           min: 10.0
           max: 45.0
           step: 0.5
+    clear_temperature:
+      name: Clear temperature
+      description: Explicitly restore the documented TT=0 no-temperature marker. Cannot be combined with temperature.
+      default: false
+      selector:
+        boolean:
     enabled:
       name: Slot enabled
       description: False writes the documented 0xA200 disable marker without changing its intensity or temperature.
@@ -558,3 +564,15 @@ filter_alarm_diagnostics:
     entity:
       domain: climate
       integration: thessla_green_modbus
+read_register_diagnostics:
+  name: Read register diagnostics
+  description: Read up to 32 named register definitions using the existing device connection, returning raw and decoded values without writes.
+  target:
+    entity:
+      integration: thessla_green_modbus
+  fields:
+    names:
+      name: Register names
+      required: true
+      selector:
+        object:

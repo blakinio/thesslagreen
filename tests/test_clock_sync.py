@@ -311,16 +311,18 @@ async def test_sync_read_back_validation_failure_raises():
 
 
 @pytest.mark.asyncio
-async def test_sync_read_back_unavailable_returns_true():
+async def test_sync_read_back_unavailable_is_not_reported_as_success():
+    from homeassistant.exceptions import HomeAssistantError
+
     now = datetime.datetime(2025, 5, 9, 14, 30, 45)
     coord = _make_coordinator(data={}, readback_regs=None)
 
-    result = await async_perform_clock_sync(
-        coord,
-        force=True,
-        dt_now_fn=_fixed_now(now),
-    )
-    assert result is True
+    with pytest.raises(HomeAssistantError, match="did not return clock words"):
+        await async_perform_clock_sync(
+            coord,
+            force=True,
+            dt_now_fn=_fixed_now(now),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1070,14 +1072,15 @@ def test_clock_sync_manager_periodic_triggers_after_interval():
 
 @pytest.mark.asyncio
 async def test_do_sync_success_sets_last_sync():
-    # readback_regs=None → async_perform_clock_sync returns True without readback validation
-    coord = _make_coordinator(readback_regs=None)
+    now = datetime.datetime(2025, 5, 9, 14, 30, 45)
+    coord = _make_coordinator(readback_regs=encode_rtc_registers(now))
     hass = MagicMock()
     entry = MagicMock()
     entry.options = {}
 
     mgr = ClockSyncManager(hass, coord, entry)
-    await mgr._do_sync(300)
+    with patch("homeassistant.util.dt.now", return_value=now):
+        await mgr._do_sync(300)
 
     assert mgr._sync_in_progress is False
     assert mgr._last_sync is not None

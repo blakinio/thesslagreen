@@ -515,6 +515,7 @@ class _CoordinatorScheduleMixin:
         refresh_after_write = False
         _raw_readback: list[int] | None = None
         _readback_definition: Any = None
+        _expected_readback: int | list[int] | None = None
 
         async with self._device_client._write_lock:
             try:
@@ -542,6 +543,7 @@ class _CoordinatorScheduleMixin:
                     )
                     if _raw_readback is not None:
                         _readback_definition = _definition
+                        _expected_readback = _definition.encode(value)
                         refresh_after_write = False
                     else:
                         _LOGGER.debug(
@@ -584,6 +586,15 @@ class _CoordinatorScheduleMixin:
                         "Skipping listener notification after read-back for %s", register_name
                     )
                 _LOGGER.debug("Targeted read-back for %s decoded to %r", register_name, _decoded)
+
+        if _raw_readback is not None and _raw_readback != [_expected_readback]:
+            _LOGGER.error(
+                "Device did not apply %s: requested raw %s, read back %s",
+                register_name,
+                _expected_readback,
+                _raw_readback,
+            )
+            return False
 
         return await finalize_write_result(self, refresh_after_write)
 

@@ -1574,6 +1574,10 @@
         "enabled": {
           "name": "Odcinek aktywny",
           "description": "Wyłączenie zapisuje 0xA200, nie zmienia temperatury."
+        },
+        "clear_temperature": {
+          "name": "Usuń temperaturę zadaną",
+          "description": "Zapisuje znacznik TT=0 oznaczający brak temperatury zadanej. Nie łącz z polem temperature."
         }
       },
       "name": "Ustaw harmonogram przepływu powietrza"
@@ -1809,6 +1813,16 @@
     "filter_alarm_diagnostics": {
       "name": "Diagnostyka alarmów filtrów Home",
       "description": "Odczyt bieżących rejestrów alarmów i sterowania bez zapisu do centrali."
+    },
+    "read_register_diagnostics": {
+      "name": "Odczyt diagnostyczny rejestrów",
+      "description": "Odczytuje surowe i zdekodowane wartości maksymalnie 32 nazwanych rejestrów przez istniejące połączenie, bez zapisu.",
+      "fields": {
+        "names": {
+          "name": "Nazwy rejestrów",
+          "description": "Lista nazw z mapy rejestrów."
+        }
+      }
     }
   },
   "title": "ThesslaGreen Modbus"

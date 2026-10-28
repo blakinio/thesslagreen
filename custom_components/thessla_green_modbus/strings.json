@@ -1574,6 +1574,10 @@
         "enabled": {
           "name": "Slot enabled",
           "description": "Disable writes 0xA200 without changing temperature."
+        },
+        "clear_temperature": {
+          "name": "Clear temperature",
+          "description": "Write the TT=0 no-temperature marker. Mutually exclusive with temperature."
         }
       },
       "name": "Set Airflow Schedule"
@@ -1809,6 +1813,16 @@
     "filter_alarm_diagnostics": {
       "name": "Home filter alarm diagnostics",
       "description": "Read current filter alarm and control registers without writing to the device."
+    },
+    "read_register_diagnostics": {
+      "name": "Read register diagnostics",
+      "description": "Read raw and decoded values for up to 32 named registers using the existing connection, without writes.",
+      "fields": {
+        "names": {
+          "name": "Register names",
+          "description": "A list of names from the register map."
+        }
+      }
     }
   },
   "title": "ThesslaGreen Modbus"
